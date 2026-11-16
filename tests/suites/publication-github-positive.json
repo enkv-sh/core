@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "name": "publication-github-positive",
+  "description": "GitHub repository, organization and environment plain and secret output lifecycles, shared by AWS and GCP State cells.",
+  "required_roles": [
+    "authority",
+    "recovery"
+  ],
+  "scenarios": [
+    "publication.github-repository.plain-secret-lifecycle/plain1_secret1_create_value_inherited_policy_delete",
+    "publication.github-organization.plain-secret-lifecycle/plain1_secret1_create_value_policy_delete",
+    "publication.github-environment.plain-secret-lifecycle/plain1_secret1_create_value_inherited_policy_delete"
+  ]
+}

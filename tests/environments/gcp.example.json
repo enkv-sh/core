@@ -1,0 +1,155 @@
+{
+  "schema_version": 1,
+  "name": "gcp-example",
+  "mode": "live",
+  "provider": "gcp",
+  "resource": {
+    "alias": "state",
+    "settings": {
+      "project": "example-project",
+      "project_number": "123456789012",
+      "region": "us-central1",
+      "bucket": "example-state-tests",
+      "key_id": "projects/example-project/locations/us-central1/keyRings/state-tests/cryptoKeys/signing/cryptoKeyVersions/1",
+      "public_key_pem": "-----BEGIN PUBLIC KEY-----\nREPLACE_WITH_INDEPENDENT_PUBLIC_KEY\n-----END PUBLIC KEY-----\n",
+      "recovery_mode": "enabled",
+      "authority_kek_id": "projects/example-project/locations/us-central1/keyRings/state-tests/cryptoKeys/authority-kek/cryptoKeyVersions/1",
+      "authority_kek_public_key_pem": "-----BEGIN PUBLIC KEY-----\nREPLACE_WITH_INDEPENDENT_RSA3072_PUBLIC_KEY\n-----END PUBLIC KEY-----\n",
+      "reader_kek_id": "projects/example-project/locations/us-central1/keyRings/state-tests/cryptoKeys/reader-kek/cryptoKeyVersions/1",
+      "reader_kek_public_key_pem": "-----BEGIN PUBLIC KEY-----\nREPLACE_WITH_INDEPENDENT_RSA3072_PUBLIC_KEY\n-----END PUBLIC KEY-----\n",
+      "recovery_kek_id": "projects/example-project/locations/us-central1/keyRings/state-tests/cryptoKeys/recovery-kek/cryptoKeyVersions/1",
+      "recovery_kek_public_key_pem": "-----BEGIN PUBLIC KEY-----\nREPLACE_WITH_INDEPENDENT_RSA3072_PUBLIC_KEY\n-----END PUBLIC KEY-----\n",
+      "recovery_key_id": "projects/example-project/locations/us-central1/keyRings/state-tests/cryptoKeys/recovery-signing/cryptoKeyVersions/1",
+      "recovery_public_key_pem": "-----BEGIN PUBLIC KEY-----\nREPLACE_WITH_INDEPENDENT_RECOVERY_SIGNING_PUBLIC_KEY\n-----END PUBLIC KEY-----\n",
+      "normal_successor_key_id": "projects/example-project/locations/us-central1/keyRings/state-tests/cryptoKeys/normal-successor/cryptoKeyVersions/1",
+      "normal_successor_public_key_pem": "-----BEGIN PUBLIC KEY-----\nREPLACE_WITH_INDEPENDENT_NORMAL_SUCCESSOR_SIGNING_PUBLIC_KEY\n-----END PUBLIC KEY-----\n",
+      "reader_successor_kek_id": "projects/example-project/locations/us-central1/keyRings/state-tests/cryptoKeys/reader-successor-kek/cryptoKeyVersions/1",
+      "reader_successor_kek_public_key_pem": "-----BEGIN PUBLIC KEY-----\nREPLACE_WITH_INDEPENDENT_READER_SUCCESSOR_RSA3072_PUBLIC_KEY\n-----END PUBLIC KEY-----\n",
+      "authority_successor_1_kek_id": "projects/example-project/locations/us-central1/keyRings/state-tests/cryptoKeys/authority-successor-1-kek/cryptoKeyVersions/1",
+      "authority_successor_1_kek_public_key_pem": "-----BEGIN PUBLIC KEY-----\nREPLACE_WITH_INDEPENDENT_AUTHORITY_SUCCESSOR_1_RSA3072_PUBLIC_KEY\n-----END PUBLIC KEY-----\n",
+      "authority_successor_2_kek_id": "projects/example-project/locations/us-central1/keyRings/state-tests/cryptoKeys/authority-successor-2-kek/cryptoKeyVersions/1",
+      "authority_successor_2_kek_public_key_pem": "-----BEGIN PUBLIC KEY-----\nREPLACE_WITH_INDEPENDENT_AUTHORITY_SUCCESSOR_2_RSA3072_PUBLIC_KEY\n-----END PUBLIC KEY-----\n",
+      "recovery_successor_key_id": "projects/example-project/locations/us-central1/keyRings/state-tests/cryptoKeys/recovery-successor/cryptoKeyVersions/1",
+      "recovery_successor_public_key_pem": "-----BEGIN PUBLIC KEY-----\nREPLACE_WITH_INDEPENDENT_RECOVERY_SUCCESSOR_SIGNING_PUBLIC_KEY\n-----END PUBLIC KEY-----\n",
+      "recovery_successor_1_kek_id": "projects/example-project/locations/us-central1/keyRings/state-tests/cryptoKeys/recovery-successor-1-kek/cryptoKeyVersions/1",
+      "recovery_successor_1_kek_public_key_pem": "-----BEGIN PUBLIC KEY-----\nREPLACE_WITH_INDEPENDENT_RECOVERY_SUCCESSOR_1_RSA3072_PUBLIC_KEY\n-----END PUBLIC KEY-----\n",
+      "recovery_successor_2_kek_id": "projects/example-project/locations/us-central1/keyRings/state-tests/cryptoKeys/recovery-successor-2-kek/cryptoKeyVersions/1",
+      "recovery_successor_2_kek_public_key_pem": "-----BEGIN PUBLIC KEY-----\nREPLACE_WITH_INDEPENDENT_RECOVERY_SUCCESSOR_2_RSA3072_PUBLIC_KEY\n-----END PUBLIC KEY-----\n",
+      "normal_successor_2_key_id": "projects/example-project/locations/us-central1/keyRings/state-tests/cryptoKeys/normal-successor-2/cryptoKeyVersions/1",
+      "normal_successor_2_public_key_pem": "-----BEGIN PUBLIC KEY-----\nREPLACE_WITH_INDEPENDENT_SECOND_NORMAL_SUCCESSOR_SIGNING_PUBLIC_KEY\n-----END PUBLIC KEY-----\n"
+    }
+  },
+  "participants": {
+    "operator": {
+      "access": {
+        "credentials_file": ".credentials/service-account.json"
+      }
+    },
+    "reader": {
+      "access": {
+        "credentials_file": ".credentials/reader.json"
+      }
+    },
+    "recovery": {
+      "access": {
+        "credentials_file": ".credentials/recovery.json"
+      }
+    },
+    "denied-reader": {
+      "access": {
+        "credentials_file": ".credentials/denied-reader.json"
+      }
+    },
+    "normal-signer-0": {
+      "access": {
+        "credentials_file": ".credentials/normal-signer-0.json"
+      }
+    },
+    "normal-signer-1": {
+      "access": {
+        "credentials_file": ".credentials/normal-signer-1.json"
+      }
+    },
+    "authority-decrypter-0": {
+      "access": {
+        "credentials_file": ".credentials/authority-decrypter-0.json"
+      }
+    },
+    "authority-decrypter-1": {
+      "access": {
+        "credentials_file": ".credentials/authority-decrypter-1.json"
+      }
+    },
+    "authority-decrypter-2": {
+      "access": {
+        "credentials_file": ".credentials/authority-decrypter-2.json"
+      }
+    },
+    "reader-successor": {
+      "access": {
+        "credentials_file": ".credentials/reader-successor.json"
+      }
+    },
+    "replacement-store": {
+      "access": {
+        "credentials_file": ".credentials/replacement-store.json"
+      }
+    },
+    "recovery-signer-0": {
+      "access": {
+        "credentials_file": ".credentials/recovery-signer-0.json"
+      }
+    },
+    "recovery-signer-1": {
+      "access": {
+        "credentials_file": ".credentials/recovery-signer-1.json"
+      }
+    },
+    "recovery-decrypter-0": {
+      "access": {
+        "credentials_file": ".credentials/recovery-decrypter-0.json"
+      }
+    },
+    "recovery-decrypter-1": {
+      "access": {
+        "credentials_file": ".credentials/recovery-decrypter-1.json"
+      }
+    },
+    "recovery-decrypter-2": {
+      "access": {
+        "credentials_file": ".credentials/recovery-decrypter-2.json"
+      }
+    },
+    "denied-observer": {
+      "access": {
+        "credentials_file": ".credentials/denied-observer.json"
+      }
+    },
+    "normal-signer-2": {
+      "access": {
+        "credentials_file": ".credentials/normal-signer-2.json"
+      }
+    }
+  },
+  "role_bindings": {
+    "authority": "operator",
+    "reader": "reader",
+    "recovery": "recovery",
+    "denied-reader": "denied-reader",
+    "normal-signer-0": "normal-signer-0",
+    "normal-signer-1": "normal-signer-1",
+    "authority-decrypter-0": "authority-decrypter-0",
+    "authority-decrypter-1": "authority-decrypter-1",
+    "authority-decrypter-2": "authority-decrypter-2",
+    "reader-successor": "reader-successor",
+    "replacement-store": "replacement-store",
+    "recovery-signer-0": "recovery-signer-0",
+    "recovery-signer-1": "recovery-signer-1",
+    "recovery-decrypter-0": "recovery-decrypter-0",
+    "recovery-decrypter-1": "recovery-decrypter-1",
+    "recovery-decrypter-2": "recovery-decrypter-2",
+    "observer": "denied-reader",
+    "denied-observer": "denied-observer",
+    "normal-signer-2": "normal-signer-2"
+  }
+}

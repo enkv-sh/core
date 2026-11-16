@@ -1,0 +1,21 @@
+{
+  "schema_version": 2,
+  "name": "publication",
+  "description": "Selected single-send publication through authenticated local children, complete results, no-op, reservation retirement without send, fresh-process reopening and positive cleanup joins.",
+  "required_roles": [
+    "authority",
+    "recovery"
+  ],
+  "scenarios": [
+    "publication.separate-values-and-noop/plain1_secret1_separate_values_and_noop",
+    "publication.value-policy-delete/plain1_secret1_value_policy_delete",
+    "publication.ack-then-unknown/plain1_secret1_ack_then_unknown",
+    "publication.unknown-then-ack/plain1_secret1_unknown_then_ack",
+    "publication.unqualified-create/plain1_secret1_unqualified_create",
+    "publication.wrong-instance/plain1_secret1_wrong_instance",
+    "publication.unauthorized-later-member/plain1_secret1_unauthorized_later_member",
+    "publication.lost-process/plain1_secret1_reservation_retired_without_send",
+    "publication.cancel-child/plain1_secret1_cancel_child",
+    "publication.cleanup-failure/plain1_secret1_cleanup_failure"
+  ]
+}

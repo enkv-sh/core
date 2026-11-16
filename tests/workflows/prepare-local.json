@@ -1,0 +1,2638 @@
+{
+  "schema_version": 1,
+  "name": "prepare-local",
+  "profile": "full",
+  "execution": {
+    "parallel": 4
+  },
+  "description": "Focused local public preparation, recovered public basis and passive dependency verification. No live provider effects or dependency acquisition.",
+  "steps": [
+    {
+      "id": "prepare-001",
+      "kind": "unit",
+      "packages": [
+        "compositions/generatorhost"
+      ],
+      "package": "compositions/generatorhost",
+      "tests": [
+        "TestArtifactAuthenticationPrecedesBuildMetadata"
+      ]
+    },
+    {
+      "id": "prepare-002",
+      "kind": "unit",
+      "packages": [
+        "compositions/generatorhost"
+      ],
+      "package": "compositions/generatorhost",
+      "tests": [
+        "TestStageCleanupUsesOpenedRootAfterRename"
+      ]
+    },
+    {
+      "id": "prepare-003",
+      "kind": "unit",
+      "packages": [
+        "compositions/generatorhost"
+      ],
+      "package": "compositions/generatorhost",
+      "tests": [
+        "TestStageAndVerificationFIFORefuseWithoutWriter"
+      ]
+    },
+    {
+      "id": "prepare-004",
+      "kind": "unit",
+      "packages": [
+        "compositions/generatorhost"
+      ],
+      "package": "compositions/generatorhost",
+      "tests": [
+        "TestBuildInfoFIFORefusesWithoutWriter"
+      ]
+    },
+    {
+      "id": "prepare-005",
+      "kind": "unit",
+      "packages": [
+        "compositions/outputhost"
+      ],
+      "package": "compositions/outputhost",
+      "tests": [
+        "TestArtifactAuthenticationPrecedesBuildMetadata"
+      ]
+    },
+    {
+      "id": "prepare-006",
+      "kind": "unit",
+      "packages": [
+        "compositions/outputhost"
+      ],
+      "package": "compositions/outputhost",
+      "tests": [
+        "TestStageCleanupUsesOpenedRootAfterRename"
+      ]
+    },
+    {
+      "id": "prepare-007",
+      "kind": "unit",
+      "packages": [
+        "compositions/outputhost"
+      ],
+      "package": "compositions/outputhost",
+      "tests": [
+        "TestStageAndVerificationFIFORefuseWithoutWriter"
+      ]
+    },
+    {
+      "id": "prepare-008",
+      "kind": "unit",
+      "packages": [
+        "compositions/outputhost"
+      ],
+      "package": "compositions/outputhost",
+      "tests": [
+        "TestBuildInfoFIFORefusesWithoutWriter"
+      ]
+    },
+    {
+      "id": "prepare-009",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestPublicObservationOwnsCompleteBranchAndRefusesMixedEvidence"
+      ]
+    },
+    {
+      "id": "prepare-010",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestReaderObservationClosedSchemaAndFields"
+      ]
+    },
+    {
+      "id": "prepare-011",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestPublicObservationExactIndependentBackingLimits"
+      ]
+    },
+    {
+      "id": "prepare-012",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestReaderPublicBasisClosedGrammarAndBounds"
+      ]
+    },
+    {
+      "id": "prepare-013",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestReaderAcceptsSharedPublicBasisWriter"
+      ]
+    },
+    {
+      "id": "prepare-014",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestReaderPublicBasisMaximumBacking"
+      ]
+    },
+    {
+      "id": "prepare-015",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestCurrentBasisRequiresAdmittedPredecessor"
+      ]
+    },
+    {
+      "id": "prepare-016",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestCurrentBasisCloneOwnsCompletePublicBasis"
+      ]
+    },
+    {
+      "id": "prepare-017",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestCurrentBasisRefusesObsoleteTrustInterpretation"
+      ]
+    },
+    {
+      "id": "prepare-018",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestPublicBasisMatchesOnlyCompatibleCurrentControl"
+      ]
+    },
+    {
+      "id": "prepare-019",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestInstalledMaterializationCloseCancelsAndJoinsCustody"
+      ]
+    },
+    {
+      "id": "prepare-020",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestInstalledMaterializationCapturesRequestAndFinishesWithoutStore"
+      ]
+    },
+    {
+      "id": "prepare-021",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestPrepareDependenciesIncludesUnappliedDeclarationsWithoutCredentials"
+      ]
+    },
+    {
+      "id": "prepare-022",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestPrepareDependenciesSeparatesAdministrationAndSourceStability"
+      ]
+    },
+    {
+      "id": "prepare-023",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestPrepareDependenciesPreservesPendingSourceRefusal"
+      ]
+    },
+    {
+      "id": "prepare-024",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestPrepareDependenciesKeepsVerifiedSemanticArtifactOnPartialFailure"
+      ]
+    },
+    {
+      "id": "prepare-025",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestPrepareDependenciesDeduplicatesMaximumDeclarations"
+      ]
+    },
+    {
+      "id": "prepare-026",
+      "kind": "component-tests",
+      "profile": "full",
+      "parallel_group": "portable-basis-1",
+      "tests": [
+        "TestReconstructionExportsPortablePublicBasisWithoutSavedTrust"
+      ]
+    },
+    {
+      "id": "prepare-027",
+      "kind": "component-tests",
+      "profile": "full",
+      "parallel_group": "portable-basis-1",
+      "tests": [
+        "TestReconstructedObservationAuthenticatesGenesisAndOrdinaryAdvance"
+      ]
+    },
+    {
+      "id": "prepare-028",
+      "kind": "component-tests",
+      "profile": "full",
+      "parallel_group": "portable-basis-1",
+      "tests": [
+        "TestReconstructedObservationPinsSuccessionAndPermitsLaterAccess"
+      ]
+    },
+    {
+      "id": "prepare-029",
+      "kind": "component-tests",
+      "profile": "full",
+      "parallel_group": "portable-basis-1",
+      "tests": [
+        "TestReconstructedObservationRejectsChangedWitnessAndOwnsCopies"
+      ]
+    },
+    {
+      "id": "prepare-030",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestReconstructedObservationPredecessorDeliversOrdinarySuccessorBasis"
+      ]
+    },
+    {
+      "id": "prepare-031",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestReconstructedObservationMaterializationRefreshKeepsSavedSuccession"
+      ]
+    },
+    {
+      "id": "prepare-032",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestReconstructedObservationWaitsForLastSecretAndFinalHEAD"
+      ]
+    },
+    {
+      "id": "prepare-033",
+      "kind": "component-tests",
+      "profile": "full",
+      "parallel_group": "portable-basis-2",
+      "tests": [
+        "TestReconstructionProjectionAttemptOwnsAndDiscardsParts"
+      ]
+    },
+    {
+      "id": "prepare-034",
+      "kind": "component-tests",
+      "profile": "full",
+      "parallel_group": "portable-basis-2",
+      "tests": [
+        "TestReconstructionProjectionCopyAndCloseHaveOneOwnedLifetime"
+      ]
+    },
+    {
+      "id": "prepare-035",
+      "kind": "component-tests",
+      "profile": "full",
+      "parallel_group": "portable-basis-2",
+      "tests": [
+        "TestReconstructionPrivateRunnerBoundsFullRestartsAndClosesReaders"
+      ]
+    },
+    {
+      "id": "prepare-036",
+      "kind": "component-tests",
+      "profile": "full",
+      "parallel_group": "portable-basis-2",
+      "tests": [
+        "TestReconstructionOwnedProjectionFollowsAllSecretAndFinalHEAD"
+      ]
+    },
+    {
+      "id": "prepare-037",
+      "kind": "component-tests",
+      "profile": "full",
+      "parallel_group": "portable-basis-2",
+      "tests": [
+        "TestReconstructionRegistryRequiresSelectedProvider"
+      ]
+    },
+    {
+      "id": "prepare-038",
+      "kind": "component-tests",
+      "profile": "full",
+      "parallel_group": "portable-basis-2",
+      "tests": [
+        "TestReaderAuthenticatesIndependentGenesisWithoutEnrollment"
+      ]
+    },
+    {
+      "id": "prepare-039",
+      "kind": "component-tests",
+      "profile": "full",
+      "parallel_group": "portable-basis-2",
+      "tests": [
+        "TestReaderAuthenticatesIndependentSuccessorSigningBasis"
+      ]
+    },
+    {
+      "id": "prepare-040",
+      "kind": "component-tests",
+      "profile": "full",
+      "parallel_group": "portable-basis-2",
+      "tests": [
+        "TestReaderRejectsStaleBasisWrongAuthorizerAndControl"
+      ]
+    },
+    {
+      "id": "prepare-041",
+      "kind": "component-tests",
+      "profile": "full",
+      "parallel_group": "portable-basis-2",
+      "tests": [
+        "TestReaderSavedSuccessorBasisPermitsLaterAccessAdvance"
+      ]
+    },
+    {
+      "id": "prepare-042",
+      "kind": "component-tests",
+      "profile": "full",
+      "parallel_group": "portable-basis-2",
+      "tests": [
+        "TestPublicSuccessorBasisAdmitsEmptySelectedEnrollmentFields"
+      ]
+    },
+    {
+      "id": "prepare-043",
+      "kind": "component-tests",
+      "profile": "full",
+      "parallel_group": "portable-basis-2",
+      "tests": [
+        "TestPublicBasisAdmitsLegalLargeRegistryInBothForms"
+      ]
+    },
+    {
+      "id": "prepare-044",
+      "kind": "component-tests",
+      "profile": "full",
+      "parallel_group": "portable-basis-2",
+      "tests": [
+        "TestMaterializationSelectionBoundsThreeImagesFourObservationsAndPublicHEADCalls"
+      ]
+    },
+    {
+      "id": "prepare-045",
+      "kind": "component-tests",
+      "profile": "full",
+      "parallel_group": "portable-basis-2",
+      "tests": [
+        "TestReconstructedObservationReaderSharesOneWitnessAcrossInvocations"
+      ]
+    },
+    {
+      "id": "prepare-046",
+      "kind": "component-tests",
+      "profile": "full",
+      "parallel_group": "portable-basis-2",
+      "tests": [
+        "TestReconstructedObservationReceiptAndMaterializationReuseWitness"
+      ]
+    },
+    {
+      "id": "prepare-047",
+      "kind": "component-tests",
+      "profile": "full",
+      "parallel_group": "portable-basis-2",
+      "tests": [
+        "TestInstalledReceiptReadsAllKindsInRecordedOrderWithOriginalBytesAndGETOnly"
+      ]
+    },
+    {
+      "id": "prepare-048",
+      "kind": "component-tests",
+      "profile": "full",
+      "parallel_group": "portable-basis-2",
+      "tests": [
+        "TestInstalledReceiptMandatoryLossSourceChangesAndCanceledReadersDiscloseNothing"
+      ]
+    },
+    {
+      "id": "prepare-049",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestReconstructionCommittedBasisReachesFreshPairAdmission"
+      ]
+    },
+    {
+      "id": "prepare-050",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestReconstructedObservationInstalledOwnersReuseOwnedWitness"
+      ]
+    },
+    {
+      "id": "prepare-051",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestReaderStandaloneSuccessorUsesSharedEnrollmentGrammar"
+      ]
+    },
+    {
+      "id": "prepare-052",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestApplyPublicationCloseWaitsForOwnedPublication"
+      ]
+    },
+    {
+      "id": "prepare-053",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestInstalledAdministrativeCloseCancelsAndJoinsRead"
+      ]
+    },
+    {
+      "id": "prepare-054",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestInstalledAdministrativeDescriptorPreviewAndQueryFixedVectors"
+      ]
+    },
+    {
+      "id": "prepare-055",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestInstalledGCApplyUsesPublicValidationBeforeMutation"
+      ]
+    },
+    {
+      "id": "prepare-056",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestGCClosePreservesSelectedProgressAndFailures"
+      ]
+    },
+    {
+      "id": "prepare-057",
+      "kind": "component-tests",
+      "profile": "full",
+      "parallel_group": "portable-basis-3",
+      "tests": [
+        "TestReconstructedObservationReplacementCallbackCannotChangeBasis"
+      ]
+    },
+    {
+      "id": "prepare-058",
+      "kind": "component-tests",
+      "profile": "full",
+      "parallel_group": "portable-basis-3",
+      "tests": [
+        "TestReconstructedObservationPublicationCloseJoinsBorrowedBasis"
+      ]
+    },
+    {
+      "id": "prepare-059",
+      "kind": "component-tests",
+      "profile": "full",
+      "parallel_group": "portable-basis-3",
+      "tests": [
+        "TestInstalledSuppliedApplyPreservesInitializationReceiptSupport"
+      ]
+    },
+    {
+      "id": "prepare-060",
+      "kind": "component-tests",
+      "profile": "full",
+      "parallel_group": "portable-basis-3",
+      "tests": [
+        "TestInstalledGeneratedApplySelectsCompleteGeneratedAndSuppliedSet"
+      ]
+    },
+    {
+      "id": "prepare-061",
+      "kind": "component-tests",
+      "profile": "full",
+      "parallel_group": "portable-basis-3",
+      "tests": [
+        "TestInstalledGeneratedRetirementAcknowledgesOnlyExactOldTarget"
+      ]
+    },
+    {
+      "id": "prepare-062",
+      "kind": "component-tests",
+      "profile": "full",
+      "parallel_group": "portable-basis-3",
+      "tests": [
+        "TestInstalledReplacementRequiresExactDeliveredCandidateBeforeSelection"
+      ]
+    },
+    {
+      "id": "prepare-063",
+      "kind": "component-tests",
+      "profile": "full",
+      "parallel_group": "portable-basis-3",
+      "tests": [
+        "TestInstalledReplacementCloseCancelsAndJoinsOwnedInvocation"
+      ]
+    },
+    {
+      "id": "prepare-064",
+      "kind": "component-tests",
+      "profile": "full",
+      "parallel_group": "portable-basis-3",
+      "tests": [
+        "TestInstalledReplacementObservationsAuthenticatePreparedSelectedAndProgress"
+      ]
+    },
+    {
+      "id": "prepare-065",
+      "kind": "component-tests",
+      "profile": "full",
+      "parallel_group": "portable-basis-3",
+      "tests": [
+        "TestInstalledReplacementObservationRefusesChangedPinsAndJoinsClose"
+      ]
+    },
+    {
+      "id": "prepare-066",
+      "kind": "component-tests",
+      "profile": "full",
+      "parallel_group": "portable-basis-3",
+      "tests": [
+        "TestMaintenanceObservationSeparatesReceiptFromCandidateMaterial"
+      ]
+    },
+    {
+      "id": "prepare-067",
+      "kind": "component-tests",
+      "profile": "full",
+      "parallel_group": "portable-basis-3",
+      "tests": [
+        "TestInstalledPublicPublicationNativeCreateNoopAndRetainedDeletion"
+      ]
+    },
+    {
+      "id": "prepare-068",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestObservationBasisPreservesExactBytesAcrossPairForms"
+      ]
+    },
+    {
+      "id": "prepare-069",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestObservationBasisRefusesIncompleteMixedAndUnknownFields"
+      ]
+    },
+    {
+      "id": "prepare-070",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestObservationBasisIndependentDecodedBounds"
+      ]
+    },
+    {
+      "id": "prepare-071",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestGeneratedPublicBasisKindHasExactDiagnostic"
+      ]
+    },
+    {
+      "id": "prepare-072",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestEditableEmissionPreservesCompleteSourceMeaning"
+      ]
+    },
+    {
+      "id": "prepare-073",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestSourceCumulativeOwnerBudgets"
+      ]
+    },
+    {
+      "id": "prepare-074",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestMaintenanceKeepsObservationBytesAfterSourceBasisRelease"
+      ]
+    },
+    {
+      "id": "prepare-075",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestSuccessorPairPreservesSourceAndUnrelatedGeneratedFacts"
+      ]
+    },
+    {
+      "id": "prepare-076",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestMaintenanceRetirementPreservesIndependentPair"
+      ]
+    },
+    {
+      "id": "prepare-077",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestMaintenanceRekeyChangesOnlyExactRetainedPin"
+      ]
+    },
+    {
+      "id": "prepare-078",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestMaintenanceCollectionDeletionPreservesOtherBytes"
+      ]
+    },
+    {
+      "id": "prepare-079",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestReconstructionOwnedBasisTransfersOnceAndClearsOnFailure"
+      ]
+    },
+    {
+      "id": "prepare-080",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestInitializationBasisRejectsObservationFields"
+      ]
+    },
+    {
+      "id": "prepare-081",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestReconstructionConfigurationEmitsAuthenticatedCompletePair"
+      ]
+    },
+    {
+      "id": "prepare-082",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestReconstructionConfigurationRequiresExistingCompleteTrustAndLocalIdentity"
+      ]
+    },
+    {
+      "id": "prepare-083",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestConfigurationPairReaderComparesExactPublicMeaning"
+      ]
+    },
+    {
+      "id": "prepare-084",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestCandidatePairCannotReplaceTrustedConstruction"
+      ]
+    },
+    {
+      "id": "prepare-085",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestConfigurationPairRefusalsPrecedeCredentialConstruction"
+      ]
+    },
+    {
+      "id": "prepare-086",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestConfigurationPlanningPreservesSourcesAndTrustedConstruction"
+      ]
+    },
+    {
+      "id": "prepare-087",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestConfigurationPlanningKeepsGeneratedIntentAndSuppliedInputs"
+      ]
+    },
+    {
+      "id": "prepare-088",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestConfigurationPublicQueriesUseInstalledGETAndPreserveBothSourceFormats"
+      ]
+    },
+    {
+      "id": "prepare-089",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestConfigurationMaterializationCapturesCurrentStateAndPreservesBothFormats"
+      ]
+    },
+    {
+      "id": "prepare-090",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestConfigurationManifestUsesSelectedStateAndRetainsBorrowedPair"
+      ]
+    },
+    {
+      "id": "prepare-091",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestConfigurationCapacityAndGCPlanUseSeparateBoundedPublicReach"
+      ]
+    },
+    {
+      "id": "prepare-092",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestMaintenancePlanningCallbackKeepsQualifiedControlAfterSourceRelease"
+      ]
+    },
+    {
+      "id": "prepare-093",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestMaintenanceAdaptersRequireOutputBeforePrivateConstruction"
+      ]
+    },
+    {
+      "id": "prepare-094",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestMaintenanceAdaptersRefuseOutputTransplantsBeforePrivateConstruction"
+      ]
+    },
+    {
+      "id": "prepare-095",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestMaintenanceReadbackSeparatesSourceMetadataFromReopenedOutputPins"
+      ]
+    },
+    {
+      "id": "prepare-096",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestConfigurationApplyCompleteSuppliedMappingBeforeOpen"
+      ]
+    },
+    {
+      "id": "prepare-097",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestConfigurationApplyForwardsCompleteRecipientAndPassiveIntent"
+      ]
+    },
+    {
+      "id": "prepare-098",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestGeneratedAcceptedWorkConstructionIgnoresLocalProposal"
+      ]
+    },
+    {
+      "id": "prepare-099",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestRecipientRetirementAdapterUsesExactReferenceAndIgnoresValidPendingIntent"
+      ]
+    },
+    {
+      "id": "prepare-100",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestRecipientRetirementAdaptersPreserveReadOnlySourceAndBlockers"
+      ]
+    },
+    {
+      "id": "prepare-101",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestSecretAccessFilesRefuseInvalidRecipientJoinsBeforeConstruction"
+      ]
+    },
+    {
+      "id": "prepare-102",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/testsupport/nativeprocess",
+      "tests": [
+        "TestPublicNativeSourcePairFactsUseJoinedParserWithoutSDK"
+      ]
+    },
+    {
+      "id": "prepare-103",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/testsupport/nativeprocess",
+      "tests": [
+        "TestPublicNativeSuccessorBasisTransfersToGETOnlyReader"
+      ]
+    },
+    {
+      "id": "prepare-104",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/testsupport/nativeprocess",
+      "tests": [
+        "TestPublicNativeInitializationSetApplyAndPortableReader"
+      ]
+    },
+    {
+      "id": "prepare-105",
+      "kind": "unit",
+      "packages": [
+        "compositions/aws"
+      ],
+      "package": "compositions/aws",
+      "tests": [
+        "TestNewReaderPinsAWSComponentsWithoutEffects"
+      ]
+    },
+    {
+      "id": "prepare-106",
+      "kind": "unit",
+      "packages": [
+        "compositions/aws"
+      ],
+      "package": "compositions/aws",
+      "tests": [
+        "TestNewReaderRejectsUnfixedAWSInputs"
+      ]
+    },
+    {
+      "id": "prepare-107",
+      "kind": "unit",
+      "packages": [
+        "compositions/aws"
+      ],
+      "package": "compositions/aws",
+      "tests": [
+        "TestPlanningUsesOnlyCurrentAuthorityDecryptRoute"
+      ]
+    },
+    {
+      "id": "prepare-108",
+      "kind": "unit",
+      "packages": [
+        "compositions/aws"
+      ],
+      "package": "compositions/aws",
+      "tests": [
+        "TestCapacityReaderKeepsAWSReadAndEnumerationSeparate"
+      ]
+    },
+    {
+      "id": "prepare-109",
+      "kind": "unit",
+      "packages": [
+        "compositions/aws"
+      ],
+      "package": "compositions/aws",
+      "tests": [
+        "TestMaterializationPublicSelectionHasNoPrivateFallback"
+      ]
+    },
+    {
+      "id": "prepare-110",
+      "kind": "unit",
+      "packages": [
+        "compositions/aws"
+      ],
+      "package": "compositions/aws",
+      "tests": [
+        "TestMaterializationRejectsUnfixedPublicInstallation"
+      ]
+    },
+    {
+      "id": "prepare-111",
+      "kind": "unit",
+      "packages": [
+        "compositions/aws"
+      ],
+      "package": "compositions/aws",
+      "tests": [
+        "TestMaterializationFactoryPinsCapturedTrustBeforePrivateConstruction"
+      ]
+    },
+    {
+      "id": "prepare-112",
+      "kind": "unit",
+      "packages": [
+        "compositions/aws"
+      ],
+      "package": "compositions/aws",
+      "tests": [
+        "TestPublicQueryReadersKeepIndependentSourceBinding"
+      ]
+    },
+    {
+      "id": "prepare-113",
+      "kind": "unit",
+      "packages": [
+        "compositions/gcp"
+      ],
+      "package": "compositions/gcp",
+      "tests": [
+        "TestNewReaderPinsGCPComponentsWithoutEffects"
+      ]
+    },
+    {
+      "id": "prepare-114",
+      "kind": "unit",
+      "packages": [
+        "compositions/gcp"
+      ],
+      "package": "compositions/gcp",
+      "tests": [
+        "TestNewReaderRejectsUnfixedGCPInputs"
+      ]
+    },
+    {
+      "id": "prepare-115",
+      "kind": "unit",
+      "packages": [
+        "compositions/gcp"
+      ],
+      "package": "compositions/gcp",
+      "tests": [
+        "TestNewReaderRejectsAbsentOrCanceledGCPContext"
+      ]
+    },
+    {
+      "id": "prepare-116",
+      "kind": "unit",
+      "packages": [
+        "compositions/gcp"
+      ],
+      "package": "compositions/gcp",
+      "tests": [
+        "TestPlanningUsesOnlyCurrentAuthorityDecryptRoute"
+      ]
+    },
+    {
+      "id": "prepare-117",
+      "kind": "unit",
+      "packages": [
+        "compositions/gcp"
+      ],
+      "package": "compositions/gcp",
+      "tests": [
+        "TestCapacityReaderKeepsGCPReadAndEnumerationSeparate"
+      ]
+    },
+    {
+      "id": "prepare-118",
+      "kind": "unit",
+      "packages": [
+        "compositions/gcp"
+      ],
+      "package": "compositions/gcp",
+      "tests": [
+        "TestMaterializationPublicSelectionHasNoPrivateFallback"
+      ]
+    },
+    {
+      "id": "prepare-119",
+      "kind": "unit",
+      "packages": [
+        "compositions/gcp"
+      ],
+      "package": "compositions/gcp",
+      "tests": [
+        "TestMaterializationRejectsUnfixedPublicInstallation"
+      ]
+    },
+    {
+      "id": "prepare-120",
+      "kind": "unit",
+      "packages": [
+        "compositions/gcp"
+      ],
+      "package": "compositions/gcp",
+      "tests": [
+        "TestMaterializationFactoryPinsCapturedTrustBeforePrivateConstruction"
+      ]
+    },
+    {
+      "id": "prepare-121",
+      "kind": "unit",
+      "packages": [
+        "compositions/gcp"
+      ],
+      "package": "compositions/gcp",
+      "tests": [
+        "TestPublicQueryReadersKeepIndependentSourceBinding"
+      ]
+    },
+    {
+      "id": "prepare-122",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestStateHistoricalBasisPermitsAuthenticatedRegistryChanges"
+      ]
+    },
+    {
+      "id": "prepare-123",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestReaderCloseJoinsActiveFiniteInvocation"
+      ]
+    },
+    {
+      "id": "prepare-124",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestInterruptedEditRetainsNativeReadback"
+      ]
+    },
+    {
+      "id": "prepare-125",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestReconstructionPairDelivery"
+      ]
+    },
+    {
+      "id": "prepare-126",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestReconstructionCaptureRejectsForeignImage"
+      ]
+    },
+    {
+      "id": "prepare-127",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestRetainedByteCapacityObservationBasis"
+      ]
+    },
+    {
+      "id": "prepare-128",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestRetainedByteCapacitySharedBacking"
+      ]
+    },
+    {
+      "id": "prepare-129",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestRetainedByteCapacitySelectionAcceptances"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "id": "prepare-130",
+      "tests": [
+        "TestCompletedPairRetainsSnapshotCleanupFailure"
+      ]
+    },
+    {
+      "id": "prepare-131",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestReconstructionPairAdmission"
+      ]
+    },
+    {
+      "id": "prepare-132",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestReconstructionLocksAndDirectoryIdentity"
+      ]
+    },
+    {
+      "id": "prepare-133",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestReconstructionStageRefusesInvalidModelAndReleasesInput"
+      ]
+    },
+    {
+      "id": "prepare-134",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestReconstructionPairCreationRace"
+      ]
+    },
+    {
+      "id": "prepare-135",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestReconstructionPairFaultRecovery"
+      ]
+    },
+    {
+      "id": "prepare-136",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestReconstructionNativeFaultOwnership"
+      ]
+    },
+    {
+      "id": "prepare-137",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestReconstructionRecoveryRefusesChangedSavedCandidate"
+      ]
+    },
+    {
+      "id": "prepare-138",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestReconstructionUncertainMarkerSurvivesDisposal"
+      ]
+    },
+    {
+      "id": "prepare-139",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestReconstructionTelemetryExcludesSourceAndRawFailure"
+      ]
+    },
+    {
+      "id": "prepare-140",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestSuccessorRetainsNativeReadbackWithoutQualifiedDelivery"
+      ]
+    },
+    {
+      "id": "prepare-141",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestInitializationCleanupRetainsReadbackWithoutArtifactReceipt"
+      ]
+    },
+    {
+      "id": "prepare-142",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestEditTransaction"
+      ]
+    },
+    {
+      "id": "prepare-143",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestEditFailures"
+      ]
+    },
+    {
+      "id": "prepare-144",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestEditReusedDependencyPersistence"
+      ]
+    },
+    {
+      "id": "prepare-145",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestEditTelemetryExcludesSourceAndRawFailure"
+      ]
+    },
+    {
+      "id": "prepare-146",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestTransactionMarkerOwnershipOnReturnedFailure"
+      ]
+    },
+    {
+      "id": "prepare-147",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestTransactionUnpublishedRecordCleanupPreservesForeignFiles"
+      ]
+    },
+    {
+      "id": "prepare-148",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestTransactionSourceMarkerUncertaintyRetainsCandidate"
+      ]
+    },
+    {
+      "id": "prepare-149",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestRecoverySurvivesLocalOwnerDisposal"
+      ]
+    },
+    {
+      "id": "prepare-150",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestDeliveryRecoveryRequiresPendingMarker"
+      ]
+    },
+    {
+      "id": "prepare-151",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestSuccessorOutputChecksBothSourceAndDeliveredPins"
+      ]
+    },
+    {
+      "id": "prepare-152",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestSuccessorPairFailureRetainsInstalledNamesAndBlocksReuse"
+      ]
+    },
+    {
+      "id": "prepare-153",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestSuccessorOutputCancellationRetainsPublishedPair"
+      ]
+    },
+    {
+      "id": "prepare-154",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestSuccessorPublicationTelemetryFinishesOnlyNormalReturns"
+      ]
+    },
+    {
+      "id": "prepare-155",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestMaintenanceOutputRefusesAliasesAndChangedCapture"
+      ]
+    },
+    {
+      "id": "prepare-156",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestMaintenancePublicationTelemetryExcludesPrivateContext"
+      ]
+    },
+    {
+      "id": "prepare-157",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestTransactionProcessExitRecovery"
+      ]
+    },
+    {
+      "id": "prepare-158",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestPrepareExistingBranchHasNoRemoteConstruction"
+      ]
+    },
+    {
+      "id": "prepare-159",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestPrepareResultClosedCombinationsAndBounds"
+      ]
+    },
+    {
+      "id": "prepare-160",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestPrepareAbsentOccupiedSatelliteRefusesWithoutConstruction"
+      ]
+    },
+    {
+      "id": "prepare-161",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestPrepareCancellationAfterCommittedProjectionPreservesRecovery"
+      ]
+    },
+    {
+      "id": "prepare-162",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestPrepareRecoveredPairSurvivesDependencyFailureAndUsesExistingBranch"
+      ]
+    },
+    {
+      "id": "prepare-163",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestPrepareInvalidRecoveryInputsAndContextsNeverConstruct"
+      ]
+    },
+    {
+      "id": "prepare-164",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestPrepareUnsafeExistingLayoutRefusesWithoutConstruction"
+      ]
+    },
+    {
+      "id": "prepare-165",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestPrepareConstructorCancellationKeepsFailedPhaseCause"
+      ]
+    },
+    {
+      "id": "prepare-166",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestPrepareTelemetryKeepsSafeFactsWhenCollectionIsDisabled"
+      ]
+    },
+    {
+      "id": "prepare-167",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/cmd/enkv",
+      "tests": [
+        "TestPrepareCLIRejectsInvalidSingletonsBeforeCoordinator"
+      ]
+    },
+    {
+      "id": "prepare-168",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/cmd/enkv",
+      "tests": [
+        "TestPrepareCLIPreservesTypedRecoveryInputs"
+      ]
+    },
+    {
+      "id": "prepare-169",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/cmd/enkv",
+      "tests": [
+        "TestPrepareCLIPresentationFailurePreservesUnavailableFacts"
+      ]
+    },
+    {
+      "id": "prepare-170",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/cmd/enkv",
+      "tests": [
+        "TestPrepareCLITelemetrySetupRefusesBeforeCoordinator"
+      ]
+    },
+    {
+      "id": "prepare-171",
+      "kind": "unit",
+      "packages": [
+        "telemetry"
+      ],
+      "package": "telemetry",
+      "tests": [
+        "TestPrepareOperationsHaveOnlyLocalApplicationAdmission"
+      ]
+    },
+    {
+      "id": "prepare-172",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestSourceCaptureMissingImageFactExcludesTemporaryFailures"
+      ]
+    },
+    {
+      "id": "prepare-173",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestSourceScannerReadFailuresPreserveCauseAndSafeDiagnostic"
+      ]
+    },
+    {
+      "id": "prepare-174",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestSourceCaptureBoundsAndRefusals"
+      ]
+    },
+    {
+      "id": "prepare-175",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestGeneratedCaptureRestorationDiagnostics"
+      ]
+    },
+    {
+      "id": "prepare-176",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestSourceCaptureRefusesInvalidTemporaryDirectory"
+      ]
+    },
+    {
+      "id": "prepare-177",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestSourceCaptureChangesDuringIntakeRefuseOnce"
+      ]
+    },
+    {
+      "id": "prepare-178",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestOutputSourceRoutingReferences"
+      ]
+    },
+    {
+      "id": "prepare-179",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestSourceRepresentationParity"
+      ]
+    },
+    {
+      "id": "prepare-180",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestSourceYAMLScalarSemantics"
+      ]
+    },
+    {
+      "id": "prepare-181",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestSourceLexicalSemantics"
+      ]
+    },
+    {
+      "id": "prepare-182",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestSourceFlowAndControlRefusals"
+      ]
+    },
+    {
+      "id": "prepare-183",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestSourceStructuralLimits"
+      ]
+    },
+    {
+      "id": "prepare-184",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestSourceClosedSchemaRefusals"
+      ]
+    },
+    {
+      "id": "prepare-185",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestSuccessorOutputRefusesChangedArgumentsAndAliases"
+      ]
+    },
+    {
+      "id": "prepare-186",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestSuccessorOutputRefusesSharedSatelliteBeforeWriterOwnership"
+      ]
+    },
+    {
+      "id": "prepare-187",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestPrepareUnsafeAbsentLayoutRefusesWithoutConstruction"
+      ]
+    },
+    {
+      "id": "prepare-188",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestPathLockAcquisitionFailureReleasesOwnedDescriptors"
+      ]
+    },
+    {
+      "id": "prepare-189",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestEditNativeLock"
+      ]
+    },
+    {
+      "id": "prepare-190",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestPairCaptureProvenance"
+      ]
+    },
+    {
+      "id": "prepare-191",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestCaptureExistingLocksExcludeWriter"
+      ]
+    },
+    {
+      "id": "prepare-192",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestCaptureCompletedWriterInterleaving"
+      ]
+    },
+    {
+      "id": "prepare-193",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestSuccessorOutputPreflightRetainsProtectedTargetOnSourceRefusal"
+      ]
+    },
+    {
+      "id": "prepare-194",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestSuccessorExistingOutputObservationRemainsReadOnly"
+      ]
+    },
+    {
+      "id": "prepare-195",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestMaintenancePlanningCallbackConstructsCustodyAfterSourceRelease"
+      ]
+    },
+    {
+      "id": "prepare-196",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/testsupport/nativeprocess",
+      "tests": [
+        "TestPublicNativePrepareCompleteLossAndFreshConsumers"
+      ]
+    },
+    {
+      "id": "prepare-197",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/testsupport/nativeprocess",
+      "tests": [
+        "TestPublicNativePrepareSelectedProofFamilies"
+      ]
+    },
+    {
+      "id": "prepare-198",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/testsupport/nativeprocess",
+      "tests": [
+        "TestPublicNativePrepareSelectedFailureInstallsNoPair"
+      ]
+    },
+    {
+      "id": "prepare-199",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestPrepareFinalHEADRestartsBeforePairDelivery"
+      ]
+    },
+    {
+      "id": "prepare-200",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core/testsupport/nativeprocess",
+      "tests": [
+        "TestNativeCaptureExpectedValuesAdmitsProductEntryLimits"
+      ]
+    },
+    {
+      "id": "prepare-201",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/testsupport/nativeprocess",
+      "tests": [
+        "TestPublicNativeGeneratedContinuityAndExactAbandonment"
+      ]
+    },
+    {
+      "id": "prepare-202",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/testsupport/nativeprocess",
+      "tests": [
+        "TestPublicNativePublicationCompleteLocalLossPreservesSelectedFacts"
+      ]
+    },
+    {
+      "id": "prepare-203",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicConfigurationCatalogRequiresExactLiveRolesAndBoundaries"
+      ]
+    },
+    {
+      "id": "prepare-204",
+      "kind": "runner-tests",
+      "tests": [
+        "TestCurrentCatalogAdmitsFullCaseIdentities"
+      ]
+    },
+    {
+      "id": "prepare-205",
+      "kind": "runner-tests",
+      "tests": [
+        "TestCurrentCaseProjectionPreservesHistoricalSemantics"
+      ]
+    },
+    {
+      "id": "prepare-206",
+      "kind": "runner-tests",
+      "tests": [
+        "TestSavedSuitesUseConcreteScenarios"
+      ]
+    },
+    {
+      "id": "prepare-207",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicConfigurationSavedWorkflowInventory"
+      ]
+    },
+    {
+      "id": "prepare-208",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicPrepareSavedWorkflowHasFourProviderRecoveryCells"
+      ]
+    },
+    {
+      "id": "prepare-209",
+      "kind": "runner-tests",
+      "tests": [
+        "TestSavedFuzzAndLiveWorkflowsMatchCanonical"
+      ]
+    },
+    {
+      "id": "prepare-210",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicWorkerAdmissionUsesExactPublicPhaseShapes"
+      ]
+    },
+    {
+      "id": "prepare-211",
+      "kind": "assembly-checks",
+      "responsibility": "aws",
+      "tests": [
+        "TestPublicConfigurationApplyResultConsumer"
+      ]
+    },
+    {
+      "id": "prepare-212",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestPublicConfigurationApplyResultConsumer"
+      ]
+    },
+    {
+      "id": "prepare-213",
+      "kind": "unit",
+      "packages": [
+        "compositions/generatorhost"
+      ],
+      "package": "compositions/generatorhost",
+      "tests": [
+        "TestIndependentGeneratorPassiveArtifactAdmitsExactSDKClosure"
+      ]
+    },
+    {
+      "id": "prepare-214",
+      "kind": "unit",
+      "packages": [
+        "compositions/generatorhost"
+      ],
+      "package": "compositions/generatorhost",
+      "tests": [
+        "TestIndependentGeneratorInvocationAdmitsExactSDKClosure"
+      ]
+    },
+    {
+      "id": "prepare-215",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/testsupport/nativeprocess",
+      "tests": [
+        "TestPublicNativeCapacityGCPlanApplyAndPendingContinuation"
+      ]
+    },
+    {
+      "id": "prepare-216",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestGCReconstructionProjectionPreservesSelectedObligations"
+      ]
+    },
+    {
+      "id": "prepare-217",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestGCRuntimePendingAllowanceSurvivesSigningSuccessionAndReconstruction"
+      ]
+    },
+    {
+      "id": "prepare-218",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestGCReconstructionRefusesMissingPlan"
+      ]
+    },
+    {
+      "id": "prepare-219",
+      "kind": "runner-tests",
+      "tests": [
+        "TestCurrentCaseDirectoryBindingsAreFiniteAndDistinct"
+      ]
+    },
+    {
+      "id": "prepare-220",
+      "kind": "runner-tests",
+      "tests": [
+        "TestCurrentFamilyListsPreserveOrdinaryCoverage"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/testsupport/nativeprocess",
+      "id": "prepare-221",
+      "tests": [
+        "TestPublicNativePrepareMaximumCurrentIntents"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/testsupport/nativeprocess",
+      "id": "prepare-222",
+      "tests": [
+        "TestPublicNativePrepareFullReceiptWindows"
+      ]
+    },
+    {
+      "id": "prepare-223",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestCapturedPairUnchangedAllowsUnrelatedGeneratedMembers"
+      ]
+    },
+    {
+      "id": "prepare-224",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestCapturedPairUnchangedRefusesChangedMembers"
+      ]
+    },
+    {
+      "id": "prepare-225",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestCapturedPairUnchangedRefusesChangedGeneratedDirectory"
+      ]
+    },
+    {
+      "id": "prepare-226",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestCapturedPairUnchangedRefusesClosedAndCanceledInputs"
+      ]
+    },
+    {
+      "id": "prepare-227",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestCapturedPairUnchangedReportsSourceParentAndAliasChanges"
+      ]
+    },
+    {
+      "id": "prepare-228",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestCapturedPairUnchangedKeepsCoordinationFailuresDistinct"
+      ]
+    },
+    {
+      "id": "prepare-229",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestCapturedImageComparisonReportsObservedByteChange"
+      ]
+    },
+    {
+      "id": "prepare-230",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestSuccessorOutputParentAlias"
+      ]
+    },
+    {
+      "id": "prepare-231",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestPrepareSourceStabilityFailureKeepsNativeEvidenceAndPrecedence"
+      ]
+    },
+    {
+      "id": "prepare-232",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestConfigurationRecoveryFixtureProcess"
+      ]
+    },
+    {
+      "id": "prepare-233",
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto/testsupport/custody",
+      "tests": [
+        "TestSyntheticGeneratedCompleteResponseHasExactPublicFacts"
+      ]
+    },
+    {
+      "id": "prepare-234",
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto/testsupport/installedarchive",
+      "tests": [
+        "TestRecoveryFixtureRejectsIncompleteParentCarrier"
+      ]
+    },
+    {
+      "id": "prepare-235",
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto/testsupport/installedarchive",
+      "tests": [
+        "TestRecoveryFixtureBothProviderObjectFileTotals"
+      ]
+    },
+    {
+      "id": "prepare-236",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestGeneratedWriterBatchReconstructionAndPreservation"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core/testsupport/nativeprocess",
+      "id": "prepare-237",
+      "tests": [
+        "TestNativePlaintextCaptureRetainsDistinctEntryIdentity"
+      ]
+    },
+    {
+      "id": "prepare-238",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core/testsupport/nativeprocess",
+      "tests": [
+        "TestNativePlaintextCaptureIdentityIsClosed"
+      ]
+    },
+    {
+      "id": "prepare-239",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core/testsupport/nativeprocess",
+      "tests": [
+        "TestNativeCaptureRequiresJoinedNormalReturn"
+      ]
+    },
+    {
+      "id": "prepare-240",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/testsupport/nativeprocess",
+      "tests": [
+        "TestMaximumNativePlaintextEvidenceRequiresExactEntrySet"
+      ]
+    },
+    {
+      "id": "prepare-241",
+      "kind": "assembly-checks",
+      "responsibility": "aws",
+      "tests": [
+        "TestPublicInspectionReceiptCaptureRequiresJoinedGETOnly"
+      ]
+    },
+    {
+      "id": "prepare-242",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestPublicReplacementColdReadRefusesUnusedPublicRoute"
+      ]
+    },
+    {
+      "id": "prepare-243",
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto/testsupport/installedarchive",
+      "tests": [
+        "TestMaximumIntentArchiveRejectsGZIPDamageAndBounds"
+      ]
+    },
+    {
+      "id": "prepare-244",
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto/testsupport/installedarchive",
+      "tests": [
+        "TestMaximumIntentArchiveRejectsIncompleteSelectedClosure"
+      ]
+    },
+    {
+      "id": "prepare-245",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/testsupport/nativeprocess",
+      "tests": [
+        "TestPublicWorkflowStoreKeysKeepEveryPageKindBoundAndWriteAuthority"
+      ]
+    },
+    {
+      "id": "prepare-writer-01",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestEditEmissionCoalescesFragments"
+      ]
+    },
+    {
+      "id": "prepare-writer-02",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestEditEmissionDiscardsFailedOutput"
+      ]
+    },
+    {
+      "id": "prepare-writer-03",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestEditCandidateBounds"
+      ]
+    },
+    {
+      "id": "prepare-writer-04",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestInitializationArtifactReceipts"
+      ]
+    },
+    {
+      "id": "prepare-writer-05",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestInitializationManifestCapture"
+      ]
+    },
+    {
+      "id": "prepare-writer-06",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestLocalDomainRenamePreservesPair"
+      ]
+    },
+    {
+      "id": "maximum-planning-accept",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/testsupport/nativeprocess",
+      "tests": [
+        "TestMaximumGeneratedPlanningAcceptsCompleteResult"
+      ]
+    },
+    {
+      "id": "maximum-planning-reject",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/testsupport/nativeprocess",
+      "tests": [
+        "TestMaximumGeneratedPlanningRejectsChangedFacts"
+      ]
+    }
+  ]
+}

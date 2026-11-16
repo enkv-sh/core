@@ -1,0 +1,11 @@
+{
+  "schema_version": 2,
+  "name": "generated-lifecycle",
+  "description": "Production Cloudflare generated whole-set apply and exact retirement acknowledgement with AWS/GCP state in both recovery modes.",
+  "required_roles": ["authority", "recovery"],
+  "scenarios": [
+    "generated.mixed-apply-selects-complete-set/plain1_supplied1_generated2",
+    "generated.retirement-acknowledgement-closes/one_current_one_retiring_manual_ack",
+    "generated.auto-retirement-acknowledgement-closes/one_current_one_retiring_auto_ack"
+  ]
+}

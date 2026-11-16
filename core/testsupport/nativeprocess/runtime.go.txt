@@ -1,0 +1,1173 @@
+// Generated only into a test overlay. No production module contains this hook.
+package nativeprocessruntime
+
+import (
+	"bytes"
+	"context"
+	"crypto/sha256"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"io"
+	"mime"
+	"mime/multipart"
+	"net"
+	"net/http"
+	"net/http/httptrace"
+	"net/url"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"sync"
+	"syscall"
+	"time"
+)
+
+type nativeProcessPolicy struct {
+	Version               int               `json:"version"`
+	RecordPath            string            `json:"record_path"`
+	Bucket                string            `json:"bucket,omitempty"`
+	Prefix                string            `json:"prefix,omitempty"`
+	ListPrefix            string            `json:"list_prefix,omitempty"`
+	MaxRequests           uint64            `json:"max_requests"`
+	MaxBytes              uint64            `json:"max_bytes"`
+	MaxStoreWrites        uint64            `json:"max_store_writes,omitempty"`
+	MaxStoreWriteBytes    uint64            `json:"max_store_write_bytes,omitempty"`
+	NormalSigner          string            `json:"normal_signer,omitempty"`
+	SuccessorSigner       string            `json:"successor_signer,omitempty"`
+	SuccessorKEK          string            `json:"successor_kek,omitempty"`
+	AuthorityKEK          string            `json:"authority_kek,omitempty"`
+	RecoverySigner        string            `json:"recovery_signer,omitempty"`
+	RecoveryKEK           string            `json:"recovery_kek,omitempty"`
+	QuotaProject          string            `json:"quota_project,omitempty"`
+	Fault                 string            `json:"fault,omitempty"`
+	FaultOrdinal          uint64            `json:"fault_ordinal,omitempty"`
+	NoKMS                 bool              `json:"no_kms,omitempty"`
+	StoreReadOnly         bool              `json:"store_read_only,omitempty"`
+	LocalAddress          string            `json:"local_address,omitempty"`
+	RootCAPEM             string            `json:"root_ca_pem,omitempty"`
+	ExpectedSHA256        map[string]string `json:"expected_sha256,omitempty"`
+	RecoveryOracle        bool              `json:"recovery_oracle,omitempty"`
+	RecoveryBinding       []byte            `json:"recovery_binding,omitempty"`
+	RecipientOracle       bool              `json:"recipient_oracle,omitempty"`
+	RecipientBinding      []byte            `json:"recipient_binding,omitempty"`
+	RecipientKEK          string            `json:"recipient_kek,omitempty"`
+	ExpectedSourceKind    string            `json:"expected_source_kind,omitempty"`
+	RequireStandardSource bool              `json:"require_standard_source,omitempty"`
+	HeadBarrier           string            `json:"head_barrier,omitempty"`
+	ManifestBarrier       string            `json:"manifest_barrier,omitempty"`
+	GeneratorLedgerPath   string            `json:"generator_ledger_path,omitempty"`
+	GeneratorRunID        string            `json:"generator_run_id,omitempty"`
+	GeneratorAccount      string            `json:"generator_account,omitempty"`
+	GeneratorCreates      uint64            `json:"generator_creates,omitempty"`
+	GeneratorRetires      uint64            `json:"generator_retires,omitempty"`
+}
+type nativeProcessEvent struct {
+	Kind                  string                        `json:"kind"`
+	Count                 uint32                        `json:"count,omitempty"`
+	ObjectKeySHA256       string                        `json:"object_key_sha256,omitempty"`
+	EntrySHA256           string                        `json:"entry_sha256,omitempty"`
+	Operation             string                        `json:"operation,omitempty"`
+	Role                  string                        `json:"role,omitempty"`
+	Sequence              uint64                        `json:"sequence,omitempty"`
+	Sent                  bool                          `json:"sent,omitempty"`
+	Status                int                           `json:"status,omitempty"`
+	TransportFailure      string                        `json:"transport_failure,omitempty"`
+	TransportTrace        *nativeProcessTransportTrace  `json:"transport_trace,omitempty"`
+	PermissionDenied      bool                          `json:"permission_denied,omitempty"`
+	QuotaMatched          bool                          `json:"quota_matched,omitempty"`
+	Matched               bool                          `json:"matched,omitempty"`
+	Code                  int                           `json:"code,omitempty"`
+	SourceKind            string                        `json:"source_kind,omitempty"`
+	WrapAbsent            bool                          `json:"wrap_absent,omitempty"`
+	WriteStatus           uint8                         `json:"write_status,omitempty"`
+	StoreReason           uint8                         `json:"store_reason,omitempty"`
+	NotSent               bool                          `json:"not_sent,omitempty"`
+	LogicalConditionKind  string                        `json:"logical_condition_kind,omitempty"`
+	LogicalConditionValue []byte                        `json:"logical_condition_value,omitempty"`
+	WireConditionKind     string                        `json:"wire_condition_kind,omitempty"`
+	WireConditionValue    []byte                        `json:"wire_condition_value,omitempty"`
+	GeneratorAttempt      string                        `json:"generator_attempt,omitempty"`
+	GeneratorAccount      string                        `json:"generator_account,omitempty"`
+	GeneratorAction       uint8                         `json:"generator_action,omitempty"`
+	GeneratorTarget       string                        `json:"generator_target,omitempty"`
+	GeneratorQualified    bool                          `json:"generator_qualified,omitempty"`
+	GeneratorReturn       *nativeProcessGeneratorReturn `json:"generator_return,omitempty"`
+}
+
+type nativeProcessGeneratorReturn struct {
+	Code                uint16                             `json:"code"`
+	CommonFacts         *nativeProcessGeneratorCommonFacts `json:"common_facts,omitempty"`
+	ExpectedResultValid bool                               `json:"expected_result_valid"`
+	Qualification       string                             `json:"qualification"`
+}
+
+type nativeProcessGeneratorCommonFacts struct {
+	Disposition uint8 `json:"disposition"`
+	Reason      uint8 `json:"reason"`
+}
+
+type nativeProcessTraceCallback struct {
+	Observed  bool   `json:"observed"`
+	ElapsedMS uint32 `json:"elapsed_ms"`
+	Outcome   string `json:"outcome,omitempty"`
+}
+
+type nativeProcessTransportTrace struct {
+	ElapsedMS         uint32                     `json:"elapsed_ms"`
+	DNSStart          nativeProcessTraceCallback `json:"dns_start"`
+	DNSDone           nativeProcessTraceCallback `json:"dns_done"`
+	ConnectStart      nativeProcessTraceCallback `json:"connect_start"`
+	ConnectDone       nativeProcessTraceCallback `json:"connect_done"`
+	TLSStart          nativeProcessTraceCallback `json:"tls_start"`
+	TLSDone           nativeProcessTraceCallback `json:"tls_done"`
+	WroteHeaders      nativeProcessTraceCallback `json:"wrote_headers"`
+	WroteRequest      nativeProcessTraceCallback `json:"wrote_request"`
+	FirstResponseByte nativeProcessTraceCallback `json:"first_response_byte"`
+}
+
+type nativeProcessTraceObservation struct {
+	mu      sync.Mutex
+	started time.Time
+	frozen  bool
+	value   nativeProcessTransportTrace
+}
+
+func (o *nativeProcessTraceObservation) elapsed() uint32 {
+	return uint32(min(time.Since(o.started).Milliseconds(), 600000))
+}
+
+func (o *nativeProcessTraceObservation) observe(callback *nativeProcessTraceCallback, outcome string) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if !o.frozen && !callback.Observed {
+		*callback = nativeProcessTraceCallback{Observed: true, ElapsedMS: o.elapsed(), Outcome: outcome}
+	}
+}
+
+func (o *nativeProcessTraceObservation) complete(callback *nativeProcessTraceCallback, err error) {
+	outcome := "no-error"
+	if err != nil {
+		outcome = "error"
+	}
+	o.observe(callback, outcome)
+}
+
+func (o *nativeProcessTraceObservation) hooks() *httptrace.ClientTrace {
+	return &httptrace.ClientTrace{
+		DNSStart:             func(httptrace.DNSStartInfo) { o.observe(&o.value.DNSStart, "") },
+		DNSDone:              func(info httptrace.DNSDoneInfo) { o.complete(&o.value.DNSDone, info.Err) },
+		ConnectStart:         func(string, string) { o.observe(&o.value.ConnectStart, "") },
+		ConnectDone:          func(_, _ string, err error) { o.complete(&o.value.ConnectDone, err) },
+		TLSHandshakeStart:    func() { o.observe(&o.value.TLSStart, "") },
+		TLSHandshakeDone:     func(_ tls.ConnectionState, err error) { o.complete(&o.value.TLSDone, err) },
+		WroteHeaders:         func() { o.observe(&o.value.WroteHeaders, "") },
+		WroteRequest:         func(info httptrace.WroteRequestInfo) { o.complete(&o.value.WroteRequest, info.Err) },
+		GotFirstResponseByte: func() { o.observe(&o.value.FirstResponseByte, "") },
+	}
+}
+
+func (o *nativeProcessTraceObservation) freeze() *nativeProcessTransportTrace {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.frozen = true
+	o.value.ElapsedMS = o.elapsed()
+	// Callbacks retain only the mutable observer; the record owns this copy.
+	value := o.value
+	return &value
+}
+
+type nativeProcessStoreKey struct{}
+type nativeProcessStoreScope struct {
+	mu        sync.Mutex
+	result    nativeProcessEvent
+	loseReply bool
+}
+
+func nativeProcessBeginStore(ctx context.Context, key, operation, conditionKind string, conditionValue []byte) (context.Context, *nativeProcessStoreScope) {
+	sum := sha256.Sum256([]byte(key))
+	if operation == "store-write" && strings.HasSuffix(key, "/HEAD") {
+		operation = "head-write"
+	}
+	scope := &nativeProcessStoreScope{result: nativeProcessEvent{Kind: "store-result", Operation: operation, ObjectKeySHA256: hex.EncodeToString(sum[:]), LogicalConditionKind: conditionKind, LogicalConditionValue: append([]byte(nil), conditionValue...)}}
+	return context.WithValue(ctx, nativeProcessStoreKey{}, scope), scope
+}
+func nativeProcessStoreResult(scope *nativeProcessStoreScope, status, reason uint8, notSent bool) (bool, error) {
+	scope.mu.Lock()
+	result := scope.result
+	loseReply := scope.loseReply
+	scope.mu.Unlock()
+	result.WriteStatus = status
+	result.StoreReason, result.NotSent = reason, notSent
+	return loseReply, nativeProcessRecord(result)
+}
+
+var nativeProcessState struct {
+	once                         sync.Once
+	mu                           sync.Mutex
+	policy                       nativeProcessPolicy
+	err                          error
+	sequence, bytes, heads       uint64
+	storeWrites, storeWriteBytes uint64
+	lostHeadObservation          bool
+}
+var nativeProcessRefused = errors.New("native process test policy refused")
+
+func nativeProcessLoad() (nativeProcessPolicy, error) {
+	nativeProcessState.once.Do(func() {
+		path := os.Getenv("ENKV_NATIVE_PROCESS_POLICY")
+		if !filepath.IsAbs(path) {
+			nativeProcessState.err = nativeProcessRefused
+			return
+		}
+		file, err := os.Open(path)
+		if err != nil {
+			nativeProcessState.err = nativeProcessRefused
+			return
+		}
+		defer file.Close()
+		// Each of 512 expected names needs at most 6*256 JSON bytes, 64
+		// digest bytes and six framing bytes. Other policy fields retain 64 KiB.
+		const policyByteLimit = 512*(6*256+64+6) + 65536
+		decoder := json.NewDecoder(io.LimitReader(file, policyByteLimit+1))
+		decoder.DisallowUnknownFields()
+		p := &nativeProcessState.policy
+		if decoder.Decode(p) != nil || p.Version != 1 || !filepath.IsAbs(p.RecordPath) || p.MaxRequests == 0 || p.MaxRequests > 4096 || p.MaxBytes == 0 || p.MaxBytes > 1<<32 || len(p.ExpectedSHA256) > 512 {
+			nativeProcessState.err = nativeProcessRefused
+			return
+		}
+		if (p.MaxStoreWrites == 0) != (p.MaxStoreWriteBytes == 0) || p.MaxStoreWrites > p.MaxRequests || p.MaxStoreWriteBytes > p.MaxBytes {
+			nativeProcessState.err = nativeProcessRefused
+			return
+		}
+		if p.ListPrefix != "" && !nativeProcessListPrefixValid(*p) {
+			nativeProcessState.err = nativeProcessRefused
+			return
+		}
+		if p.StoreReadOnly && (p.Bucket == "" || p.Prefix == "") {
+			nativeProcessState.err = nativeProcessRefused
+			return
+		}
+		if p.ExpectedSourceKind != "" && p.ExpectedSourceKind != "aws-sso" && p.ExpectedSourceKind != "aws-assume-role" && p.ExpectedSourceKind != "aws-shared-credentials" && p.ExpectedSourceKind != "gcp-user-adc" && p.ExpectedSourceKind != "gcp-impersonated-adc" && p.ExpectedSourceKind != "gcp-service-account-adc" || p.RequireStandardSource && p.ExpectedSourceKind == "" {
+			nativeProcessState.err = nativeProcessRefused
+			return
+		}
+		if p.RecoveryOracle && p.RecipientOracle || p.RecipientOracle && (len(p.RecipientBinding) == 0 || p.RecipientKEK == "" || len(p.ExpectedSHA256) != 1) {
+			nativeProcessState.err = nativeProcessRefused
+			return
+		}
+		if p.Fault != "" && p.Fault != "lose-head-reply" && p.Fault != "head-contention" && p.Fault != "lose-head-reply-and-observation" && p.Fault != "cancel-private-return" && p.Fault != "local-edit-unknown" {
+			nativeProcessState.err = nativeProcessRefused
+			return
+		}
+		if p.Fault != "" && p.FaultOrdinal == 0 {
+			nativeProcessState.err = nativeProcessRefused
+			return
+		}
+		if p.Fault == "local-edit-unknown" && p.FaultOrdinal != 1 {
+			nativeProcessState.err = nativeProcessRefused
+			return
+		}
+		if p.LocalAddress != "" {
+			host, _, err := net.SplitHostPort(p.LocalAddress)
+			if err != nil || (host != "127.0.0.1" && host != "::1") || p.RootCAPEM == "" {
+				nativeProcessState.err = nativeProcessRefused
+				return
+			}
+		}
+		for _, sum := range p.ExpectedSHA256 {
+			raw, err := hex.DecodeString(sum)
+			if err != nil || len(raw) != sha256.Size {
+				nativeProcessState.err = nativeProcessRefused
+				return
+			}
+		}
+	})
+	return nativeProcessState.policy, nativeProcessState.err
+}
+func nativeProcessRecord(e nativeProcessEvent) error {
+	p, err := nativeProcessLoad()
+	if err != nil {
+		return err
+	}
+	encoded, err := json.Marshal(e)
+	if err != nil || len(encoded) > 1023 {
+		return nativeProcessRefused
+	}
+	encoded = append(encoded, '\n')
+	f, err := os.OpenFile(p.RecordPath, os.O_WRONLY|os.O_APPEND|syscall.O_NOFOLLOW, 0600)
+	if err != nil {
+		return nativeProcessRefused
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil || !info.Mode().IsRegular() || info.Mode().Perm() != 0600 || info.Size()+int64(len(encoded)) > NATIVE_CAPTURE_MAX_BYTES {
+		return nativeProcessRefused
+	}
+	n, err := f.Write(encoded)
+	if err != nil || n != len(encoded) {
+		return nativeProcessRefused
+	}
+	return f.Sync()
+}
+
+// This observer records only closed local construction purpose/role labels.
+// It does not replace a constructor, return a capability or admit an operation.
+func nativeProcessConstruction(purpose, selector string) error {
+	switch purpose {
+	case "signing-metadata", "encryption-metadata", "signer", "key-access", "public-qualifier":
+	default:
+		return nativeProcessRefused
+	}
+	return nativeProcessRecord(nativeProcessEvent{Kind: "construction", Count: 1, Operation: purpose, Role: nativeProcessRole(selector)})
+}
+
+func nativeProcessGCPRole(r *http.Request) string {
+	if r == nil || r.URL == nil {
+		return "unknown"
+	}
+	role := nativeProcessRole(r.URL.Path)
+	if role != "ordinary" {
+		return role
+	}
+	if r.Method != http.MethodGet || nativeProcessOperation(r) != "kms-public" {
+		return "ordinary"
+	}
+	if !nativeProcessOfficialService(r) || r.URL.Fragment != "" || r.URL.Opaque != "" || r.URL.RawPath != "" && r.URL.RawPath != r.URL.Path || r.URL.EscapedPath() != r.URL.Path || r.Host != "" && r.Host != r.URL.Host {
+		return "ordinary"
+	}
+	if r.ContentLength != 0 || len(r.TransferEncoding) != 0 || r.Body != nil && r.Body != http.NoBody {
+		return "ordinary"
+	}
+	query, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil || len(query) != 2 || len(query["alt"]) != 1 || query.Get("alt") != "json" || len(query["prettyPrint"]) != 1 || query.Get("prettyPrint") != "false" || query.Encode() != r.URL.RawQuery {
+		return "ordinary"
+	}
+	p, err := nativeProcessLoad()
+	if err != nil {
+		return "unknown"
+	}
+	matched := ""
+	for _, nominated := range []struct{ name, selector string }{{"normal", p.NormalSigner}, {"successor", p.SuccessorSigner}, {"successor-private", p.SuccessorKEK}, {"authority", p.AuthorityKEK}, {"recovery-signing", p.RecoverySigner}, {"recovery-private", p.RecoveryKEK}, {"recipient-private", p.RecipientKEK}} {
+		parts := strings.Split(nominated.selector, "/")
+		if len(parts) != 10 || parts[0] != "projects" || parts[2] != "locations" || parts[4] != "keyRings" || parts[6] != "cryptoKeys" || parts[8] != "cryptoKeyVersions" {
+			continue
+		}
+		valid := true
+		for _, part := range parts {
+			if part == "" || part == "." || part == ".." || strings.ContainsAny(part, "%?#\\: \t\r\n\x00") {
+				valid = false
+			}
+		}
+		version, err := strconv.ParseInt(parts[9], 10, 64)
+		if err != nil || version <= 0 || strconv.FormatInt(version, 10) != parts[9] {
+			continue
+		}
+		if !valid || r.URL.Host != parts[3]+"-cloudkms.googleapis.com" || r.URL.Path != "/v1/"+strings.Join(parts[:8], "/") {
+			continue
+		}
+		// A parent does not identify which nominated version or role used it.
+		if matched != "" {
+			return "ordinary"
+		}
+		matched = nominated.name
+	}
+	switch matched {
+	case "successor-private", "authority", "recovery-private", "recipient-private":
+		return matched
+	default:
+		return "ordinary"
+	}
+}
+
+func nativeProcessRole(selector string) string {
+	p, err := nativeProcessLoad()
+	if err != nil {
+		return "unknown"
+	}
+	for _, role := range []struct{ name, value string }{{"normal", p.NormalSigner}, {"successor", p.SuccessorSigner}, {"successor-private", p.SuccessorKEK}, {"authority", p.AuthorityKEK}, {"recovery-signing", p.RecoverySigner}, {"recovery-private", p.RecoveryKEK}, {"recipient-private", p.RecipientKEK}} {
+		suffix, pathMatch := strings.CutPrefix(selector, "/v1/"+role.value)
+		pathMatch = pathMatch && (suffix == "" || suffix == "/publicKey" || suffix == ":asymmetricSign" || suffix == ":asymmetricDecrypt")
+		if role.value != "" && (selector == role.value || pathMatch) {
+			return role.name
+		}
+	}
+	return "ordinary"
+}
+
+type nativeProcessBody struct {
+	mu     sync.Mutex
+	Reader io.Reader
+	body   []byte
+	closed bool
+}
+
+func (b *nativeProcessBody) Read(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.closed {
+		return 0, io.ErrClosedPipe
+	}
+	return b.Reader.Read(p)
+}
+func (b *nativeProcessBody) Close() error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if !b.closed {
+		clear(b.body[:cap(b.body)])
+		b.body = nil
+		b.Reader = nil
+		b.closed = true
+	}
+	return nil
+}
+
+// The response owner streams within the remaining process allowance. Close
+// interrupts the underlying network read, then joins the active reader.
+type nativeProcessResponseBody struct {
+	readMu    sync.Mutex
+	mu        sync.Mutex
+	source    io.ReadCloser
+	limit     uint64
+	closed    bool
+	terminal  error
+	closeOnce sync.Once
+	closeErr  error
+}
+
+func (b *nativeProcessResponseBody) closeSource() error {
+	b.closeOnce.Do(func() { err := b.source.Close(); b.mu.Lock(); b.closeErr = err; b.mu.Unlock() })
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.closeErr
+}
+func (b *nativeProcessResponseBody) Close() error {
+	b.mu.Lock()
+	b.closed = true
+	if b.terminal == nil {
+		b.terminal = io.ErrClosedPipe
+	}
+	b.mu.Unlock()
+	err := b.closeSource()
+	b.readMu.Lock()
+	b.readMu.Unlock()
+	return err
+}
+func (b *nativeProcessResponseBody) Read(p []byte) (int, error) {
+	b.readMu.Lock()
+	defer b.readMu.Unlock()
+	b.mu.Lock()
+	terminal, closed := b.terminal, b.closed
+	b.mu.Unlock()
+	if closed || terminal != nil {
+		return 0, terminal
+	}
+	if len(p) == 0 {
+		return 0, nil
+	}
+	// Reserve no speculative response buffer. Holding the allowance lock across
+	// Read prevents simultaneous bodies from spending the same remaining bytes.
+	nativeProcessState.mu.Lock()
+	remaining := b.limit - nativeProcessState.bytes
+	if remaining == 0 {
+		nativeProcessState.mu.Unlock()
+		b.mu.Lock()
+		b.terminal = nativeProcessRefused
+		b.closed = true
+		b.mu.Unlock()
+		return 0, errors.Join(nativeProcessRefused, b.closeSource())
+	}
+	window := min(uint64(len(p)), remaining)
+	n, err := b.source.Read(p[:int(window)])
+	if n < 0 || n > int(window) {
+		n, err = 0, nativeProcessRefused
+	} else {
+		nativeProcessState.bytes += uint64(n)
+	}
+	nativeProcessState.mu.Unlock()
+	b.mu.Lock()
+	if b.closed && b.terminal != nil {
+		err = b.terminal
+	}
+	if err != nil {
+		b.terminal = err
+		b.closed = true
+	}
+	b.mu.Unlock()
+	if err != nil {
+		if closeErr := b.closeSource(); closeErr != nil {
+			err = errors.Join(err, closeErr)
+		}
+	}
+	return n, err
+}
+func nativeProcessPrepareAWS(r *http.Request) (string, error) {
+	if r == nil {
+		return "", nativeProcessRefused
+	}
+	if !strings.HasPrefix(r.Header.Get("X-Amz-Target"), "TrentService.") {
+		return "", nil
+	}
+	if r.Body == nil {
+		return "", nativeProcessRefused
+	}
+	body, err := io.ReadAll(io.LimitReader(r.Body, 16385))
+	closeErr := r.Body.Close()
+	if err != nil || closeErr != nil || len(body) > 16384 {
+		clear(body)
+		return "", nativeProcessRefused
+	}
+	var input struct {
+		KeyID string `json:"KeyId"`
+	}
+	if json.Unmarshal(body, &input) != nil {
+		clear(body)
+		return "", nativeProcessRefused
+	}
+	r.Body = &nativeProcessBody{Reader: bytes.NewReader(body), body: body}
+	return nativeProcessRole(input.KeyID), nil
+}
+func nativeProcessOperation(r *http.Request) string {
+	target := r.Header.Get("X-Amz-Target")
+	switch target {
+	case "TrentService.GetPublicKey", "TrentService.DescribeKey":
+		return "kms-public"
+	case "TrentService.Sign":
+		return "kms-sign"
+	case "TrentService.Decrypt":
+		return "kms-decrypt"
+	}
+	if strings.Contains(r.URL.Host, "cloudkms.googleapis.com") {
+		switch {
+		case strings.HasSuffix(r.URL.Path, ":asymmetricSign"):
+			return "kms-sign"
+		case strings.HasSuffix(r.URL.Path, ":asymmetricDecrypt"):
+			return "kms-decrypt"
+		default:
+			return "kms-public"
+		}
+	}
+	head := strings.HasSuffix(r.URL.Path, "/HEAD") || strings.HasSuffix(r.URL.Query().Get("name"), "/HEAD")
+	switch r.Method {
+	case http.MethodGet:
+		if head {
+			return "head-read"
+		}
+		if r.URL.Query().Get("list-type") != "" || r.URL.Query().Get("prefix") != "" {
+			return "store-list"
+		}
+		return "store-read"
+	case http.MethodPut, http.MethodPost:
+		if head {
+			return "head-write"
+		}
+		return "store-write"
+	case http.MethodDelete:
+		return "store-delete"
+	}
+	return "unknown"
+}
+func nativeProcessObjectKey(r *http.Request, p nativeProcessPolicy) string {
+	if p.Bucket == "" {
+		return ""
+	}
+	if strings.HasSuffix(r.URL.Host, ".amazonaws.com") {
+		return strings.TrimPrefix(r.URL.Path, "/"+p.Bucket+"/")
+	}
+	if name := r.URL.Query().Get("name"); name != "" {
+		return name
+	}
+	_, key, ok := strings.Cut(r.URL.Path, "/o/")
+	if ok {
+		return key
+	}
+	return ""
+}
+
+func nativeProcessStoreReadAllowed(r *http.Request, p nativeProcessPolicy, operation, key string) bool {
+	if p.Bucket == "" || p.Prefix == "" || r.Method != http.MethodGet || !nativeProcessOfficialService(r) ||
+		operation != "head-read" && operation != "store-read" || !strings.HasPrefix(key, p.Prefix+"/") ||
+		r.URL.Fragment != "" || r.URL.Opaque != "" || r.Host != "" && r.Host != r.URL.Host {
+		return false
+	}
+	aws := strings.HasPrefix(r.URL.Host, "s3.")
+	gcp := strings.HasPrefix(r.URL.Host, "storage.")
+	if !aws && !gcp || strings.HasPrefix(p.ExpectedSourceKind, "aws-") && !aws || strings.HasPrefix(p.ExpectedSourceKind, "gcp-") && !gcp {
+		return false
+	}
+	path := "/" + p.Bucket + "/" + key
+	if gcp {
+		path = "/download/storage/v1/b/" + p.Bucket + "/o/" + key
+	}
+	if r.URL.Path != path {
+		return false
+	}
+	query, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		return false
+	}
+	for name, values := range query {
+		if len(values) != 1 || aws && (name != "x-id" || values[0] != "GetObject") ||
+			gcp && (name != "alt" || values[0] != "media") && (name != "prettyPrint" || values[0] != "false") {
+			return false
+		}
+	}
+	return true
+}
+
+func nativeProcessListPrefixValid(p nativeProcessPolicy) bool {
+	if p.Bucket == "" || p.Prefix == "" || len(p.Prefix) > 512 || !strings.HasPrefix(p.ListPrefix, p.Prefix+"/") {
+		return false
+	}
+	domain := strings.TrimPrefix(p.ListPrefix, p.Prefix+"/")
+	if len(domain) != 65 || domain[64] != '/' {
+		return false
+	}
+	id, err := hex.DecodeString(domain[:64])
+	return err == nil && hex.EncodeToString(id) == domain[:64] && !bytes.Equal(id, make([]byte, 32))
+}
+
+func nativeProcessListScope(r *http.Request, p nativeProcessPolicy) bool {
+	if r.Method != http.MethodGet || !nativeProcessListPrefixValid(p) {
+		return false
+	}
+	q, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		return false
+	}
+	for _, values := range q {
+		if len(values) != 1 {
+			return false
+		}
+	}
+	if q.Get("prefix") != p.ListPrefix {
+		return false
+	}
+	if strings.HasSuffix(r.URL.Host, ".amazonaws.com") {
+		if r.URL.Path != "/"+p.Bucket || q.Get("list-type") != "2" || q.Get("max-keys") != "256" || q.Get("encoding-type") != "url" {
+			return false
+		}
+		for key := range q {
+			if key != "list-type" && key != "max-keys" && key != "encoding-type" && key != "prefix" && key != "continuation-token" && (key != "x-id" || q.Get(key) != "ListObjectsV2") {
+				return false
+			}
+		}
+		return len(q.Get("continuation-token")) <= 4096
+	}
+	if !strings.HasSuffix(r.URL.Host, ".rep.googleapis.com") || r.URL.Path != "/storage/v1/b/"+p.Bucket+"/o" || q.Get("maxResults") != "256" || q.Get("fields") != "items(name),nextPageToken" {
+		return false
+	}
+	for key := range q {
+		if key != "maxResults" && key != "fields" && key != "prefix" && key != "pageToken" && (key != "alt" || q.Get(key) != "json") && (key != "prettyPrint" || q.Get(key) != "false") {
+			return false
+		}
+	}
+	return len(q.Get("pageToken")) <= 4096
+}
+
+func nativeProcessLocalTransport(p nativeProcessPolicy) (*http.Transport, error) {
+	roots := x509.NewCertPool()
+	if !roots.AppendCertsFromPEM([]byte(p.RootCAPEM)) {
+		return nil, nativeProcessRefused
+	}
+	return &http.Transport{Proxy: nil, DisableKeepAlives: true, TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12, RootCAs: roots}, DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
+		var dialer net.Dialer
+		return dialer.DialContext(ctx, network, p.LocalAddress)
+	}, TLSHandshakeTimeout: 10 * time.Second, ResponseHeaderTimeout: 30 * time.Second}, nil
+}
+
+func nativeProcessTransportFailure(err error) string {
+	if errors.Is(err, context.Canceled) {
+		return "cancelled"
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return "deadline"
+	}
+	var dns *net.DNSError
+	if errors.As(err, &dns) {
+		return "dns"
+	}
+	var verification *tls.CertificateVerificationError
+	var record tls.RecordHeaderError
+	var alert tls.AlertError
+	var authority x509.UnknownAuthorityError
+	var hostname x509.HostnameError
+	var certificate x509.CertificateInvalidError
+	var roots x509.SystemRootsError
+	if errors.As(err, &verification) || errors.As(err, &record) || errors.As(err, &alert) ||
+		errors.As(err, &authority) || errors.As(err, &hostname) || errors.As(err, &certificate) || errors.As(err, &roots) {
+		return "tls"
+	}
+	var timeout net.Error
+	if errors.As(err, &timeout) && timeout.Timeout() {
+		return "timeout"
+	}
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+		return "eof"
+	}
+	var connection *net.OpError
+	if errors.As(err, &connection) || errors.Is(err, net.ErrClosed) || errors.Is(err, syscall.ECONNREFUSED) ||
+		errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.EPIPE) || errors.Is(err, syscall.ENETUNREACH) || errors.Is(err, syscall.EHOSTUNREACH) {
+		return "connection"
+	}
+	return "other"
+}
+
+func nativeProcessRoundTrip(next http.RoundTripper, r *http.Request, role string) (response *http.Response, err error) {
+	dispatched := false
+	var returned *nativeProcessEvent
+	defer func() {
+		// A synthetic response or local refusal never transfers request ownership.
+		// Retire that owner before recording the final outcome.
+		if !dispatched && r != nil && r.Body != nil {
+			if closeErr := r.Body.Close(); closeErr != nil {
+				if response != nil && response.Body != nil {
+					response.Body.Close()
+				}
+				response = nil
+				err = errors.Join(err, closeErr)
+			}
+		}
+		if returned == nil {
+			return
+		}
+		if response != nil {
+			returned.Status = response.StatusCode
+		}
+		if nativeProcessRecord(*returned) != nil {
+			if response != nil && response.Body != nil {
+				response.Body.Close()
+			}
+			response = nil
+			err = errors.Join(err, nativeProcessRefused)
+		}
+	}()
+	p, err := nativeProcessLoad()
+	if err != nil {
+		return nil, err
+	}
+	op := nativeProcessOperation(r)
+	key := nativeProcessObjectKey(r, p)
+	listScope := op == "store-list" && nativeProcessListScope(r, p)
+	if op == "store-list" {
+		key = r.URL.Query().Get("prefix")
+	}
+	if r.Method == http.MethodPost && p.Bucket != "" && strings.HasSuffix(r.URL.Host, ".rep.googleapis.com") && r.URL.Path == "/upload/storage/v1/b/"+p.Bucket+"/o" {
+		var body *nativeProcessBody
+		key, body, err = nativeProcessGCSUploadKey(r, p)
+		if body != nil {
+			defer body.Close()
+		}
+		if err != nil {
+			return nil, err
+		}
+		if strings.HasSuffix(key, "/HEAD") {
+			op = "head-write"
+		}
+	}
+	keyHash := ""
+	if key != "" {
+		sum := sha256.Sum256([]byte(key))
+		keyHash = hex.EncodeToString(sum[:])
+	}
+	nativeProcessState.mu.Lock()
+	nativeProcessState.sequence++
+	sequence := nativeProcessState.sequence
+	admitted := sequence <= p.MaxRequests && r.ContentLength >= 0 && uint64(r.ContentLength) <= p.MaxBytes-nativeProcessState.bytes
+	if p.RequireStandardSource && (p.LocalAddress != "" || !nativeProcessOfficialService(r)) {
+		admitted = false
+	}
+	if admitted && p.MaxStoreWrites != 0 && (op == "head-write" || op == "store-write") {
+		admitted = nativeProcessState.storeWrites < p.MaxStoreWrites && uint64(r.ContentLength) <= p.MaxStoreWriteBytes-nativeProcessState.storeWriteBytes
+		if admitted {
+			nativeProcessState.storeWrites++
+			nativeProcessState.storeWriteBytes += uint64(r.ContentLength)
+		}
+	}
+	if admitted {
+		nativeProcessState.bytes += uint64(r.ContentLength)
+	}
+	fault := false
+	if op == "head-write" {
+		nativeProcessState.heads++
+		fault = p.Fault != "" && nativeProcessState.heads == p.FaultOrdinal
+	}
+	if p.Fault == "lose-head-reply-and-observation" && nativeProcessState.lostHeadObservation && r.Method == http.MethodGet && key == p.Prefix+"/HEAD" {
+		admitted = false
+	}
+	nativeProcessState.mu.Unlock()
+	if op == "store-list" && !listScope || p.Prefix != "" && !strings.HasPrefix(op, "kms-") && op != "store-list" && (key == "" || !strings.HasPrefix(key, p.Prefix+"/")) {
+		admitted = false
+	}
+	if strings.HasPrefix(op, "kms-") && p.NoKMS {
+		admitted = false
+	}
+	if p.StoreReadOnly && !nativeProcessStoreReadAllowed(r, p, op, key) {
+		admitted = false
+	}
+	if admitted && op == "head-write" && p.HeadBarrier != "" {
+		admitted = nativeProcessWaitHead(r.Context(), p) == nil
+	}
+	start := nativeProcessEvent{Kind: "http-start", Operation: op, Role: role, Sequence: sequence, ObjectKeySHA256: keyHash, Sent: admitted && !(fault && p.Fault == "head-contention")}
+	if scope, ok := r.Context().Value(nativeProcessStoreKey{}).(*nativeProcessStoreScope); ok && (op == "store-write" || op == "head-write" || op == "store-delete") {
+		scope.mu.Lock()
+		start.LogicalConditionKind = scope.result.LogicalConditionKind
+		start.LogicalConditionValue = append([]byte(nil), scope.result.LogicalConditionValue...)
+		if start.Sent {
+			if strings.HasSuffix(r.URL.Host, ".rep.googleapis.com") {
+				values := r.URL.Query()["ifGenerationMatch"]
+				if len(values) == 1 && len(values[0]) <= 256 {
+					start.WireConditionKind, start.WireConditionValue = "gcp-generation-match", []byte(values[0])
+				}
+			} else if strings.HasSuffix(r.URL.Host, ".amazonaws.com") {
+				match, absent := r.Header.Values("If-Match"), r.Header.Values("If-None-Match")
+				if len(match) == 1 && len(absent) == 0 && len(match[0]) <= 256 {
+					start.WireConditionKind, start.WireConditionValue = "aws-if-match", []byte(match[0])
+				} else if len(absent) == 1 && len(match) == 0 && len(absent[0]) <= 256 {
+					start.WireConditionKind, start.WireConditionValue = "aws-if-none-match", []byte(absent[0])
+				}
+			}
+		}
+		if scope.result.Sequence == 0 {
+			scope.result.Sequence, scope.result.Sent = sequence, start.Sent
+			scope.result.WireConditionKind = start.WireConditionKind
+			scope.result.WireConditionValue = append([]byte(nil), start.WireConditionValue...)
+		}
+		scope.mu.Unlock()
+	}
+	if nativeProcessRecord(start) != nil {
+		return nil, nativeProcessRefused
+	}
+	returned = &nativeProcessEvent{Kind: "http-return", Operation: op, Role: role, Sequence: sequence, ObjectKeySHA256: keyHash, Sent: start.Sent}
+	if !admitted {
+		return nil, nativeProcessRefused
+	}
+	if fault && p.Fault == "head-contention" {
+		body, contentType := "<Error><Code>PreconditionFailed</Code></Error>", "application/xml"
+		if strings.HasSuffix(r.URL.Host, ".rep.googleapis.com") {
+			body, contentType = `{"error":{"code":412,"errors":[{"reason":"conditionNotMet"}]}}`, "application/json"
+		}
+		header := make(http.Header)
+		header.Set("Content-Type", contentType)
+		return &http.Response{StatusCode: http.StatusPreconditionFailed, Header: header, ContentLength: int64(len(body)), Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
+	}
+	if p.LocalAddress != "" {
+		local, localErr := nativeProcessLocalTransport(p)
+		if localErr != nil {
+			return nil, localErr
+		}
+		next = local
+	}
+	trace := &nativeProcessTraceObservation{started: time.Now()}
+	r = r.WithContext(httptrace.WithClientTrace(r.Context(), trace.hooks()))
+	dispatched = true
+	response, err = next.RoundTrip(r)
+	returned.TransportTrace = trace.freeze()
+	if response == nil && err != nil {
+		returned.TransportFailure = nativeProcessTransportFailure(err)
+	}
+	if err != nil {
+		return response, err
+	}
+	if response == nil || response.Body == nil {
+		return nil, nativeProcessRefused
+	}
+	response.Body = &nativeProcessResponseBody{source: response.Body, limit: p.MaxBytes}
+	returned.Status = response.StatusCode
+	returned.QuotaMatched = p.QuotaProject == "" || r.Header.Get("X-Goog-User-Project") == p.QuotaProject
+	awsKMS := nativeProcessOfficialService(r) && strings.HasPrefix(r.URL.Host, "kms.") && strings.HasPrefix(op, "kms-")
+	gcpKMS := nativeProcessOfficialService(r) && strings.HasSuffix(r.URL.Host, "-cloudkms.googleapis.com") && strings.HasPrefix(op, "kms-")
+	if awsKMS && (response.StatusCode == http.StatusBadRequest || response.StatusCode == http.StatusForbidden) || gcpKMS && response.StatusCode == http.StatusForbidden {
+		body, readErr := io.ReadAll(io.LimitReader(response.Body, 16385))
+		closeErr := response.Body.Close()
+		if readErr != nil || closeErr != nil || len(body) > 16384 {
+			clear(body)
+			return nil, nativeProcessRefused
+		}
+		returned.PermissionDenied = nativeProcessKMSDenied(body, response.Header, awsKMS)
+		response.Body = &nativeProcessBody{Reader: bytes.NewReader(body), body: body}
+	}
+	if fault && (p.Fault == "lose-head-reply" || p.Fault == "lose-head-reply-and-observation") && response.StatusCode >= 200 && response.StatusCode < 300 {
+		if p.Fault == "lose-head-reply-and-observation" {
+			nativeProcessState.mu.Lock()
+			nativeProcessState.lostHeadObservation = true
+			nativeProcessState.mu.Unlock()
+		}
+		if scope, ok := r.Context().Value(nativeProcessStoreKey{}).(*nativeProcessStoreScope); ok {
+			// Let the provider validate the complete response before recording
+			// its result and hiding the acknowledgment from Product.
+			scope.mu.Lock()
+			scope.loseReply = true
+			scope.mu.Unlock()
+			return response, nil
+		}
+		response.Body.Close()
+		response = nil
+		return nil, errors.New("controlled native lost reply")
+	}
+	return response, nil
+}
+
+func nativeProcessKMSDenied(body []byte, header http.Header, aws bool) bool {
+	fields := nativeProcessErrorObject(body)
+	defer nativeProcessClearErrorObject(fields)
+	if fields == nil {
+		return false
+	}
+	if !aws {
+		detail := nativeProcessErrorObject(fields["error"])
+		defer nativeProcessClearErrorObject(detail)
+		var status string
+		if json.Unmarshal(detail["status"], &status) != nil || status != "PERMISSION_DENIED" {
+			return false
+		}
+		if raw, ok := detail["code"]; ok {
+			var code int
+			if json.Unmarshal(raw, &code) != nil || code != http.StatusForbidden {
+				return false
+			}
+		}
+		return true
+	}
+	found := false
+	for _, name := range []string{"__type", "Code", "code"} {
+		if raw, ok := fields[name]; ok {
+			var code string
+			if json.Unmarshal(raw, &code) != nil || !nativeProcessAWSAccessDenied(code) {
+				return false
+			}
+			found = true
+		}
+	}
+	for _, code := range header.Values("X-Amzn-ErrorType") {
+		if !nativeProcessAWSAccessDenied(code) {
+			return false
+		}
+	}
+	return found
+}
+
+func nativeProcessAWSAccessDenied(code string) bool {
+	// Match the pinned AWS JSON error-code namespace and suffix convention.
+	code, _, _ = strings.Cut(code, ":")
+	if _, value, ok := strings.Cut(code, "#"); ok {
+		code = value
+	}
+	return code == "AccessDeniedException"
+}
+
+func nativeProcessClearErrorObject(fields map[string]json.RawMessage) {
+	for _, value := range fields {
+		clear(value)
+	}
+}
+
+func nativeProcessErrorObject(body []byte) (result map[string]json.RawMessage) {
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	if token, err := decoder.Token(); err != nil || token != json.Delim('{') {
+		return nil
+	}
+	fields := map[string]json.RawMessage{}
+	defer func() {
+		if result == nil {
+			nativeProcessClearErrorObject(fields)
+		}
+	}()
+	for decoder.More() {
+		token, err := decoder.Token()
+		name, ok := token.(string)
+		if err != nil || !ok {
+			return nil
+		}
+		if _, duplicate := fields[name]; duplicate {
+			return nil
+		}
+		var value json.RawMessage
+		if decoder.Decode(&value) != nil {
+			clear(value)
+			return nil
+		}
+		fields[name] = value
+	}
+	if token, err := decoder.Token(); err != nil || token != json.Delim('}') || decoder.Decode(new(any)) != io.EOF {
+		return nil
+	}
+	return fields
+}
+
+// This test-only barrier pauses two already prepared conditional writes. It
+// supplies no HEAD bytes, tokens, statuses, admission or retry.
+func nativeProcessWaitHead(ctx context.Context, p nativeProcessPolicy) error {
+	if !filepath.IsAbs(p.HeadBarrier) || filepath.Clean(p.HeadBarrier) != p.HeadBarrier {
+		return nativeProcessRefused
+	}
+	info, err := os.Lstat(p.HeadBarrier)
+	if err != nil || !info.IsDir() || info.Mode().Perm() != 0700 {
+		return nativeProcessRefused
+	}
+	sum := sha256.Sum256([]byte(p.RecordPath))
+	marker := filepath.Join(p.HeadBarrier, hex.EncodeToString(sum[:])+".ready")
+	file, err := os.OpenFile(marker, os.O_WRONLY|os.O_CREATE|os.O_EXCL|syscall.O_NOFOLLOW, 0600)
+	if err != nil {
+		return nativeProcessRefused
+	}
+	if file.Close() != nil {
+		return nativeProcessRefused
+	}
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		info, err := os.Lstat(filepath.Join(p.HeadBarrier, "release"))
+		if err == nil {
+			if !info.Mode().IsRegular() || info.Size() != 0 {
+				return nativeProcessRefused
+			}
+			return nil
+		}
+		if !errors.Is(err, os.ErrNotExist) {
+			return nativeProcessRefused
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+		}
+	}
+}
+
+// These are the regional endpoint families fixed by the installed providers.
+// A standard-source cell cannot use the local responder or a custom host.
+func nativeProcessOfficialService(r *http.Request) bool {
+	if r == nil || r.URL == nil || r.URL.Scheme != "https" || r.URL.User != nil || r.URL.Port() != "" {
+		return false
+	}
+	host := r.URL.Host
+	if region, ok := strings.CutPrefix(host, "storage."); ok {
+		region, ok = strings.CutSuffix(region, ".rep.googleapis.com")
+		if ok {
+			return nativeProcessRegionLabel(region)
+		}
+	}
+	if region, ok := strings.CutSuffix(host, "-cloudkms.googleapis.com"); ok {
+		return nativeProcessRegionLabel(region)
+	}
+	for _, service := range []string{"s3.", "kms."} {
+		region, ok := strings.CutPrefix(host, service)
+		if !ok {
+			continue
+		}
+		region, ok = strings.CutSuffix(region, ".amazonaws.com")
+		if ok {
+			return nativeProcessRegionLabel(region)
+		}
+	}
+	return false
+}
+func nativeProcessRegionLabel(region string) bool {
+	if len(region) == 0 || len(region) > 63 || region[0] == '-' || region[len(region)-1] == '-' {
+		return false
+	}
+	for _, c := range region {
+		if !(c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == '-') {
+			return false
+		}
+	}
+	return true
+}
+func nativeProcessPlaintext(name string, value []byte) {
+	p, err := nativeProcessLoad()
+	if err != nil {
+		return
+	}
+	sum := sha256.Sum256(value)
+	want, selected := p.ExpectedSHA256[name]
+	entry := sha256.Sum256([]byte(name))
+	_ = nativeProcessRecord(nativeProcessEvent{Kind: "plaintext", Count: 1, EntrySHA256: hex.EncodeToString(entry[:]), Matched: selected && hex.EncodeToString(sum[:]) == want})
+}
+func nativeProcessFinish(code int) {
+	_ = nativeProcessRecord(nativeProcessEvent{Kind: "footer", Code: code})
+}
+
+// The pinned GCS insert carries its object name in multipart JSON metadata,
+// not the URL. Read the existing materialized image once and retain the exact
+// bytes through dispatch; this projection interprets only the name.
+func nativeProcessGCSUploadKey(r *http.Request, p nativeProcessPolicy) (string, *nativeProcessBody, error) {
+	const maximumBody = (2 << 20) + (64 << 10)
+	if r.Body == nil || r.ContentLength <= 0 || r.ContentLength > maximumBody || uint64(r.ContentLength) > p.MaxBytes || r.URL.Query().Get("uploadType") != "multipart" {
+		return "", nil, nativeProcessRefused
+	}
+	raw, readErr := io.ReadAll(io.LimitReader(r.Body, maximumBody+1))
+	closeErr := r.Body.Close()
+	if readErr != nil || closeErr != nil || int64(len(raw)) != r.ContentLength || len(raw) > maximumBody {
+		clear(raw)
+		return "", nil, nativeProcessRefused
+	}
+	owned := &nativeProcessBody{Reader: bytes.NewReader(raw), body: raw}
+	r.Body = owned
+	r.GetBody = nil
+	contentType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	if err != nil || contentType != "multipart/related" || params["boundary"] == "" || len(params["boundary"]) > 128 {
+		return "", owned, nativeProcessRefused
+	}
+	reader := multipart.NewReader(bytes.NewReader(raw), params["boundary"])
+	part, err := reader.NextPart()
+	if err != nil || part.Header.Get("Content-Type") != "application/json" {
+		return "", owned, nativeProcessRefused
+	}
+	metadata, err := io.ReadAll(io.LimitReader(part, (64<<10)+1))
+	part.Close()
+	defer clear(metadata)
+	if err != nil || len(metadata) > 64<<10 {
+		return "", owned, nativeProcessRefused
+	}
+	decoder := json.NewDecoder(bytes.NewReader(metadata))
+	first, err := decoder.Token()
+	if err != nil || first != json.Delim('{') {
+		return "", owned, nativeProcessRefused
+	}
+	seen := map[string]bool{}
+	name := ""
+	for decoder.More() {
+		token, err := decoder.Token()
+		field, ok := token.(string)
+		if err != nil || !ok || seen[field] || len(seen) >= 8 {
+			return "", owned, nativeProcessRefused
+		}
+		seen[field] = true
+		var value json.RawMessage
+		if decoder.Decode(&value) != nil {
+			return "", owned, nativeProcessRefused
+		}
+		if field == "name" && json.Unmarshal(value, &name) != nil {
+			return "", owned, nativeProcessRefused
+		}
+	}
+	last, err := decoder.Token()
+	if err != nil || last != json.Delim('}') || decoder.Decode(new(any)) != io.EOF || name == "" {
+		return "", owned, nativeProcessRefused
+	}
+	return name, owned, nil
+}
+
+// Only the test overlay replaces mutation commands' base contexts. This does
+// not install production signal handling; it cancels their existing contexts.
+func nativeProcessCommandBase() (context.Context, context.CancelFunc) {
+	p, err := nativeProcessLoad()
+	if err == nil && p.Fault == "cancel-private-return" {
+		return signal.NotifyContext(context.Background(), syscall.SIGUSR1)
+	}
+	return context.Background(), func() {}
+}
+
+// This local cut retains the already issued backing before native staging.
+func nativeProcessManifestHandoff(ctx context.Context) error {
+	p, err := nativeProcessLoad()
+	if err != nil || p.ManifestBarrier == "" {
+		return err
+	}
+	return nativeProcessWaitHead(ctx, nativeProcessPolicy{HeadBarrier: p.ManifestBarrier, RecordPath: p.RecordPath})
+}

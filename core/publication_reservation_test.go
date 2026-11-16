@@ -1,0 +1,325 @@
+package core
+
+import (
+	"bytes"
+	"errors"
+	"math"
+	"slices"
+	"testing"
+	"time"
+
+	"enkv.sh/core/contract"
+	"enkv.sh/core/format"
+)
+
+func publicationReservationFixture(t *testing.T, rollover bool) (*StateSession, []contract.SupportRecord) {
+	t.Helper()
+	state := publicationCapacityState(t)
+	var coordinate contract.PublicationCoordinate
+	var marker contract.PublicationMarker
+	for i := range state.support {
+		for j, row := range state.support[i].Records {
+			if row.Kind == contract.PublicationCoordinateSupportKind {
+				var err error
+				coordinate, err = contract.InspectPublicationCoordinate(row.Body)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if rollover {
+					coordinate.LastAdmissionOrdinal = math.MaxUint64
+					coordinate.LastPolicyAckAttemptID, coordinate.LastPolicyDigest = publicationRelationID(70), publicationRelationID(71)
+					coordinate.LastPolicyAckIncarnationID, coordinate.LastPolicyAckOrdinal = coordinate.CurrentPublicationIncarnationID, math.MaxUint64-1
+					state.support[i].Records[j].Body, err = contract.EncodePublicationCoordinate(coordinate)
+					if err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+			if row.Kind == contract.PublicationMarkerSupportKind {
+				var err error
+				marker, err = contract.InspectPublicationMarker(row.Body)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+	}
+	if rollover {
+		generatedRefreshSupport(t, state)
+	}
+	state.admission.composition = publicationRelationID(87)
+	state.admission.expires = time.Now().Add(time.Minute)
+	state.admission.store.HeadKey = state.admission.store.Prefix + "/HEAD"
+	state.store.(*generatedFixtureSupportStore).descriptor = state.admission.store
+	state.root.WarningBits = WarningPublicationOrderValue | WarningDiscardedExactEvidence
+	var fresh contract.ID
+	if rollover {
+		fresh = publicationRelationID(88)
+	}
+	after, err := state.publicationCoordinateForAdmission(coordinate.CoordinateID, fresh)
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldMarker := marker
+	marker = publicationReservedDeleteMarker(t, oldMarker)
+	marker.AttemptID, marker.OperationID = publicationRelationID(80), publicationRelationID(81)
+	marker.PublicationIncarnationID, marker.AdmissionOrdinal = after.CurrentPublicationIncarnationID, after.LastAdmissionOrdinal
+	marker.State = contract.PublicationMayHaveEntered
+	marker.BlockerCount = 1
+	marker.BlockerDigest, err = contract.PublicationBlockerDigest([]contract.ID{oldMarker.AttemptID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	after.LatestUnresolvedAttemptID = marker.AttemptID
+	rows := publicationRelationRows(t, after, oldMarker)
+	body, err := contract.EncodePublicationMarker(marker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows = append(rows, contract.SupportRecord{Kind: contract.PublicationMarkerSupportKind, RecordID: marker.AttemptID, Body: body})
+	return state, rows
+}
+
+func publicationReservedDeleteMarker(t *testing.T, create contract.PublicationMarker) contract.PublicationMarker {
+	t.Helper()
+	marker := create
+	marker.Projection.Action = contract.PublicationDeleteReservedSlot
+	marker.Projection.PolicyDigest = contract.ID{}
+	marker.Projection.UncertainCreateAttemptID = create.AttemptID
+	marker.Projection.ExclusiveNamespaceDigest = publicationRelationID(122)
+	marker.Projection.RequestContractDigest = publicationRelationID(123)
+	marker.AuthoritySubjectDigest = publicationRelationID(124)
+	marker.Evidence.ResponseContractDigest = publicationRelationID(125)
+	marker.BirthServiceContractID, marker.BirthTargetContractID = "", ""
+	marker.Evidence.ConsumerLocator = ""
+	var err error
+	marker.ProjectionCommitment, err = contract.PublicationProjectionCommitment(marker.Projection)
+	if err != nil {
+		t.Fatal("retained reserved-delete projection", err)
+	}
+	return marker
+}
+
+// full_only: false
+func TestPublicationReservationAndRolloverPreserveSelectedHistory(t *testing.T) {
+	for _, rollover := range []bool{false, true} {
+		name := "next_ordinal"
+		if rollover {
+			name = "fresh_incarnation"
+		}
+		t.Run(name, func(t *testing.T) {
+			state, rows := publicationReservationFixture(t, rollover)
+			before, err := selectedPublicationRelation(state.selectedImage())
+			if err != nil {
+				t.Fatal(err)
+			}
+			next := *state
+			next.root.Snapshot, next.root.Transition = publicationRelationID(90), publicationRelationID(91)
+			candidate := Candidate{session: state}
+			construction, constructionErr := state.preparePublicationConstruction(t.Context(), rows)
+			if constructionErr == nil {
+				constructionErr = state.materializePublicationReservationConstruction(t.Context(), &next, &candidate, construction, []contract.ID{publicationRelationID(92), publicationRelationID(93)})
+			}
+			if err := constructionErr; err != nil {
+				t.Fatal(err)
+			}
+			after, err := selectedPublicationRelation(next.selectedImage())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(after.markers) != len(before.markers)+1 || next.root.WarningBits != state.root.WarningBits {
+				t.Fatal("reservation lost old blockers/warnings")
+			}
+			for id, marker := range before.markers {
+				if after.markers[id] != marker {
+					t.Fatal("old selected marker changed")
+				}
+			}
+			for id, coordinate := range before.coordinates {
+				selected := after.coordinates[id]
+				if selected.LastPolicyAckIncarnationID != coordinate.LastPolicyAckIncarnationID || selected.LastPolicyAckOrdinal != coordinate.LastPolicyAckOrdinal ||
+					selected.LastPolicyAckAttemptID != coordinate.LastPolicyAckAttemptID || selected.LastPolicyDigest != coordinate.LastPolicyDigest ||
+					selected.OwnerState != coordinate.OwnerState {
+					t.Fatal("rollover lost ACK/ownership")
+				}
+				order := next.adminIndex.PublicationOrder[0].Incarnations
+				if rollover {
+					if selected.LastAdmissionOrdinal != 1 || !slices.Equal(order, []contract.ID{coordinate.CurrentPublicationIncarnationID, publicationRelationID(88)}) {
+						t.Fatal("incorrect rollover", order)
+					}
+				} else if selected.LastAdmissionOrdinal != coordinate.LastAdmissionOrdinal+1 {
+					t.Fatal("ordinal not advanced")
+				}
+			}
+			for _, image := range candidate.objects {
+				if err := format.CheckReference(image.ref, image.body); err != nil {
+					t.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+// full_only: false
+func TestPublicationReservationRefusesReintroductionAndInvalidStamp(t *testing.T) {
+	for _, damage := range []string{"terminal_new", "reused_attempt", "wrong_ordinal", "reused_incarnation", "changed_old_marker", "missing_old_marker", "missing_authority"} {
+		t.Run(damage, func(t *testing.T) {
+			state, rows := publicationReservationFixture(t, true)
+			switch damage {
+			case "missing_authority":
+				state.admission.expires = time.Time{}
+			case "missing_old_marker":
+				rows = append(rows[:1], rows[2:]...)
+			case "changed_old_marker":
+				rows[1].Body = bytes.Clone(rows[1].Body)
+				rows[1].Body[len(rows[1].Body)-1] ^= 1
+			case "reused_incarnation":
+				coordinate, err := contract.InspectPublicationCoordinate(rows[0].Body)
+				if err != nil {
+					t.Fatal(err)
+				}
+				coordinate.CurrentPublicationIncarnationID = state.adminIndex.PublicationOrder[0].Incarnations[0]
+				coordinate.LastAdmissionOrdinal = math.MaxUint64
+				rows[0].Body, err = contract.EncodePublicationCoordinate(coordinate)
+				if err != nil {
+					t.Fatal(err)
+				}
+			default:
+				marker, err := contract.InspectPublicationMarker(rows[2].Body)
+				if err != nil {
+					t.Fatal(err)
+				}
+				switch damage {
+				case "terminal_new":
+					marker.State = contract.PublicationQualifiedNoEffectState
+					marker.Evidence.Class = contract.PublicationQualifiedNoEffect
+				case "reused_attempt":
+					marker.AttemptID = rows[1].RecordID
+					rows[2].RecordID = marker.AttemptID
+				case "wrong_ordinal":
+					marker.AdmissionOrdinal = 2
+				}
+				rows[2].Body, err = contract.EncodePublicationMarker(marker)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			next := *state
+			next.root.Snapshot, next.root.Transition = publicationRelationID(90), publicationRelationID(91)
+			candidate := Candidate{session: state}
+			construction, constructionErr := state.preparePublicationConstruction(t.Context(), rows)
+			if constructionErr == nil {
+				constructionErr = state.materializePublicationReservationConstruction(t.Context(), &next, &candidate, construction, []contract.ID{publicationRelationID(92), publicationRelationID(93)})
+			}
+			if err := constructionErr; !errors.Is(err, contract.ErrRecord) {
+				t.Fatalf("invalid reservation accepted: %v", err)
+			}
+			if len(candidate.objects) != 0 {
+				t.Fatal("refusal leaked candidate writes")
+			}
+		})
+	}
+}
+
+// full_only: false
+func TestPublicationFirstCreateInstallsFrozenDeletionInputs(t *testing.T) {
+	binding, entry := publicationRelationID(2), publicationRelationID(3)
+	state, _ := publicationConfiguredImage(t, binding, entry, binding)
+	var frozen contract.PublicationCoordinate
+	var marker contract.PublicationMarker
+	for i := range state.support {
+		kept := state.support[i].Records[:0]
+		for _, row := range state.support[i].Records {
+			if row.Kind == contract.PublicationMarkerSupportKind {
+				var err error
+				marker, err = contract.InspectPublicationMarker(row.Body)
+				if err != nil {
+					t.Fatal(err)
+				}
+				continue
+			}
+			if row.Kind == contract.PublicationCoordinateSupportKind {
+				var err error
+				frozen, err = contract.InspectPublicationCoordinate(row.Body)
+				if err != nil {
+					t.Fatal(err)
+				}
+				coordinate := frozen
+				coordinate.OwnerState, coordinate.PossibleRemoteObject, coordinate.LateEffectRisk = contract.PublicationOwnerNone, 0, 0
+				coordinate.LastAdmissionOrdinal, coordinate.LatestUnresolvedAttemptID = 0, contract.ID{}
+				coordinate.DeletionDestinationID, coordinate.DeletionConsumerLocator = "", ""
+				coordinate.DeletionTargetContractID, coordinate.DeletionConfigContractID = "", ""
+				coordinate.DeletionCredentialRouteContractID, coordinate.DeletionPayloadEncoding, coordinate.DeletionTargetRowDigest = "", 0, contract.ID{}
+				row.Body, err = contract.EncodePublicationCoordinate(coordinate)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			kept = append(kept, row)
+		}
+		state.support[i].Records = kept
+	}
+	generatedRefreshSupport(t, state)
+	state.publicationProof = nil
+	if !state.indexSelectedMaterials() {
+		t.Fatal("first-create source material")
+	}
+	state.admission.composition, state.admission.expires = publicationRelationID(87), time.Now().Add(time.Minute)
+	state.admission.store.HeadKey = state.admission.store.Prefix + "/HEAD"
+	state.store.(*generatedFixtureSupportStore).descriptor = state.admission.store
+	after, err := state.publicationCoordinateForAdmission(frozen.CoordinateID, contract.ID{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	marker.AttemptID, marker.OperationID, marker.State = publicationRelationID(112), publicationRelationID(113), contract.PublicationMayHaveEntered
+	marker.PublicationIncarnationID, marker.AdmissionOrdinal = after.CurrentPublicationIncarnationID, after.LastAdmissionOrdinal
+	after.LatestUnresolvedAttemptID, after.OwnerState, after.PossibleRemoteObject = marker.AttemptID, contract.PublicationOwnerUncertainCreate, 1
+	after.DeletionDestinationID, after.DeletionConsumerLocator = frozen.DeletionDestinationID, frozen.DeletionConsumerLocator
+	after.DeletionTargetContractID, after.DeletionConfigContractID = frozen.DeletionTargetContractID, frozen.DeletionConfigContractID
+	after.DeletionCredentialRouteContractID, after.DeletionPayloadEncoding, after.DeletionTargetRowDigest = frozen.DeletionCredentialRouteContractID, frozen.DeletionPayloadEncoding, frozen.DeletionTargetRowDigest
+	rows := publicationRelationRows(t, after, marker)
+	next := *state
+	next.root.Snapshot, next.root.Transition = publicationRelationID(90), publicationRelationID(91)
+	candidate := Candidate{session: state}
+	construction, constructionErr := state.preparePublicationConstruction(t.Context(), rows)
+	if constructionErr == nil {
+		constructionErr = state.materializePublicationReservationConstruction(t.Context(), &next, &candidate, construction, []contract.ID{publicationRelationID(92), publicationRelationID(93)})
+	}
+	if err := constructionErr; err != nil {
+		t.Fatal("first-create actual materializer", err)
+	}
+	selected, err := selectedPublicationRelation(next.selectedImage())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !selected.coordinates[after.CoordinateID].Equal(after) || selected.markers[marker.AttemptID] != marker {
+		t.Fatal("first create lost frozen fields or selected marker")
+	}
+}
+
+// full_only: false
+func TestPublicationReservationCannotReplaceFrozenHistory(t *testing.T) {
+	state, rows := publicationReservationFixture(t, false)
+	coordinate, err := contract.InspectPublicationCoordinate(rows[0].Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	coordinate.DeletionConsumerLocator = "changed"
+	rows[0].Body, err = contract.EncodePublicationCoordinate(coordinate)
+	if err != nil {
+		t.Fatal(err)
+	}
+	next := *state
+	next.root.Snapshot, next.root.Transition = publicationRelationID(90), publicationRelationID(91)
+	candidate := Candidate{session: state}
+	construction, constructionErr := state.preparePublicationConstruction(t.Context(), rows)
+	if constructionErr == nil {
+		constructionErr = state.materializePublicationReservationConstruction(t.Context(), &next, &candidate, construction, []contract.ID{publicationRelationID(92), publicationRelationID(93)})
+	}
+	if err := constructionErr; !errors.Is(err, contract.ErrRecord) {
+		t.Fatal("reservation replaced selected deletion history", err)
+	}
+	if len(candidate.objects) != 0 {
+		t.Fatal("history rewrite emitted objects")
+	}
+}

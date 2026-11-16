@@ -1,0 +1,19 @@
+.DS_Store
+tests/hermetic/runs/
+tests/hermetic/reports/
+tests/live/runs/
+tests/live/reports/
+tests/workflows/runs/
+tests/environments/aws.json
+tests/environments/gcp.json
+tests/environments/cloudflare.json
+graphify-out/
+tests/.supervisor/
+/tests/work-evidences/
+
+# Local build outputs and private run evidence
+/go.work
+/go.work.sum
+/build/
+/dist/
+/tests/qualification/

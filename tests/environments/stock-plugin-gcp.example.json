@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "name": "stock-plugin-gcp-example",
+  "mode": "live",
+  "provider": "gcp",
+  "public_configuration": true,
+  "resource": {
+    "alias": "reusable-stock-plugin-gcp",
+    "settings": {
+      "region": "australia-southeast1",
+      "bucket": "enkv-pa-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "recovery_mode": "enabled",
+      "project": "replace-project",
+      "project_number": "123456789",
+      "quota_project": "replace-quota-project",
+      "key_id": "projects/replace-project/locations/australia-southeast1/keyRings/preexisting/cryptoKeys/normal-signing/cryptoKeyVersions/1",
+      "authority_kek_id": "projects/replace-project/locations/australia-southeast1/keyRings/preexisting/cryptoKeys/authority-encryption/cryptoKeyVersions/1",
+      "reader_kek_id": "projects/replace-project/locations/australia-southeast1/keyRings/preexisting/cryptoKeys/recipient-encryption/cryptoKeyVersions/1",
+      "recovery_key_id": "projects/replace-project/locations/australia-southeast1/keyRings/preexisting/cryptoKeys/recovery-signing/cryptoKeyVersions/1",
+      "recovery_kek_id": "projects/replace-project/locations/australia-southeast1/keyRings/preexisting/cryptoKeys/recovery-encryption/cryptoKeyVersions/1"
+    }
+  },
+  "participants": {
+    "authority": {
+      "access": {
+        "sdk_context": {
+          "mode": "gcp-impersonated-adc",
+          "home": "/ABSOLUTE/INFRASTRUCTURE/gcp/.sdk-contexts/public/authority",
+          "quota_project": "replace-quota-project"
+        }
+      }
+    },
+    "apply": {
+      "access": {
+        "sdk_context": {
+          "mode": "gcp-impersonated-adc",
+          "home": "/ABSOLUTE/INFRASTRUCTURE/gcp/.sdk-contexts/public/apply",
+          "quota_project": "replace-quota-project"
+        }
+      }
+    },
+    "reader": {
+      "access": {
+        "sdk_context": {
+          "mode": "gcp-impersonated-adc",
+          "home": "/ABSOLUTE/INFRASTRUCTURE/gcp/.sdk-contexts/public/reader",
+          "quota_project": "replace-quota-project"
+        }
+      }
+    },
+    "consumer": {
+      "access": {
+        "sdk_context": {
+          "mode": "gcp-impersonated-adc",
+          "home": "/ABSOLUTE/INFRASTRUCTURE/gcp/.sdk-contexts/public/consumer",
+          "quota_project": "replace-quota-project"
+        }
+      }
+    },
+    "cleanup": {
+      "access": {
+        "sdk_context": {
+          "mode": "gcp-impersonated-adc",
+          "home": "/ABSOLUTE/INFRASTRUCTURE/gcp/.sdk-contexts/public/cleanup",
+          "quota_project": "replace-quota-project"
+        }
+      }
+    }
+  },
+  "role_bindings": {
+    "authority": "authority",
+    "apply": "apply",
+    "reader": "reader",
+    "consumer": "consumer",
+    "cleanup": "cleanup"
+  },
+  "plugin_acceptance": {
+    "schema": 1,
+    "purpose": "stock-plugin-acceptance",
+    "fixture_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "provider": "gcp",
+    "region": "australia-southeast1",
+    "bucket": "enkv-pa-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "project": "replace-project",
+    "project_number": "123456789"
+  }
+}

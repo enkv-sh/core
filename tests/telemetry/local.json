@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "logs": {"level": "warn", "exporters": ["local"]},
+  "metrics": {"exporters": ["local"]},
+  "traces": {"exporters": ["local"], "sample_ratio": 1},
+  "exporters": {"local": {"type": "otlp_file", "directory": "telemetry"}}
+}

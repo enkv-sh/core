@@ -1,0 +1,132 @@
+{
+  "schema_version": 1,
+  "name": "output-manifest-sdks-local",
+  "profile": "dev",
+  "description": "Focused offline public output and manifest SDK contracts, exact source owners and detached author kits. No live provider execution.",
+  "execution": {
+    "parallel": 2
+  },
+  "steps": [
+    {
+      "id": "public-sdk-implementation-boundary",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicSDKClosuresExcludeOfficialAndPrivateImplementations"
+      ]
+    },
+    {
+      "id": "sdk-source-owners",
+      "kind": "runner-tests",
+      "tests": [
+        "TestSDKModulesUseExactRegisteredSourceOwners"
+      ]
+    },
+    {
+      "id": "sdk-public-closure",
+      "kind": "runner-tests",
+      "tests": [
+        "TestSDKAuthorBoundariesRequireCompletePublicClosures"
+      ]
+    },
+    {
+      "id": "sdk-private-boundaries",
+      "kind": "runner-tests",
+      "tests": [
+        "TestOutputServingAndManifestRendererStayAtReviewedOwners"
+      ]
+    },
+    {
+      "id": "detached-output-kit",
+      "kind": "runner-tests",
+      "tests": [
+        "TestIndependentOutputExampleBuildsFromPublicKit"
+      ]
+    },
+    {
+      "id": "detached-manifest-kit",
+      "kind": "runner-tests",
+      "tests": [
+        "TestIndependentManifestExampleBuildsFromPublicKit"
+      ]
+    },
+    {
+      "id": "github-output-boundary",
+      "kind": "runner-tests",
+      "tests": [
+        "TestGitHubOutputBoundaryPinsSealedBoxOnly"
+      ]
+    },
+    {
+      "id": "provider-output-boundaries",
+      "kind": "runner-tests",
+      "tests": [
+        "TestProviderOutputBoundaryPinsOneSendClients"
+      ]
+    },
+    {
+      "id": "workflow-inventory",
+      "kind": "runner-tests",
+      "tests": [
+        "TestSavedWorkflowSelections"
+      ]
+    },
+    {
+      "id": "public-sdk-modules",
+      "kind": "unit",
+      "packages": [
+        "sdk/output",
+        "sdk/manifest-generator",
+        "plugins/manifest-generators/generic-json",
+        "sdk/examples/local-value-output",
+        "sdk/examples/ini-reference-manifest",
+        "protocols/manifest-generator",
+        "plugins/manifest-generators/opentofu-tfvars-json",
+        "sdk/examples/testservice"
+      ]
+    },
+    {
+      "id": "dependency-manifest",
+      "kind": "unit",
+      "packages": [
+        "compositions/outputhost"
+      ],
+      "package": "compositions/outputhost",
+      "tests": [
+        "TestDependencyManifestCanonicalFramingAndHelperIdentity"
+      ]
+    },
+    {
+      "id": "dependency-closure-refusal",
+      "kind": "unit",
+      "packages": [
+        "compositions/outputhost"
+      ],
+      "package": "compositions/outputhost",
+      "tests": [
+        "TestDependencyManifestRejectsUnboundClosureAndInvalidRepresentations"
+      ]
+    },
+    {
+      "id": "compiled-output-closure",
+      "kind": "unit",
+      "packages": [
+        "compositions/outputhost"
+      ],
+      "package": "compositions/outputhost",
+      "tests": [
+        "TestArtifactBuildInfoRequiresExactCompiledSetForEveryCommand"
+      ]
+    },
+    {
+      "id": "open-output-installation",
+      "kind": "unit",
+      "packages": [
+        "compositions/outputhost"
+      ],
+      "package": "compositions/outputhost",
+      "tests": [
+        "TestInstallationRequiresExactSupportedFamilyAndDependency"
+      ]
+    }
+  ]
+}

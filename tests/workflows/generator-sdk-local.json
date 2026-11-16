@@ -1,0 +1,210 @@
+{
+  "schema_version": 1,
+  "name": "generator-sdk-local",
+  "profile": "dev",
+  "description": "Focused local generator source, build, protocol and native boundary checks. No live provider execution.",
+  "execution": {
+    "parallel": 2
+  },
+  "steps": [
+    {
+      "id": "public-sdk-implementation-boundary",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicSDKClosuresExcludeOfficialAndPrivateImplementations"
+      ]
+    },
+    {
+      "id": "metadata-source-regression",
+      "kind": "runner-tests",
+      "tests": [
+        "TestAssemblyFailureSourcesSkipMetadataOnlyModules"
+      ]
+    },
+    {
+      "id": "passive-source-regression",
+      "kind": "runner-tests",
+      "tests": [
+        "TestAssemblyFailureSourcesSkipUncompiledPackageRoots"
+      ]
+    },
+    {
+      "id": "uncompiled-source-boundary",
+      "kind": "runner-tests",
+      "tests": [
+        "TestAssemblyFailureSourcesDoNotReadUncompiledDirectories"
+      ]
+    },
+    {
+      "id": "sdk-private-boundary",
+      "kind": "runner-tests",
+      "tests": [
+        "TestGeneratorServingStaysOutsidePrivateComponents"
+      ]
+    },
+    {
+      "id": "sdk-public-boundary",
+      "kind": "runner-tests",
+      "tests": [
+        "TestGeneratorAuthorBoundaryRequiresCompletePublicClosure"
+      ]
+    },
+    {
+      "id": "source-mapping",
+      "kind": "runner-tests",
+      "tests": [
+        "TestSharedGeneratorSourcesUseRegisteredSiblingOwners"
+      ]
+    },
+    {
+      "id": "source-labels",
+      "kind": "runner-tests",
+      "tests": [
+        "TestRegisteredSourceLabelsRejectUnmappedAndSymlinkOwners"
+      ]
+    },
+    {
+      "id": "source-record",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicSourceRecordDigestIsBounded"
+      ]
+    },
+    {
+      "id": "test-classification",
+      "kind": "runner-tests",
+      "tests": [
+        "TestMovedPublicTestsKeepLogicalClassificationAndFocus"
+      ]
+    },
+    {
+      "id": "failure-source-mapping",
+      "kind": "runner-tests",
+      "tests": [
+        "TestMovedPublicFailureSourcesKeepLogicalLabels"
+      ]
+    },
+    {
+      "id": "required-source-owners",
+      "kind": "runner-tests",
+      "tests": [
+        "TestMaintainedSourcesRequireRegisteredPublicOwners"
+      ]
+    },
+    {
+      "id": "formatting-source-inventory",
+      "kind": "runner-tests",
+      "tests": [
+        "TestFormattingCommandsDiscoverTheSameMaintainedFiles"
+      ]
+    },
+    {
+      "id": "lint-tool-version",
+      "kind": "runner-tests",
+      "tests": [
+        "TestLintRequiresPinnedStandaloneTool"
+      ]
+    },
+    {
+      "id": "lint-source-copy",
+      "kind": "runner-tests",
+      "tests": [
+        "TestLintAssemblyIsExactPrivateSourceCopy"
+      ]
+    },
+    {
+      "id": "module-definition",
+      "kind": "runner-tests",
+      "tests": [
+        "TestCloudflareModuleDefinitionIsExact"
+      ]
+    },
+    {
+      "id": "compiled-source-digest",
+      "kind": "runner-tests",
+      "tests": [
+        "TestCloudflareSourceDigestBindsExactGoInputsAndRejectsOthers"
+      ]
+    },
+    {
+      "id": "artifact-build",
+      "kind": "runner-tests",
+      "tests": [
+        "TestCloudflareArtifactAssemblyOnMaintainedSource"
+      ]
+    },
+    {
+      "id": "detached-generator-kit",
+      "kind": "runner-tests",
+      "tests": [
+        "TestGeneratorSourceKitBuildsWithoutImplementationSources"
+      ]
+    },
+    {
+      "id": "sdk-source-digest",
+      "kind": "runner-tests",
+      "tests": [
+        "TestCloudflareSDKSourceDigestBindsHelperAndMetadata"
+      ]
+    },
+    {
+      "id": "sdk-build-closure",
+      "kind": "runner-tests",
+      "tests": [
+        "TestCloudflareBuildInfoRequiresExactPublicClosure"
+      ]
+    },
+    {
+      "id": "detached-example",
+      "kind": "runner-tests",
+      "tests": [
+        "TestIndependentGeneratorExampleBuildsFromPublicKit"
+      ]
+    },
+    {
+      "id": "generator-modules",
+      "kind": "unit",
+      "packages": [
+        "sdk/generator",
+        "sdk/examples/local-token-generator",
+        "protocols/generator",
+        "plugins/cloudflare",
+        "plugins/local-random-secret",
+        "sdk/examples/testservice"
+      ]
+    },
+    {
+      "id": "artifact-refusal",
+      "kind": "unit",
+      "packages": [
+        "compositions/generatorhost"
+      ],
+      "package": "compositions/generatorhost",
+      "tests": [
+        "TestInstalledGeneratorArtifactRefusesSubstitutionBeforeCredential"
+      ]
+    },
+    {
+      "id": "native-wire",
+      "kind": "unit",
+      "packages": [
+        "compositions/generatorhost"
+      ],
+      "package": "compositions/generatorhost",
+      "tests": [
+        "TestNativeLaunchUsesClosedDescriptorsAndWire"
+      ]
+    },
+    {
+      "id": "native-cancellation",
+      "kind": "unit",
+      "packages": [
+        "compositions/generatorhost"
+      ],
+      "package": "compositions/generatorhost",
+      "tests": [
+        "TestNativeLaunchCancellationJoinsChild"
+      ]
+    }
+  ]
+}

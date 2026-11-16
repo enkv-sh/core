@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "name": "publication-crypto-unit",
+  "description": "Retain the complete race-enabled Crypto package gate for output custody.",
+  "steps": [
+    {
+      "id": "crypto",
+      "kind": "unit",
+      "packages": ["crypto"]
+    }
+  ]
+}

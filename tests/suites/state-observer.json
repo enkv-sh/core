@@ -1,0 +1,11 @@
+{
+  "schema_version": 2,
+  "name": "state-observer",
+  "description": "Read selected state through an observer, verify distinct identities, and require provider access refusal through a separate denied observer.",
+  "required_roles": ["authority", "recovery", "observer", "denied-observer"],
+  "scenarios": [
+    "access.observer-sees-selected-state/members_32_observer",
+    "access.distinct-observer-sees-selected-state/members_32_distinct_observer",
+    "access.provider-refuses-observer/members_32_denied_observer"
+  ]
+}

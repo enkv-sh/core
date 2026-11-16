@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "name": "public-generated-live",
+  "description": "Explicit opt-in public CLI generated lifecycle checks across AWS/GCP and both Recovery modes. Uses pre-existing resources and environment credentials. No login, provisioning, uploads or automatic retries are authorized by this file.",
+  "steps": [
+    {
+      "id": "public-generated-aws-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-generated.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "additional_providers": {
+        "cloudflare": "../environments/cloudflare-public-environment.json"
+      },
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-generated.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-generated-gcp-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-generated.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "additional_providers": {
+        "cloudflare": "../environments/cloudflare-public-environment.json"
+      },
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-generated.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-generated-aws-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-generated.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "additional_providers": {
+        "cloudflare": "../environments/cloudflare-public-environment.json"
+      },
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-generated.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "public-generated-gcp-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-generated.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "additional_providers": {
+        "cloudflare": "../environments/cloudflare-public-environment.json"
+      },
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-generated.json",
+      "recovery_mode": "enabled"
+    }
+  ]
+}

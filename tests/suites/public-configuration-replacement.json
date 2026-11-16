@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "name": "public-configuration-replacement",
+  "description": "Installed native keys replace role matrix, ordinary Recipient, five exact denials and four standard operator SDK modes. Select exact cases and Recovery modes.",
+  "required_roles": [
+    "authority",
+    "apply",
+    "reader",
+    "cleanup",
+    "successor",
+    "reader-successor",
+    "denied-public",
+    "denied-normal-signing",
+    "denied-authority-private",
+    "denied-recovery-signing",
+    "denied-recovery-private",
+    "consumer"
+  ],
+  "scenarios": [
+    "public-configuration.keys-replace-authority-signing-by-authority/keys_replace_authority_signing_by_authority",
+    "public-configuration.keys-replace-authority-signing-by-recovery/keys_replace_authority_signing_by_recovery",
+    "public-configuration.keys-replace-authority-encryption-by-authority/keys_replace_authority_encryption_by_authority",
+    "public-configuration.keys-replace-authority-encryption-by-recovery/keys_replace_authority_encryption_by_recovery",
+    "public-configuration.keys-replace-authority-both-by-authority/keys_replace_authority_both_by_authority",
+    "public-configuration.keys-replace-authority-both-by-recovery/keys_replace_authority_both_by_recovery",
+    "public-configuration.keys-replace-recovery-signing-by-authority/keys_replace_recovery_signing_by_authority",
+    "public-configuration.keys-replace-recovery-signing-by-recovery/keys_replace_recovery_signing_by_recovery",
+    "public-configuration.keys-replace-recovery-encryption-by-authority/keys_replace_recovery_encryption_by_authority",
+    "public-configuration.keys-replace-recovery-encryption-by-recovery/keys_replace_recovery_encryption_by_recovery",
+    "public-configuration.keys-replace-recovery-both-by-authority/keys_replace_recovery_both_by_authority",
+    "public-configuration.keys-replace-recovery-both-by-recovery/keys_replace_recovery_both_by_recovery",
+    "public-configuration.keys-replace-recipient/keys_replace_recipient",
+    "public-configuration.keys-replace-required-public-denied/keys_replace_required_public_denied",
+    "public-configuration.keys-replace-normal-signing-denied/keys_replace_normal_signing_denied",
+    "public-configuration.keys-replace-authority-private-denied/keys_replace_authority_private_denied",
+    "public-configuration.keys-replace-recovery-signing-denied/keys_replace_recovery_signing_denied",
+    "public-configuration.keys-replace-recovery-private-denied/keys_replace_recovery_private_denied",
+    "public-configuration.keys-replace-operator-both/keys_replace_operator_both"
+  ]
+}

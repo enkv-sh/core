@@ -1,0 +1,12 @@
+{
+  "schema_version": 2,
+  "name": "publication-aws-later-member-refusal",
+  "description": "AWS Secrets Manager first member acknowledgement followed by later-member admission refusal; retained ambiguity fixture namespace.",
+  "required_roles": [
+    "authority",
+    "recovery"
+  ],
+  "scenarios": [
+    "publication.aws-secrets-manager.later-member-refusal/plain1_secret1_first_target_ack_later_not_sent"
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "name": "capacity-gc-live",
+  "description": "Local opt-in preparation for public bounded capacity/GC on AWS and GCP in both Recovery modes. Saving or selecting this workflow supplies no live-service evidence.",
+  "steps": [
+    {
+      "id": "capacity-gc-aws-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/capacity-gc.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/capacity-gc.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "capacity-gc-gcp-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/capacity-gc.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/capacity-gc.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "capacity-gc-aws-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/capacity-gc.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/capacity-gc.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "capacity-gc-gcp-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/capacity-gc.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/capacity-gc.json",
+      "recovery_mode": "enabled"
+    }
+  ]
+}

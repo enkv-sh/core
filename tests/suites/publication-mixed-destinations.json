@@ -1,0 +1,12 @@
+{
+  "schema_version": 2,
+  "name": "publication-mixed-destinations",
+  "description": "Complete mixed destination results and ownership for the State provider cloud output plus all three GitHub scopes.",
+  "required_roles": [
+    "authority",
+    "recovery"
+  ],
+  "scenarios": [
+    "publication.mixed-destinations/plain1_secret1_initial_noop_delete_mixed4"
+  ]
+}

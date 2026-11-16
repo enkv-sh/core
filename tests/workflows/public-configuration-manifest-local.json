@@ -1,0 +1,251 @@
+{
+  "schema_version": 1,
+  "name": "public-configuration-manifest-local",
+  "profile": "full",
+  "description": "Local manifest live-preparation checks: exact selection, scoped cleanup evidence and provider assembly consumers; no live scenario runs.",
+  "execution": {
+    "parallel": 1
+  },
+  "steps": [
+    {
+      "id": "selection-1",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicManifestCatalogKeepsExactPublicRolesAndProviderModes"
+      ]
+    },
+    {
+      "id": "selection-2",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicConfigurationCatalogRequiresExactLiveRolesAndBoundaries"
+      ]
+    },
+    {
+      "id": "selection-3",
+      "kind": "runner-tests",
+      "tests": [
+        "TestSavedSuitesUseConcreteScenarios"
+      ]
+    },
+    {
+      "id": "selection-4",
+      "kind": "runner-tests",
+      "tests": [
+        "TestCurrentCaseProjectionPreservesHistoricalSemantics"
+      ]
+    },
+    {
+      "id": "selection-5",
+      "kind": "runner-tests",
+      "tests": [
+        "TestExpectedScheduleProjections"
+      ]
+    },
+    {
+      "id": "selection-6",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicManifestSavedWorkflowHasFourProviderRecoveryCells"
+      ]
+    },
+    {
+      "id": "selection-7",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicManifestKeepsExistingPublicWorkflowInventoriesSeparate"
+      ]
+    },
+    {
+      "id": "selection-8",
+      "kind": "runner-tests",
+      "tests": [
+        "TestSavedWorkflowSelections"
+      ]
+    },
+    {
+      "id": "selection-9",
+      "kind": "runner-tests",
+      "tests": [
+        "TestSavedFuzzAndLiveWorkflowsMatchCanonical"
+      ]
+    },
+    {
+      "id": "selection-10",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicOutputEvidenceRequiresOriginalDeletionAcknowledgement"
+      ]
+    },
+    {
+      "id": "selection-11",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicOutputEvidenceBindsExactEffectScopes"
+      ]
+    },
+    {
+      "id": "selection-12",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicConfigurationEvidenceBindsOutputScopesToScenario"
+      ]
+    },
+    {
+      "id": "selection-13",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicOutputEvidenceHandoffBindsOriginalOutputProof"
+      ]
+    },
+    {
+      "id": "selection-14",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicConfigurationRecoveryPacketStaysAvailableToPendingWorkflow"
+      ]
+    },
+    {
+      "id": "selection-15",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicOutputEnvironmentUsesOnlyRuntimeScopesAndStandardCredentials"
+      ]
+    },
+    {
+      "id": "selection-16",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicationSelectionRequiresExactScopesBeforeCredentials"
+      ]
+    },
+    {
+      "id": "selection-17",
+      "kind": "runner-tests",
+      "tests": [
+        "TestCurrentCaseDirectoryBindingsAreFiniteAndDistinct"
+      ]
+    },
+    {
+      "id": "selection-18",
+      "kind": "runner-tests",
+      "tests": [
+        "TestCurrentFamilyListsPreserveOrdinaryCoverage"
+      ]
+    },
+    {
+      "id": "selection-19",
+      "kind": "runner-tests",
+      "tests": [
+        "TestCurrentCaseSmokePoliciesPreserveExactCardinality"
+      ]
+    },
+    {
+      "id": "selection-20",
+      "kind": "runner-tests",
+      "tests": [
+        "TestCurrentCaseRepetitionsPreserveSmokeCardinality"
+      ]
+    },
+    {
+      "id": "aws-consumer-1",
+      "kind": "assembly-checks",
+      "responsibility": "aws",
+      "tests": [
+        "TestPublicManifestLiteralSelectionPartition"
+      ]
+    },
+    {
+      "id": "aws-consumer-2",
+      "kind": "assembly-checks",
+      "responsibility": "aws",
+      "tests": [
+        "TestPublicManifestResultRequiresCompleteNativeAndPartitionFacts"
+      ]
+    },
+    {
+      "id": "aws-consumer-3",
+      "kind": "assembly-checks",
+      "responsibility": "aws",
+      "tests": [
+        "TestPublicManifestFreshFactsKeepExactVariant"
+      ]
+    },
+    {
+      "id": "aws-consumer-4",
+      "kind": "assembly-checks",
+      "responsibility": "aws",
+      "tests": [
+        "TestPublicManifestCloudPreparationScopesDoNotRequireGitHubEffects"
+      ]
+    },
+    {
+      "id": "aws-consumer-5",
+      "kind": "assembly-checks",
+      "responsibility": "aws",
+      "tests": [
+        "TestPublicOutputScenariosKeepDistinctNames"
+      ]
+    },
+    {
+      "id": "aws-consumer-6",
+      "kind": "assembly-checks",
+      "responsibility": "aws",
+      "tests": [
+        "TestPublicOutputCleanupRequiresCompleteTerminalCoordinateSet"
+      ]
+    },
+    {
+      "id": "gcp-consumer-1",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestPublicManifestLiteralSelectionPartition"
+      ]
+    },
+    {
+      "id": "gcp-consumer-2",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestPublicManifestResultRequiresCompleteNativeAndPartitionFacts"
+      ]
+    },
+    {
+      "id": "gcp-consumer-3",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestPublicManifestFreshFactsKeepExactVariant"
+      ]
+    },
+    {
+      "id": "gcp-consumer-4",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestPublicManifestCloudPreparationScopesDoNotRequireGitHubEffects"
+      ]
+    },
+    {
+      "id": "gcp-consumer-5",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestPublicOutputScenariosKeepDistinctNames"
+      ]
+    },
+    {
+      "id": "gcp-consumer-6",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestPublicOutputCleanupRequiresCompleteTerminalCoordinateSet"
+      ]
+    },
+    {
+      "id": "lint",
+      "kind": "lint"
+    }
+  ]
+}

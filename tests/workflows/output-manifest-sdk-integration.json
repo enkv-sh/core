@@ -1,0 +1,303 @@
+{
+  "schema_version": 1,
+  "name": "output-manifest-sdk-integration",
+  "profile": "dev",
+  "execution": {
+    "parallel": 4
+  },
+  "description": "Selected output, manifest Reader and local evidence regression checks for the shared SDK changes.",
+  "steps": [
+    {
+      "id": "output-protocol",
+      "kind": "unit",
+      "packages": [
+        "protocols/output"
+      ]
+    },
+    {
+      "id": "output-host",
+      "kind": "unit",
+      "packages": [
+        "compositions/outputhost"
+      ]
+    },
+    {
+      "id": "aws-execution",
+      "kind": "unit",
+      "packages": [
+        "plugins/aws-output"
+      ],
+      "package": "plugins/aws-output/execution",
+      "tests": [
+        "TestPublicExecutionPreservesAWSContractsAndLocalRefusals"
+      ]
+    },
+    {
+      "id": "aws-child",
+      "kind": "unit",
+      "packages": [
+        "plugins/aws-output"
+      ],
+      "package": "plugins/aws-output/internal/awssm",
+      "tests": [
+        "TestAWSChildProtocolOneSend"
+      ]
+    },
+    {
+      "id": "gcp-child",
+      "kind": "unit",
+      "packages": [
+        "plugins/gcp-output"
+      ],
+      "package": "plugins/gcp-output/internal/gcpsm",
+      "tests": [
+        "TestGCPChildProtocolOneSend"
+      ]
+    },
+    {
+      "id": "gcp-metadata",
+      "kind": "unit",
+      "packages": [
+        "plugins/gcp-output"
+      ],
+      "package": "plugins/gcp-output/internal/gcpsm",
+      "tests": [
+        "TestGCPChildProtocolMetadataActions"
+      ]
+    },
+    {
+      "id": "github-child",
+      "kind": "unit",
+      "packages": [
+        "plugins/github-output"
+      ],
+      "package": "plugins/github-output/internal/github",
+      "tests": [
+        "TestGitHubChildProtocolOneSend"
+      ]
+    },
+    {
+      "id": "core-render-1",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestManifestRendererReturnChecksCommonByteContract"
+      ]
+    },
+    {
+      "id": "core-render-2",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestManifestRendererFailureMapsClosedCodes"
+      ]
+    },
+    {
+      "id": "core-render-3",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestManifestRendererValidatesBeforeCallback"
+      ]
+    },
+    {
+      "id": "core-render-4",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestManifestProjectionReleaseClearsOwnedPlainCapacity"
+      ]
+    },
+    {
+      "id": "core-render-5",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestManifestOperationBindsExactRequestAndOperation"
+      ]
+    },
+    {
+      "id": "core-request-1",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core/contract",
+      "tests": [
+        "TestManifestRequestOwnsExplicitExactSelection"
+      ]
+    },
+    {
+      "id": "core-request-2",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core/contract",
+      "tests": [
+        "TestManifestRequestOwnsTaggedScope"
+      ]
+    },
+    {
+      "id": "reader-1",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestConfigurationManifestSeparatesOpaqueBytesFromTransportFailure"
+      ]
+    },
+    {
+      "id": "reader-2",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestFullReaderFixesInstalledManifestRenderer"
+      ]
+    },
+    {
+      "id": "reader-3",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestInstalledReaderCompositionsCompareAndIssueFiveDestinationManifest"
+      ]
+    },
+    {
+      "id": "reader-4",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestManifestResultRenderingKeepsIssuerAndTargetWithoutArtifact"
+      ]
+    },
+    {
+      "id": "reader-5",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestConfigurationManifestUsesSelectedStateAndRetainsBorrowedPair"
+      ]
+    },
+    {
+      "id": "reader-6",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestConfigurationManifestLateSourceFailurePreservesIssuanceAndPreventsStaging"
+      ]
+    },
+    {
+      "id": "reader-7",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestManifestFileInstallsCompleteArtifact"
+      ]
+    },
+    {
+      "id": "reader-8",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestManifestFileReusesBoundedReadbackAndPreservesLateReadFailure"
+      ]
+    },
+    {
+      "id": "reader-9",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestManifestFileResultIndependentLiteralAndTerminalPrecedence"
+      ]
+    },
+    {
+      "id": "retention-final-1",
+      "kind": "runner-tests",
+      "tests": [
+        "TestLocalFileComparisonDoesNotUseMountNumbers"
+      ]
+    },
+    {
+      "id": "retention-final-7",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicConfigurationEvidenceFailureRetainsOriginalPrivateFiles"
+      ]
+    },
+    {
+      "id": "core-binding-1",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestReaderManifestRefusesNilEngine"
+      ]
+    },
+    {
+      "id": "core-binding-2",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestManifestRequestBindsEachSemanticServiceValue"
+      ]
+    },
+    {
+      "id": "core-binding-3",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestManifestPartitionRejectsCrossSetIncarnationWithMatchingUnion"
+      ]
+    }
+  ]
+}

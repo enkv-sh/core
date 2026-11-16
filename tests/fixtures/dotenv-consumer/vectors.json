@@ -1,0 +1,35 @@
+{
+  "emissions": [
+    {"name":"empty", "values":{"A":""}, "encoded":"A=''\n"},
+    {"name":"unquoted", "values":{"A":"plain-value"}, "encoded":"A=plain-value\n"},
+    {"name":"edge spaces", "values":{"A":" padded "}, "encoded":"A=' padded '\n"},
+    {"name":"hash", "values":{"A":"left#right"}, "encoded":"A='left#right'\n"},
+    {"name":"dollar syntax", "values":{"A":"${HOME} $VALUE $(false)"}, "encoded":"A=${HOME} $VALUE $(false)\n"},
+    {"name":"equals", "values":{"A":"first=second=third"}, "encoded":"A=first=second=third\n"},
+    {"name":"JSON quotes", "values":{"A":"{\"message\":\"yes\"}"}, "encoded":"A={\"message\":\"yes\"}\n"},
+    {"name":"literal escapes", "values":{"A":"literal\\n\\r"}, "encoded":"A=literal\\n\\r\n"},
+    {"name":"single quotes preserve literal escapes", "values":{"A":"hash#literal\\n\\r"}, "encoded":"A='hash#literal\\n\\r'\n"},
+    {"name":"backticks preserve literal escapes", "values":{"A":"'hash#literal\\n\\r"}, "encoded":"A=`'hash#literal\\n\\r`\n"},
+    {"name":"trailing backslash unquoted", "values":{"A":"path\\"}, "encoded":"A=path\\\n"},
+    {"name":"backtick branch", "values":{"A":" a'b#"}, "encoded":"A=` a'b#`\n"},
+    {"name":"double quote branch", "values":{"A":" a'`#"}, "encoded":"A=\" a'`#\"\n"},
+    {"name":"all quotes unquoted", "values":{"A":"a'`\"b"}, "encoded":"A=a'`\"b\n"},
+    {"name":"opening single quote", "values":{"A":"'quoted"}, "encoded":"A=`'quoted`\n"},
+    {"name":"opening backtick", "values":{"A":"`quoted"}, "encoded":"A='`quoted'\n"},
+    {"name":"opening double quote", "values":{"A":"\"quoted"}, "encoded":"A='\"quoted'\n"},
+    {"name":"multiline injection", "values":{"A":"line1\nEXTRA=evil\nline3"}, "encoded":"A='line1\nEXTRA=evil\nline3'\n"},
+    {"name":"cross-record quotes and bytewise order", "values":{"Z":"'later\nEND=tail", "A":"first\nEXTRA=inside"}, "encoded":"A='first\nEXTRA=inside'\nZ=`'later\nEND=tail`\n"},
+    {"name":"FEFF trim", "values":{"A":"\ufeffedge\ufeff"}, "encoded":"A='\ufeffedge\ufeff'\n"},
+    {"name":"U0085 not trim", "values":{"A":"\u0085edge\u0085"}, "encoded":"A=\u0085edge\u0085\n"},
+    {"name":"Unicode bytes", "values":{"A":"雪🙂"}, "encoded":"A=雪🙂\n"},
+    {"name":"ordinary object own names", "values":{"constructor":"yes", "toString":"yes", "_0":"yes"}, "encoded":"_0=yes\nconstructor=yes\ntoString=yes\n"},
+    {"name":"ECMAScript trim set", "values":{"A":"\t\u000b\f \u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u202f\u205f\u3000\ufeffx\t\u000b\f \u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u202f\u205f\u3000\ufeff"}, "encoded":"A='\t\u000b\f \u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u202f\u205f\u3000\ufeffx\t\u000b\f \u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u202f\u205f\u3000\ufeff'\n"}
+  ],
+  "parserCases": [
+    {"name":"raw CR normalizes", "values":{"A":"one\ntwo"}, "encoded":"A='one\r\ntwo'\n"},
+    {"name":"double quotes expand escapes", "values":{"A":"one\ntwo\rthree"}, "encoded":"A=\"one\\ntwo\\rthree\"\n"},
+    {"name":"unquoted FEFF trims", "values":{"A":"edge"}, "encoded":"A=\ufeffedge\ufeff\n"},
+    {"name":"prototype assignment is lost", "values":{"NORMAL":"retained"}, "encoded":"__proto__=lost\nNORMAL=retained\n"},
+    {"name":"unquoted newline adds assignment", "values":{"A":"first", "EXTRA":"second"}, "encoded":"A=first\nEXTRA=second\n"}
+  ]
+}

@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "name": "github-publication-live",
+  "description": "Run GitHub repository, organization and environment publication with AWS/GCP live State, both recovery modes, race and finite limits; subset of the aggregate publication cells.",
+  "steps": [
+    {
+      "id": "gcp-state-output-publication-positive-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/publication-github-positive.json"
+      ],
+      "environment": "../environments/gcp.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/example.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "gcp-state-output-publication-later-member-refusal-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/publication-github-later-member-refusal.json"
+      ],
+      "environment": "../environments/gcp.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/example.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "aws-state-output-publication-positive-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/publication-github-positive.json"
+      ],
+      "environment": "../environments/aws.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/example.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "aws-state-output-publication-later-member-refusal-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/publication-github-later-member-refusal.json"
+      ],
+      "environment": "../environments/aws.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/example.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "gcp-state-output-publication-positive-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/publication-github-positive.json"
+      ],
+      "environment": "../environments/gcp.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/example.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "gcp-state-output-publication-later-member-refusal-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/publication-github-later-member-refusal.json"
+      ],
+      "environment": "../environments/gcp.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/example.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "aws-state-output-publication-positive-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/publication-github-positive.json"
+      ],
+      "environment": "../environments/aws.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/example.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "aws-state-output-publication-later-member-refusal-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/publication-github-later-member-refusal.json"
+      ],
+      "environment": "../environments/aws.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/example.json",
+      "recovery_mode": "enabled"
+    }
+  ]
+}

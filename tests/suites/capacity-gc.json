@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "name": "capacity-gc",
+  "description": "Opt-in public capacity inspection, protected bounded GC preview/apply, and exact refused named continuation after complete close. This small provider case does not claim joint maximum coverage.",
+  "required_roles": [
+    "authority",
+    "apply",
+    "reader",
+    "cleanup"
+  ],
+  "scenarios": [
+    "public-configuration.capacity-gc/bounded_manual_gc"
+  ]
+}

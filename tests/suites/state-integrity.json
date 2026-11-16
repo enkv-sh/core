@@ -1,0 +1,25 @@
+{
+  "schema_version": 2,
+  "name": "state-integrity",
+  "description": "Preserve complete state through updates, concurrent selection, immutable storage conflicts, damaged evidence, lost replies and capacity limits.",
+  "required_roles": ["authority", "recovery"],
+  "scenarios": [
+    "state.identical-input-keeps-current-state/members_32",
+    "state.same-page-updates-preserve-other-pages/members_32_same_page",
+    "state.cross-page-updates-preserve-other-values/members_32_cross_page",
+    "selection.concurrent-writers-select-one-complete-state/members_32_two_writers",
+    "storage.equal-immutable-objects-allow-selection/members_32_equal_objects",
+    "storage.conflicting-immutable-object-refuses-selection/members_32_conflict",
+    "state.historical-bytes-get-new-identities/members_32_three_generations",
+    "evidence.missing-selected-child-prevents-open/members_32_missing_page",
+    "evidence.corrupt-selected-child-prevents-open/members_32_corrupt_page",
+    "selection.prepared-candidate-keeps-current-state/members_32_prepared_only",
+    "selection.selected-candidate-survives-fresh-open/members_32_selected",
+    "storage.lost-create-reply-recovers-from-readback/members_32_lost_create_reply",
+    "selection.lost-head-reply-recovers-from-observation/members_32_lost_head_reply",
+    "capacity.compact-state-preserves-complete-update/members_64_compact",
+    "capacity.fragmented-state-preserves-complete-update/members_64_fragmented",
+    "capacity.maximum-member-count-preserves-complete-update/members_512_mixed_sizes",
+    "capacity.maximum-size-state-refuses-growth-and-allows-update/members_512_value_16kib"
+  ]
+}

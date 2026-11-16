@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "name": "public-configuration-operator-live",
+  "description": "Four local operator authentication routes, each with both Recovery modes. Uses existing credentials and resources; activation, login and live execution require separate operator action.",
+  "steps": [
+    {
+      "id": "public-operator-gcp-user-adc-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-operator.json"
+      ],
+      "environment": "../environments/public-operator-gcp-user-adc.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-operator-gcp-service-account-adc-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-operator.json"
+      ],
+      "environment": "../environments/public-operator-gcp-service-account-adc.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-operator-aws-shared-credentials-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-operator.json"
+      ],
+      "environment": "../environments/public-operator-aws-shared-credentials.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-operator-aws-sso-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-operator.json"
+      ],
+      "environment": "../environments/public-operator-aws-sso.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-operator-gcp-user-adc-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-operator.json"
+      ],
+      "environment": "../environments/public-operator-gcp-user-adc.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "public-operator-gcp-service-account-adc-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-operator.json"
+      ],
+      "environment": "../environments/public-operator-gcp-service-account-adc.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "public-operator-aws-shared-credentials-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-operator.json"
+      ],
+      "environment": "../environments/public-operator-aws-shared-credentials.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "public-operator-aws-sso-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-operator.json"
+      ],
+      "environment": "../environments/public-operator-aws-sso.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "enabled"
+    }
+  ]
+}

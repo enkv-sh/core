@@ -1,0 +1,15 @@
+{
+  "schema_version": 2,
+  "name": "public-generated",
+  "description": "Opt-in public generated lifecycle and exact retirement through installed CLI processes. Requires pre-existing AWS or GCP resources and Cloudflare environment credentials.",
+  "required_roles": [
+    "authority",
+    "apply",
+    "reader",
+    "cleanup"
+  ],
+  "scenarios": [
+    "public-configuration.generated-manual-lifecycle/generated_manual_lifecycle",
+    "public-configuration.generated-auto-rotation/generated_auto_rotation"
+  ]
+}

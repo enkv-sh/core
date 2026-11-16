@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "name": "public-configuration-materialization-live",
+  "description": "Explicit opt-in AWS and GCP current Recipient materialization with Recovery enabled; requires prepared isolated standard SDK contexts and exact IAM permissions.",
+  "steps": [
+    {
+      "id": "public-materialization-aws-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-materialization.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "public-materialization-gcp-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-materialization.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "enabled"
+    }
+  ]
+}

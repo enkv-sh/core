@@ -1,0 +1,15 @@
+{
+  "schema_version": 2,
+  "name": "public-configuration-materialization",
+  "description": "Opt-in atomic native file materialization by a current ordinary Recipient, with independent GET-only plain success and actual secret KMS denial while Recovery is enabled.",
+  "required_roles": [
+    "authority",
+    "apply",
+    "reader",
+    "recipient-consumer",
+    "cleanup"
+  ],
+  "scenarios": [
+    "public-configuration.materialization/atomic_recipient_file"
+  ]
+}

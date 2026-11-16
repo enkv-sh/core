@@ -1,0 +1,17 @@
+{
+  "schema_version": 2,
+  "name": "configuration-recovery-aws-owner",
+  "description": "Refuse complete-loss reconstruction when the AWS resource owner does not match.",
+  "required_roles": [
+    "authority",
+    "recovery",
+    "replacement-store",
+    "normal-signer-0",
+    "authority-decrypter-0",
+    "recovery-signer-0",
+    "recovery-decrypter-0"
+  ],
+  "scenarios": [
+    "reconstruction.wrong-owner/complete_loss_wrong_owner"
+  ]
+}

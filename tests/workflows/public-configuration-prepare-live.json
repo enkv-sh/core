@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "name": "public-configuration-prepare-live",
+  "description": "Opt-in AWS/GCP public prepare after complete local-file loss in both Recovery modes. Setup and cleanup use only the owned run prefix.",
+  "steps": [
+    {
+      "id": "public-prepare-aws-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-prepare.json"
+      ],
+      "environment": "../environments/public-aws.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-prepare-gcp-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-prepare.json"
+      ],
+      "environment": "../environments/public-gcp.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-prepare-aws-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-prepare.json"
+      ],
+      "environment": "../environments/public-aws.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "public-prepare-gcp-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-prepare.json"
+      ],
+      "environment": "../environments/public-gcp.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "enabled"
+    }
+  ]
+}

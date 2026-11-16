@@ -1,0 +1,11 @@
+{
+  "schema_version": 2,
+  "name": "state-lifecycle",
+  "description": "Add, remove and replace members, preserve retained records, and reuse slots after complete disjoint replacement.",
+  "required_roles": ["authority", "recovery"],
+  "scenarios": [
+    "lifecycle.empty-state-preserves-domain-and-readd/empty_add17_remove_readd",
+    "lifecycle.mixed-membership-preserves-retained-records/members_32_mixed_changes",
+    "capacity.maximum-disjoint-replacement-reuses-successor-slots/members_512_names_256bytes_values_128x64kib"
+  ]
+}

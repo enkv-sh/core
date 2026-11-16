@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "name": "diagnostics",
+  "description": "Repeat four explicit small local selections in fresh processes. Each selection stays partial; no complete check or live qualification is claimed.",
+  "profile": "dev",
+  "execution": {
+    "parallel": 1
+  },
+  "steps": [
+    {
+      "id": "token-validation",
+      "kind": "unit",
+      "packages": [
+        "core/contract"
+      ],
+      "package": "core/contract",
+      "repetitions": 3,
+      "tests": [
+        "TestTokenValidation/valid"
+      ]
+    },
+    {
+      "id": "telemetry-environment",
+      "kind": "runner-tests",
+      "repetitions": 3,
+      "tests": [
+        "TestGoEnvironmentPreservesExplicitTelemetry"
+      ]
+    },
+    {
+      "id": "supplied-candidates",
+      "kind": "run",
+      "suites": [
+        "../suites/state-secret-lifecycle.json"
+      ],
+      "scenarios": [
+        "secret.competing-supplied-candidates-preserve-atomic-outcomes/plain2_secret2_competing_and_lost_reply"
+      ],
+      "environment": "../environments/hermetic.json",
+      "recovery_mode": "both",
+      "telemetry_config": "../telemetry/local.json",
+      "repetitions": 3
+    },
+    {
+      "id": "fixture-composition",
+      "kind": "component-tests",
+      "profile": "dev",
+      "repetitions": 3,
+      "tests": [
+        "TestFixtureAdmissionKeepsExplicitProductionComposition"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "schema_version": 2,
+  "name": "publication-aws-positive",
+  "description": "AWS Secrets Manager plain and secret output lifecycle, complete results and fresh reopen; positive fixture namespace.",
+  "required_roles": [
+    "authority",
+    "recovery"
+  ],
+  "scenarios": [
+    "publication.aws-secrets-manager.plain-secret-lifecycle/plain1_secret1_create_value_delete"
+  ]
+}

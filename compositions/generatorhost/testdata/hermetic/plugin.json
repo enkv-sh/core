@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "name": "independent-host-generator",
+  "role": "generator",
+  "version": "0.1.0",
+  "wire": {
+    "kind": "wire",
+    "identity": "cc827c32a204204ec680e29c0b79df771ea2ad5d2c1df10170d8b450e7628b0f",
+    "version": 5
+  },
+  "generator": {
+    "config_contract_id": "9d1e0e2d9459d06523ad13e28a4093c2316baafe7aec5b25f30eba2e113599c4",
+    "credential_route": "AAEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEBGUVOS1ZfR0VORVJBVE9SX1RFU1RfVE9LRU4AAAAA"
+  },
+  "output": null,
+  "manifest": null
+}

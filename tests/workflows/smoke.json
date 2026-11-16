@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "name": "smoke",
+  "description": "Run telemetry unit tests, one hermetic 32-member state update with telemetry enabled, and GCP and AWS smoke checks.",
+  "steps": [
+    {"id": "unit", "kind": "unit", "packages": ["telemetry", "compositions/observability"]},
+    {
+      "id": "state",
+      "kind": "run",
+      "suites": ["../suites/state-smoke.json"],
+      "scenarios": ["state.single-value-update-preserves-other-values/members_32"],
+      "environment": "../environments/hermetic.json",
+      "smoke_policy": "first-selected-point",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "both"
+    },
+    {
+      "id": "gcp",
+      "kind": "run",
+      "suites": ["../suites/state-smoke.json"],
+      "environment": "../environments/gcp.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/example.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "aws",
+      "kind": "run",
+      "suites": ["../suites/state-smoke.json"],
+      "environment": "../environments/aws.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/example.json",
+      "recovery_mode": "enabled"
+    }
+  ]
+}

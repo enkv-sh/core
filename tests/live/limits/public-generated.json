@@ -1,0 +1,12 @@
+{
+  "requests": 26224,
+  "body_bytes": 3244294144,
+  "objects": 3360,
+  "object_bytes": 452984832,
+  "generator_creates": 12,
+  "generator_retires": 44,
+  "elapsed_seconds": 1200,
+  "cleanup_requests": 78860,
+  "cleanup_bytes": 202463248384,
+  "cleanup_seconds": 600
+}

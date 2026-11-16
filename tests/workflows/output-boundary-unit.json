@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "name": "output-boundary-unit",
+  "description": "Retain race-enabled output wire, native host and five named provider construction evidence.",
+  "steps": [
+    {
+      "id": "output-boundary",
+      "kind": "unit",
+      "packages": [
+        "protocols/output",
+        "compositions/outputhost",
+        "plugins/output-contract-test",
+        "plugins/github-output",
+        "plugins/aws-output",
+        "plugins/gcp-output"
+      ]
+    }
+  ]
+}

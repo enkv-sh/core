@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "name": "authority-operator-live",
+  "description": "Eight opt-in administrative CLI cells with isolated standard SDK contexts, controlled generated work, independent Recipient consumption and exact prefix cleanup.",
+  "steps": [
+    {
+      "id": "admin-gcp-abandon-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/authority-operator.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "recovery_mode": "disabled",
+      "telemetry_config": "../telemetry/local.json",
+      "scenarios": [
+        "operator.abandon-selected-work-through-cli/one_generated_group_stale_plan_apply_history_receipt"
+      ]
+    },
+    {
+      "id": "admin-gcp-replacement-refusal-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/authority-operator.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "recovery_mode": "disabled",
+      "telemetry_config": "../telemetry/local.json",
+      "scenarios": [
+        "operator.disabled-recovery-refuses-authority-replacement-through-cli/disabled_recovery_preserves_selected_work"
+      ]
+    },
+    {
+      "id": "admin-aws-abandon-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/authority-operator.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "recovery_mode": "disabled",
+      "telemetry_config": "../telemetry/local.json",
+      "scenarios": [
+        "operator.abandon-selected-work-through-cli/one_generated_group_stale_plan_apply_history_receipt"
+      ]
+    },
+    {
+      "id": "admin-aws-replacement-refusal-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/authority-operator.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "recovery_mode": "disabled",
+      "telemetry_config": "../telemetry/local.json",
+      "scenarios": [
+        "operator.disabled-recovery-refuses-authority-replacement-through-cli/disabled_recovery_preserves_selected_work"
+      ]
+    },
+    {
+      "id": "admin-gcp-abandon-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/authority-operator.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "recovery_mode": "enabled",
+      "telemetry_config": "../telemetry/local.json",
+      "scenarios": [
+        "operator.abandon-selected-work-through-cli/one_generated_group_stale_plan_apply_history_receipt"
+      ]
+    },
+    {
+      "id": "admin-gcp-replace-authority-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/authority-operator.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "recovery_mode": "enabled",
+      "telemetry_config": "../telemetry/local.json",
+      "scenarios": [
+        "operator.replace-authority-then-abandon-through-cli/recovery_signing_replacement_then_stale_plan_apply_history"
+      ]
+    },
+    {
+      "id": "admin-aws-abandon-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/authority-operator.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "recovery_mode": "enabled",
+      "telemetry_config": "../telemetry/local.json",
+      "scenarios": [
+        "operator.abandon-selected-work-through-cli/one_generated_group_stale_plan_apply_history_receipt"
+      ]
+    },
+    {
+      "id": "admin-aws-replace-authority-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/authority-operator.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "recovery_mode": "enabled",
+      "telemetry_config": "../telemetry/local.json",
+      "scenarios": [
+        "operator.replace-authority-then-abandon-through-cli/recovery_signing_replacement_then_stale_plan_apply_history"
+      ]
+    }
+  ]
+}

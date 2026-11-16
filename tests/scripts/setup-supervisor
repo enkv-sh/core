@@ -1,0 +1,220 @@
+#!/bin/bash
+set -euo pipefail
+umask 077
+if [ "$#" -ne 0 ]; then
+ printf 'usage: tests/scripts/setup-supervisor\n' >&2
+ exit 2
+fi
+platform=$(uname -s)
+case "$platform" in
+ Darwin) if [ ! -x /usr/bin/lockf ]; then printf 'native lock utility unavailable\n' >&2; exit 1; fi ;;
+ Linux) if ! command -v flock >/dev/null 2>&1; then printf 'native lock utility unavailable\n' >&2; exit 1; fi ;;
+ *) printf 'native supervisor setup supports Darwin/Linux only\n' >&2; exit 1 ;;
+esac
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+repo_root=$(CDPATH= cd -- "$script_dir/../.." && pwd -P)
+resource_parent=$(CDPATH= cd -- /var/tmp && pwd -P)
+resource_root="$resource_parent/enkv-test-resources-$(id -u)"
+if [ -L "$resource_root" ]; then printf 'resource root refused\n' >&2; exit 1; fi
+mkdir -p -m 700 -- "$resource_root"
+case "$platform" in
+ Darwin) ownership=$(stat -f '%u:%Lp' "$resource_root") ;;
+ Linux) ownership=$(stat -c '%u:%a' "$resource_root") ;;
+esac
+if [ ! -d "$resource_root" ] || [ "$ownership" != "$(id -u):700" ]; then printf 'resource root owner/mode refused\n' >&2; exit 1; fi
+machine_lock="$resource_root/machine.lock"
+if [ ! -e "$machine_lock" ] && [ ! -L "$machine_lock" ]; then
+ if ! (set -C; : > "$machine_lock") 2>/dev/null; then
+  if [ ! -e "$machine_lock" ]; then printf 'machine lock creation failed\n' >&2; exit 1; fi
+ fi
+fi
+if [ -L "$machine_lock" ] || [ ! -f "$machine_lock" ]; then printf 'machine lock refused\n' >&2; exit 1; fi
+case "$platform" in
+ Darwin) ownership=$(stat -f '%u:%Lp' "$machine_lock") ;;
+ Linux) ownership=$(stat -c '%u:%a' "$machine_lock") ;;
+esac
+if [ "$ownership" != "$(id -u):600" ]; then printf 'machine lock owner/mode refused\n' >&2; exit 1; fi
+setup_command_timeout_seconds=900
+stage=
+compiler_group=0
+compiler=
+finalizer=
+job_observation=0
+setup_settled=false
+owner_pid=$$
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 129' HUP
+exec 9>>"$machine_lock"
+while :; do
+ if [ "$platform" = Darwin ]; then
+  if /usr/bin/lockf -s -t 0 9; then lock_status=0; else lock_status=$?; fi
+ else
+  if flock -x -n -E75 9; then lock_status=0; else lock_status=$?; fi
+ fi
+ case "$lock_status" in
+  0) break ;;
+  75) /bin/sleep 0.02 9>&- ;;
+  *) printf 'native machine lock failed: %s\n' "$lock_status" >&2; exit 1 ;;
+ esac
+done
+owned_job_active() {
+ local expected=$1 running active=false marker
+ job_observation=$((job_observation + 1))
+ marker="observation-$job_observation"
+ jobs -pr >&8
+ jobs -ps >&8
+ # A signal trap can enter this function with an interrupted observation queued.
+ printf '%s\n' "$marker" >&8
+ while IFS= read -r running <&8; do
+  if [ "$running" = "$marker" ]; then break; fi
+  if [ "$running" = "$expected" ]; then active=true; fi
+ done
+ [ "$active" = true ]
+}
+await_owned_job() {
+ local child=$1 deadline=$2 role=$3
+ while owned_job_active "$child"; do
+  if [ "$SECONDS" -ge "$deadline" ]; then printf '%s deadline exceeded; setup incomplete\n' "$role" >&2; return 1; fi
+  # A builtin timed read keeps the native finalizer the owner's only child.
+  if IFS= read -r -t 1 -u 8; then printf 'setup wait channel received unexpected data\n' >&2; return 1; fi
+ done
+}
+stop_owned_child() {
+ local child=$1 group=$2
+ # The job leader can exit while members of its owned process group survive.
+ if [ "$group" -gt 0 ]; then
+  if ! kill -KILL -- "-$group" 2>/dev/null; then printf 'setup child group stop is uncertain\n' >&2; fi
+ elif owned_job_active "$child"; then
+  if ! kill -KILL "$child" 2>/dev/null; then printf 'setup child stop is uncertain\n' >&2; fi
+ fi
+ local attempt child_status
+ for ((attempt=0; attempt<1000; attempt++)); do
+  if ! owned_job_active "$child"; then
+   if wait "$child"; then child_status=0; else child_status=$?; fi
+   if [ "$child_status" -ne 0 ]; then printf 'setup child terminal status: %s\n' "$child_status" >&2; fi
+   return 0
+  fi
+  /bin/sleep 0.01 8>&- 9>&-
+ done
+ printf 'setup child terminal join is uncertain\n' >&2
+ return 1
+}
+finish_setup() {
+ local status=$?
+ trap - EXIT
+ trap '' INT TERM HUP
+ if [ "$status" -ne 0 ]; then
+  # A signal/error can occur after terminal Wait and before its result is folded.
+  if [ "$setup_settled" = false ] && [ -n "$finalizer" ] && ! owned_job_active "$finalizer"; then
+   if wait "$finalizer"; then finalizer_status=0; else finalizer_status=$?; fi
+   if [ "$finalizer_status" -eq 0 ] || [ "$finalizer_status" -eq 3 ]; then setup_settled=true; finalizer=; fi
+  fi
+  if [ "$setup_settled" = false ]; then
+   if [ "$compiler_group" -gt 0 ]; then
+    if ! stop_owned_child "$compiler_group" "$compiler_group"; then printf 'compiler settlement incomplete\n' >&2; fi
+   elif [ -n "$compiler" ]; then
+    if ! stop_owned_child "$compiler" 0; then printf 'compiler settlement incomplete\n' >&2; fi
+   fi
+   if [ -n "$finalizer" ]; then
+    if ! stop_owned_child "$finalizer" "$finalizer"; then printf 'finalizer settlement incomplete\n' >&2; fi
+   fi
+  fi
+  printf 'setup failed; stage: %s\n' "$stage" >&2
+  exec 8>&-
+  if [ "$setup_settled" = false ] && { [ "$compiler_group" -gt 0 ] || [ -n "$compiler" ] || [ -n "$finalizer" ]; }; then
+   printf 'setup incomplete; native process-group settlement unavailable; machine lock retained; owner_pid=%s compiler_group=%s finalizer_pid=%s; owner termination does not prove settlement\n' "$owner_pid" "$compiler_group" "${finalizer:-0}" >&2
+   trap 'exit "$status"' INT TERM HUP
+   while :; do /bin/sleep 1 9>&-; done
+  fi
+ fi
+ exec 8>&-
+ exit "$status"
+}
+trap finish_setup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 129' HUP
+installation="$repo_root/tests/.supervisor"
+if [ -L "$installation" ]; then printf 'supervisor installation path refused\n' >&2; exit 1; fi
+mkdir -p -m 700 -- "$installation" 9>&-
+stage=$(exec 9>&-; mktemp -d "$installation/setup.XXXXXXXX")
+inputs="$stage/core/internal/supervisor/setup-inputs"
+map_path=tests/scripts/supervisor-sources.tsv
+mkdir -p -- "$inputs/tests/scripts" 9>&-
+cp -- "$repo_root/$map_path" "$inputs/$map_path.source" 9>&-
+chmod 400 "$inputs/$map_path.source" 9>&-
+while IFS=$'\t' read -r original compiler_path; do
+ case "$original" in ''|/*|.*|*/../*|../*|*/./*|*\\*|*' '*|*$'\r'*) printf 'source map path refused\n' >&2; exit 1 ;; esac
+ current="$repo_root"
+ IFS=/ read -r -a components <<< "$original"
+ for component in "${components[@]}"; do
+  current="$current/$component"
+  if [ -L "$current" ]; then printf 'source input symlink refused\n' >&2; exit 1; fi
+ done
+ if [ ! -f "$current" ]; then printf 'source input unavailable\n' >&2; exit 1; fi
+ snapshot="$inputs/$original.source"
+ if [ "$original" != "$map_path" ]; then
+  mkdir -p -- "${snapshot%/*}" 9>&-
+  cp -- "$current" "$snapshot" 9>&-
+  chmod 400 "$snapshot" 9>&-
+ fi
+ if [ "$compiler_path" != - ]; then
+  case "$compiler_path" in core/go.mod|core/go.sum|core/internal/testrecords/io.go|core/internal/testrecords/layout.go|core/internal/testrecords/source.go|core/internal/testrecords/live_limits.go|core/internal/supervisor/*.go) ;; *) printf 'compiler source map target refused\n' >&2; exit 1 ;; esac
+  case "$compiler_path" in *../*|*\\*|*' '*|*$'\r'*) printf 'compiler source map path refused\n' >&2; exit 1 ;; esac
+  mkdir -p -- "$stage/${compiler_path%/*}" 9>&-
+  ln -- "$snapshot" "$stage/$compiler_path" 9>&-
+ fi
+done < "$inputs/$map_path.source"
+# The unlinked FIFO supports builtin job observation and timed reads without
+# adding children during the native finalizer's parent census.
+mkfifo -m 600 "$stage/owner-wait" 9>&-
+exec 8<>"$stage/owner-wait"
+rm -- "$stage/owner-wait" 8>&- 9>&-
+# One gated compiler job. The native candidate later verifies exact settlement.
+# This initial setup build alone is outside the invocation memory ceiling.
+set -m
+compiler_deadline=$((SECONDS + setup_command_timeout_seconds))
+/bin/bash -c '
+set -euo pipefail
+stage=$1
+printf "%s\n" "$$" > "$stage/compiler.ready"
+while [ ! -f "$stage/compiler.release" ]; do /bin/sleep 0.01 9>&-; done
+cd -- "$stage/core"
+unset GOOS GOARCH CGO_ENABLED
+exec env GOWORK=off GOTOOLCHAIN=local GOFLAGS="-trimpath -p=4" GOPROXY=off GOSUMDB=off GONOPROXY=none GOCACHE="$stage/cache" go build -mod=readonly -tags=enkv_supervisor -o "$stage/supervisor-candidate" ./internal/supervisor
+' enkv-supervisor-build "$stage" 8>&- 9>&- > "$stage/compiler.log" 2>&1 &
+compiler=$!
+compiler_group=$compiler
+for ((attempt=0; attempt<1000; attempt++)); do
+ if [ -f "$stage/compiler.ready" ]; then break; fi
+ /bin/sleep 0.01 8>&- 9>&-
+done
+observed_compiler=
+if [ -f "$stage/compiler.ready" ]; then read -r observed_compiler < "$stage/compiler.ready"; fi
+if [ "$observed_compiler" != "$compiler" ]; then printf 'compiler gate identity refused\n' >&2; exit 1; fi
+observed_group=$(exec 8>&- 9>&-; jobs -p %+)
+if [ "$observed_group" != "$compiler_group" ] || ! kill -0 -- "-$compiler_group"; then printf 'compiler group identity refused\n' >&2; exit 1; fi
+: > "$stage/compiler.release"
+await_owned_job "$compiler" "$compiler_deadline" compiler
+if wait "$compiler"; then compiler_status=0; else compiler_status=$?; fi
+if owned_job_active "$compiler"; then printf 'compiler wait was nonterminal; setup incomplete\n' >&2; exit 1; fi
+compiler=
+if [ "$compiler_status" -ne 0 ]; then
+ printf 'supervisor compiler failed; staging retained: %s\n' "$stage" >&2
+ exit 1
+fi
+# Native finalization verifies the exact compiler group is absent and validates
+# parent/source/target before publication. The parent still owns finalizer join.
+finalizer_deadline=$((SECONDS + setup_command_timeout_seconds))
+"$stage/supervisor-candidate" finalize-setup --root "$repo_root" --stage "$stage" --owner-pid "$owner_pid" --compiler-group "$compiler_group" 8>&- 9>&- &
+finalizer=$!
+await_owned_job "$finalizer" "$finalizer_deadline" finalizer
+if wait "$finalizer"; then finalizer_status=0; else finalizer_status=$?; fi
+if owned_job_active "$finalizer"; then printf 'finalizer wait was nonterminal; setup incomplete\n' >&2; exit 1; fi
+# Status 3 is emitted only by the native finalizer after positive verification.
+if [ "$finalizer_status" -eq 0 ] || [ "$finalizer_status" -eq 3 ]; then setup_settled=true; finalizer=; fi
+if [ "$finalizer_status" -ne 0 ]; then printf 'supervisor finalization failed; setup incomplete\n' >&2; exit 1; fi
+exec 8>&-
+trap - EXIT INT TERM HUP
+printf 'Supervisor setup complete: %s/supervisor\n' "$installation"

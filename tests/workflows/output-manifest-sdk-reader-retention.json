@@ -1,0 +1,157 @@
+{
+  "schema_version": 1,
+  "name": "output-manifest-sdk-reader-retention",
+  "profile": "dev",
+  "execution": {
+    "parallel": 4
+  },
+  "description": "Manifest Reader return, native file delivery and local evidence ownership checks.",
+  "steps": [
+    {
+      "id": "reader-1",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestConfigurationManifestSeparatesOpaqueBytesFromTransportFailure"
+      ]
+    },
+    {
+      "id": "reader-2",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestFullReaderFixesInstalledManifestRenderer"
+      ]
+    },
+    {
+      "id": "reader-3",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestInstalledReaderCompositionsCompareAndIssueFiveDestinationManifest"
+      ]
+    },
+    {
+      "id": "reader-4",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestManifestResultRenderingKeepsIssuerAndTargetWithoutArtifact"
+      ]
+    },
+    {
+      "id": "reader-5",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestConfigurationManifestUsesSelectedStateAndRetainsBorrowedPair"
+      ]
+    },
+    {
+      "id": "reader-6",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestConfigurationManifestLateSourceFailurePreservesIssuanceAndPreventsStaging"
+      ]
+    },
+    {
+      "id": "reader-7",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestManifestFileInstallsCompleteArtifact"
+      ]
+    },
+    {
+      "id": "reader-8",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestManifestFileReusesBoundedReadbackAndPreservesLateReadFailure"
+      ]
+    },
+    {
+      "id": "reader-9",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestManifestFileResultIndependentLiteralAndTerminalPrecedence"
+      ]
+    },
+    {
+      "id": "retention-final-1",
+      "kind": "runner-tests",
+      "tests": [
+        "TestLocalFileComparisonDoesNotUseMountNumbers"
+      ]
+    },
+    {
+      "id": "retention-final-7",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicConfigurationEvidenceFailureRetainsOriginalPrivateFiles"
+      ]
+    },
+    {
+      "id": "core-binding-1",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestReaderManifestRefusesNilEngine"
+      ]
+    },
+    {
+      "id": "core-binding-2",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestManifestRequestBindsEachSemanticServiceValue"
+      ]
+    },
+    {
+      "id": "core-binding-3",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestManifestPartitionRejectsCrossSetIncarnationWithMatchingUnion"
+      ]
+    }
+  ]
+}

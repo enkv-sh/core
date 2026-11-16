@@ -1,0 +1,124 @@
+// Generated only into a test overlay. No production module contains this hook.
+package crypto
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"slices"
+
+	"enkv.sh/core/contract"
+	"enkv.sh/crypto/internal/custody"
+)
+
+// nativeProcessObserveRecovery runs only after the installed reconstruction
+// owner authenticates the public selection and its ordinary Authority binding.
+// The private parent validates RecoveryBinding or RecipientBinding from trusted
+// public source metadata. Neither mode grants Product admission or a sink.
+func nativeProcessObserveRecovery(ctx context.Context, a *session, route KeyAccess, selected contract.ConsumerSelection) (bool, contract.CryptoResultCode) {
+	p, err := nativeProcessLoad()
+	if err != nil {
+		return true, contract.CryptoCustodyUnavailable
+	}
+	if !p.RecoveryOracle && !p.RecipientOracle {
+		return false, contract.CryptoSuccess
+	}
+	if p.RecoveryOracle && p.RecipientOracle {
+		return true, contract.CryptoCustodyUnavailable
+	}
+	if code := sessionCancellation(ctx, a); code != contract.CryptoSuccess {
+		return true, code
+	}
+	want, expected := p.ExpectedSHA256[selected.Entry.Name]
+	encoded, selector := p.RecoveryBinding, p.RecoveryKEK
+	subjectKind := contract.RecoveryWrapSubject
+	event := nativeProcessEvent{Kind: "recovery-plaintext", Role: "recovery-private"}
+	if p.RecipientOracle {
+		encoded, selector = p.RecipientBinding, p.RecipientKEK
+		subjectKind = contract.OrdinaryWrapSubject
+		event.Kind, event.Role = "recipient-plaintext", "recipient-private"
+	}
+	if !expected || len(p.ExpectedSHA256) != 1 || selector == "" || route == nil {
+		return true, contract.CryptoCustodyUnavailable
+	}
+	bindings, err := contract.DecodeBindingTable(encoded)
+	if err != nil || len(bindings) != 1 {
+		return true, contract.CryptoCustodyUnavailable
+	}
+	binding := bindings[0]
+	if binding.SubjectKind != subjectKind || binding.Binding.Provider != route.Family() ||
+		binding.Binding.Provider != selected.Binding.Binding.Provider || binding.Binding.KeySelector != selector ||
+		p.RecipientOracle && (binding.SubjectID == selected.Binding.SubjectID || selector == selected.Binding.Binding.KeySelector) {
+		return true, contract.CryptoCustodyUnavailable
+	}
+	wrapCore, err := custody.ValueWrapCore(selected.Core, binding)
+	if err != nil {
+		return true, contract.CryptoCustodyUnavailable
+	}
+	index := -1
+	for i, wrap := range selected.Access.Wraps {
+		if wrap.SubjectKind != subjectKind || p.RecipientOracle && wrap.SubjectID != binding.SubjectID {
+			continue
+		}
+		if index >= 0 || !applyWrapMatches(wrap, wrapCore) {
+			return true, contract.CryptoCustodyUnavailable
+		}
+		index = i
+	}
+	if p.RecipientOracle {
+		member := slices.Contains(selected.Entry.Recipients, binding.SubjectID)
+		if index < 0 && !member {
+			if cancelled := sessionCancellation(ctx, a); cancelled != contract.CryptoSuccess {
+				return true, cancelled
+			}
+			event.WrapAbsent = true
+			if nativeProcessRecord(event) != nil {
+				return true, contract.CryptoCustodyUnavailable
+			}
+			if cancelled := sessionCancellation(ctx, a); cancelled != contract.CryptoSuccess {
+				return true, cancelled
+			}
+			return true, contract.CryptoCustodyUnavailable
+		}
+		if !member {
+			return true, contract.CryptoCustodyUnavailable
+		}
+	}
+	packetContext, err := contract.RSAPacketContextDigest(wrapCore)
+	if err != nil || index < 0 {
+		return true, contract.CryptoCustodyUnavailable
+	}
+	// Reuse the exact private packet/value owner. Only its borrowed binding and
+	// selected wrap change; no selection is admitted and no consumer is minted.
+	borrowed := selected
+	borrowed.Binding = binding
+	plain, uses, code := openConsumerValue(ctx, a, route, borrowed, index, packetContext)
+	if plain != nil {
+		defer clear(plain[:cap(plain)])
+	}
+	if cancelled := sessionCancellation(ctx, a); cancelled != contract.CryptoSuccess {
+		return true, cancelled
+	}
+	if code == contract.CryptoSuccess {
+		sum := sha256.Sum256(plain)
+		event.Matched = hex.EncodeToString(sum[:]) == want
+		event.Count = 1
+	} else if len(uses) == 1 {
+		use := uses[0]
+		event.PermissionDenied = use.SubjectKind == subjectKind && use.SubjectID == binding.SubjectID &&
+			use.BindingID == binding.Binding.BindingID && use.Purpose == contract.KeyUseMaterialOpen &&
+			use.Outcome == contract.KeyUseDenied && use.Count == 1
+	}
+	if nativeProcessRecord(event) != nil {
+		return true, contract.CryptoCustodyUnavailable
+	}
+	if cancelled := sessionCancellation(ctx, a); cancelled != contract.CryptoSuccess {
+		return true, cancelled
+	}
+	// The private equality observation never constitutes Product reconstruction
+	// success. The ordinary Authority open is not reached in this oracle phase.
+	if code == contract.CryptoCancelled || code == contract.CryptoExpired {
+		return true, code
+	}
+	return true, contract.CryptoCustodyUnavailable
+}

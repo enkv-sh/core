@@ -1,0 +1,15 @@
+{
+  "schema_version": 2,
+  "name": "public-configuration-output",
+  "description": "Opt-in public apply, standalone publication and combined publication through the matching cloud profile and GitHub repository, organization and environment profiles.",
+  "required_roles": [
+    "authority",
+    "apply",
+    "reader",
+    "cleanup"
+  ],
+  "scenarios": [
+    "public-configuration.output-standalone/output_standalone",
+    "public-configuration.output-combined/output_combined"
+  ]
+}

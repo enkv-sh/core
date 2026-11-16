@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "name": "output-contract-unit",
+  "description": "Retain race-enabled unit evidence for the canonical output record contracts.",
+  "steps": [
+    {
+      "id": "contract",
+      "kind": "unit",
+      "packages": ["core/contract"]
+    }
+  ]
+}

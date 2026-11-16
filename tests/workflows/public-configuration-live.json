@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "name": "public-configuration-live",
+  "description": "Explicit opt-in public configuration scenario delivery; replace example resource/login contexts before owner-authorized live execution. No provisioning or IAM changes.",
+  "steps": [
+    {
+      "id": "public-aws-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration.json"
+      ],
+      "environment": "../environments/public-aws.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-gcp-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration.json"
+      ],
+      "environment": "../environments/public-gcp.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-aws-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration.json"
+      ],
+      "environment": "../environments/public-aws.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "public-gcp-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration.json"
+      ],
+      "environment": "../environments/public-gcp.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "enabled"
+    }
+  ]
+}

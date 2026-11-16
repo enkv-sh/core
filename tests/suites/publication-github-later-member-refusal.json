@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "name": "publication-github-later-member-refusal",
+  "description": "GitHub repository, organization and environment first member acknowledgement followed by later-member admission refusal; retained ambiguity fixture namespace.",
+  "required_roles": [
+    "authority",
+    "recovery"
+  ],
+  "scenarios": [
+    "publication.github-repository.later-member-refusal/plain1_secret1_first_target_ack_later_not_sent",
+    "publication.github-organization.later-member-refusal/plain1_secret1_first_target_ack_later_not_sent",
+    "publication.github-environment.later-member-refusal/plain1_secret1_first_target_ack_later_not_sent"
+  ]
+}

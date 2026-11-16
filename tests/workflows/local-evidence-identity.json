@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "execution": {
+    "parallel": 4
+  },
+  "name": "local-evidence-identity",
+  "description": "Check local file ownership, tool and private-directory boundaries, bounded JSON reads and generator-ledger concurrency.",
+  "profile": "dev",
+  "steps": [
+    {
+      "id": "ownership-1",
+      "kind": "runner-tests",
+      "tests": [
+        "TestLocalFileComparisonDoesNotUseMountNumbers"
+      ]
+    },
+    {
+      "id": "ownership-20",
+      "kind": "runner-tests",
+      "tests": [
+        "TestToolDirectoryCleanupPreservesReplacementFile"
+      ]
+    },
+    {
+      "id": "ownership-21",
+      "kind": "runner-tests",
+      "tests": [
+        "TestToolDirectoriesRefuseSymlinkAndPreserveNewFiles"
+      ]
+    },
+    {
+      "id": "ownership-22",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPrivateRemovalRejectsChangedOwnershipAndSymlinks"
+      ]
+    },
+    {
+      "id": "ownership-23",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicConfigurationEvidenceHandoffRejectsChangedOriginals"
+      ]
+    },
+    {
+      "id": "ownership-24",
+      "kind": "runner-tests",
+      "tests": [
+        "TestReadJSONLimitEnforcesCallerBound"
+      ]
+    },
+    {
+      "id": "ownership-25",
+      "kind": "runner-tests",
+      "tests": [
+        "TestGeneratorFixtureLedgerConcurrentUpdatesKeepEveryEnteredAttempt"
+      ]
+    },
+    {
+      "id": "ownership-26",
+      "kind": "runner-tests",
+      "tests": [
+        "TestGeneratorFixtureLedgerCrossProcessRestartAndContention"
+      ]
+    }
+  ]
+}

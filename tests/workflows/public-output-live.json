@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "name": "public-output-live",
+  "description": "Explicit opt-in public output flows using standard SDK/ADC and GITHUB_TOKEN. Covers matching cloud output and all three GitHub scopes; supplies no executed provider qualification.",
+  "steps": [
+    {
+      "id": "public-output-aws-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-output.json"
+      ],
+      "environment": "../environments/public-output-aws.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-output.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-output-gcp-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-output.json"
+      ],
+      "environment": "../environments/public-output-gcp.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-output.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-output-aws-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-output.json"
+      ],
+      "environment": "../environments/public-output-aws.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-output.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "public-output-gcp-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-output.json"
+      ],
+      "environment": "../environments/public-output-gcp.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-output.json",
+      "recovery_mode": "enabled"
+    }
+  ]
+}

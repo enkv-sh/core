@@ -1,0 +1,36 @@
+{
+  "schema_version": 2,
+  "name": "public-configuration",
+  "description": "Opt-in public CLI init/transfer/set/apply/Reader joins with isolated standard AWS SSO or GCP user ADC contexts, exact required denials, source preservation and owned cleanup; implemented scenario selection is not a live pass.",
+  "required_roles": [
+    "authority",
+    "apply",
+    "reader",
+    "consumer",
+    "cleanup",
+    "denied-public",
+    "denied-normal-signing",
+    "denied-authority-private",
+    "denied-recovery-signing",
+    "denied-recovery-private",
+    "successor",
+    "recovery",
+    "recipient-consumer",
+    "excluded-consumer",
+    "proposer"
+  ],
+  "scenarios": [
+    "public-configuration.standard-discovery/standard_discovery",
+    "public-configuration.empty-initialization/empty_initialization",
+    "public-configuration.required-public-denied/required_public_denied",
+    "public-configuration.normal-signing-denied/normal_signing_denied",
+    "public-configuration.authority-private-denied/authority_private_denied",
+    "public-configuration.recovery-signing-denied/recovery_signing_denied",
+    "public-configuration.recovery-private-denied/recovery_private_denied",
+    "public-configuration.portable-validation/portable_validation",
+    "public-configuration.fresh-secret-apply/fresh_secret_apply",
+    "public-configuration.retained-input-access/retained_input_access",
+    "public-configuration.readonly-unknown-outcomes/readonly_unknown_outcomes",
+    "public-configuration.recipient-lifecycle/recipient_lifecycle"
+  ]
+}

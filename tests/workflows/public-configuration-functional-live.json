@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "name": "public-configuration-functional-live",
+  "description": "Explicit opt-in public configuration functional checks with pre-existing keys and isolated assumed identities. Excludes SSO and direct-user ADC discovery proof. Requires prepared IAM permissions and SDK contexts.",
+  "steps": [
+    {
+      "id": "public-functional-aws-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-functional.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-functional-gcp-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-functional.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-functional-aws-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-functional.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "public-functional-gcp-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-functional.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "enabled"
+    }
+  ]
+}

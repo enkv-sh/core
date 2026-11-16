@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "name": "capacity-gc-local",
+  "profile": "full",
+  "description": "Local catalog, capability/fresh-fact boundaries, and shared fixture coverage for bounded GC; no live scenario invocation.",
+  "execution": {
+    "parallel": 1
+  },
+  "steps": [
+    {
+      "id": "catalog",
+      "kind": "runner-tests",
+      "tests": [
+        "TestCapacityGCCatalogKeepsExactPublicRolesAndProviderModes"
+      ]
+    },
+    {
+      "id": "workflow",
+      "kind": "runner-tests",
+      "tests": [
+        "TestCapacityGCPreparedWorkflowHasFourExactProviderModeCells"
+      ]
+    },
+    {
+      "id": "aws-effect-token",
+      "kind": "assembly-checks",
+      "responsibility": "aws",
+      "tests": [
+        "TestPublicCapacityGCCompleteResultUsesProductEffectToken"
+      ]
+    },
+    {
+      "id": "gcp-effect-token",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestPublicCapacityGCCompleteResultUsesProductEffectToken"
+      ]
+    },
+    {
+      "id": "gcp-capture",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestPublicCapacityGCCaptureKeepsSeparateQueryAndEffectCapabilities"
+      ]
+    },
+    {
+      "id": "gcp-fresh-facts",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestPublicCapacityGCFreshFactsRequireExactConditionAndRun"
+      ]
+    },
+    {
+      "id": "aws-capture",
+      "kind": "assembly-checks",
+      "responsibility": "aws",
+      "tests": [
+        "TestPublicCapacityGCCaptureKeepsSeparateQueryAndEffectCapabilities"
+      ]
+    },
+    {
+      "id": "aws-fresh-facts",
+      "kind": "assembly-checks",
+      "responsibility": "aws",
+      "tests": [
+        "TestPublicCapacityGCFreshFactsRequireExactConditionAndRun"
+      ]
+    },
+    {
+      "id": "fixture-cold-open",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestSuccessionConfiguredFixtureColdOpen"
+      ]
+    },
+    {
+      "id": "fixture-owner-isolation",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestSuccessionConfiguredFixtureOwnerIsolation"
+      ]
+    },
+    {
+      "id": "actual-joint-maximum",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestGCActualJointMaximumCapacityAndUsefulReclamationMemory"
+      ]
+    }
+  ]
+}

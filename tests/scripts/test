@@ -1,0 +1,18 @@
+#!/bin/sh
+set -eu
+case "${1-}" in
+	lint|check|dev) export GOPROXY=off GOSUMDB=off GONOPROXY=none ;;
+esac
+for argument in "$@"; do
+	case "$argument" in
+		-test|-test=*|--test|--test=*|-package|-package=*|--package|--package=*) export GOPROXY=off GOSUMDB=off GONOPROXY=none ;;
+	esac
+done
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+repo_root=$(CDPATH= cd -- "$script_dir/../.." && pwd -P)
+supervisor="$repo_root/tests/.supervisor/supervisor"
+if [ ! -f "$supervisor" ] || [ ! -x "$supervisor" ] || [ -L "$supervisor" ]; then
+	printf '%s\n' 'Test supervisor is missing; run tests/scripts/setup-supervisor' >&2
+	exit 1
+fi
+exec "$supervisor" invoke --root "$repo_root" -- "$@"

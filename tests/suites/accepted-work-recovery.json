@@ -1,0 +1,31 @@
+{
+  "schema_version": 2,
+  "name": "accepted-work-recovery",
+  "description": "Retain accepted sources and late results through current-key recovery and repeated authority or recovery key loss.",
+  "required_roles": [
+    "authority",
+    "recovery",
+    "replacement-store",
+    "normal-signer-0",
+    "authority-decrypter-0",
+    "reader",
+    "denied-reader",
+    "recovery-signer-0",
+    "authority-decrypter-1",
+    "authority-decrypter-2",
+    "recovery-decrypter-0",
+    "recovery-decrypter-1",
+    "recovery-decrypter-2",
+    "reader-successor"
+  ],
+  "scenarios": [
+    "accepted.source-mode0-late-result/source0_late_result",
+    "accepted.source-mode1-late-result/source1_late_result",
+    "accepted.source-mode2-late-result/source2_late_result",
+    "accepted.same-value-reader-union/source2_late_result_reader_union",
+    "accepted.source-mode0-reciprocal-loss/source0_four_replacements_late_result",
+    "accepted.source-mode1-reciprocal-loss/source1_four_replacements_late_result",
+    "accepted.source-mode2-reciprocal-loss/source2_four_replacements_late_result",
+    "history.secret-lifecycle-and-recovery/plain1_secret1_reader_and_authority_history"
+  ]
+}

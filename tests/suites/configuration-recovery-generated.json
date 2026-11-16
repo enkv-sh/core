@@ -1,0 +1,25 @@
+{
+  "schema_version": 2,
+  "name": "configuration-recovery-generated",
+  "description": "Recover current generated values and selected generated work after complete local state loss without generator, publication or cleanup effects.",
+  "required_roles": [
+    "authority",
+    "recovery",
+    "replacement-store",
+    "normal-signer-0",
+    "authority-decrypter-0",
+    "recovery-signer-0",
+    "recovery-decrypter-0",
+    "normal-signer-1",
+    "normal-signer-2",
+    "authority-decrypter-1",
+    "authority-decrypter-2"
+  ],
+  "scenarios": [
+    "reconstruction.mixed-generated/complete_loss_mixed_generated",
+    "reconstruction.generated-repeated-later/complete_loss_generated_repeated_later",
+    "reconstruction.generated-active/complete_loss_generated_active",
+    "reconstruction.generated-retiring/complete_loss_generated_retiring",
+    "reconstruction.generated-uncertain/complete_loss_generated_uncertain"
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "schema_version": 2,
+  "name": "authority-operator",
+  "description": "Native abandonment list, protected plan, stale refusal, apply and retained receipt commands; Recovery signing replacement and disabled refusal; independent private Recipient consumption.",
+  "required_roles": ["authority", "reader", "cleanup", "recipient-consumer", "successor"],
+  "scenarios": [
+    "operator.abandon-selected-work-through-cli/one_generated_group_stale_plan_apply_history_receipt",
+    "operator.replace-authority-then-abandon-through-cli/recovery_signing_replacement_then_stale_plan_apply_history",
+    "operator.disabled-recovery-refuses-authority-replacement-through-cli/disabled_recovery_preserves_selected_work"
+  ]
+}

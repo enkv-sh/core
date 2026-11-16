@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "name": "stock-plugin-acceptance-live",
+  "profile": "full",
+  "description": "Explicit opt-in stock CLI cloud acceptance in AWS and GCP, Recovery enabled. Each cell uses a reusable dedicated Store bucket with a fresh prefix per invocation and prefix-only cleanup. Example inputs grant no live execution. No provisioning, login, refresh, uploads of evidence, automatic retries or bucket recreation.",
+  "execution": {
+    "parallel": 2
+  },
+  "steps": [
+    {
+      "id": "stock-plugin-aws-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/stock-plugin-acceptance.json"
+      ],
+      "environment": "../environments/stock-plugin-aws.example.json",
+      "additional_providers": {
+        "cloudflare": "../environments/cloudflare-stock-plugin.example.json"
+      },
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/stock-plugin-acceptance.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "stock-plugin-gcp-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/stock-plugin-acceptance.json"
+      ],
+      "environment": "../environments/stock-plugin-gcp.example.json",
+      "additional_providers": {
+        "cloudflare": "../environments/cloudflare-stock-plugin.example.json"
+      },
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/stock-plugin-acceptance.json",
+      "recovery_mode": "enabled"
+    }
+  ]
+}

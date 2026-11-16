@@ -1,0 +1,15 @@
+version: "2"
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+run:
+  tests: true
+  modules-download-mode: readonly
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

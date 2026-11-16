@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "name": "public-inspection-receipts",
+  "description": "Opt-in public complete and Recipient-scoped inspection plus retained receipt list/detail through an object-GET-only Reader.",
+  "required_roles": [
+    "authority",
+    "apply",
+    "reader",
+    "cleanup"
+  ],
+  "scenarios": [
+    "public-configuration.inspection-receipts/inspection_receipts"
+  ]
+}

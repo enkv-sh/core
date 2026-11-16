@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "name": "output-manifest-sdk-source-integration",
+  "profile": "dev",
+  "execution": {
+    "parallel": 4
+  },
+  "description": "Affected test assembly and exact SDK dependency admission checks.",
+  "steps": [
+    {
+      "id": "source-integration-11",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicationInputPreparationAndProjections"
+      ]
+    },
+    {
+      "id": "dependency-manifest",
+      "kind": "unit",
+      "packages": [
+        "compositions/outputhost"
+      ],
+      "package": "compositions/outputhost",
+      "tests": [
+        "TestDependencyManifestCanonicalFramingAndHelperIdentity"
+      ]
+    },
+    {
+      "id": "dependency-closure-refusal",
+      "kind": "unit",
+      "packages": [
+        "compositions/outputhost"
+      ],
+      "package": "compositions/outputhost",
+      "tests": [
+        "TestDependencyManifestRejectsUnboundClosureAndInvalidRepresentations"
+      ]
+    },
+    {
+      "id": "compiled-output-closure",
+      "kind": "unit",
+      "packages": [
+        "compositions/outputhost"
+      ],
+      "package": "compositions/outputhost",
+      "tests": [
+        "TestArtifactBuildInfoRequiresExactCompiledSetForEveryCommand"
+      ]
+    },
+    {
+      "id": "installed-output-binding",
+      "kind": "unit",
+      "packages": [
+        "compositions/outputhost"
+      ],
+      "package": "compositions/outputhost",
+      "tests": [
+        "TestInstallationRequiresExactSupportedFamilyAndDependency"
+      ]
+    },
+    {
+      "id": "manifest-public-modules",
+      "kind": "unit",
+      "packages": [
+        "sdk/manifest-generator",
+        "plugins/manifest-generators/generic-json",
+        "sdk/examples/ini-reference-manifest",
+        "protocols/manifest-generator",
+        "plugins/manifest-generators/opentofu-tfvars-json"
+      ]
+    },
+    {
+      "id": "independent-output-native-gate",
+      "kind": "unit",
+      "packages": [
+        "compositions/outputhost"
+      ],
+      "package": "compositions/outputhost",
+      "tests": [
+        "TestIndependentOutputCommandPassiveAndCredentialGate"
+      ]
+    },
+    {
+      "id": "official-output-main-lifecycle",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/testsupport/nativeprocess",
+      "tests": [
+        "TestPublicNativePublicationAllProfilesWithoutRecovery"
+      ]
+    },
+    {
+      "id": "official-output-credential-refusal",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/testsupport/nativeprocess",
+      "tests": [
+        "TestPublicNativeOutputCredentialCaptureJoinsIsolatedChild"
+      ]
+    },
+    {
+      "id": "core-render-bridge",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestManifestRendererReturnChecksCommonByteContract"
+      ]
+    },
+    {
+      "id": "source-integration-10",
+      "kind": "runner-tests",
+      "tests": [
+        "TestLintVetsEverySourceOwnerWithoutExecutingFixtures"
+      ]
+    }
+  ]
+}

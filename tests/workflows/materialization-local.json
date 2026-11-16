@@ -1,0 +1,1116 @@
+{
+  "schema_version": 1,
+  "name": "materialization-local",
+  "profile": "full",
+  "execution": {
+    "parallel": 4
+  },
+  "description": "Focused local materialization admission, custody, native file, public CLI, GC interleavings and registration checks. No live provider effects.",
+  "steps": [
+    {
+      "kind": "unit",
+      "packages": [
+        "telemetry"
+      ],
+      "package": "telemetry",
+      "id": "telemetry-materialization-operations-keep-native-stages-private",
+      "tests": [
+        "TestMaterializationOperationsKeepNativeStagesPrivate"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "telemetry"
+      ],
+      "package": "telemetry",
+      "id": "telemetry-planning-operations-have-read-only-stages",
+      "tests": [
+        "TestPlanningOperationsHaveReadOnlyStages"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core/contract",
+      "id": "core-contract-materialization-request-owns-nonempty-sorted-names",
+      "tests": [
+        "TestMaterializationRequestOwnsNonemptySortedNames"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core/contract",
+      "id": "core-contract-materialization-facts-preserve-late-replacement-and-reject-false-completion",
+      "tests": [
+        "TestMaterializationFactsPreserveLateReplacementAndRejectFalseCompletion"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "id": "core-materialization-admission-binds-whole-plain-selection",
+      "tests": [
+        "TestMaterializationAdmissionBindsWholePlainSelection"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "id": "core-installed-materialization-refuses-without-finite-public-admission",
+      "tests": [
+        "TestInstalledMaterializationRefusesWithoutFinitePublicAdmission"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "id": "core-installed-materialization-captures-request-and-finishes-without-store",
+      "tests": [
+        "TestInstalledMaterializationCapturesRequestAndFinishesWithoutStore"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "id": "core-installed-materialization-close-cancels-and-joins-custody",
+      "tests": [
+        "TestInstalledMaterializationCloseCancelsAndJoinsCustody"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-materialization-env-emits-independent-literal-records",
+      "tests": [
+        "TestMaterializationEnvEmitsIndependentLiteralRecords"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-materialization-env-refuses-unsupported-values",
+      "tests": [
+        "TestMaterializationEnvRefusesUnsupportedValues"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-materialization-env-matches-complete-surface",
+      "tests": [
+        "TestMaterializationEnvMatchesCompleteSurface"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-materialization-env-pinned-consumer",
+      "tests": [
+        "TestMaterializationEnvPinnedConsumer"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-materialization-env-maximum-encoded-surface",
+      "tests": [
+        "TestMaterializationEnvMaximumEncodedSurface"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-materialization-env-refuses-oversized-selection-before-allocation",
+      "tests": [
+        "TestMaterializationEnvRefusesOversizedSelectionBeforeAllocation"
+      ]
+    },
+    {
+      "kind": "component-tests",
+      "profile": "full",
+      "id": "component-tests-consumer-selection-admits-whole-mixed-set-before-private-use",
+      "tests": [
+        "TestConsumerSelectionAdmitsWholeMixedSetBeforePrivateUse"
+      ]
+    },
+    {
+      "kind": "component-tests",
+      "profile": "full",
+      "id": "component-tests-consumer-selection-requires-changed-authentic-headbefore-restart",
+      "tests": [
+        "TestConsumerSelectionRequiresChangedAuthenticHEADBeforeRestart"
+      ]
+    },
+    {
+      "kind": "component-tests",
+      "profile": "full",
+      "id": "component-tests-consumer-selection-corruption-does-not-enter-changed-headgate",
+      "tests": [
+        "TestConsumerSelectionCorruptionDoesNotEnterChangedHEADGate"
+      ]
+    },
+    {
+      "kind": "component-tests",
+      "profile": "full",
+      "id": "component-tests-consumer-selection-headproof-diagnosis-missing-object-is-terminal",
+      "tests": [
+        "TestConsumerSelectionHEADProofDiagnosisMissingObjectIsTerminal"
+      ]
+    },
+    {
+      "kind": "component-tests",
+      "profile": "full",
+      "id": "component-tests-consumer-selection-restarts-after-unread-child-loss-and-changed-head",
+      "tests": [
+        "TestConsumerSelectionRestartsAfterUnreadChildLossAndChangedHEAD"
+      ]
+    },
+    {
+      "kind": "component-tests",
+      "profile": "full",
+      "id": "component-tests-consumer-selection-captures-request-basis-actor-and-one-deadline",
+      "tests": [
+        "TestConsumerSelectionCapturesRequestBasisActorAndOneDeadline"
+      ]
+    },
+    {
+      "kind": "component-tests",
+      "profile": "full",
+      "id": "component-tests-consumer-selection-cancellation-after-loss-stops-before-headgate",
+      "tests": [
+        "TestConsumerSelectionCancellationAfterLossStopsBeforeHEADGate"
+      ]
+    },
+    {
+      "kind": "component-tests",
+      "profile": "full",
+      "id": "component-tests-loaded-consumer-custody-finishes-after-successor-and-old-child-removal",
+      "tests": [
+        "TestLoadedConsumerCustodyFinishesAfterSuccessorAndOldChildRemoval"
+      ]
+    },
+    {
+      "kind": "component-tests",
+      "profile": "full",
+      "id": "component-tests-consumer-restart-keeps-diagnostic-evidence-with-metrics-and-traces-off",
+      "tests": [
+        "TestConsumerRestartKeepsDiagnosticEvidenceWithMetricsAndTracesOff"
+      ]
+    },
+    {
+      "kind": "component-tests",
+      "profile": "full",
+      "id": "component-tests-reader-fixed-observation-and-unread-selected-object-lifetime",
+      "tests": [
+        "TestReaderFixedObservationAndUnreadSelectedObjectLifetime"
+      ]
+    },
+    {
+      "kind": "component-tests",
+      "profile": "full",
+      "id": "component-tests-reader-manifest-callable-complete-mixed-artifact",
+      "tests": [
+        "TestReaderManifestCallableCompleteMixedArtifact"
+      ]
+    },
+    {
+      "kind": "component-tests",
+      "profile": "full",
+      "id": "component-tests-reader-selection-rejects-wrong-basis-and-incomplete-closure",
+      "tests": [
+        "TestReaderSelectionRejectsWrongBasisAndIncompleteClosure"
+      ]
+    },
+    {
+      "kind": "component-tests",
+      "profile": "full",
+      "id": "component-tests-reader-authenticates-independent-successor-signing-basis",
+      "tests": [
+        "TestReaderAuthenticatesIndependentSuccessorSigningBasis"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-materialization-env-stops-on-ioand-cancellation",
+      "tests": [
+        "TestMaterializationEnvStopsOnIOAndCancellation"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "id": "core-materialization-result-validates-local-admission-and-rejects-canonical-mutation-facts",
+      "tests": [
+        "TestMaterializationResultValidatesLocalAdmissionAndRejectsCanonicalMutationFacts"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "id": "core-materialization-admission-authorizes-every-mixed-entry-before-handoff",
+      "tests": [
+        "TestMaterializationAdmissionAuthorizesEveryMixedEntryBeforeHandoff"
+      ]
+    },
+    {
+      "kind": "component-tests",
+      "profile": "full",
+      "id": "component-materialization-head-budget",
+      "tests": [
+        "TestMaterializationSelectionBoundsThreeImagesFourObservationsAndPublicHEADCalls"
+      ]
+    },
+    {
+      "kind": "component-tests",
+      "profile": "full",
+      "id": "component-tests-materialization-admission-headmismatch-stops-before-selected-children",
+      "tests": [
+        "TestMaterializationAdmissionHEADMismatchStopsBeforeSelectedChildren"
+      ]
+    },
+    {
+      "kind": "component-tests",
+      "profile": "full",
+      "id": "component-tests-gcunread-selection-loss-keeps-query-fixed-and-restarts-consumer",
+      "tests": [
+        "TestGCUnreadSelectionLossKeepsQueryFixedAndRestartsConsumer"
+      ]
+    },
+    {
+      "kind": "component-tests",
+      "profile": "full",
+      "id": "component-tests-gcloaded-query-and-consumer-keep-original-owned-observation",
+      "tests": [
+        "TestGCLoadedQueryAndConsumerKeepOriginalOwnedObservation"
+      ]
+    },
+    {
+      "kind": "component-tests",
+      "profile": "full",
+      "id": "component-tests-internal-first-secret-selection-and-reader",
+      "tests": [
+        "TestInternalFirstSecretSelectionAndReader"
+      ]
+    },
+    {
+      "kind": "component-tests",
+      "profile": "full",
+      "id": "component-tests-end-work-selects-two-damaged-disposable-groups-without-repair",
+      "tests": [
+        "TestEndWorkSelectsTwoDamagedDisposableGroupsWithoutRepair"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-materialization-custody-owns-complete-mixed-set",
+      "tests": [
+        "TestMaterializationCustodyOwnsCompleteMixedSet"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-materialization-custody-plain-only-has-no-private-route",
+      "tests": [
+        "TestMaterializationCustodyPlainOnlyHasNoPrivateRoute"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-materialization-custody-diagnostics-without-metrics-or-traces",
+      "tests": [
+        "TestMaterializationCustodyDiagnosticsWithoutMetricsOrTraces"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-materialization-custody-later-failure-creates-no-candidate",
+      "tests": [
+        "TestMaterializationCustodyLaterFailureCreatesNoCandidate"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-materialization-custody-rechecks-route-before-authentication",
+      "tests": [
+        "TestMaterializationCustodyRechecksRouteBeforeAuthentication"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-materialization-custody-rejects-independent-pins-before-private-use",
+      "tests": [
+        "TestMaterializationCustodyRejectsIndependentPinsBeforePrivateUse"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-materialization-custody-requires-original-context-and-consumes-refusal",
+      "tests": [
+        "TestMaterializationCustodyRequiresOriginalContextAndConsumesRefusal"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-materialization-custody-cancellation-joins-private-work",
+      "tests": [
+        "TestMaterializationCustodyCancellationJoinsPrivateWork"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-materialization-custody-cancellation-joins-native-work",
+      "tests": [
+        "TestMaterializationCustodyCancellationJoinsNativeWork"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-materialization-custody-expiry-and-close-prevent-later-use",
+      "tests": [
+        "TestMaterializationCustodyExpiryAndClosePreventLaterUse"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-materialization-custody-maximum-raw-ownership",
+      "tests": [
+        "TestMaterializationCustodyMaximumRawOwnership"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-materialization-file-installs-complete-private-surface",
+      "tests": [
+        "TestMaterializationFileInstallsCompletePrivateSurface"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-materialization-file-refuses-aliases-and-invalid-targets",
+      "tests": [
+        "TestMaterializationFileRefusesAliasesAndInvalidTargets"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-materialization-file-preserves-fault-and-cleanup-facts",
+      "tests": [
+        "TestMaterializationFilePreservesFaultAndCleanupFacts"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-materialization-file-preserves-ambiguous-effects-and-exact-cleanup-ownership",
+      "tests": [
+        "TestMaterializationFilePreservesAmbiguousEffectsAndExactCleanupOwnership"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-materialization-file-cancellation-waits-for-native-settlement",
+      "tests": [
+        "TestMaterializationFileCancellationWaitsForNativeSettlement"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-materialization-file-concurrent-replacement-observes-complete-candidates",
+      "tests": [
+        "TestMaterializationFileConcurrentReplacementObservesCompleteCandidates"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-materialization-file-native-process-cuts",
+      "tests": [
+        "TestMaterializationFileNativeProcessCuts"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-consumer-selected-reopen-and-ownership",
+      "tests": [
+        "TestConsumerSelectedReopenAndOwnership"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-consumer-authentication-failure-never-delivers",
+      "tests": [
+        "TestConsumerAuthenticationFailureNeverDelivers"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-consumer-cancellation-expiry-and-close-join",
+      "tests": [
+        "TestConsumerCancellationExpiryAndCloseJoin"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-consumer-pending-close-preserves-owner-without-holding-runtime-lock",
+      "tests": [
+        "TestConsumerPendingClosePreservesOwnerWithoutHoldingRuntimeLock"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-generated-consumer-opens-exact-generated-member",
+      "tests": [
+        "TestGeneratedConsumerOpensExactGeneratedMember"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-reconstruction-verifier-checks-private-layers-and-clears-packet",
+      "tests": [
+        "TestReconstructionVerifierChecksPrivateLayersAndClearsPacket"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-reconstruction-verifier-cancellation-and-close-join",
+      "tests": [
+        "TestReconstructionVerifierCancellationAndCloseJoin"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-private-decrypt-failure-meaning-across-preparation-owners",
+      "tests": [
+        "TestPrivateDecryptFailureMeaningAcrossPreparationOwners"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-materialization-custody-maximum-retained-access-ownership",
+      "tests": [
+        "TestMaterializationCustodyMaximumRetainedAccessOwnership"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ],
+      "package": "crypto",
+      "id": "crypto-planning-retained-access-union-keeps-current-membership-bound",
+      "tests": [
+        "TestPlanningRetainedAccessUnionKeepsCurrentMembershipBound"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/aws"
+      ],
+      "package": "compositions/aws",
+      "id": "compositions-aws-materialization-rejects-unfixed-public-installation",
+      "tests": [
+        "TestMaterializationRejectsUnfixedPublicInstallation"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/aws"
+      ],
+      "package": "compositions/aws",
+      "id": "compositions-aws-materialization-factory-pins-captured-trust-before-private-construction",
+      "tests": [
+        "TestMaterializationFactoryPinsCapturedTrustBeforePrivateConstruction"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/aws"
+      ],
+      "package": "compositions/aws",
+      "id": "compositions-aws-materialization-public-selection-has-no-private-fallback",
+      "tests": [
+        "TestMaterializationPublicSelectionHasNoPrivateFallback"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/aws"
+      ],
+      "package": "compositions/aws",
+      "id": "compositions-aws-planning-uses-only-current-authority-decrypt-route",
+      "tests": [
+        "TestPlanningUsesOnlyCurrentAuthorityDecryptRoute"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/gcp"
+      ],
+      "package": "compositions/gcp",
+      "id": "compositions-gcp-materialization-rejects-unfixed-public-installation",
+      "tests": [
+        "TestMaterializationRejectsUnfixedPublicInstallation"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/gcp"
+      ],
+      "package": "compositions/gcp",
+      "id": "compositions-gcp-materialization-factory-pins-captured-trust-before-private-construction",
+      "tests": [
+        "TestMaterializationFactoryPinsCapturedTrustBeforePrivateConstruction"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/gcp"
+      ],
+      "package": "compositions/gcp",
+      "id": "compositions-gcp-materialization-public-selection-has-no-private-fallback",
+      "tests": [
+        "TestMaterializationPublicSelectionHasNoPrivateFallback"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/gcp"
+      ],
+      "package": "compositions/gcp",
+      "id": "compositions-gcp-planning-uses-only-current-authority-decrypt-route",
+      "tests": [
+        "TestPlanningUsesOnlyCurrentAuthorityDecryptRoute"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "id": "compositions-full-materialization-constructors-preserve-exact-provider-cell",
+      "tests": [
+        "TestMaterializationConstructorsPreserveExactProviderCell"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "id": "full-materialization-current-state-formats",
+      "tests": [
+        "TestConfigurationMaterializationCapturesCurrentStateAndPreservesBothFormats"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "id": "compositions-full-configuration-materialization-rejects-invalid-requests-before-construction",
+      "tests": [
+        "TestConfigurationMaterializationRejectsInvalidRequestsBeforeConstruction"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "id": "full-materialization-source-pair-lifetime",
+      "tests": [
+        "TestConfigurationMaterializationFileOwnsCapturedPairAndSeparatesSourceFailure"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "id": "compositions-full-materialization-rendering-preserves-complete-safe-facts",
+      "tests": [
+        "TestMaterializationRenderingPreservesCompleteSafeFacts"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "id": "compositions-full-materialization-rendering-rejects-invalid-union-before-output",
+      "tests": [
+        "TestMaterializationRenderingRejectsInvalidUnionBeforeOutput"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "id": "compositions-full-materialization-rendering-reports-delivery-failure",
+      "tests": [
+        "TestMaterializationRenderingReportsDeliveryFailure"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/cmd/enkv",
+      "id": "compositions-full-cmd-enkv-materialize-captures-exact-request-once",
+      "tests": [
+        "TestMaterializeCapturesExactRequestOnce"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/cmd/enkv",
+      "id": "compositions-full-cmd-enkv-materialize-refuses-invalid-arguments-before-execution",
+      "tests": [
+        "TestMaterializeRefusesInvalidArgumentsBeforeExecution"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/cmd/enkv",
+      "id": "compositions-full-cmd-enkv-materialize-preserves-operation-on-result-delivery-failure",
+      "tests": [
+        "TestMaterializePreservesOperationOnResultDeliveryFailure"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/cmd/enkv",
+      "id": "compositions-full-cmd-enkv-materialize-dispatch-and-help",
+      "tests": [
+        "TestMaterializeDispatchAndHelp"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/cmd/enkv",
+      "id": "cli-materialization-result-delivery-cancellation",
+      "tests": [
+        "TestMaterializeReportsResultDeliveryFailureAfterInvocationCancellation"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/cmd/enkv",
+      "id": "compositions-full-cmd-enkv-public-query-grammar-rejects-invalid-selectors-before-executors",
+      "tests": [
+        "TestPublicQueryGrammarRejectsInvalidSelectorsBeforeExecutors"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/cmd/enkv",
+      "id": "compositions-full-cmd-enkv-public-query-cliforms-capture-exact-source-format-and-selector",
+      "tests": [
+        "TestPublicQueryCLIFormsCaptureExactSourceFormatAndSelector"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/cmd/enkv",
+      "id": "compositions-full-cmd-enkv-public-query-dispatch-help-and-incomplete-output-keep-closed-exit",
+      "tests": [
+        "TestPublicQueryDispatchHelpAndIncompleteOutputKeepClosedExit"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/cmd/enkv",
+      "id": "compositions-full-cmd-enkv-gcgrammar-rejects-ambiguous-inputs-before-executors",
+      "tests": [
+        "TestGCGrammarRejectsAmbiguousInputsBeforeExecutors"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/cmd/enkv",
+      "id": "compositions-full-cmd-enkv-gccommands-pass-exact-plan-and-continuation-requests",
+      "tests": [
+        "TestGCCommandsPassExactPlanAndContinuationRequests"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/testsupport/nativeprocess",
+      "id": "native-materialization-selected-recipient",
+      "tests": [
+        "TestPublicNativeMaterializationUsesSelectedRecipientValues"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/testsupport/nativeprocess",
+      "id": "native-materialization-unread-child-gc-restart",
+      "tests": [
+        "TestPublicNativeMaterializationRestartsAfterGCRemovesUnreadChild"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/testsupport/nativeprocess",
+      "id": "native-materialization-loaded-selection-after-gc",
+      "tests": [
+        "TestPublicNativeMaterializationCompletesLoadedSelectionAfterGC"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/testsupport/nativeprocess",
+      "id": "native-initialization-set-apply-reader",
+      "tests": [
+        "TestPublicNativeInitializationSetApplyAndPortableReader"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/testsupport/nativeprocess",
+      "id": "native-capacity-gc-pending-continuation",
+      "tests": [
+        "TestPublicNativeCapacityGCPlanApplyAndPendingContinuation"
+      ]
+    },
+    {
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core/testsupport/nativeprocess",
+      "id": "core-testsupport-nativeprocess-native-overlay-preserves-sources-and-refuses-changed-anchors",
+      "tests": [
+        "TestNativeOverlayPreservesSourcesAndRefusesChangedAnchors"
+      ]
+    },
+    {
+      "kind": "runner-tests",
+      "id": "runner-tests-public-materialization-catalog-keeps-exact-public-roles-and-provider-modes",
+      "tests": [
+        "TestPublicMaterializationCatalogKeepsExactPublicRolesAndProviderModes"
+      ]
+    },
+    {
+      "kind": "runner-tests",
+      "id": "runner-tests-public-materialization-saved-workflow-has-two-recovery-enabled-cells",
+      "tests": [
+        "TestPublicMaterializationSavedWorkflowHasTwoRecoveryEnabledCells"
+      ]
+    },
+    {
+      "kind": "runner-tests",
+      "id": "runner-tests-public-materialization-keeps-existing-public-workflow-inventories-separate",
+      "tests": [
+        "TestPublicMaterializationKeepsExistingPublicWorkflowInventoriesSeparate"
+      ]
+    },
+    {
+      "kind": "runner-tests",
+      "id": "runner-tests-saved-suites-use-concrete-scenarios",
+      "tests": [
+        "TestSavedSuitesUseConcreteScenarios"
+      ]
+    },
+    {
+      "kind": "runner-tests",
+      "id": "runner-tests-expected-schedule-projections",
+      "tests": [
+        "TestExpectedScheduleProjections"
+      ]
+    },
+    {
+      "kind": "runner-tests",
+      "id": "runner-tests-current-case-projection-preserves-historical-semantics",
+      "tests": [
+        "TestCurrentCaseProjectionPreservesHistoricalSemantics"
+      ]
+    },
+    {
+      "kind": "runner-tests",
+      "id": "runner-tests-public-configuration-saved-workflow-inventory",
+      "tests": [
+        "TestPublicConfigurationSavedWorkflowInventory"
+      ]
+    },
+    {
+      "kind": "runner-tests",
+      "id": "runner-tests-public-functional-saved-workflow-inventory",
+      "tests": [
+        "TestPublicFunctionalSavedWorkflowInventory"
+      ]
+    },
+    {
+      "kind": "runner-tests",
+      "id": "runner-tests-saved-fuzz-and-live-workflows-match-canonical",
+      "tests": [
+        "TestSavedFuzzAndLiveWorkflowsMatchCanonical"
+      ]
+    },
+    {
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "id": "gcp-public-materialization-file-observation-checks-exact-bytes-mode-and-whole-set",
+      "tests": [
+        "TestPublicMaterializationFileObservationChecksExactBytesModeAndWholeSet"
+      ]
+    },
+    {
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "id": "gcp-public-materialization-capture-requires-exact-recipient-route",
+      "tests": [
+        "TestPublicMaterializationCaptureRequiresExactRecipientRoute"
+      ]
+    },
+    {
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "id": "gcp-public-materialization-evidence-requires-exact-selection-and-native-facts",
+      "tests": [
+        "TestPublicMaterializationEvidenceRequiresExactSelectionAndNativeFacts"
+      ]
+    },
+    {
+      "kind": "assembly-checks",
+      "responsibility": "aws",
+      "id": "aws-public-materialization-capture-requires-exact-recipient-route",
+      "tests": [
+        "TestPublicMaterializationCaptureRequiresExactRecipientRoute"
+      ]
+    },
+    {
+      "id": "core-projection-identity",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestMaterializationProjectionIdentityBindsFinalSelectionAndResolvedActor"
+      ]
+    },
+    {
+      "id": "full-pre-admission-identity",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestConfigurationMaterializationPreAdmissionRefusalsKeepLocalIdentity"
+      ]
+    }
+  ]
+}

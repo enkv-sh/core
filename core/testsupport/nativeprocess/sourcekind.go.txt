@@ -1,0 +1,166 @@
+// Fixed source-kind facts concern the actual SDK-selected source. They do not
+// record credential bytes or prove when an operator performed a login.
+func nativeProcessSourceKind(kind string, matched bool) error {
+	p, err := nativeProcessLoad()
+	if err != nil {
+		return err
+	}
+	if kind != "aws-sso" && kind != "aws-assume-role" && kind != "aws-shared-credentials" && kind != "gcp-user-adc" && kind != "gcp-impersonated-adc" && kind != "gcp-service-account-adc" {
+		return nativeProcessRefused
+	}
+	matched = matched && (p.ExpectedSourceKind == "" || p.ExpectedSourceKind == kind)
+	if err := nativeProcessRecord(nativeProcessEvent{Kind: "source-kind", SourceKind: kind, Count: 1, Matched: matched}); err != nil {
+		return err
+	}
+	if p.RequireStandardSource && !matched {
+		return nativeProcessRefused
+	}
+	return nil
+}
+
+func nativeProcessADCSourceKind(selectedJSON []byte) string {
+	var selected struct {
+		Type           string `json:"type"`
+		TokenURI       string `json:"token_uri"`
+		UniverseDomain string `json:"universe_domain"`
+		URL            string `json:"service_account_impersonation_url"`
+		Source         struct {
+			Type string `json:"type"`
+		} `json:"source_credentials"`
+	}
+	if json.Unmarshal(selectedJSON, &selected) != nil {
+		return ""
+	}
+	if selected.Type == "service_account" {
+		if selected.TokenURI == "https://oauth2.googleapis.com/token" && (selected.UniverseDomain == "" || selected.UniverseDomain == "googleapis.com") {
+			return "gcp-service-account-adc"
+		}
+		return ""
+	}
+	if selected.Type == "authorized_user" {
+		return "gcp-user-adc"
+	}
+	if selected.Type != "impersonated_service_account" || selected.Source.Type != "authorized_user" {
+		return ""
+	}
+	account, ok := strings.CutPrefix(selected.URL, "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/")
+	if !ok {
+		return ""
+	}
+	account, ok = strings.CutSuffix(account, ":generateAccessToken")
+	if !ok || len(account) > 254 || strings.Count(account, "@") != 1 || !strings.HasSuffix(account, ".iam.gserviceaccount.com") {
+		return ""
+	}
+	for _, c := range account {
+		if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || strings.ContainsRune("-_.@", c)) {
+			return ""
+		}
+	}
+	return "gcp-impersonated-adc"
+}
+func nativeProcessObserveADC(selectedJSON []byte) error {
+	p, err := nativeProcessLoad()
+	if err != nil {
+		return err
+	}
+	actual := nativeProcessADCSourceKind(selectedJSON)
+	kind := actual
+	if kind == "" {
+		kind = p.ExpectedSourceKind
+		if kind == "" {
+			kind = "gcp-user-adc"
+		}
+	}
+	return nativeProcessSourceKind(kind, actual == kind)
+}
+
+func nativeProcessSharedCredentialSource(source string) bool {
+	return strings.HasPrefix(source, "SharedConfigCredentials:") && len(source) > len("SharedConfigCredentials:")
+}
+
+func nativeProcessObserveAWS(source string, canExpire, sessionAbsent bool) error {
+	p, err := nativeProcessLoad()
+	if err != nil {
+		return err
+	}
+	kind, matched := p.ExpectedSourceKind, false
+	switch {
+	case source == "SSOProvider":
+		kind, matched = "aws-sso", true
+	case source == "AssumeRoleProvider":
+		kind, matched = "aws-assume-role", true
+	case nativeProcessSharedCredentialSource(source):
+		kind, matched = "aws-shared-credentials", !canExpire && sessionAbsent
+	}
+	if kind == "" {
+		kind = "aws-sso"
+	}
+	return nativeProcessSourceKind(kind, matched)
+}
+
+func nativeProcessAWSDefaultEndpoints(ctx context.Context, base *string, sources []any) error {
+	p, err := nativeProcessLoad()
+	if err != nil || !p.RequireStandardSource {
+		return err
+	}
+	if base != nil && *base != "" {
+		return nativeProcessRefused
+	}
+	for _, source := range sources {
+		configured, ok := source.(interface {
+			GetServiceBaseEndpoint(context.Context, string) (string, bool, error)
+		})
+		if !ok {
+			continue
+		}
+		for _, service := range []string{"SSO", "SSO OIDC", "STS"} {
+			endpoint, found, err := configured.GetServiceBaseEndpoint(ctx, service)
+			if err != nil || found && endpoint != "" {
+				return nativeProcessRefused
+			}
+		}
+	}
+	return nil
+}
+
+func nativeProcessObserveOutputADC(selected []byte, quota string) error {
+	if _, present := os.LookupEnv("ENKV_NATIVE_PROCESS_POLICY"); !present {
+		return nil
+	}
+	p, err := nativeProcessLoad()
+	if err != nil {
+		return err
+	}
+	if quota != p.QuotaProject {
+		return nativeProcessRefused
+	}
+	return nativeProcessObserveADC(selected)
+}
+
+func nativeProcessOutputCredentialClient(client *http.Client) (*http.Client, error) {
+	if _, present := os.LookupEnv("ENKV_NATIVE_PROCESS_POLICY"); !present {
+		return client, nil
+	}
+	p, err := nativeProcessLoad()
+	if err != nil {
+		return nil, err
+	}
+	if p.LocalAddress != "" {
+		client.Transport, err = nativeProcessLocalTransport(p)
+	}
+	return client, err
+}
+
+func nativeProcessObserveOutputAWS(source string, canExpire, sessionAbsent bool) error {
+	if _, present := os.LookupEnv("ENKV_NATIVE_PROCESS_POLICY"); !present {
+		return nil
+	}
+	return nativeProcessObserveAWS(source, canExpire, sessionAbsent)
+}
+
+func nativeProcessOutputAWSEndpoints(ctx context.Context, base *string, sources []any) error {
+	if _, present := os.LookupEnv("ENKV_NATIVE_PROCESS_POLICY"); !present {
+		return nil
+	}
+	return nativeProcessAWSDefaultEndpoints(ctx, base, sources)
+}

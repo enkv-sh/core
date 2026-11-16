@@ -1,0 +1,15 @@
+{
+  "schema_version": 2,
+  "name": "stock-plugin-acceptance",
+  "description": "Opt-in stock packaged CLI cloud acceptance: compatible generator update and retained work, five output profiles across two cloud cells, independent manifest and canonical recovery. Each cell uses a reusable dedicated Store bucket with a fresh prefix per invocation and prefix-only cleanup.",
+  "required_roles": [
+    "authority",
+    "apply",
+    "reader",
+    "consumer",
+    "cleanup"
+  ],
+  "scenarios": [
+    "public-configuration.plugin-contracts/plugin_contracts"
+  ]
+}

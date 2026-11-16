@@ -1,0 +1,15 @@
+{
+  "schema_version": 2,
+  "name": "public-configuration-operator",
+  "description": "Public initialization, supplied secret apply, reconstruction, portable Reader and output credential capture using one local operator principal. Does not qualify IAM role separation or denied permissions.",
+  "required_roles": [
+    "authority",
+    "apply",
+    "reader",
+    "consumer",
+    "cleanup"
+  ],
+  "scenarios": [
+    "public-configuration.credential-discovery/credential_discovery"
+  ]
+}

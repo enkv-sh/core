@@ -1,0 +1,16 @@
+{
+  "schema_version": 2,
+  "name": "generated-synthetic",
+  "description": "Controlled generated retirement ambiguity, residue, and cleanup conditions in hermetic memory fixtures.",
+  "required_roles": ["authority", "recovery"],
+  "scenarios": [
+    "generated.active-retirement-residue/one_current_one_retiring_manual_active_unknown",
+    "generated.parked-retirement-residue/one_current_one_retiring_manual_parked_unknown",
+    "generated.conflicting-retirement-stays-open/one_current_one_retiring_manual_conflict",
+    "generated.cleanup-source0-closes/failed_two_create_source0_ack",
+    "generated.cleanup-source2-closes/failed_two_create_source2_current_replacement",
+    "generated.cleanup-repeated-ambiguity-closes/failed_two_create_source2_two_unknown_then_ack",
+    "generated.cleanup-detached-hazard-closes/failed_two_create_detached_hazard",
+    "generated.cleanup-deleting-hazard-closes/one_current_one_retiring_manual_eof_then_cleanup_ack"
+  ]
+}

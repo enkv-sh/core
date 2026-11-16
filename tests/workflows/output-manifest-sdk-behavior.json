@@ -1,0 +1,304 @@
+{
+  "schema_version": 1,
+  "name": "output-manifest-sdk-behavior",
+  "profile": "full",
+  "execution": {
+    "parallel": 4
+  },
+  "description": "Manifest ownership, exact selection, maximum bounds, native GC and test fixture file identity checks with controlled local providers.",
+  "steps": [
+    {
+      "id": "output-closure-order",
+      "kind": "runner-tests",
+      "tests": [
+        "TestOutputClosureRequiresBoundBinaryAndSource"
+      ]
+    },
+    {
+      "id": "manifest-failure-source-1",
+      "kind": "runner-tests",
+      "tests": [
+        "TestFailureSourcesAdmitOnlyExactManifestModuleMappings"
+      ]
+    },
+    {
+      "id": "manifest-failure-source-2",
+      "kind": "runner-tests",
+      "tests": [
+        "TestMovedPublicFailureSourcesKeepLogicalLabels"
+      ]
+    },
+    {
+      "id": "manifest-failure-source-3",
+      "kind": "runner-tests",
+      "tests": [
+        "TestFailureSourcesAdmitsOnlyPureProfileFiles"
+      ]
+    },
+    {
+      "id": "manifest-failure-source-4",
+      "kind": "runner-tests",
+      "tests": [
+        "TestFailureSourcesAcceptOnlyOwningPassiveCredentialCodecPaths"
+      ]
+    },
+    {
+      "id": "default-selection",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestManifestSelectionResolvesDefaultsAndExactPartition"
+      ]
+    },
+    {
+      "id": "consumption-manifest-j-s-o-n-maximum-projection-expansion",
+      "kind": "unit",
+      "packages": [
+        "plugins/manifest-generators/generic-json"
+      ],
+      "package": "plugins/manifest-generators/generic-json",
+      "tests": [
+        "TestConsumptionManifestJSONMaximumProjectionExpansion"
+      ]
+    },
+    {
+      "id": "manifest-selection-preserves-complete-mixed-projection",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestManifestSelectionPreservesCompleteMixedProjection"
+      ]
+    },
+    {
+      "id": "manifest-selection-refuses-whole-unauthorized-or-invalid-set",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestManifestSelectionRefusesWholeUnauthorizedOrInvalidSet"
+      ]
+    },
+    {
+      "id": "manifest-selection-keeps-fixed-observation-and-refuses-reread-failure",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestManifestSelectionKeepsFixedObservationAndRefusesRereadFailure"
+      ]
+    },
+    {
+      "id": "manifest-assigned-locators-read-each-immutable-page-once-per-phase",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestManifestAssignedLocatorsReadEachImmutablePageOncePerPhase"
+      ]
+    },
+    {
+      "id": "reader-manifest-callable-complete-mixed-artifact",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestReaderManifestCallableCompleteMixedArtifact"
+      ]
+    },
+    {
+      "id": "reader-manifest-refuses-complete-artifact-on-any-request-failure",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestReaderManifestRefusesCompleteArtifactOnAnyRequestFailure"
+      ]
+    },
+    {
+      "id": "reader-manifest-completed-artifact-survives-reader-close",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestReaderManifestCompletedArtifactSurvivesReaderClose"
+      ]
+    },
+    {
+      "id": "reader-manifest-captures-scope-before-admission",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestReaderManifestCapturesScopeBeforeAdmission"
+      ]
+    },
+    {
+      "id": "reader-manifest-uses-selected-a-w-s-birth-for-consumer-request",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestReaderManifestUsesSelectedAWSBirthForConsumerRequest"
+      ]
+    },
+    {
+      "id": "reader-telemetry-excludes-actual-input-and-profile-errors",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestReaderTelemetryExcludesActualInputAndProfileErrors"
+      ]
+    },
+    {
+      "id": "reader-joint-maximum-authenticated-operations",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestReaderJointMaximumAuthenticatedOperations"
+      ]
+    },
+    {
+      "id": "reader-manifest-maximum-plain-base64",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestReaderManifestMaximumPlainBase64"
+      ]
+    },
+    {
+      "id": "reader-manifest-maximum-requested-destinations",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestReaderManifestMaximumRequestedDestinations"
+      ]
+    },
+    {
+      "id": "manifest-native-maximum-artifact-ownership-and-readback",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestManifestNativeMaximumArtifactOwnershipAndReadback"
+      ]
+    },
+    {
+      "id": "manifest-file-result-maximum-exclusion-partition-and-native-paths",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestManifestFileResultMaximumExclusionPartitionAndNativePaths"
+      ]
+    },
+    {
+      "id": "public-native-manifest-uses-complete-selected-routes-without-private-capabilities",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/testsupport/nativeprocess",
+      "tests": [
+        "TestPublicNativeManifestUsesCompleteSelectedRoutesWithoutPrivateCapabilities"
+      ]
+    },
+    {
+      "id": "public-native-manifest-refuses-unread-dependency-removed-by-gc",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/testsupport/nativeprocess",
+      "tests": [
+        "TestPublicNativeManifestRefusesUnreadDependencyRemovedByGC"
+      ]
+    },
+    {
+      "id": "public-native-manifest-completes-original-artifact-after-gc",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/testsupport/nativeprocess",
+      "tests": [
+        "TestPublicNativeManifestCompletesOriginalArtifactAfterGC"
+      ]
+    },
+    {
+      "id": "live-file-owner-1",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestLiveOutputCredentialCaptureOwnsImmutablePrivateSnapshot"
+      ]
+    },
+    {
+      "id": "live-file-owner-2",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestLiveOutputCredentialCaptureRejectsChangedIdentityAndMetadata"
+      ]
+    },
+    {
+      "id": "live-file-owner-3",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestLiveOutputCredentialCloseRefusesReplacedSnapshotOrDirectory"
+      ]
+    },
+    {
+      "id": "live-generator-cleanup-environment-bearer",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestLiveGeneratorCleanupCredentialRequiresEnvironmentBearer"
+      ]
+    },
+    {
+      "id": "live-file-owner-5",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestPublicOriginalTokenEvidencePreservesTypedBytes"
+      ]
+    },
+    {
+      "id": "live-file-owner-6",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestPublicMaterializationFileObservationChecksExactBytesModeAndWholeSet"
+      ]
+    },
+    {
+      "id": "supervisor-publication-boundary",
+      "kind": "runner-tests",
+      "tests": [
+        "TestSupervisorInstalledInvocationBoundaries/retention_final_publication_capacity_preserves_settlement"
+      ]
+    },
+    {
+      "id": "detached-manifest-final",
+      "kind": "runner-tests",
+      "tests": [
+        "TestIndependentManifestExampleBuildsFromPublicKit"
+      ]
+    },
+    {
+      "id": "saved-workflow-inventory",
+      "kind": "runner-tests",
+      "tests": [
+        "TestSavedWorkflowSelections"
+      ]
+    },
+    {
+      "id": "lint",
+      "kind": "lint"
+    },
+    {
+      "id": "opentofu-tfvars-public-renderer",
+      "kind": "unit",
+      "packages": [
+        "plugins/manifest-generators/opentofu-tfvars-json"
+      ]
+    }
+  ]
+}

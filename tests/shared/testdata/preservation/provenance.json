@@ -1,0 +1,161 @@
+{
+  "source_identity": "unborn main; current synthetic producer captures before a released candidate exists",
+  "native_platform": "darwin/arm64",
+  "toolchain": "go1.27.3",
+  "race": false,
+  "fixtures": [
+    {
+      "file": "active-residue.json",
+      "bytes": 239004,
+      "sha256": "7c4bc661586859c35939e2b074178d25e4d4dc13f84ada421cbeba1884ff3f77",
+      "objects": 56,
+      "generation": 59
+    },
+    {
+      "file": "discarded-publication-warning.json",
+      "bytes": 163581,
+      "sha256": "f2696eca62da070947031bf55ae074627ce8c7b3e34079620686e42c0fb48db0",
+      "objects": 52,
+      "generation": 63
+    },
+    {
+      "file": "final-hazards.json",
+      "bytes": 395943,
+      "sha256": "b48628ec521255a13e940c25d4570b094731d16adad8e815c00af65ec6068c3e",
+      "objects": 93,
+      "generation": 100
+    },
+    {
+      "file": "retiring-release-unknown-publication.json",
+      "bytes": 1595161,
+      "sha256": "98b45069a50e44d2be4f3238b8bc46415aa9702bc40c94f47ce26b8d29470832",
+      "objects": 289,
+      "generation": 312
+    },
+    {
+      "file": "supplied-recovery-disabled.json",
+      "bytes": 68526,
+      "sha256": "273ac23bfc08f35c53f716965c7914c42df5ffc690267761083e4c2ee228b61b",
+      "objects": 20,
+      "generation": 22
+    },
+    {
+      "file": "supplied-recovery-enabled.json",
+      "bytes": 80439,
+      "sha256": "83345de2b0e4f88efbb262ff17cb1098371ed7ac756afc7e53680cab35fcd623",
+      "objects": 20,
+      "generation": 22
+    }
+  ],
+  "derivation": {
+    "observed": "Exact object bodies, tokens, generation, selected images, support records, recipient records, receipt bytes and common operation order came from the actual producer. These are captured results, not an independent semantic oracle.",
+    "independent": "preservation_replay_test.go authors the names, plain bytes, memberships, Recovery modes, state counts, receipt operation kinds, lineage states and edges, warning bits, action kinds and no-effect owner removal. SHA-256 uses standard SHA-256 over exact file bytes; it does not call the ENKV producer.",
+    "secret_test_input": "StandardValue is the fixed synthetic string enkv first secret test value. All keys come from the repository test custody and trust fixtures.",
+    "capture_method": "One-shot private test source used existing producer helpers. The capture source is absent from the normal test tree. Replay reads fixed files and checks literal SHA-256 values; it cannot regenerate them.",
+    "original_lineage_inbox": {
+      "bytes": 1357,
+      "sha256": "5a42bae328ff694abbe1be1a620ba7e221289c0cadd0fc0a1c9dc04faa1bd3a3",
+      "derivation": "The actual first returned packet was persisted before residue. Both active and final captures retain it in the same original inbox. Length and SHA-256 were independently read from the captured JSON object body with Python base64 and hashlib."
+    }
+  },
+  "limits": [
+    "Synthetic generated-work profiles and support are repository test inputs, not released official plugin artifacts.",
+    "This set proves small authenticated synthetic replay on the recorded native platform. It does not prove migration, maximum capacity, native Linux, live providers, production plugin availability or a complete released preservation baseline.",
+    "The release owner must bind the actual released source, durable specifications, production artifact/support closures and candidate identities.",
+    "No complete frozen capture-time checkout was recorded. Retained one-shot source, unchanged producer/helper inputs and the post-capture source inventory identify the producer with this observation limit; the replay inventory is not a capture-time tree claim."
+  ],
+  "inventory_timing": "The full source inventory and replay input hashes describe the post-capture verification tree. The listed unchanged producer inputs were not edited between capture and inventory. The process child gained replay assertions; the access-test root gained explicit raw encoding declarations. Neither changed the captured producer operations.",
+  "unchanged_capture_producer_inputs": [
+    {
+      "path": "core/go.mod",
+      "sha256": "97b80f7aea48466916f6e6dcb1d7756f822fa4eb030b02bd77ec3d3d69b225b4"
+    },
+    {
+      "path": "core/go.sum",
+      "sha256": "0b6f4f714fd8b8cf789a35f5569627445a507bff37e7c2c77e23641dc8556bf0"
+    },
+    {
+      "path": "crypto/go.mod",
+      "sha256": "93eb2747df8095d8b0cbaa463b49ec9212a57c4ceab30ab0c5db1e881ee1bce5"
+    },
+    {
+      "path": "crypto/go.sum",
+      "sha256": "cb13a007f935afa28b753eae58cf1d66831c77f826a02c9e554ca177ee8241e7"
+    },
+    {
+      "path": "tests/shared/fixture_test.go",
+      "sha256": "5ef6e098e499ec9bebdbe5b03632111947591264ea0a820c70c5e9a45a6f8d8d"
+    },
+    {
+      "path": "tests/shared/genesis_test.go",
+      "sha256": "ad3cf2eab2ac2ea14bd73efb00e79acd769fc9f3b51b122f821210d1abe5aae3"
+    },
+    {
+      "path": "tests/shared/installed_apply_test.go",
+      "sha256": "cd0dc1d587b1e696a0d59b3e86e6c62ef6a61790b473f5ddc0a18e27a17f01f7"
+    },
+    {
+      "path": "tests/shared/installed_apply_fixture_test.go",
+      "sha256": "97f1c45a52ff2cf4ca55270b6f390dd94d3b04608006eb978cfec8fcf0a4a167"
+    },
+    {
+      "path": "tests/shared/state_oracle_test.go",
+      "sha256": "fa0b637a346dca4ee79fd41809434d1385088d592fbfb66685a79c5a78a05e45"
+    },
+    {
+      "path": "tests/shared/consumer_fixture_test.go",
+      "sha256": "b677aaac0052a38228acb24c474268879e06550be33f5fb6ccac89a35341470e"
+    },
+    {
+      "path": "tests/shared/supplied_lifecycle_test.go",
+      "sha256": "d8ab99e0775c88ab0a8f8f06525412c38751a4f713cca9c93ff82a87d21b3cbf"
+    },
+    {
+      "path": "tests/shared/value_generation_key_loss_test.go",
+      "sha256": "e96680de9aea1b3e33b83338be282e7fc9da63dd2d13b6229ac1a4daa108134d"
+    },
+    {
+      "path": "tests/shared/value_generation_writer_fixture_test.go",
+      "sha256": "aa9f1f80ffbe2d3792189e11081b27cb96b3cbc4b9836dbeada4b0ce65c8bf0c"
+    },
+    {
+      "path": "tests/hermetic/administrative_shared_intent_test.go",
+      "sha256": "f5a798b97f61e385866a305dd102e74efcc962e4a05a9e7820582974ac920b86"
+    },
+    {
+      "path": "tests/hermetic/generated_cleanup_shared_intent_test.go",
+      "sha256": "c29bb15428d757232d1e52f6c01205f7f55ba596b1f0ba397b8a936561cfac11"
+    },
+    {
+      "path": "tests/hermetic/generated_three_create_lineage_test.go",
+      "sha256": "777884c638f105b1b0ecbf89377700d7c0dccbc2da7a31bda19b0094a9617017"
+    },
+    {
+      "path": "tests/hermetic/publication_warning_test.go",
+      "sha256": "af074981de20c366c221c64c105cebb5610b9da51706589f038be9489eed8f45"
+    },
+    {
+      "path": "tests/shared/publication_fixture_test.go",
+      "sha256": "5adeea2f62e334cfd757db6dca3820320d718fc141e5dbd34b84dd9936947e5b"
+    },
+    {
+      "path": "crypto/testsupport/custody/sealed_input.go",
+      "sha256": "c88694504a3c79040591396e3b77c9742f3f9dc84bbedebe7186beeb9ad95768"
+    },
+    {
+      "path": "crypto/testsupport/custody/consumer.go",
+      "sha256": "31ac1d82359f34189f27ba69c117dadfb5b3783651bca5325e2125d48efdd109"
+    }
+  ],
+  "post_capture_replay_inputs": [
+    {
+      "path": "tests/shared/installed_secret_access_test.go",
+      "sha256": "3ebed7df5cd5738f6299fefda4b7f25943bed3ea34eca0df0503e2f89fcb900d"
+    },
+    {
+      "path": "tests/shared/process_fixture_test.go",
+      "sha256": "5b23c0055113dd15594264a2a7353507be721052798d407b92cd5f1e743e9d76"
+    }
+  ],
+  "reviewed_replay_source_inventory_sha256": "b37463ab4ec1e7e4e0fb99b290ef6f74a2059d32e88427b80faae0e96fd3ba26"
+}

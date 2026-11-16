@@ -1,0 +1,171 @@
+{
+  "schema_version": 1,
+  "name": "aws-example",
+  "mode": "live",
+  "provider": "aws",
+  "resource": {
+    "alias": "state",
+    "settings": {
+      "account": "123456789012",
+      "region": "us-east-1",
+      "bucket": "example-state-tests",
+      "key_id": "arn:aws:kms:us-east-1:123456789012:key/00000000-0000-4000-8000-000000000001",
+      "public_key_pem": "-----BEGIN PUBLIC KEY-----\nREPLACE_WITH_INDEPENDENT_PUBLIC_KEY\n-----END PUBLIC KEY-----\n",
+      "recovery_mode": "enabled",
+      "authority_kek_id": "arn:aws:kms:us-east-1:123456789012:key/00000000-0000-4000-8000-000000000002",
+      "authority_kek_public_key_pem": "-----BEGIN PUBLIC KEY-----\nREPLACE_WITH_INDEPENDENT_RSA3072_PUBLIC_KEY\n-----END PUBLIC KEY-----\n",
+      "reader_kek_id": "arn:aws:kms:us-east-1:123456789012:key/00000000-0000-4000-8000-000000000003",
+      "reader_kek_public_key_pem": "-----BEGIN PUBLIC KEY-----\nREPLACE_WITH_INDEPENDENT_RSA3072_PUBLIC_KEY\n-----END PUBLIC KEY-----\n",
+      "recovery_kek_id": "arn:aws:kms:us-east-1:123456789012:key/00000000-0000-4000-8000-000000000004",
+      "recovery_kek_public_key_pem": "-----BEGIN PUBLIC KEY-----\nREPLACE_WITH_INDEPENDENT_RSA3072_PUBLIC_KEY\n-----END PUBLIC KEY-----\n",
+      "recovery_key_id": "arn:aws:kms:us-east-1:123456789012:key/00000000-0000-4000-8000-000000000005",
+      "recovery_public_key_pem": "-----BEGIN PUBLIC KEY-----\nREPLACE_WITH_INDEPENDENT_RECOVERY_SIGNING_PUBLIC_KEY\n-----END PUBLIC KEY-----\n",
+      "normal_successor_key_id": "arn:aws:kms:us-east-1:123456789012:key/00000000-0000-4000-8000-000000000006",
+      "normal_successor_public_key_pem": "-----BEGIN PUBLIC KEY-----\nREPLACE_WITH_INDEPENDENT_NORMAL_SUCCESSOR_SIGNING_PUBLIC_KEY\n-----END PUBLIC KEY-----\n",
+      "reader_successor_kek_id": "arn:aws:kms:us-east-1:123456789012:key/00000000-0000-4000-8000-000000000007",
+      "reader_successor_kek_public_key_pem": "-----BEGIN PUBLIC KEY-----\nREPLACE_WITH_INDEPENDENT_READER_SUCCESSOR_RSA3072_PUBLIC_KEY\n-----END PUBLIC KEY-----\n",
+      "authority_successor_1_kek_id": "arn:aws:kms:us-east-1:123456789012:key/00000000-0000-4000-8000-000000000008",
+      "authority_successor_1_kek_public_key_pem": "-----BEGIN PUBLIC KEY-----\nREPLACE_WITH_INDEPENDENT_AUTHORITY_SUCCESSOR_1_RSA3072_PUBLIC_KEY\n-----END PUBLIC KEY-----\n",
+      "authority_successor_2_kek_id": "arn:aws:kms:us-east-1:123456789012:key/00000000-0000-4000-8000-000000000009",
+      "authority_successor_2_kek_public_key_pem": "-----BEGIN PUBLIC KEY-----\nREPLACE_WITH_INDEPENDENT_AUTHORITY_SUCCESSOR_2_RSA3072_PUBLIC_KEY\n-----END PUBLIC KEY-----\n",
+      "recovery_successor_key_id": "arn:aws:kms:us-east-1:123456789012:key/00000000-0000-4000-8000-000000000010",
+      "recovery_successor_public_key_pem": "-----BEGIN PUBLIC KEY-----\nREPLACE_WITH_INDEPENDENT_RECOVERY_SUCCESSOR_SIGNING_PUBLIC_KEY\n-----END PUBLIC KEY-----\n",
+      "recovery_successor_1_kek_id": "arn:aws:kms:us-east-1:123456789012:key/00000000-0000-4000-8000-000000000011",
+      "recovery_successor_1_kek_public_key_pem": "-----BEGIN PUBLIC KEY-----\nREPLACE_WITH_INDEPENDENT_RECOVERY_SUCCESSOR_1_RSA3072_PUBLIC_KEY\n-----END PUBLIC KEY-----\n",
+      "recovery_successor_2_kek_id": "arn:aws:kms:us-east-1:123456789012:key/00000000-0000-4000-8000-000000000012",
+      "recovery_successor_2_kek_public_key_pem": "-----BEGIN PUBLIC KEY-----\nREPLACE_WITH_INDEPENDENT_RECOVERY_SUCCESSOR_2_RSA3072_PUBLIC_KEY\n-----END PUBLIC KEY-----\n",
+      "normal_successor_2_key_id": "arn:aws:kms:us-east-1:123456789012:key/00000000-0000-4000-8000-000000000013",
+      "normal_successor_2_public_key_pem": "-----BEGIN PUBLIC KEY-----\nREPLACE_WITH_INDEPENDENT_SECOND_NORMAL_SUCCESSOR_SIGNING_PUBLIC_KEY\n-----END PUBLIC KEY-----\n"
+    }
+  },
+  "participants": {
+    "operator": {
+      "access": {
+        "credentials_file": ".credentials/operator.credentials",
+        "profile": "enkv-test"
+      }
+    },
+    "reader": {
+      "access": {
+        "credentials_file": ".credentials/reader.credentials",
+        "profile": "enkv-reader"
+      }
+    },
+    "recovery": {
+      "access": {
+        "credentials_file": ".credentials/recovery.credentials",
+        "profile": "enkv-recovery"
+      }
+    },
+    "denied-reader": {
+      "access": {
+        "credentials_file": ".credentials/denied-reader.credentials",
+        "profile": "enkv-denied-reader"
+      }
+    },
+    "normal-signer-0": {
+      "access": {
+        "credentials_file": ".credentials/normal-signer-0.credentials",
+        "profile": "enkv-normal-signer-0"
+      }
+    },
+    "normal-signer-1": {
+      "access": {
+        "credentials_file": ".credentials/normal-signer-1.credentials",
+        "profile": "enkv-normal-signer-1"
+      }
+    },
+    "authority-decrypter-0": {
+      "access": {
+        "credentials_file": ".credentials/authority-decrypter-0.credentials",
+        "profile": "enkv-authority-decrypter-0"
+      }
+    },
+    "authority-decrypter-1": {
+      "access": {
+        "credentials_file": ".credentials/authority-decrypter-1.credentials",
+        "profile": "enkv-authority-decrypter-1"
+      }
+    },
+    "authority-decrypter-2": {
+      "access": {
+        "credentials_file": ".credentials/authority-decrypter-2.credentials",
+        "profile": "enkv-authority-decrypter-2"
+      }
+    },
+    "reader-successor": {
+      "access": {
+        "credentials_file": ".credentials/reader-successor.credentials",
+        "profile": "enkv-reader-successor"
+      }
+    },
+    "replacement-store": {
+      "access": {
+        "credentials_file": ".credentials/replacement-store.credentials",
+        "profile": "enkv-replacement-store"
+      }
+    },
+    "recovery-signer-0": {
+      "access": {
+        "credentials_file": ".credentials/recovery-signer-0.credentials",
+        "profile": "enkv-recovery-signer-0"
+      }
+    },
+    "recovery-signer-1": {
+      "access": {
+        "credentials_file": ".credentials/recovery-signer-1.credentials",
+        "profile": "enkv-recovery-signer-1"
+      }
+    },
+    "recovery-decrypter-0": {
+      "access": {
+        "credentials_file": ".credentials/recovery-decrypter-0.credentials",
+        "profile": "enkv-recovery-decrypter-0"
+      }
+    },
+    "recovery-decrypter-1": {
+      "access": {
+        "credentials_file": ".credentials/recovery-decrypter-1.credentials",
+        "profile": "enkv-recovery-decrypter-1"
+      }
+    },
+    "recovery-decrypter-2": {
+      "access": {
+        "credentials_file": ".credentials/recovery-decrypter-2.credentials",
+        "profile": "enkv-recovery-decrypter-2"
+      }
+    },
+    "normal-signer-2": {
+      "access": {
+        "credentials_file": ".credentials/normal-signer-2.credentials",
+        "profile": "enkv-normal-signer-2"
+      }
+    },
+    "denied-observer": {
+      "access": {
+        "credentials_file": ".credentials/denied-observer.credentials",
+        "profile": "enkv-denied-observer"
+      }
+    }
+  },
+  "role_bindings": {
+    "authority": "operator",
+    "reader": "reader",
+    "recovery": "recovery",
+    "denied-reader": "denied-reader",
+    "normal-signer-0": "normal-signer-0",
+    "normal-signer-1": "normal-signer-1",
+    "authority-decrypter-0": "authority-decrypter-0",
+    "authority-decrypter-1": "authority-decrypter-1",
+    "authority-decrypter-2": "authority-decrypter-2",
+    "reader-successor": "reader-successor",
+    "replacement-store": "replacement-store",
+    "recovery-signer-0": "recovery-signer-0",
+    "recovery-signer-1": "recovery-signer-1",
+    "recovery-decrypter-0": "recovery-decrypter-0",
+    "recovery-decrypter-1": "recovery-decrypter-1",
+    "recovery-decrypter-2": "recovery-decrypter-2",
+    "normal-signer-2": "normal-signer-2",
+    "denied-observer": "denied-observer"
+  }
+}

@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "name": "public-inspection-receipts-local",
+  "profile": "full",
+  "description": "Focused local catalog, workflow, native public-read and controlled live-assembly checks. No cloud scenario runs.",
+  "execution": {
+    "parallel": 1
+  },
+  "steps": [
+    {
+      "id": "selection-1",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicConfigurationCatalogRequiresExactLiveRolesAndBoundaries"
+      ]
+    },
+    {
+      "id": "selection-2",
+      "kind": "runner-tests",
+      "tests": [
+        "TestSavedSuitesUseConcreteScenarios"
+      ]
+    },
+    {
+      "id": "selection-3",
+      "kind": "runner-tests",
+      "tests": [
+        "TestExpectedScheduleProjections"
+      ]
+    },
+    {
+      "id": "selection-4",
+      "kind": "runner-tests",
+      "tests": [
+        "TestCurrentCaseProjectionPreservesHistoricalSemantics"
+      ]
+    },
+    {
+      "id": "selection-5",
+      "kind": "runner-tests",
+      "tests": [
+        "TestCurrentCaseDirectoryBindingsAreFiniteAndDistinct"
+      ]
+    },
+    {
+      "id": "selection-6",
+      "kind": "runner-tests",
+      "tests": [
+        "TestCurrentFamilyListsPreserveOrdinaryCoverage"
+      ]
+    },
+    {
+      "id": "selection-7",
+      "kind": "runner-tests",
+      "tests": [
+        "TestCurrentCaseSmokePoliciesPreserveExactCardinality"
+      ]
+    },
+    {
+      "id": "selection-8",
+      "kind": "runner-tests",
+      "tests": [
+        "TestCurrentCaseRepetitionsPreserveSmokeCardinality"
+      ]
+    },
+    {
+      "id": "selection-9",
+      "kind": "runner-tests",
+      "tests": [
+        "TestSavedWorkflowSelections"
+      ]
+    },
+    {
+      "id": "selection-10",
+      "kind": "runner-tests",
+      "tests": [
+        "TestSavedFuzzAndLiveWorkflowsMatchCanonical"
+      ]
+    },
+    {
+      "id": "selection-11",
+      "kind": "runner-tests",
+      "tests": [
+        "TestSavedAssemblyFocusRequiresExactProviderTest"
+      ]
+    },
+    {
+      "id": "native-public-reads",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/testsupport/nativeprocess",
+      "tests": [
+        "TestPublicNativeInspectionAndReceiptsUseOnlyObjectReads"
+      ]
+    },
+    {
+      "id": "gcp-capture",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestPublicInspectionReceiptCaptureRequiresJoinedGETOnly"
+      ]
+    },
+    {
+      "id": "gcp-payload",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestPublicInspectionReceiptPayloadRequiresCompleteFacts"
+      ]
+    },
+    {
+      "id": "aws-capture",
+      "kind": "assembly-checks",
+      "responsibility": "aws",
+      "tests": [
+        "TestPublicInspectionReceiptCaptureRequiresJoinedGETOnly"
+      ]
+    },
+    {
+      "id": "aws-payload",
+      "kind": "assembly-checks",
+      "responsibility": "aws",
+      "tests": [
+        "TestPublicInspectionReceiptPayloadRequiresCompleteFacts"
+      ]
+    },
+    {
+      "id": "gcp-allowance",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestPublicConfigurationSuccessorReservesMutationAllowance"
+      ]
+    },
+    {
+      "id": "gcp-fresh-pair",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestPublicFreshPairSourceAdmitsPortableWriterFacts"
+      ]
+    },
+    {
+      "id": "gcp-fixture",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestPublicInspectionReceiptExpectedFactsMatchInstalledQueries"
+      ]
+    },
+    {
+      "id": "aws-fixture",
+      "kind": "assembly-checks",
+      "responsibility": "aws",
+      "tests": [
+        "TestPublicInspectionReceiptExpectedFactsMatchInstalledQueries"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "execution": {
+    "parallel": 4
+  },
+  "name": "check",
+  "description": "Run lint, runner tests, all product unit tests, assembly checks, full hermetic components and the complete isolated scenario catalog.",
+  "steps": [
+    {
+      "id": "lint",
+      "kind": "lint"
+    },
+    {
+      "id": "runner",
+      "kind": "runner-tests"
+    },
+    {
+      "id": "unit",
+      "kind": "unit",
+      "packages": [
+        "sdk/artifact",
+        "sdk/output",
+        "sdk/manifest-generator",
+        "plugins/manifest-generators/generic-json",
+        "sdk/examples/local-value-output",
+        "sdk/examples/ini-reference-manifest",
+        "sdk/generator",
+        "sdk/examples/local-token-generator",
+        "telemetry",
+        "protocols/generator",
+        "protocols/output",
+        "protocols/manifest-generator",
+        "plugins/cloudflare",
+        "plugins/output-contract-test",
+        "plugins/github-output",
+        "plugins/aws-output",
+        "plugins/gcp-output",
+        "core",
+        "compositions/generatorhost",
+        "compositions/internal/nativeprocess",
+        "compositions/outputhost",
+        "compositions/manifesthost",
+        "compositions/observability",
+        "crypto",
+        "providers/aws",
+        "providers/gcp",
+        "compositions/aws",
+        "compositions/gcp",
+        "compositions/full",
+        "compositions/configuration",
+        "plugins/manifest-generators/opentofu-tfvars-json",
+        "plugins/local-random-secret",
+        "sdk/examples/testservice"
+      ]
+    },
+    {
+      "id": "assembly-common",
+      "kind": "assembly-checks",
+      "parallel_group": "assemblies",
+      "responsibility": "common"
+    },
+    {
+      "id": "assemblies-gcp",
+      "kind": "assembly-checks",
+      "parallel_group": "assemblies",
+      "responsibility": "gcp"
+    },
+    {
+      "id": "assemblies-aws",
+      "kind": "assembly-checks",
+      "parallel_group": "assemblies",
+      "responsibility": "aws"
+    },
+    {
+      "id": "components",
+      "kind": "component-tests",
+      "profile": "full"
+    },
+    {
+      "id": "scenarios",
+      "kind": "run",
+      "suites": [
+        "../suites/state-smoke.json",
+        "../suites/state-integrity.json",
+        "../suites/state-lifecycle.json",
+        "../suites/state-secret-lifecycle.json",
+        "../suites/current-key-replacement.json",
+        "../suites/accepted-work-recovery.json",
+        "../suites/state-observer.json",
+        "../suites/generated-lifecycle.json",
+        "../suites/generated-synthetic.json",
+        "../suites/configuration-recovery.json",
+        "../suites/configuration-recovery-aws-owner.json",
+        "../suites/configuration-recovery-generated.json",
+        "../suites/publication.json"
+      ],
+      "environment": "../environments/hermetic.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "both"
+    }
+  ]
+}

@@ -1,0 +1,1014 @@
+{
+  "schema_version": 1,
+  "name": "manifest-local",
+  "profile": "full",
+  "description": "Focused race-enabled manifest contract, Reader, public API, native file, CLI, telemetry, actual GC interleavings, real-encoder maximum and exact overlay checks. No cloud effects.",
+  "execution": {
+    "parallel": 1
+  },
+  "steps": [
+    {
+      "id": "request-scope",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core/contract",
+      "tests": [
+        "TestManifestRequestOwnsTaggedScope"
+      ]
+    },
+    {
+      "id": "default-selection",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestManifestSelectionResolvesDefaultsAndExactPartition"
+      ]
+    },
+    {
+      "id": "native-install",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestManifestFileInstallsCompleteArtifact"
+      ]
+    },
+    {
+      "id": "manifest-request-owns-explicit-exact-selection",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core/contract",
+      "tests": [
+        "TestManifestRequestOwnsExplicitExactSelection"
+      ]
+    },
+    {
+      "id": "consumption-manifest-j-s-o-n-exact-mixed-literal",
+      "kind": "unit",
+      "packages": [
+        "plugins/manifest-generators/generic-json"
+      ],
+      "package": "plugins/manifest-generators/generic-json",
+      "tests": [
+        "TestConsumptionManifestJSONExactMixedLiteral"
+      ]
+    },
+    {
+      "id": "reader-manifest-refuses-nil-engine",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestReaderManifestRefusesNilEngine"
+      ]
+    },
+    {
+      "id": "consumption-manifest-j-s-o-n-closed-projection-grammar",
+      "kind": "unit",
+      "packages": [
+        "plugins/manifest-generators/generic-json"
+      ],
+      "package": "plugins/manifest-generators/generic-json",
+      "tests": [
+        "TestConsumptionManifestJSONClosedProjectionGrammar"
+      ]
+    },
+    {
+      "id": "consumption-manifest-j-s-o-n-escapes-and-per-entry-base64",
+      "kind": "unit",
+      "packages": [
+        "plugins/manifest-generators/generic-json"
+      ],
+      "package": "plugins/manifest-generators/generic-json",
+      "tests": [
+        "TestConsumptionManifestJSONEscapesAndPerEntryBase64"
+      ]
+    },
+    {
+      "id": "consumption-manifest-j-s-o-n-bounded-completion",
+      "kind": "unit",
+      "packages": [
+        "plugins/manifest-generators/generic-json"
+      ],
+      "package": "plugins/manifest-generators/generic-json",
+      "tests": [
+        "TestConsumptionManifestJSONBoundedCompletion"
+      ]
+    },
+    {
+      "id": "consumption-manifest-json-opaque-policy-bytes",
+      "kind": "unit",
+      "packages": [
+        "plugins/manifest-generators/generic-json"
+      ],
+      "package": "plugins/manifest-generators/generic-json",
+      "tests": [
+        "TestConsumptionManifestJSONOpaquePolicyBytes"
+      ]
+    },
+    {
+      "id": "manifest-operation-binds-exact-request-and-operation",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestManifestOperationBindsExactRequestAndOperation"
+      ]
+    },
+    {
+      "id": "consumption-manifest-j-s-o-n-exact-excluded-partition",
+      "kind": "unit",
+      "packages": [
+        "plugins/manifest-generators/generic-json"
+      ],
+      "package": "plugins/manifest-generators/generic-json",
+      "tests": [
+        "TestConsumptionManifestJSONExactExcludedPartition"
+      ]
+    },
+    {
+      "id": "consumption-manifest-j-s-o-n-expansion-account",
+      "kind": "unit",
+      "packages": [
+        "plugins/manifest-generators/generic-json"
+      ],
+      "package": "plugins/manifest-generators/generic-json",
+      "tests": [
+        "TestConsumptionManifestJSONExpansionAccount"
+      ]
+    },
+    {
+      "id": "consumption-manifest-j-s-o-n-maximum-projection-expansion",
+      "kind": "unit",
+      "packages": [
+        "plugins/manifest-generators/generic-json"
+      ],
+      "package": "plugins/manifest-generators/generic-json",
+      "tests": [
+        "TestConsumptionManifestJSONMaximumProjectionExpansion"
+      ]
+    },
+    {
+      "id": "consumption-manifest-j-s-o-n-partition-joint-row-limit",
+      "kind": "unit",
+      "packages": [
+        "plugins/manifest-generators/generic-json"
+      ],
+      "package": "plugins/manifest-generators/generic-json",
+      "tests": [
+        "TestConsumptionManifestJSONPartitionJointRowLimit"
+      ]
+    },
+    {
+      "id": "output-route-selects-first-complete-vector",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestOutputRouteUsesEntryReplacementBeforeDefault"
+      ]
+    },
+    {
+      "id": "manifest-selection-preserves-complete-mixed-projection",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestManifestSelectionPreservesCompleteMixedProjection"
+      ]
+    },
+    {
+      "id": "manifest-selection-refuses-whole-unauthorized-or-invalid-set",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestManifestSelectionRefusesWholeUnauthorizedOrInvalidSet"
+      ]
+    },
+    {
+      "id": "manifest-selection-requires-every-usable-selected-locator",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestManifestSelectionRequiresEveryUsableSelectedLocator"
+      ]
+    },
+    {
+      "id": "manifest-selection-keeps-fixed-observation-and-refuses-reread-failure",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestManifestSelectionKeepsFixedObservationAndRefusesRereadFailure"
+      ]
+    },
+    {
+      "id": "manifest-selection-classifies-before-skipping-locator",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestManifestSelectionClassifiesBeforeSkippingLocator"
+      ]
+    },
+    {
+      "id": "manifest-opaque-profile-boundary-requires-only-assigned-creation-proof",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestManifestOpaqueServiceBoundaryRequiresOnlyAssignedCreationProof"
+      ]
+    },
+    {
+      "id": "manifest-assigned-locator-rereads-only-fixed-immutable-birth-proof",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestManifestAssignedLocatorRereadsOnlyFixedImmutableBirthProof"
+      ]
+    },
+    {
+      "id": "manifest-assigned-locator-finishes-output-stream-before-borrowed-store-reuse",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestManifestAssignedLocatorFinishesOutputStreamBeforeBorrowedStoreReuse"
+      ]
+    },
+    {
+      "id": "manifest-assigned-locators-read-each-immutable-page-once-per-phase",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestManifestAssignedLocatorsReadEachImmutablePageOncePerPhase"
+      ]
+    },
+    {
+      "id": "reader-manifest-callable-complete-mixed-artifact",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestReaderManifestCallableCompleteMixedArtifact"
+      ]
+    },
+    {
+      "id": "reader-manifest-callable-authenticated-empty-artifact",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestReaderManifestCallableAuthenticatedEmptyArtifact"
+      ]
+    },
+    {
+      "id": "reader-manifest-refuses-complete-artifact-on-any-request-failure",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestReaderManifestRefusesCompleteArtifactOnAnyRequestFailure"
+      ]
+    },
+    {
+      "id": "reader-manifest-completed-artifact-survives-reader-close",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestReaderManifestCompletedArtifactSurvivesReaderClose"
+      ]
+    },
+    {
+      "id": "reader-manifest-captures-scope-before-admission",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestReaderManifestCapturesScopeBeforeAdmission"
+      ]
+    },
+    {
+      "id": "reader-manifest-uses-selected-a-w-s-birth-for-consumer-request",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestReaderManifestUsesSelectedAWSBirthForConsumerRequest"
+      ]
+    },
+    {
+      "id": "reader-rotated-basis-keeps-exact-unavailable-and-proof-results",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestReaderRotatedBasisKeepsExactUnavailableAndProofResults"
+      ]
+    },
+    {
+      "id": "reader-compact-and-fragmented-current-meaning",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestReaderCompactAndFragmentedCurrentMeaning"
+      ]
+    },
+    {
+      "id": "reader-current-intent-late-fragment-loss",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestReaderCurrentIntentLateFragmentLoss"
+      ]
+    },
+    {
+      "id": "reader-callable-operations-after-signer-and-recipient-replacement",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestReaderCallableOperationsAfterSignerAndRecipientReplacement"
+      ]
+    },
+    {
+      "id": "reader-manifest-during-active-generated-work",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestReaderManifestDuringActiveGeneratedWork"
+      ]
+    },
+    {
+      "id": "reader-callable-operations-with-selected-output-history",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestReaderCallableOperationsWithSelectedOutputHistory"
+      ]
+    },
+    {
+      "id": "reader-operation-telemetry-keeps-safe-refusal-with-collection-off",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestReaderOperationTelemetryKeepsSafeRefusalWithCollectionOff"
+      ]
+    },
+    {
+      "id": "reader-telemetry-excludes-actual-input-and-profile-errors",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestReaderTelemetryExcludesActualInputAndProfileErrors"
+      ]
+    },
+    {
+      "id": "reader-telemetry-uses-existing-local-metrics-setup",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestReaderTelemetryUsesExistingLocalMetricsSetup"
+      ]
+    },
+    {
+      "id": "reader-joint-maximum-authenticated-operations",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestReaderJointMaximumAuthenticatedOperations"
+      ]
+    },
+    {
+      "id": "reader-manifest-maximum-plain-base64",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestReaderManifestMaximumPlainBase64"
+      ]
+    },
+    {
+      "id": "reader-manifest-maximum-requested-destinations",
+      "kind": "component-tests",
+      "profile": "full",
+      "tests": [
+        "TestReaderManifestMaximumRequestedDestinations"
+      ]
+    },
+    {
+      "id": "installed-reader-compositions-compare-and-issue-five-destination-manifest",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestInstalledReaderCompositionsCompareAndIssueFiveDestinationManifest"
+      ]
+    },
+    {
+      "id": "manifest-result-rendering-keeps-issuer-and-target-without-artifact",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestManifestResultRenderingKeepsIssuerAndTargetWithoutArtifact"
+      ]
+    },
+    {
+      "id": "configuration-manifest-uses-selected-state-and-retains-borrowed-pair",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestConfigurationManifestUsesSelectedStateAndRetainsBorrowedPair"
+      ]
+    },
+    {
+      "id": "configuration-manifest-captures-request-before-reader-construction",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestConfigurationManifestCapturesRequestBeforeReaderConstruction"
+      ]
+    },
+    {
+      "id": "configuration-manifest-source-and-store-failures-create-no-candidate",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestConfigurationManifestSourceAndStoreFailuresCreateNoCandidate"
+      ]
+    },
+    {
+      "id": "configuration-manifest-refuses-before-reader-construction",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestConfigurationManifestRefusesBeforeReaderConstruction"
+      ]
+    },
+    {
+      "id": "configuration-manifest-file-separates-source-close-from-issuance",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestConfigurationManifestFileSeparatesSourceCloseFromIssuance"
+      ]
+    },
+    {
+      "id": "configuration-manifest-native-delivery-releases-artifact-and-keeps-source-facts",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestConfigurationManifestNativeDeliveryReleasesArtifactAndKeepsSourceFacts"
+      ]
+    },
+    {
+      "id": "manifest-file-source-reservations-use-native-parent-identity",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestManifestFileSourceReservationsUseNativeParentIdentity"
+      ]
+    },
+    {
+      "id": "manifest-file-expired-invocation-creates-no-candidate",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestManifestFileExpiredInvocationCreatesNoCandidate"
+      ]
+    },
+    {
+      "id": "manifest-file-refuses-aliases-namespaces-and-unsafe-targets",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestManifestFileRefusesAliasesNamespacesAndUnsafeTargets"
+      ]
+    },
+    {
+      "id": "manifest-file-rechecks-source-target-and-parent-before-rename",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestManifestFileRechecksSourceTargetAndParentBeforeRename"
+      ]
+    },
+    {
+      "id": "manifest-file-preserves-fault-verification-and-cleanup-facts",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestManifestFilePreservesFaultVerificationAndCleanupFacts"
+      ]
+    },
+    {
+      "id": "manifest-file-keeps-unknown-replacement-and-candidate-ownership",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestManifestFileKeepsUnknownReplacementAndCandidateOwnership"
+      ]
+    },
+    {
+      "id": "manifest-file-cancellation-waits-for-native-settlement",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestManifestFileCancellationWaitsForNativeSettlement"
+      ]
+    },
+    {
+      "id": "manifest-file-reuses-bounded-readback-and-preserves-late-read-failure",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestManifestFileReusesBoundedReadbackAndPreservesLateReadFailure"
+      ]
+    },
+    {
+      "id": "manifest-file-native-process-cuts",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestManifestFileNativeProcessCuts"
+      ]
+    },
+    {
+      "id": "manifest-file-result-independent-literal-and-terminal-precedence",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestManifestFileResultIndependentLiteralAndTerminalPrecedence"
+      ]
+    },
+    {
+      "id": "manifest-file-result-refuses-invalid-axes-before-output",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestManifestFileResultRefusesInvalidAxesBeforeOutput"
+      ]
+    },
+    {
+      "id": "manifest-file-result-delivery-settles-after-final-write",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestManifestFileResultDeliverySettlesAfterFinalWrite"
+      ]
+    },
+    {
+      "id": "manifest-file-complete-requires-all-native-and-terminal-facts",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestManifestFileCompleteRequiresAllNativeAndTerminalFacts"
+      ]
+    },
+    {
+      "id": "manifest-native-maximum-artifact-ownership-and-readback",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestManifestNativeMaximumArtifactOwnershipAndReadback"
+      ]
+    },
+    {
+      "id": "manifest-cliconstructs-default-explicit-and-empty-selection",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/cmd/enkv",
+      "tests": [
+        "TestManifestCLIConstructsDefaultExplicitAndEmptySelection"
+      ]
+    },
+    {
+      "id": "manifest-clirefuses-before-source-or-output-activity",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/cmd/enkv",
+      "tests": [
+        "TestManifestCLIRefusesBeforeSourceOrOutputActivity"
+      ]
+    },
+    {
+      "id": "manifest-clioutput-and-source-failure-override-unavailable-without-retry",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/cmd/enkv",
+      "tests": [
+        "TestManifestCLIOutputAndSourceFailureOverrideUnavailableWithoutRetry"
+      ]
+    },
+    {
+      "id": "manifest-clikeeps-native-success-after-source-or-output-failure",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/cmd/enkv",
+      "tests": [
+        "TestManifestCLIKeepsNativeSuccessAfterSourceOrOutputFailure"
+      ]
+    },
+    {
+      "id": "manifest-clitelemetry-setup-failure-emits-one-correlated-refusal",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/cmd/enkv",
+      "tests": [
+        "TestManifestCLITelemetrySetupFailureEmitsOneCorrelatedRefusal"
+      ]
+    },
+    {
+      "id": "manifest-file-operation-admits-only-native-application-stages",
+      "kind": "unit",
+      "packages": [
+        "telemetry"
+      ],
+      "package": "telemetry",
+      "tests": [
+        "TestManifestFileOperationAdmitsOnlyNativeApplicationStages"
+      ]
+    },
+    {
+      "id": "manifest-counts-keep-complete-bounded-partition-and-disabled-path",
+      "kind": "unit",
+      "packages": [
+        "telemetry"
+      ],
+      "package": "telemetry",
+      "tests": [
+        "TestManifestCountsKeepCompleteBoundedPartitionAndDisabledPath"
+      ]
+    },
+    {
+      "id": "manifest-native-failure-retains-closed-diagnostic-return",
+      "kind": "unit",
+      "packages": [
+        "telemetry"
+      ],
+      "package": "telemetry",
+      "tests": [
+        "TestManifestNativeFailureRetainsClosedDiagnosticReturn"
+      ]
+    },
+    {
+      "id": "assembly-overlay-separates-hermetic-and-each-provider",
+      "kind": "runner-tests",
+      "tests": [
+        "TestAssemblyOverlaySeparatesHermeticAndEachProvider"
+      ]
+    },
+    {
+      "id": "crypto-overlay-owns-only-exact-admission-sources",
+      "kind": "runner-tests",
+      "tests": [
+        "TestCryptoOverlayOwnsOnlyExactAdmissionSources"
+      ]
+    },
+    {
+      "id": "live-assembly-failure-sources-use-exact-overlay-and-module-identity",
+      "kind": "runner-tests",
+      "tests": [
+        "TestLiveAssemblyFailureSourcesUseExactOverlayAndModuleIdentity"
+      ]
+    },
+    {
+      "id": "whole-source-custody-uses-exact-assembly-source-owners",
+      "kind": "runner-tests",
+      "tests": [
+        "TestWholeSourceCustodyUsesExactAssemblySourceOwners"
+      ]
+    },
+    {
+      "id": "lint-assembly-is-exact-private-source-copy",
+      "kind": "runner-tests",
+      "tests": [
+        "TestLintAssemblyIsExactPrivateSourceCopy"
+      ]
+    },
+    {
+      "id": "configuration-manifest-late-source-failure-preserves-issuance-and-prevents-staging",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestConfigurationManifestLateSourceFailurePreservesIssuanceAndPreventsStaging"
+      ]
+    },
+    {
+      "id": "operation-metric-points-retain-exact-counts-and-unfinished-calls",
+      "kind": "unit",
+      "packages": [
+        "telemetry"
+      ],
+      "package": "telemetry",
+      "tests": [
+        "TestOperationMetricPointsRetainExactCountsAndUnfinishedCalls"
+      ]
+    },
+    {
+      "id": "reader-operations-have-only-public-core-stages",
+      "kind": "unit",
+      "packages": [
+        "telemetry"
+      ],
+      "package": "telemetry",
+      "tests": [
+        "TestReaderOperationsHaveOnlyPublicCoreStages"
+      ]
+    },
+    {
+      "id": "diagnostics-stay-enabled-when-metrics-are-off-or-fail",
+      "kind": "unit",
+      "packages": [
+        "telemetry"
+      ],
+      "package": "telemetry",
+      "tests": [
+        "TestDiagnosticsStayEnabledWhenMetricsAreOffOrFail"
+      ]
+    },
+    {
+      "id": "default-console-keeps-warning-and-no-sdk",
+      "kind": "unit",
+      "packages": [
+        "compositions/observability"
+      ],
+      "package": "compositions/observability",
+      "tests": [
+        "TestDefaultConsoleKeepsWarningAndNoSDK"
+      ]
+    },
+    {
+      "id": "httpand-file-routes-export-three-signals-from-one-invocation",
+      "kind": "unit",
+      "packages": [
+        "compositions/observability"
+      ],
+      "package": "compositions/observability",
+      "tests": [
+        "TestHTTPAndFileRoutesExportThreeSignalsFromOneInvocation"
+      ]
+    },
+    {
+      "id": "manifest-file-result-maximum-exclusion-partition-and-native-paths",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestManifestFileResultMaximumExclusionPartitionAndNativePaths"
+      ]
+    },
+    {
+      "id": "public-native-manifest-uses-complete-selected-routes-without-private-capabilities",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/testsupport/nativeprocess",
+      "tests": [
+        "TestPublicNativeManifestUsesCompleteSelectedRoutesWithoutPrivateCapabilities"
+      ]
+    },
+    {
+      "id": "public-native-manifest-refuses-unread-dependency-removed-by-gc",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/testsupport/nativeprocess",
+      "tests": [
+        "TestPublicNativeManifestRefusesUnreadDependencyRemovedByGC"
+      ]
+    },
+    {
+      "id": "public-native-manifest-completes-original-artifact-after-gc",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/testsupport/nativeprocess",
+      "tests": [
+        "TestPublicNativeManifestCompletesOriginalArtifactAfterGC"
+      ]
+    },
+    {
+      "id": "public-native-materialization-restarts-after-gcremoves-unread-child",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/testsupport/nativeprocess",
+      "tests": [
+        "TestPublicNativeMaterializationRestartsAfterGCRemovesUnreadChild"
+      ]
+    },
+    {
+      "id": "public-native-materialization-completes-loaded-selection-after-gc",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/testsupport/nativeprocess",
+      "tests": [
+        "TestPublicNativeMaterializationCompletesLoadedSelectionAfterGC"
+      ]
+    },
+    {
+      "id": "native-overlay-preserves-sources-and-refuses-changed-anchors",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core/testsupport/nativeprocess",
+      "tests": [
+        "TestNativeOverlayPreservesSourcesAndRefusesChangedAnchors"
+      ]
+    },
+    {
+      "id": "native-overlay-builds-actual-executable",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core/testsupport/nativeprocess",
+      "tests": [
+        "TestNativeOverlayBuildsActualExecutable"
+      ]
+    },
+    {
+      "id": "manifest-request-binds-each-semantic-service-value",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestManifestRequestBindsEachSemanticServiceValue"
+      ]
+    },
+    {
+      "id": "manifest-partition-rejects-cross-set-incarnation-with-matching-union",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestManifestPartitionRejectsCrossSetIncarnationWithMatchingUnion"
+      ]
+    },
+    {
+      "id": "configuration-manifest-opaque-source-errors-keep-cleanup-unknown",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full",
+      "tests": [
+        "TestConfigurationManifestOpaqueSourceErrorsKeepCleanupUnknown"
+      ]
+    },
+    {
+      "id": "configuration-pair-capture-and-generated-joins",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestPairCaptureAndGeneratedJoins"
+      ]
+    },
+    {
+      "id": "configuration-edit-transaction",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestEditTransaction"
+      ]
+    },
+    {
+      "id": "configuration-successor-output-parent-alias",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestSuccessorOutputParentAlias"
+      ]
+    },
+    {
+      "id": "configuration-maintenance-retirement-preserves-independent-pair",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestMaintenanceRetirementPreservesIndependentPair"
+      ]
+    },
+    {
+      "id": "configuration-domain-rename-preserves-pair",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestLocalDomainRenamePreservesPair"
+      ]
+    },
+    {
+      "id": "opentofu-tfvars-public-renderer",
+      "kind": "unit",
+      "packages": [
+        "plugins/manifest-generators/opentofu-tfvars-json"
+      ]
+    }
+  ]
+}

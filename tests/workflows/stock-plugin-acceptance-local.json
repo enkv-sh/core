@@ -1,0 +1,651 @@
+{
+  "schema_version": 1,
+  "name": "stock-plugin-acceptance-local",
+  "description": "Check stock cloud scenario selection, exact construction and controlled protocol assertions without cloud or infrastructure commands.",
+  "profile": "dev",
+  "execution": {
+    "parallel": 2
+  },
+  "steps": [
+    {
+      "id": "stock-source-basis",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockSourceBasisAuthenticatesGenesisAndObservation"
+      ]
+    },
+    {
+      "id": "stock-reconstructed-membership",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockRecoveredMembershipIncludesAuthorityForEveryEntry"
+      ]
+    },
+    {
+      "id": "stock-published-output-preview",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockPublishedPreviewKeepsActivePlainAndUncheckedSecret"
+      ]
+    },
+    {
+      "id": "stock-publication-observation",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockPublicationBindsStartingObservationAfterStateWrites"
+      ]
+    },
+    {
+      "id": "stock-reconstructed-output-scope",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockRecoveredRoutingRequiresExactSuppliedPair"
+      ]
+    },
+    {
+      "id": "stock-output-scope",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockOutputDeclarationRoutesOnlySuppliedPair"
+      ]
+    },
+    {
+      "id": "stock-command-reservations",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockCommandReservationsCoverFixedLifecycle"
+      ]
+    },
+    {
+      "id": "stock-command-shapes",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockCommandReservationRefusesUnprovedShapes"
+      ]
+    },
+    {
+      "id": "stock-recovery-reservations",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockRecoveryReservationsKeepOriginalAllowance"
+      ]
+    },
+    {
+      "id": "stock-generated-list-pending-releases",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockGeneratedListRetainsKnownPendingCreateAndDeleteReleases"
+      ]
+    },
+    {
+      "id": "stock-generated-list-release-bindings",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockGeneratedListRejectsUnboundPendingReleases"
+      ]
+    },
+    {
+      "id": "stock-generated-capacity",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ],
+      "package": "core",
+      "tests": [
+        "TestGeneratedStockCapacityIncludesRetainedBacklog"
+      ]
+    },
+    {
+      "id": "failed-stock-recovery-records",
+      "kind": "runner-tests",
+      "tests": [
+        "TestHistoricalCleanupLimitsPreserveRecordedIdentity",
+        "TestHistoricalCleanupInputKeepsOriginalBytes",
+        "TestFailedStockCleanupRequiresCumulativeAdmissionBeforeDispatch",
+        "TestStockCleanupRejectsPassedWorkerWithoutStockProof",
+        "TestStockPluginFailedRecoveryProofPreservesOriginalFailureAndLimits",
+        "TestStockRecoveryDiagnosticAccountingKeepsHistoricalTextAsProvenance",
+        "TestStockRecoveryRequiresBearerBeforeConsumingClaim"
+      ]
+    },
+    {
+      "id": "failed-stock-recovery-gcp-commands",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockFailedWriterRecoveryCommandsRefuseReplay"
+      ]
+    },
+    {
+      "id": "failed-stock-recovery-gcp-closure",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockFailedWriterCleanupRequiresCompleteCurrentClosure"
+      ]
+    },
+    {
+      "id": "failed-stock-recovery-data-files",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockRecoveryJSONInputsKeepPrivateDataModes"
+      ]
+    },
+    {
+      "id": "failed-stock-recovery-start-failure",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockRecoveryStartFailurePreservesOriginalEvidence"
+      ]
+    },
+    {
+      "id": "failed-stock-recovery-aws-commands",
+      "kind": "assembly-checks",
+      "responsibility": "aws",
+      "tests": [
+        "TestStockFailedWriterRecoveryCommandsRefuseReplay"
+      ]
+    },
+    {
+      "id": "failed-stock-recovery-aws-closure",
+      "kind": "assembly-checks",
+      "responsibility": "aws",
+      "tests": [
+        "TestStockFailedWriterCleanupRequiresCompleteCurrentClosure"
+      ]
+    },
+    {
+      "id": "sdk-boundary",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicSDKClosuresExcludeOfficialAndPrivateImplementations"
+      ]
+    },
+    {
+      "id": "consumer-boundary",
+      "kind": "runner-tests",
+      "tests": [
+        "TestLiveManifestConsumerBoundaryRequiresIndependentTestLeaf"
+      ]
+    },
+    {
+      "id": "renderer-boundary",
+      "kind": "runner-tests",
+      "tests": [
+        "TestOutputServingAndManifestRendererStayAtReviewedOwners"
+      ]
+    },
+    {
+      "id": "record-metadata-boundary",
+      "kind": "runner-tests",
+      "tests": [
+        "TestTestRecordsArtifactMetadataBoundaryIsExact"
+      ]
+    },
+    {
+      "id": "consumer-failure-source",
+      "kind": "runner-tests",
+      "tests": [
+        "TestFailureSourcesAdmitOnlyIndependentManifestConsumer"
+      ]
+    },
+    {
+      "id": "source-map",
+      "kind": "runner-tests",
+      "tests": [
+        "TestMovedPublicFailureSourcesKeepLogicalLabels"
+      ]
+    },
+    {
+      "id": "local-1",
+      "kind": "runner-tests",
+      "tests": [
+        "TestStockPluginAcceptanceCatalogFixesCloudMatrix"
+      ]
+    },
+    {
+      "id": "local-2",
+      "kind": "runner-tests",
+      "tests": [
+        "TestStockPluginFixtureRequiresExactReusableScope"
+      ]
+    },
+    {
+      "id": "local-3",
+      "kind": "runner-tests",
+      "tests": [
+        "TestStockPluginGrantBindsOriginalRunAndActualPreflight"
+      ]
+    },
+    {
+      "id": "local-4",
+      "kind": "runner-tests",
+      "tests": [
+        "TestStockPluginPrefixCleanupBindsOriginalGrantAndObservation"
+      ]
+    },
+    {
+      "id": "local-5",
+      "kind": "runner-tests",
+      "tests": [
+        "TestStockPluginEvidenceReadRefusesUnknownAndOversizedFields"
+      ]
+    },
+    {
+      "id": "cleanup-admission",
+      "kind": "runner-tests",
+      "tests": [
+        "TestStockPluginCleanupRequiresProviderFactsBeforePrefixObservation"
+      ]
+    },
+    {
+      "id": "local-6",
+      "kind": "runner-tests",
+      "tests": [
+        "TestStockPluginGeneratorCoordinatesDoNotRequirePrebuiltArtifact"
+      ]
+    },
+    {
+      "id": "local-7",
+      "kind": "runner-tests",
+      "tests": [
+        "TestStockPluginFixtureEnvironmentRefusesOwnerAndCredentialRouteDrift"
+      ]
+    },
+    {
+      "id": "local-8",
+      "kind": "runner-tests",
+      "tests": [
+        "TestStockPluginClosurePreservesBuildOwnerWithoutPublishingAbsolutePaths"
+      ]
+    },
+    {
+      "id": "local-9",
+      "kind": "runner-tests",
+      "tests": [
+        "TestStockPluginEvidenceRequiresOriginalWorkerNonceAndActor"
+      ]
+    },
+    {
+      "id": "local-10",
+      "kind": "runner-tests",
+      "tests": [
+        "TestStockPluginEvidenceDoesNotOptionalizeOverlayEvidence"
+      ]
+    },
+    {
+      "id": "local-11",
+      "kind": "runner-tests",
+      "tests": [
+        "TestStockPluginAcceptanceWorkflowKeepsExactOptInCells"
+      ]
+    },
+    {
+      "id": "regression-12",
+      "kind": "runner-tests",
+      "tests": [
+        "TestSavedWorkflowSelections"
+      ]
+    },
+    {
+      "id": "regression-13",
+      "kind": "runner-tests",
+      "tests": [
+        "TestSavedFuzzAndLiveWorkflowsMatchCanonical"
+      ]
+    },
+    {
+      "id": "regression-14",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicConfigurationCatalogRequiresExactLiveRolesAndBoundaries"
+      ]
+    },
+    {
+      "id": "regression-15",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicArtifactBindsExecutablesOverlayAndEverySource"
+      ]
+    },
+    {
+      "id": "regression-16",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicConfigurationEvidenceHandoffRejectsChangedOriginals"
+      ]
+    },
+    {
+      "id": "regression-17",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicConfigurationEvidenceFailureRetainsOriginalPrivateFiles"
+      ]
+    },
+    {
+      "id": "regression-18",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicConfigurationEvidenceManifestBindsSourceFilesAndOriginalWorkers"
+      ]
+    },
+    {
+      "id": "regression-19",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicConfigurationEvidenceBindsOutputScopesToScenario"
+      ]
+    },
+    {
+      "id": "gcp-20",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockPrefixCleanupRequiresClosedProviderWorkAndOriginalJoins"
+      ]
+    },
+    {
+      "id": "gcp-21",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockManifestWireRequiresCompleteNativeDelivery"
+      ]
+    },
+    {
+      "id": "stock-manifest-finite-read",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockManifestReadConsumesOnlyFiniteArtifactBytes"
+      ]
+    },
+    {
+      "id": "stock-output-acknowledgements",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockOutputAcknowledgementsRequireCompleteCorrelatedActions"
+      ]
+    },
+    {
+      "id": "stock-verification-telemetry",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockIndependentVerificationTelemetryPreservesClosedResults"
+      ]
+    },
+    {
+      "id": "overlay-output-acknowledgement-record",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicOutputEvidenceRequiresOriginalDeletionAcknowledgement"
+      ]
+    },
+    {
+      "id": "overlay-output-acknowledgement-scopes",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicOutputEvidenceBindsExactEffectScopes"
+      ]
+    },
+    {
+      "id": "overlay-output-acknowledgement-ceiling",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestPublicOutputAcknowledgementPreservesRemotePossibility"
+      ]
+    },
+    {
+      "id": "gcp-22",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockCompleteINIConsumerDetectsLaterDestinationDamage"
+      ]
+    },
+    {
+      "id": "gcp-23",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockSetPairAcceptsPublicReadbackWithoutObserverCapture"
+      ]
+    },
+    {
+      "id": "gcp-24",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockGitHubMetadataUsesExactDeclaredScopesAndAcknowledgementCeiling"
+      ]
+    },
+    {
+      "id": "gcp-25",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockRecoveredIntentHasIndependentCompleteCanonicalBytes"
+      ]
+    },
+    {
+      "id": "gcp-26",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockRecoveredOutputComparisonChecksEveryTarget"
+      ]
+    },
+    {
+      "id": "gcp-27",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockCloudflareVerificationBindsSelectedTokenAndCompleteReply"
+      ]
+    },
+    {
+      "id": "gcp-28",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockGeneratedResultRejectsUncertaintyAndLaterMemberDamage"
+      ]
+    },
+    {
+      "id": "gcp-29",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockGeneratedListRequiresItsReadOnlySafetyFields"
+      ]
+    },
+    {
+      "id": "gcp-30",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockTokenMaterializationAcceptsOnlyOneExactPrivateValue"
+      ]
+    },
+    {
+      "id": "gcp-31",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockNoOpAndMissingSupportPreserveAnchorsAndCompleteAttempts"
+      ]
+    },
+    {
+      "id": "gcp-32",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockSelectedCreateRequiresBExecutorIndependentlyOfRetirementDuty"
+      ]
+    },
+    {
+      "id": "gcp-33",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockRetirementPreservesDeletionAcknowledgementCeiling"
+      ]
+    },
+    {
+      "id": "gcp-34",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockGeneratedCommonNoOpRequiresExplicitNoCommitAndValidIdentity"
+      ]
+    },
+    {
+      "id": "aws-35",
+      "kind": "assembly-checks",
+      "responsibility": "aws",
+      "tests": [
+        "TestStockAWSOutputReaderRequiresCompleteOwnedValue"
+      ]
+    },
+    {
+      "id": "aws-36",
+      "kind": "assembly-checks",
+      "responsibility": "aws",
+      "tests": [
+        "TestStockAWSContextRequiresSSOSourceProfile"
+      ]
+    },
+    {
+      "id": "aws-37",
+      "kind": "assembly-checks",
+      "responsibility": "aws",
+      "tests": [
+        "TestStockAWSStorePrefixRequiresOriginalGrantAndConditionalCleanup"
+      ]
+    },
+    {
+      "id": "gcp-38",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockGCPOutputReaderRequiresCompleteOwnedValue"
+      ]
+    },
+    {
+      "id": "gcp-39",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockGCPContextRequiresImpersonatedUserADC"
+      ]
+    },
+    {
+      "id": "gcp-40",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockGCPStorePrefixRequiresOriginalGrantAndConditionalCleanup"
+      ]
+    },
+    {
+      "id": "gcp-41",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockGeneratedWireBindsSelectedCreateAndDuty"
+      ]
+    },
+    {
+      "id": "gcp-42",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockRetirementWireRequiresExactAcknowledgement"
+      ]
+    },
+    {
+      "id": "stock-cli-joins",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockCLIProductExitsRequirePositiveProcessJoin"
+      ]
+    },
+    {
+      "id": "public-result-regression",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestPublicConfigurationApplyResultConsumer"
+      ]
+    },
+    {
+      "id": "output-scope-records",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicOutputScopesRequireOnlySelectedGitHubInputs"
+      ]
+    },
+    {
+      "id": "output-scope-selection",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicPublicationSelectionRequiresOnlySelectedScopes"
+      ]
+    },
+    {
+      "id": "output-scope-admission",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestPublicConfigurationAdmissionUsesSelectedOutputScopes"
+      ]
+    },
+    {
+      "id": "stock-construction",
+      "kind": "runner-tests",
+      "tests": [
+        "TestStockPluginArtifactPreparesOrdinaryBuildsAfterUnchangedCLI"
+      ]
+    },
+    {
+      "id": "stock-prefix-proof",
+      "kind": "runner-tests",
+      "tests": [
+        "TestStockPluginPrefixEvidenceRequiresOriginalCanonicalGrantAndObservation"
+      ]
+    },
+    {
+      "id": "stock-aws-prefix-reuse",
+      "kind": "assembly-checks",
+      "responsibility": "aws",
+      "tests": [
+        "TestStockAWSStorePrefixKeepsBucketReusableAcrossRuns"
+      ]
+    },
+    {
+      "id": "stock-gcp-prefix-reuse",
+      "kind": "assembly-checks",
+      "responsibility": "gcp",
+      "tests": [
+        "TestStockGCPStorePrefixKeepsBucketReusableAcrossRuns"
+      ]
+    }
+  ]
+}

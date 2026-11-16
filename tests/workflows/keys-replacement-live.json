@@ -1,0 +1,763 @@
+{
+  "schema_version": 1,
+  "name": "keys-replacement-live",
+  "description": "54 selected Work054 live cells:42 provider replacement,8 abandonment,4 operator SDK modes. Each isolated cell reuses its first selected public case as smoke; no auxiliary fixture case is inserted. Opt-in only.",
+  "steps": [
+    {
+      "id": "keys-gcp-authority-signing-by-authority-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "disabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-signing-by-authority/keys_replace_authority_signing_by_authority"
+      ]
+    },
+    {
+      "id": "keys-gcp-authority-encryption-by-authority-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "disabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-encryption-by-authority/keys_replace_authority_encryption_by_authority"
+      ]
+    },
+    {
+      "id": "keys-gcp-authority-both-by-authority-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "disabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-both-by-authority/keys_replace_authority_both_by_authority"
+      ]
+    },
+    {
+      "id": "keys-gcp-authority-signing-by-authority-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-signing-by-authority/keys_replace_authority_signing_by_authority"
+      ]
+    },
+    {
+      "id": "keys-gcp-authority-signing-by-recovery-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-signing-by-recovery/keys_replace_authority_signing_by_recovery"
+      ]
+    },
+    {
+      "id": "keys-gcp-authority-encryption-by-authority-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-encryption-by-authority/keys_replace_authority_encryption_by_authority"
+      ]
+    },
+    {
+      "id": "keys-gcp-authority-encryption-by-recovery-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-encryption-by-recovery/keys_replace_authority_encryption_by_recovery"
+      ]
+    },
+    {
+      "id": "keys-gcp-authority-both-by-authority-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-both-by-authority/keys_replace_authority_both_by_authority"
+      ]
+    },
+    {
+      "id": "keys-gcp-authority-both-by-recovery-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-both-by-recovery/keys_replace_authority_both_by_recovery"
+      ]
+    },
+    {
+      "id": "keys-gcp-recovery-signing-by-authority-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recovery-signing-by-authority/keys_replace_recovery_signing_by_authority"
+      ]
+    },
+    {
+      "id": "keys-gcp-recovery-signing-by-recovery-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recovery-signing-by-recovery/keys_replace_recovery_signing_by_recovery"
+      ]
+    },
+    {
+      "id": "keys-gcp-recovery-encryption-by-authority-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recovery-encryption-by-authority/keys_replace_recovery_encryption_by_authority"
+      ]
+    },
+    {
+      "id": "keys-gcp-recovery-encryption-by-recovery-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recovery-encryption-by-recovery/keys_replace_recovery_encryption_by_recovery"
+      ]
+    },
+    {
+      "id": "keys-gcp-recovery-both-by-authority-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recovery-both-by-authority/keys_replace_recovery_both_by_authority"
+      ]
+    },
+    {
+      "id": "keys-gcp-recovery-both-by-recovery-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recovery-both-by-recovery/keys_replace_recovery_both_by_recovery"
+      ]
+    },
+    {
+      "id": "keys-gcp-recipient-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recipient/keys_replace_recipient"
+      ]
+    },
+    {
+      "id": "keys-gcp-required-public-denied-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-required-public-denied/keys_replace_required_public_denied"
+      ]
+    },
+    {
+      "id": "keys-gcp-normal-signing-denied-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-normal-signing-denied/keys_replace_normal_signing_denied"
+      ]
+    },
+    {
+      "id": "keys-gcp-authority-private-denied-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-private-denied/keys_replace_authority_private_denied"
+      ]
+    },
+    {
+      "id": "keys-gcp-recovery-signing-denied-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recovery-signing-denied/keys_replace_recovery_signing_denied"
+      ]
+    },
+    {
+      "id": "keys-gcp-recovery-private-denied-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recovery-private-denied/keys_replace_recovery_private_denied"
+      ]
+    },
+    {
+      "id": "keys-aws-authority-signing-by-authority-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "disabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-signing-by-authority/keys_replace_authority_signing_by_authority"
+      ]
+    },
+    {
+      "id": "keys-aws-authority-encryption-by-authority-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "disabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-encryption-by-authority/keys_replace_authority_encryption_by_authority"
+      ]
+    },
+    {
+      "id": "keys-aws-authority-both-by-authority-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "disabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-both-by-authority/keys_replace_authority_both_by_authority"
+      ]
+    },
+    {
+      "id": "keys-aws-authority-signing-by-authority-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-signing-by-authority/keys_replace_authority_signing_by_authority"
+      ]
+    },
+    {
+      "id": "keys-aws-authority-signing-by-recovery-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-signing-by-recovery/keys_replace_authority_signing_by_recovery"
+      ]
+    },
+    {
+      "id": "keys-aws-authority-encryption-by-authority-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-encryption-by-authority/keys_replace_authority_encryption_by_authority"
+      ]
+    },
+    {
+      "id": "keys-aws-authority-encryption-by-recovery-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-encryption-by-recovery/keys_replace_authority_encryption_by_recovery"
+      ]
+    },
+    {
+      "id": "keys-aws-authority-both-by-authority-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-both-by-authority/keys_replace_authority_both_by_authority"
+      ]
+    },
+    {
+      "id": "keys-aws-authority-both-by-recovery-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-both-by-recovery/keys_replace_authority_both_by_recovery"
+      ]
+    },
+    {
+      "id": "keys-aws-recovery-signing-by-authority-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recovery-signing-by-authority/keys_replace_recovery_signing_by_authority"
+      ]
+    },
+    {
+      "id": "keys-aws-recovery-signing-by-recovery-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recovery-signing-by-recovery/keys_replace_recovery_signing_by_recovery"
+      ]
+    },
+    {
+      "id": "keys-aws-recovery-encryption-by-authority-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recovery-encryption-by-authority/keys_replace_recovery_encryption_by_authority"
+      ]
+    },
+    {
+      "id": "keys-aws-recovery-encryption-by-recovery-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recovery-encryption-by-recovery/keys_replace_recovery_encryption_by_recovery"
+      ]
+    },
+    {
+      "id": "keys-aws-recovery-both-by-authority-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recovery-both-by-authority/keys_replace_recovery_both_by_authority"
+      ]
+    },
+    {
+      "id": "keys-aws-recovery-both-by-recovery-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recovery-both-by-recovery/keys_replace_recovery_both_by_recovery"
+      ]
+    },
+    {
+      "id": "keys-aws-recipient-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recipient/keys_replace_recipient"
+      ]
+    },
+    {
+      "id": "keys-aws-required-public-denied-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-required-public-denied/keys_replace_required_public_denied"
+      ]
+    },
+    {
+      "id": "keys-aws-normal-signing-denied-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-normal-signing-denied/keys_replace_normal_signing_denied"
+      ]
+    },
+    {
+      "id": "keys-aws-authority-private-denied-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-private-denied/keys_replace_authority_private_denied"
+      ]
+    },
+    {
+      "id": "keys-aws-recovery-signing-denied-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recovery-signing-denied/keys_replace_recovery_signing_denied"
+      ]
+    },
+    {
+      "id": "keys-aws-recovery-private-denied-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recovery-private-denied/keys_replace_recovery_private_denied"
+      ]
+    },
+    {
+      "id": "admin-gcp-abandon-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/authority-operator.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "recovery_mode": "disabled",
+      "telemetry_config": "../telemetry/local.json",
+      "scenarios": [
+        "operator.abandon-selected-work-through-cli/one_generated_group_stale_plan_apply_history_receipt"
+      ]
+    },
+    {
+      "id": "admin-gcp-replacement-refusal-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/authority-operator.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "recovery_mode": "disabled",
+      "telemetry_config": "../telemetry/local.json",
+      "scenarios": [
+        "operator.disabled-recovery-refuses-authority-replacement-through-cli/disabled_recovery_preserves_selected_work"
+      ]
+    },
+    {
+      "id": "admin-aws-abandon-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/authority-operator.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "recovery_mode": "disabled",
+      "telemetry_config": "../telemetry/local.json",
+      "scenarios": [
+        "operator.abandon-selected-work-through-cli/one_generated_group_stale_plan_apply_history_receipt"
+      ]
+    },
+    {
+      "id": "admin-aws-replacement-refusal-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/authority-operator.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "recovery_mode": "disabled",
+      "telemetry_config": "../telemetry/local.json",
+      "scenarios": [
+        "operator.disabled-recovery-refuses-authority-replacement-through-cli/disabled_recovery_preserves_selected_work"
+      ]
+    },
+    {
+      "id": "admin-gcp-abandon-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/authority-operator.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "recovery_mode": "enabled",
+      "telemetry_config": "../telemetry/local.json",
+      "scenarios": [
+        "operator.abandon-selected-work-through-cli/one_generated_group_stale_plan_apply_history_receipt"
+      ]
+    },
+    {
+      "id": "admin-gcp-replace-authority-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/authority-operator.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "recovery_mode": "enabled",
+      "telemetry_config": "../telemetry/local.json",
+      "scenarios": [
+        "operator.replace-authority-then-abandon-through-cli/recovery_signing_replacement_then_stale_plan_apply_history"
+      ]
+    },
+    {
+      "id": "admin-aws-abandon-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/authority-operator.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "recovery_mode": "enabled",
+      "telemetry_config": "../telemetry/local.json",
+      "scenarios": [
+        "operator.abandon-selected-work-through-cli/one_generated_group_stale_plan_apply_history_receipt"
+      ]
+    },
+    {
+      "id": "admin-aws-replace-authority-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/authority-operator.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "recovery_mode": "enabled",
+      "telemetry_config": "../telemetry/local.json",
+      "scenarios": [
+        "operator.replace-authority-then-abandon-through-cli/recovery_signing_replacement_then_stale_plan_apply_history"
+      ]
+    },
+    {
+      "id": "keys-operator-gcp-user-adc",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-operator-gcp-user-adc.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "disabled",
+      "scenarios": [
+        "public-configuration.keys-replace-operator-both/keys_replace_operator_both"
+      ]
+    },
+    {
+      "id": "keys-operator-gcp-service-account-adc",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-operator-gcp-service-account-adc.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "disabled",
+      "scenarios": [
+        "public-configuration.keys-replace-operator-both/keys_replace_operator_both"
+      ]
+    },
+    {
+      "id": "keys-operator-aws-shared-credentials",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-operator-aws-shared-credentials.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "disabled",
+      "scenarios": [
+        "public-configuration.keys-replace-operator-both/keys_replace_operator_both"
+      ]
+    },
+    {
+      "id": "keys-operator-aws-sso",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-operator-aws-sso.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "disabled",
+      "scenarios": [
+        "public-configuration.keys-replace-operator-both/keys_replace_operator_both"
+      ]
+    }
+  ]
+}

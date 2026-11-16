@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "name": "output-manifest-sdk-final",
+  "profile": "full",
+  "execution": {
+    "parallel": 4
+  },
+  "description": "Configuration capture and reconstruction checks, saved workflow inventory and affected lint.",
+  "steps": [
+    {
+      "id": "source-parent-and-alias",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestCapturedPairUnchangedReportsSourceParentAndAliasChanges"
+      ]
+    },
+    {
+      "id": "reconstruction-directory",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestReconstructionLocksAndDirectoryIdentity"
+      ]
+    },
+    {
+      "id": "reconstruction-creation-race",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestReconstructionPairCreationRace"
+      ]
+    },
+    {
+      "id": "reconstruction-telemetry",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ],
+      "package": "compositions/configuration",
+      "tests": [
+        "TestReconstructionTelemetryExcludesSourceAndRawFailure"
+      ]
+    },
+    {
+      "id": "saved-workflow-inventory",
+      "kind": "runner-tests",
+      "tests": [
+        "TestSavedWorkflowSelections"
+      ]
+    },
+    {
+      "id": "lint",
+      "kind": "lint"
+    }
+  ]
+}

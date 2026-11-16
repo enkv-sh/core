@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "name": "output-contract-test",
+  "role": "output",
+  "version": "0.0.0",
+  "wire": {
+    "kind": "wire",
+    "identity": "c0432dd35c122a5bf0b44a58234ef9aef0a2cbeb48acd2169f4bc027f322dcf2",
+    "version": 6
+  },
+  "generator": null,
+  "output": {
+    "config_contract_id": "test-output/config/v1",
+    "credential_route": "AAH4/7JL3ngEHb/yEZFzw2e53JmjD3Si6ovTkHBK2jElmQEBG0VOS1ZfT1VUUFVUX1RFU1RfQ1JFREVOVElBTAAAAAA="
+  },
+  "manifest": null
+}

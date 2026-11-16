@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "name": "public-configuration-manifest-live",
+  "description": "Opt-in AWS/GCP public CLI manifest files in both Recovery modes. Setup publishes only to the matching cloud; GitHub scopes are passive locator literals and require no GitHub access.",
+  "steps": [
+    {
+      "id": "public-manifest-aws-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-manifest.json"
+      ],
+      "environment": "../environments/public-manifest-aws.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-manifest.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-manifest-gcp-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-manifest.json"
+      ],
+      "environment": "../environments/public-manifest-gcp.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-manifest.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-manifest-aws-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-manifest.json"
+      ],
+      "environment": "../environments/public-manifest-aws.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-manifest.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "public-manifest-gcp-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-manifest.json"
+      ],
+      "environment": "../environments/public-manifest-gcp.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-manifest.json",
+      "recovery_mode": "enabled"
+    }
+  ]
+}

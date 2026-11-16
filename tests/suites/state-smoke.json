@@ -1,0 +1,10 @@
+{
+  "schema_version": 2,
+  "name": "state-smoke",
+  "description": "Update one value, recover a transient same-domain failure, and reopen the selected state in a fresh process.",
+  "required_roles": ["authority", "recovery"],
+  "scenarios": [
+    "state.single-value-update-preserves-other-values/members_32",
+    "state.transient-before-send-rerun/one_value_before_send"
+  ]
+}

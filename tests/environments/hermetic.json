@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "name": "memory",
+  "mode": "hermetic",
+  "provider": "memory",
+  "resource": {
+    "alias": "state"
+  },
+  "participants": {
+    "operator": {},
+    "reader": {},
+    "reader-successor": {},
+    "recovery": {},
+    "denied-reader": {},
+    "replacement-store": {},
+    "normal-signer-0": {},
+    "normal-signer-1": {},
+    "authority-decrypter-0": {},
+    "authority-decrypter-1": {},
+    "authority-decrypter-2": {},
+    "recovery-signer-0": {},
+    "recovery-signer-1": {},
+    "recovery-decrypter-0": {},
+    "recovery-decrypter-1": {},
+    "recovery-decrypter-2": {},
+    "observer": {},
+    "denied-observer": {},
+    "normal-signer-2": {}
+  },
+  "role_bindings": {
+    "authority": "operator",
+    "reader": "reader",
+    "reader-successor": "reader-successor",
+    "recovery": "recovery",
+    "denied-reader": "denied-reader",
+    "replacement-store": "replacement-store",
+    "normal-signer-0": "normal-signer-0",
+    "normal-signer-1": "normal-signer-1",
+    "authority-decrypter-0": "authority-decrypter-0",
+    "authority-decrypter-1": "authority-decrypter-1",
+    "authority-decrypter-2": "authority-decrypter-2",
+    "recovery-signer-0": "recovery-signer-0",
+    "recovery-signer-1": "recovery-signer-1",
+    "recovery-decrypter-0": "recovery-decrypter-0",
+    "recovery-decrypter-1": "recovery-decrypter-1",
+    "recovery-decrypter-2": "recovery-decrypter-2",
+    "observer": "observer",
+    "denied-observer": "denied-observer",
+    "normal-signer-2": "normal-signer-2"
+  }
+}

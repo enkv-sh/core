@@ -1,0 +1,1817 @@
+{
+  "schema_version": 1,
+  "execution": {
+    "parallel": 4
+  },
+  "name": "canonical",
+  "description": "Complete reference for local checks, including packaged plugin installation, every fuzz target and all supported AWS/GCP live scenarios, including the four Cloudflare generated qualification cells and cloud/GitHub/mixed output publication cells. Each live cell has finite limits.",
+  "steps": [
+    {
+      "id": "lint",
+      "kind": "lint"
+    },
+    {
+      "id": "runner",
+      "kind": "runner-tests"
+    },
+    {
+      "id": "example-testservice",
+      "kind": "unit",
+      "packages": [
+        "sdk/examples/testservice"
+      ]
+    },
+    {
+      "id": "local-random-secret-plugin",
+      "kind": "unit",
+      "packages": [
+        "plugins/local-random-secret"
+      ]
+    },
+    {
+      "id": "unit-telemetry",
+      "kind": "unit",
+      "packages": [
+        "telemetry"
+      ]
+    },
+    {
+      "id": "artifact-sdk",
+      "kind": "unit",
+      "packages": [
+        "sdk/artifact"
+      ]
+    },
+    {
+      "id": "output-sdk",
+      "kind": "unit",
+      "packages": [
+        "sdk/output"
+      ]
+    },
+    {
+      "id": "manifest-sdk",
+      "kind": "unit",
+      "packages": [
+        "sdk/manifest-generator"
+      ]
+    },
+    {
+      "id": "generic-json-manifest-plugin",
+      "kind": "unit",
+      "packages": [
+        "plugins/manifest-generators/generic-json"
+      ]
+    },
+    {
+      "id": "opentofu-tfvars-manifest-plugin",
+      "kind": "unit",
+      "packages": [
+        "plugins/manifest-generators/opentofu-tfvars-json"
+      ]
+    },
+    {
+      "id": "output-example",
+      "kind": "unit",
+      "packages": [
+        "sdk/examples/local-value-output"
+      ]
+    },
+    {
+      "id": "manifest-example",
+      "kind": "unit",
+      "packages": [
+        "sdk/examples/ini-reference-manifest"
+      ]
+    },
+    {
+      "id": "generator-sdk",
+      "kind": "unit",
+      "packages": [
+        "sdk/generator"
+      ]
+    },
+    {
+      "id": "generator-example",
+      "kind": "unit",
+      "packages": [
+        "sdk/examples/local-token-generator"
+      ]
+    },
+    {
+      "id": "unit-generator-protocol",
+      "kind": "unit",
+      "packages": [
+        "protocols/generator"
+      ]
+    },
+    {
+      "id": "unit-output-protocol",
+      "kind": "unit",
+      "packages": [
+        "protocols/output"
+      ]
+    },
+    {
+      "id": "unit-manifest-protocol",
+      "kind": "unit",
+      "packages": [
+        "protocols/manifest-generator"
+      ]
+    },
+    {
+      "id": "unit-cloudflare-plugin",
+      "kind": "unit",
+      "packages": [
+        "plugins/cloudflare"
+      ]
+    },
+    {
+      "id": "unit-output-contract-test-plugin",
+      "kind": "unit",
+      "packages": [
+        "plugins/output-contract-test"
+      ]
+    },
+    {
+      "id": "unit-github-output-plugin",
+      "kind": "unit",
+      "packages": [
+        "plugins/github-output"
+      ]
+    },
+    {
+      "id": "unit-aws-output-plugin",
+      "kind": "unit",
+      "packages": [
+        "plugins/aws-output"
+      ]
+    },
+    {
+      "id": "unit-gcp-output-plugin",
+      "kind": "unit",
+      "packages": [
+        "plugins/gcp-output"
+      ]
+    },
+    {
+      "id": "unit-core",
+      "kind": "unit",
+      "packages": [
+        "core"
+      ]
+    },
+    {
+      "id": "unit-generator-host",
+      "kind": "unit",
+      "packages": [
+        "compositions/generatorhost"
+      ]
+    },
+    {
+      "id": "unit-native-process",
+      "kind": "unit",
+      "packages": [
+        "compositions/internal/nativeprocess"
+      ]
+    },
+    {
+      "id": "unit-output-host",
+      "kind": "unit",
+      "packages": [
+        "compositions/outputhost"
+      ]
+    },
+    {
+      "id": "unit-manifest-host",
+      "kind": "unit",
+      "packages": [
+        "compositions/manifesthost"
+      ]
+    },
+    {
+      "id": "unit-observability",
+      "kind": "unit",
+      "packages": [
+        "compositions/observability"
+      ]
+    },
+    {
+      "id": "unit-crypto",
+      "kind": "unit",
+      "packages": [
+        "crypto"
+      ]
+    },
+    {
+      "id": "unit-provider-aws",
+      "kind": "unit",
+      "packages": [
+        "providers/aws"
+      ]
+    },
+    {
+      "id": "unit-provider-gcp",
+      "kind": "unit",
+      "packages": [
+        "providers/gcp"
+      ]
+    },
+    {
+      "id": "unit-composition-aws",
+      "kind": "unit",
+      "packages": [
+        "compositions/aws"
+      ]
+    },
+    {
+      "id": "unit-composition-gcp",
+      "kind": "unit",
+      "packages": [
+        "compositions/gcp"
+      ]
+    },
+    {
+      "id": "unit-composition-full",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ]
+    },
+    {
+      "id": "unit-configuration",
+      "kind": "unit",
+      "packages": [
+        "compositions/configuration"
+      ]
+    },
+    {
+      "id": "assembly-common",
+      "kind": "assembly-checks",
+      "parallel_group": "assemblies",
+      "responsibility": "common"
+    },
+    {
+      "id": "assemblies-gcp",
+      "kind": "assembly-checks",
+      "parallel_group": "assemblies",
+      "responsibility": "gcp"
+    },
+    {
+      "id": "assemblies-aws",
+      "kind": "assembly-checks",
+      "parallel_group": "assemblies",
+      "responsibility": "aws"
+    },
+    {
+      "id": "components",
+      "kind": "component-tests",
+      "profile": "full"
+    },
+    {
+      "id": "scenarios",
+      "kind": "run",
+      "suites": [
+        "../suites/state-smoke.json",
+        "../suites/state-integrity.json",
+        "../suites/state-lifecycle.json",
+        "../suites/state-secret-lifecycle.json",
+        "../suites/current-key-replacement.json",
+        "../suites/accepted-work-recovery.json",
+        "../suites/state-observer.json",
+        "../suites/generated-lifecycle.json",
+        "../suites/generated-synthetic.json",
+        "../suites/configuration-recovery.json",
+        "../suites/configuration-recovery-aws-owner.json",
+        "../suites/configuration-recovery-generated.json",
+        "../suites/publication.json"
+      ],
+      "environment": "../environments/hermetic.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "both"
+    },
+    {
+      "id": "state-point-diagnostics",
+      "kind": "run",
+      "suites": [
+        "../suites/state-point-diagnostic.json"
+      ],
+      "environment": "../environments/hermetic.json",
+      "smoke_policy": "first-selected-point",
+      "repetitions": 1,
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "both"
+    },
+    {
+      "id": "gcp-recovery-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/state-smoke.json",
+        "../suites/state-integrity.json",
+        "../suites/state-lifecycle.json",
+        "../suites/state-secret-lifecycle.json",
+        "../suites/current-key-replacement.json",
+        "../suites/state-observer.json",
+        "../suites/configuration-recovery.json"
+      ],
+      "environment": "../environments/gcp.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/example.json",
+      "recovery_mode": "disabled",
+      "parallel_group": "recovery-disabled"
+    },
+    {
+      "id": "aws-recovery-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/state-smoke.json",
+        "../suites/state-integrity.json",
+        "../suites/state-lifecycle.json",
+        "../suites/state-secret-lifecycle.json",
+        "../suites/current-key-replacement.json",
+        "../suites/configuration-recovery.json",
+        "../suites/configuration-recovery-aws-owner.json"
+      ],
+      "environment": "../environments/aws.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/example.json",
+      "recovery_mode": "disabled",
+      "parallel_group": "recovery-disabled"
+    },
+    {
+      "id": "gcp-generated-lifecycle-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/generated-lifecycle.json",
+        "../suites/configuration-recovery-generated.json"
+      ],
+      "environment": "../environments/gcp.json",
+      "limits": "../live/limits/cloudflare.json",
+      "recovery_mode": "disabled",
+      "telemetry_config": "../telemetry/local.json",
+      "additional_providers": {
+        "cloudflare": "../environments/cloudflare.json"
+      }
+    },
+    {
+      "id": "admin-gcp-abandon-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/authority-operator.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "recovery_mode": "disabled",
+      "telemetry_config": "../telemetry/local.json",
+      "scenarios": [
+        "operator.abandon-selected-work-through-cli/one_generated_group_stale_plan_apply_history_receipt"
+      ]
+    },
+    {
+      "id": "admin-gcp-replacement-refusal-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/authority-operator.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "recovery_mode": "disabled",
+      "telemetry_config": "../telemetry/local.json",
+      "scenarios": [
+        "operator.disabled-recovery-refuses-authority-replacement-through-cli/disabled_recovery_preserves_selected_work"
+      ]
+    },
+    {
+      "id": "aws-generated-lifecycle-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/generated-lifecycle.json",
+        "../suites/configuration-recovery-generated.json"
+      ],
+      "environment": "../environments/aws.json",
+      "limits": "../live/limits/cloudflare.json",
+      "recovery_mode": "disabled",
+      "telemetry_config": "../telemetry/local.json",
+      "additional_providers": {
+        "cloudflare": "../environments/cloudflare.json"
+      }
+    },
+    {
+      "id": "admin-aws-abandon-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/authority-operator.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "recovery_mode": "disabled",
+      "telemetry_config": "../telemetry/local.json",
+      "scenarios": [
+        "operator.abandon-selected-work-through-cli/one_generated_group_stale_plan_apply_history_receipt"
+      ]
+    },
+    {
+      "id": "admin-aws-replacement-refusal-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/authority-operator.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "recovery_mode": "disabled",
+      "telemetry_config": "../telemetry/local.json",
+      "scenarios": [
+        "operator.disabled-recovery-refuses-authority-replacement-through-cli/disabled_recovery_preserves_selected_work"
+      ]
+    },
+    {
+      "id": "gcp-state-output-publication-positive-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/publication-gcp-positive.json",
+        "../suites/publication-github-positive.json",
+        "../suites/publication-mixed-destinations.json"
+      ],
+      "environment": "../environments/gcp.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/example.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "gcp-state-output-publication-later-member-refusal-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/publication-gcp-later-member-refusal.json",
+        "../suites/publication-github-later-member-refusal.json"
+      ],
+      "environment": "../environments/gcp.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/example.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "aws-state-output-publication-positive-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/publication-aws-positive.json",
+        "../suites/publication-github-positive.json",
+        "../suites/publication-mixed-destinations.json"
+      ],
+      "environment": "../environments/aws.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/example.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "aws-state-output-publication-later-member-refusal-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/publication-aws-later-member-refusal.json",
+        "../suites/publication-github-later-member-refusal.json"
+      ],
+      "environment": "../environments/aws.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/example.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "gcp-recovery-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/state-smoke.json",
+        "../suites/state-integrity.json",
+        "../suites/state-lifecycle.json",
+        "../suites/state-secret-lifecycle.json",
+        "../suites/current-key-replacement.json",
+        "../suites/state-observer.json",
+        "../suites/configuration-recovery.json"
+      ],
+      "environment": "../environments/gcp.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/example.json",
+      "recovery_mode": "enabled",
+      "parallel_group": "recovery-enabled"
+    },
+    {
+      "id": "aws-recovery-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/state-smoke.json",
+        "../suites/state-integrity.json",
+        "../suites/state-lifecycle.json",
+        "../suites/state-secret-lifecycle.json",
+        "../suites/current-key-replacement.json",
+        "../suites/configuration-recovery.json",
+        "../suites/configuration-recovery-aws-owner.json"
+      ],
+      "environment": "../environments/aws.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/example.json",
+      "recovery_mode": "enabled",
+      "parallel_group": "recovery-enabled"
+    },
+    {
+      "id": "gcp-generated-lifecycle-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/generated-lifecycle.json",
+        "../suites/configuration-recovery-generated.json"
+      ],
+      "environment": "../environments/gcp.json",
+      "limits": "../live/limits/cloudflare.json",
+      "recovery_mode": "enabled",
+      "telemetry_config": "../telemetry/local.json",
+      "additional_providers": {
+        "cloudflare": "../environments/cloudflare.json"
+      }
+    },
+    {
+      "id": "admin-gcp-abandon-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/authority-operator.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "recovery_mode": "enabled",
+      "telemetry_config": "../telemetry/local.json",
+      "scenarios": [
+        "operator.abandon-selected-work-through-cli/one_generated_group_stale_plan_apply_history_receipt"
+      ]
+    },
+    {
+      "id": "admin-gcp-replace-authority-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/authority-operator.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "recovery_mode": "enabled",
+      "telemetry_config": "../telemetry/local.json",
+      "scenarios": [
+        "operator.replace-authority-then-abandon-through-cli/recovery_signing_replacement_then_stale_plan_apply_history"
+      ]
+    },
+    {
+      "id": "aws-generated-lifecycle-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/generated-lifecycle.json",
+        "../suites/configuration-recovery-generated.json"
+      ],
+      "environment": "../environments/aws.json",
+      "limits": "../live/limits/cloudflare.json",
+      "recovery_mode": "enabled",
+      "telemetry_config": "../telemetry/local.json",
+      "additional_providers": {
+        "cloudflare": "../environments/cloudflare.json"
+      }
+    },
+    {
+      "id": "admin-aws-abandon-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/authority-operator.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "recovery_mode": "enabled",
+      "telemetry_config": "../telemetry/local.json",
+      "scenarios": [
+        "operator.abandon-selected-work-through-cli/one_generated_group_stale_plan_apply_history_receipt"
+      ]
+    },
+    {
+      "id": "admin-aws-replace-authority-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/authority-operator.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "recovery_mode": "enabled",
+      "telemetry_config": "../telemetry/local.json",
+      "scenarios": [
+        "operator.replace-authority-then-abandon-through-cli/recovery_signing_replacement_then_stale_plan_apply_history"
+      ]
+    },
+    {
+      "id": "gcp-state-output-publication-positive-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/publication-gcp-positive.json",
+        "../suites/publication-github-positive.json",
+        "../suites/publication-mixed-destinations.json"
+      ],
+      "environment": "../environments/gcp.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/example.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "gcp-state-output-publication-later-member-refusal-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/publication-gcp-later-member-refusal.json",
+        "../suites/publication-github-later-member-refusal.json"
+      ],
+      "environment": "../environments/gcp.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/example.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "aws-state-output-publication-positive-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/publication-aws-positive.json",
+        "../suites/publication-github-positive.json",
+        "../suites/publication-mixed-destinations.json"
+      ],
+      "environment": "../environments/aws.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/example.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "aws-state-output-publication-later-member-refusal-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/publication-aws-later-member-refusal.json",
+        "../suites/publication-github-later-member-refusal.json"
+      ],
+      "environment": "../environments/aws.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/example.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "public-aws-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration.json"
+      ],
+      "environment": "../environments/public-aws.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-gcp-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration.json"
+      ],
+      "environment": "../environments/public-gcp.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-aws-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration.json"
+      ],
+      "environment": "../environments/public-aws.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "public-gcp-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration.json"
+      ],
+      "environment": "../environments/public-gcp.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "public-functional-aws-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-functional.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-functional-gcp-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-functional.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-functional-aws-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-functional.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "public-functional-gcp-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-functional.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "fuzz-format",
+      "kind": "fuzz",
+      "targets": [
+        "format"
+      ]
+    },
+    {
+      "id": "fuzz-contract",
+      "kind": "fuzz",
+      "targets": [
+        "contract"
+      ]
+    },
+    {
+      "id": "fuzz-crypto",
+      "kind": "fuzz",
+      "targets": [
+        "crypto"
+      ]
+    },
+    {
+      "id": "public-operator-gcp-user-adc-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-operator.json"
+      ],
+      "environment": "../environments/public-operator-gcp-user-adc.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-operator-gcp-service-account-adc-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-operator.json"
+      ],
+      "environment": "../environments/public-operator-gcp-service-account-adc.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-operator-aws-shared-credentials-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-operator.json"
+      ],
+      "environment": "../environments/public-operator-aws-shared-credentials.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-operator-aws-sso-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-operator.json"
+      ],
+      "environment": "../environments/public-operator-aws-sso.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-operator-gcp-user-adc-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-operator.json"
+      ],
+      "environment": "../environments/public-operator-gcp-user-adc.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "public-operator-gcp-service-account-adc-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-operator.json"
+      ],
+      "environment": "../environments/public-operator-gcp-service-account-adc.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "public-operator-aws-shared-credentials-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-operator.json"
+      ],
+      "environment": "../environments/public-operator-aws-shared-credentials.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "public-operator-aws-sso-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-operator.json"
+      ],
+      "environment": "../environments/public-operator-aws-sso.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "keys-gcp-authority-signing-by-authority-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "disabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-signing-by-authority/keys_replace_authority_signing_by_authority"
+      ]
+    },
+    {
+      "id": "keys-gcp-authority-encryption-by-authority-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "disabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-encryption-by-authority/keys_replace_authority_encryption_by_authority"
+      ]
+    },
+    {
+      "id": "keys-gcp-authority-both-by-authority-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "disabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-both-by-authority/keys_replace_authority_both_by_authority"
+      ]
+    },
+    {
+      "id": "keys-gcp-authority-signing-by-authority-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-signing-by-authority/keys_replace_authority_signing_by_authority"
+      ]
+    },
+    {
+      "id": "keys-gcp-authority-signing-by-recovery-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-signing-by-recovery/keys_replace_authority_signing_by_recovery"
+      ]
+    },
+    {
+      "id": "keys-gcp-authority-encryption-by-authority-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-encryption-by-authority/keys_replace_authority_encryption_by_authority"
+      ]
+    },
+    {
+      "id": "keys-gcp-authority-encryption-by-recovery-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-encryption-by-recovery/keys_replace_authority_encryption_by_recovery"
+      ]
+    },
+    {
+      "id": "keys-gcp-authority-both-by-authority-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-both-by-authority/keys_replace_authority_both_by_authority"
+      ]
+    },
+    {
+      "id": "keys-gcp-authority-both-by-recovery-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-both-by-recovery/keys_replace_authority_both_by_recovery"
+      ]
+    },
+    {
+      "id": "keys-gcp-recovery-signing-by-authority-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recovery-signing-by-authority/keys_replace_recovery_signing_by_authority"
+      ]
+    },
+    {
+      "id": "keys-gcp-recovery-signing-by-recovery-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recovery-signing-by-recovery/keys_replace_recovery_signing_by_recovery"
+      ]
+    },
+    {
+      "id": "keys-gcp-recovery-encryption-by-authority-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recovery-encryption-by-authority/keys_replace_recovery_encryption_by_authority"
+      ]
+    },
+    {
+      "id": "keys-gcp-recovery-encryption-by-recovery-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recovery-encryption-by-recovery/keys_replace_recovery_encryption_by_recovery"
+      ]
+    },
+    {
+      "id": "keys-gcp-recovery-both-by-authority-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recovery-both-by-authority/keys_replace_recovery_both_by_authority"
+      ]
+    },
+    {
+      "id": "keys-gcp-recovery-both-by-recovery-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recovery-both-by-recovery/keys_replace_recovery_both_by_recovery"
+      ]
+    },
+    {
+      "id": "keys-gcp-recipient-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recipient/keys_replace_recipient"
+      ]
+    },
+    {
+      "id": "keys-gcp-required-public-denied-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-required-public-denied/keys_replace_required_public_denied"
+      ]
+    },
+    {
+      "id": "keys-gcp-normal-signing-denied-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-normal-signing-denied/keys_replace_normal_signing_denied"
+      ]
+    },
+    {
+      "id": "keys-gcp-authority-private-denied-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-private-denied/keys_replace_authority_private_denied"
+      ]
+    },
+    {
+      "id": "keys-gcp-recovery-signing-denied-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recovery-signing-denied/keys_replace_recovery_signing_denied"
+      ]
+    },
+    {
+      "id": "keys-gcp-recovery-private-denied-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recovery-private-denied/keys_replace_recovery_private_denied"
+      ]
+    },
+    {
+      "id": "keys-aws-authority-signing-by-authority-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "disabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-signing-by-authority/keys_replace_authority_signing_by_authority"
+      ]
+    },
+    {
+      "id": "keys-aws-authority-encryption-by-authority-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "disabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-encryption-by-authority/keys_replace_authority_encryption_by_authority"
+      ]
+    },
+    {
+      "id": "keys-aws-authority-both-by-authority-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "disabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-both-by-authority/keys_replace_authority_both_by_authority"
+      ]
+    },
+    {
+      "id": "keys-aws-authority-signing-by-authority-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-signing-by-authority/keys_replace_authority_signing_by_authority"
+      ]
+    },
+    {
+      "id": "keys-aws-authority-signing-by-recovery-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-signing-by-recovery/keys_replace_authority_signing_by_recovery"
+      ]
+    },
+    {
+      "id": "keys-aws-authority-encryption-by-authority-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-encryption-by-authority/keys_replace_authority_encryption_by_authority"
+      ]
+    },
+    {
+      "id": "keys-aws-authority-encryption-by-recovery-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-encryption-by-recovery/keys_replace_authority_encryption_by_recovery"
+      ]
+    },
+    {
+      "id": "keys-aws-authority-both-by-authority-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-both-by-authority/keys_replace_authority_both_by_authority"
+      ]
+    },
+    {
+      "id": "keys-aws-authority-both-by-recovery-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-both-by-recovery/keys_replace_authority_both_by_recovery"
+      ]
+    },
+    {
+      "id": "keys-aws-recovery-signing-by-authority-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recovery-signing-by-authority/keys_replace_recovery_signing_by_authority"
+      ]
+    },
+    {
+      "id": "keys-aws-recovery-signing-by-recovery-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recovery-signing-by-recovery/keys_replace_recovery_signing_by_recovery"
+      ]
+    },
+    {
+      "id": "keys-aws-recovery-encryption-by-authority-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recovery-encryption-by-authority/keys_replace_recovery_encryption_by_authority"
+      ]
+    },
+    {
+      "id": "keys-aws-recovery-encryption-by-recovery-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recovery-encryption-by-recovery/keys_replace_recovery_encryption_by_recovery"
+      ]
+    },
+    {
+      "id": "keys-aws-recovery-both-by-authority-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recovery-both-by-authority/keys_replace_recovery_both_by_authority"
+      ]
+    },
+    {
+      "id": "keys-aws-recovery-both-by-recovery-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recovery-both-by-recovery/keys_replace_recovery_both_by_recovery"
+      ]
+    },
+    {
+      "id": "keys-aws-recipient-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recipient/keys_replace_recipient"
+      ]
+    },
+    {
+      "id": "keys-aws-required-public-denied-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-required-public-denied/keys_replace_required_public_denied"
+      ]
+    },
+    {
+      "id": "keys-aws-normal-signing-denied-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-normal-signing-denied/keys_replace_normal_signing_denied"
+      ]
+    },
+    {
+      "id": "keys-aws-authority-private-denied-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-authority-private-denied/keys_replace_authority_private_denied"
+      ]
+    },
+    {
+      "id": "keys-aws-recovery-signing-denied-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recovery-signing-denied/keys_replace_recovery_signing_denied"
+      ]
+    },
+    {
+      "id": "keys-aws-recovery-private-denied-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "enabled",
+      "scenarios": [
+        "public-configuration.keys-replace-recovery-private-denied/keys_replace_recovery_private_denied"
+      ]
+    },
+    {
+      "id": "keys-operator-gcp-user-adc",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-operator-gcp-user-adc.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "disabled",
+      "scenarios": [
+        "public-configuration.keys-replace-operator-both/keys_replace_operator_both"
+      ]
+    },
+    {
+      "id": "keys-operator-gcp-service-account-adc",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-operator-gcp-service-account-adc.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "disabled",
+      "scenarios": [
+        "public-configuration.keys-replace-operator-both/keys_replace_operator_both"
+      ]
+    },
+    {
+      "id": "keys-operator-aws-shared-credentials",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-operator-aws-shared-credentials.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "disabled",
+      "scenarios": [
+        "public-configuration.keys-replace-operator-both/keys_replace_operator_both"
+      ]
+    },
+    {
+      "id": "keys-operator-aws-sso",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-replacement.json"
+      ],
+      "environment": "../environments/public-operator-aws-sso.example.json",
+      "limits": "../live/limits/authority-operator.json",
+      "telemetry_config": "../telemetry/local.json",
+      "recovery_mode": "disabled",
+      "scenarios": [
+        "public-configuration.keys-replace-operator-both/keys_replace_operator_both"
+      ]
+    },
+    {
+      "id": "public-generated-aws-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-generated.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "additional_providers": {
+        "cloudflare": "../environments/cloudflare-public-environment.json"
+      },
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-generated.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-generated-gcp-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-generated.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "additional_providers": {
+        "cloudflare": "../environments/cloudflare-public-environment.json"
+      },
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-generated.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-generated-aws-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-generated.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "additional_providers": {
+        "cloudflare": "../environments/cloudflare-public-environment.json"
+      },
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-generated.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "public-generated-gcp-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-generated.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "additional_providers": {
+        "cloudflare": "../environments/cloudflare-public-environment.json"
+      },
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-generated.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "public-output-aws-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-output.json"
+      ],
+      "environment": "../environments/public-output-aws.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-output.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-output-gcp-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-output.json"
+      ],
+      "environment": "../environments/public-output-gcp.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-output.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-output-aws-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-output.json"
+      ],
+      "environment": "../environments/public-output-aws.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-output.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "public-output-gcp-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-output.json"
+      ],
+      "environment": "../environments/public-output-gcp.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-output.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "public-inspection-receipts-aws-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-inspection-receipts.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-inspection-receipts-gcp-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-inspection-receipts.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-inspection-receipts-aws-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-inspection-receipts.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "public-inspection-receipts-gcp-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-inspection-receipts.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "capacity-gc-aws-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/capacity-gc.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/capacity-gc.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "capacity-gc-gcp-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/capacity-gc.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/capacity-gc.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "capacity-gc-aws-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/capacity-gc.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/capacity-gc.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "capacity-gc-gcp-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/capacity-gc.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/capacity-gc.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "public-materialization-aws-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-materialization.json"
+      ],
+      "environment": "../environments/public-aws-assume-role.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "public-materialization-gcp-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-materialization.json"
+      ],
+      "environment": "../environments/public-gcp-impersonated.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "public-manifest-aws-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-manifest.json"
+      ],
+      "environment": "../environments/public-manifest-aws.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-manifest.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-manifest-gcp-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-manifest.json"
+      ],
+      "environment": "../environments/public-manifest-gcp.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-manifest.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-manifest-aws-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-manifest.json"
+      ],
+      "environment": "../environments/public-manifest-aws.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-manifest.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "public-manifest-gcp-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-manifest.json"
+      ],
+      "environment": "../environments/public-manifest-gcp.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-manifest.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "public-prepare-aws-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-prepare.json"
+      ],
+      "environment": "../environments/public-aws.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-prepare-gcp-disabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-prepare.json"
+      ],
+      "environment": "../environments/public-gcp.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "disabled"
+    },
+    {
+      "id": "public-prepare-aws-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-prepare.json"
+      ],
+      "environment": "../environments/public-aws.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "public-prepare-gcp-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/public-configuration-prepare.json"
+      ],
+      "environment": "../environments/public-gcp.example.json",
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/public-configuration.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "stock-plugin-aws-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/stock-plugin-acceptance.json"
+      ],
+      "environment": "../environments/stock-plugin-aws.example.json",
+      "additional_providers": {
+        "cloudflare": "../environments/cloudflare-stock-plugin.example.json"
+      },
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/stock-plugin-acceptance.json",
+      "recovery_mode": "enabled"
+    },
+    {
+      "id": "stock-plugin-gcp-enabled",
+      "kind": "run",
+      "suites": [
+        "../suites/stock-plugin-acceptance.json"
+      ],
+      "environment": "../environments/stock-plugin-gcp.example.json",
+      "additional_providers": {
+        "cloudflare": "../environments/cloudflare-stock-plugin.example.json"
+      },
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/stock-plugin-acceptance.json",
+      "recovery_mode": "enabled"
+    }
+  ]
+}

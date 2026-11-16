@@ -1,0 +1,176 @@
+{
+  "schema_version": 1,
+  "name": "public-aws-example",
+  "mode": "live",
+  "provider": "aws",
+  "public_configuration": true,
+  "resource": {
+    "alias": "preexisting-public-aws",
+    "settings": {
+      "region": "us-east-1",
+      "bucket": "replace-preexisting-enkv-public-bucket",
+      "recovery_mode": "enabled",
+      "account": "123456789012",
+      "key_id": "arn:aws:kms:us-east-1:123456789012:key/11111111-1111-1111-1111-111111111111",
+      "authority_kek_id": "arn:aws:kms:us-east-1:123456789012:key/22222222-2222-2222-2222-222222222222",
+      "reader_kek_id": "arn:aws:kms:us-east-1:123456789012:key/33333333-3333-3333-3333-333333333333",
+      "recovery_key_id": "arn:aws:kms:us-east-1:123456789012:key/44444444-4444-4444-4444-444444444444",
+      "recovery_kek_id": "arn:aws:kms:us-east-1:123456789012:key/55555555-5555-5555-5555-555555555555",
+      "normal_successor_key_id": "arn:aws:kms:us-east-1:123456789012:key/66666666-6666-6666-6666-666666666666"
+    }
+  },
+  "participants": {
+    "authority": {
+      "access": {
+        "sdk_context": {
+          "mode": "aws-sso",
+          "home": "/ABSOLUTE/ISOLATED/LOGIN/aws/authority",
+          "profile": "enkv-authority"
+        }
+      }
+    },
+    "apply": {
+      "access": {
+        "sdk_context": {
+          "mode": "aws-sso",
+          "home": "/ABSOLUTE/ISOLATED/LOGIN/aws/apply",
+          "profile": "enkv-apply"
+        }
+      }
+    },
+    "proposer": {
+      "access": {
+        "sdk_context": {
+          "mode": "aws-sso",
+          "home": "/ABSOLUTE/ISOLATED/LOGIN/aws/proposer",
+          "profile": "enkv-proposer"
+        }
+      }
+    },
+    "reader": {
+      "access": {
+        "sdk_context": {
+          "mode": "aws-sso",
+          "home": "/ABSOLUTE/ISOLATED/LOGIN/aws/reader",
+          "profile": "enkv-reader"
+        }
+      }
+    },
+    "consumer": {
+      "access": {
+        "sdk_context": {
+          "mode": "aws-sso",
+          "home": "/ABSOLUTE/ISOLATED/LOGIN/aws/consumer",
+          "profile": "enkv-consumer"
+        }
+      }
+    },
+    "cleanup": {
+      "access": {
+        "sdk_context": {
+          "mode": "aws-sso",
+          "home": "/ABSOLUTE/ISOLATED/LOGIN/aws/cleanup",
+          "profile": "enkv-cleanup"
+        }
+      }
+    },
+    "denied-public": {
+      "access": {
+        "sdk_context": {
+          "mode": "aws-sso",
+          "home": "/ABSOLUTE/ISOLATED/LOGIN/aws/denied-public",
+          "profile": "enkv-denied-public"
+        }
+      }
+    },
+    "denied-normal-signing": {
+      "access": {
+        "sdk_context": {
+          "mode": "aws-sso",
+          "home": "/ABSOLUTE/ISOLATED/LOGIN/aws/denied-normal-signing",
+          "profile": "enkv-denied-normal-signing"
+        }
+      }
+    },
+    "denied-authority-private": {
+      "access": {
+        "sdk_context": {
+          "mode": "aws-sso",
+          "home": "/ABSOLUTE/ISOLATED/LOGIN/aws/denied-authority-private",
+          "profile": "enkv-denied-authority-private"
+        }
+      }
+    },
+    "denied-recovery-signing": {
+      "access": {
+        "sdk_context": {
+          "mode": "aws-sso",
+          "home": "/ABSOLUTE/ISOLATED/LOGIN/aws/denied-recovery-signing",
+          "profile": "enkv-denied-recovery-signing"
+        }
+      }
+    },
+    "denied-recovery-private": {
+      "access": {
+        "sdk_context": {
+          "mode": "aws-sso",
+          "home": "/ABSOLUTE/ISOLATED/LOGIN/aws/denied-recovery-private",
+          "profile": "enkv-denied-recovery-private"
+        }
+      }
+    },
+    "recovery": {
+      "access": {
+        "sdk_context": {
+          "mode": "aws-sso",
+          "home": "/ABSOLUTE/ISOLATED/LOGIN/aws/recovery",
+          "profile": "enkv-recovery"
+        }
+      }
+    },
+    "excluded-consumer": {
+      "access": {
+        "sdk_context": {
+          "mode": "aws-sso",
+          "home": "/ABSOLUTE/ISOLATED/LOGIN/aws/excluded-consumer",
+          "profile": "enkv-excluded-consumer"
+        }
+      }
+    },
+    "successor": {
+      "access": {
+        "sdk_context": {
+          "mode": "aws-sso",
+          "home": "/ABSOLUTE/ISOLATED/LOGIN/aws/successor",
+          "profile": "enkv-successor"
+        }
+      }
+    },
+    "recipient-consumer": {
+      "access": {
+        "sdk_context": {
+          "mode": "aws-sso",
+          "home": "/ABSOLUTE/ISOLATED/LOGIN/aws/recipient-consumer",
+          "profile": "enkv-recipient-consumer"
+        }
+      }
+    }
+  },
+  "role_bindings": {
+    "authority": "authority",
+    "apply": "apply",
+    "proposer": "proposer",
+    "reader": "reader",
+    "consumer": "consumer",
+    "cleanup": "cleanup",
+    "denied-public": "denied-public",
+    "denied-normal-signing": "denied-normal-signing",
+    "denied-authority-private": "denied-authority-private",
+    "denied-recovery-signing": "denied-recovery-signing",
+    "denied-recovery-private": "denied-recovery-private",
+    "recovery": "recovery",
+    "excluded-consumer": "excluded-consumer",
+    "successor": "successor",
+    "recipient-consumer": "recipient-consumer"
+  }
+}

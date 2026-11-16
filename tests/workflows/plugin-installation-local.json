@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "profile": "dev",
+  "execution": {
+    "parallel": 2
+  },
+  "name": "plugin-installation-local",
+  "description": "Exact local plugin installation, detached author builds and independent three-family execution with an unchanged CLI; controlled local services only.",
+  "steps": [
+    {
+      "id": "public-sdk-implementation-boundary",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicSDKClosuresExcludeOfficialAndPrivateImplementations"
+      ]
+    },
+    {
+      "id": "production-plugin-boundary",
+      "kind": "runner-tests",
+      "tests": [
+        "TestOutputServingAndManifestRendererStayAtReviewedOwners"
+      ]
+    },
+    {
+      "id": "independent-three-family-workflow",
+      "kind": "unit",
+      "packages": [
+        "compositions/full"
+      ],
+      "package": "compositions/full/testsupport/nativeprocess",
+      "tests": [
+        "TestPublicNativeUnknownPluginsGeneratePublishAndRenderWithUnchangedCLI"
+      ]
+    },
+    {
+      "id": "detached-author-builds",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicPluginBuildCommandCapturesDetachedAuthorFamilies"
+      ]
+    },
+    {
+      "id": "cold-versioned-author-build",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPublicPluginBuildCommandCapturesColdVersionedClosure"
+      ]
+    },
+    {
+      "id": "official",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPluginInstallationProductionCLIWorkflow"
+      ]
+    },
+    {
+      "id": "local",
+      "kind": "runner-tests",
+      "tests": [
+        "TestPluginInstallationOrdinaryCaptureBeforeCredentials"
+      ]
+    },
+    {
+      "id": "versioned",
+      "kind": "runner-tests",
+      "tests": [
+        "TestVersionedPrivateCLIArchiveBuildsOutsideCheckout"
+      ]
+    }
+  ]
+}
