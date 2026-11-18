@@ -49,7 +49,7 @@ Use the [security reporting procedure](SECURITY.md) for suspected vulnerabilitie
 ## Licensing
 
 Copyright 2026 Ruslan Akchurin. First-party material in this repository uses
-[PolyForm Shield 1.0.0](LICENSE), except where separate terms are stated.
+[PolyForm Shield 1.0.0](LICENSE.md), except where separate terms are stated.
 The packaging documentation in `distribution/` uses
 [Apache License 2.0](distribution/LICENSE). Public SDKs, protocols, author tools
 and official plugins use Apache 2.0 in the extensions repository. Third-party
