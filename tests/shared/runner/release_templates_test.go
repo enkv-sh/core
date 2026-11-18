@@ -186,9 +186,13 @@ func TestReleaseSigningTemplates(t *testing.T) {
 // full_only: false
 func TestReleasePublicationTemplate(t *testing.T) {
 	core, extensions := distributionRoots(t)
-	success, detail := releaseRun(t, extensions, nil, "python3", "distribution/test_release.py")
-	if !success {
-		t.Fatal(detail)
+	for _, test := range []struct{ root, script string }{
+		{core, "distribution/test_release_workflow.py"},
+		{extensions, "distribution/test_release.py"},
+	} {
+		if ok, detail := releaseRun(t, test.root, nil, "python3", test.script); !ok {
+			t.Fatalf("%s: %s", test.script, detail)
+		}
 	}
 	for _, root := range []string{core, extensions} {
 		body, err := os.ReadFile(filepath.Join(root, ".github/workflows/release.yml"))
@@ -196,12 +200,12 @@ func TestReleasePublicationTemplate(t *testing.T) {
 			t.Fatal(err)
 		}
 		text := string(body)
-		for _, required := range []string{"workflow_dispatch:", "permissions: {}", "persist-credentials: false", "environment: release-signing", "environment: release-draft", "EXPECTED_WORKFLOW_COMMIT: ${{ vars.RELEASE_WORKFLOW_COMMIT }}", "EXPECTED_SOURCE_COMMIT: ${{ vars.RELEASE_SOURCE_COMMIT }}", "cancel-in-progress: false", "stage-release.py"} {
+		for _, required := range []string{"workflow_dispatch:", "permissions: {}", "persist-credentials: false", "environment: release-signing", "environment: release-draft", "github.ref == 'refs/heads/main'", "github.repository == 'enkv-sh/" + strings.TrimPrefix(filepath.Base(root), "enkv-") + "'", "github.ref_protected", "SOURCE_COMMIT: ${{ github.sha }}", "cancel-in-progress: false", "stage-release.py"} {
 			if !strings.Contains(text, required) {
 				t.Fatalf("release workflow missing %q", required)
 			}
 		}
-		for _, forbidden := range []string{"pull_request:", "push:", "--clobber", "draft: false", "REPLACE_"} {
+		for _, forbidden := range []string{"pull_request:", "push:", "--clobber", "draft: false", "REPLACE_", "inputs.source_commit", "vars.RELEASE_", "    inputs:"} {
 			if strings.Contains(text, forbidden) {
 				t.Fatalf("unsafe release workflow %q", forbidden)
 			}

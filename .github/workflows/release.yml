@@ -1,11 +1,6 @@
 name: Build signed draft candidate
 on:
   workflow_dispatch:
-    inputs:
-      source_commit:
-        description: Reviewed full source commit configured for this candidate
-        type: string
-        required: true
 permissions: {}
 concurrency:
   group: release-candidate
@@ -24,26 +19,23 @@ jobs:
       contents: read
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
+      tools_commit: ${{ steps.tools.outputs.commit }}
     steps:
       - name: Check owner release inputs
         shell: bash
         env:
-          SOURCE_COMMIT: ${{ inputs.source_commit }}
-          EXPECTED_SOURCE_COMMIT: ${{ vars.RELEASE_SOURCE_COMMIT }}
-          WORKFLOW_COMMIT: ${{ github.sha }}
-          EXPECTED_WORKFLOW_COMMIT: ${{ vars.RELEASE_WORKFLOW_COMMIT }}
-          TOOLS_COMMIT: ${{ vars.RELEASE_EXTENSIONS_COMMIT }}
+          SOURCE_COMMIT: ${{ github.sha }}
+          REF_PROTECTED: ${{ github.ref_protected }}
           DEVELOPMENT_CLI_KEY: ${{ vars.DEVELOPMENT_CLI_PUBLIC_KEY_SHA256 }}
           DEVELOPMENT_PLUGIN_KEY: ${{ vars.DEVELOPMENT_PLUGIN_PUBLIC_KEY_SHA256 }}
         run: |
           set -euo pipefail
           python3 - <<'PY_CHECK'
           import hashlib, os, re
-          for name in ['SOURCE_COMMIT', 'TOOLS_COMMIT', 'EXPECTED_SOURCE_COMMIT', 'WORKFLOW_COMMIT', 'EXPECTED_WORKFLOW_COMMIT']:
-              if not re.fullmatch('[0-9a-f]{40}', os.environ[name]):
-                  raise SystemExit('reviewed source commit is required')
-          if os.environ['SOURCE_COMMIT'] != os.environ['EXPECTED_SOURCE_COMMIT'] or os.environ['WORKFLOW_COMMIT'] != os.environ['EXPECTED_WORKFLOW_COMMIT']:
-              raise SystemExit('source or workflow commit is not the owner-reviewed input')
+          if os.environ['REF_PROTECTED'] != 'true':
+              raise SystemExit('release main must have branch protection or an active ruleset')
+          if not re.fullmatch('[0-9a-f]{40}', os.environ['SOURCE_COMMIT']):
+              raise SystemExit('GitHub dispatch source commit is required')
           import base64
           development = {os.environ['DEVELOPMENT_CLI_KEY'], os.environ['DEVELOPMENT_PLUGIN_KEY']}
           if not all(re.fullmatch('[0-9a-f]{64}', value) for value in development):
@@ -62,15 +54,67 @@ jobs:
           if roots['CLI'] == roots['PLUGIN']:
               raise SystemExit('CLI and plugin roots must differ')
           PY_CHECK
+      - name: Select protected extensions main once
+        id: select-tools
+        if: github.run_attempt == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY_TOOLS'
+          import json, os, re, urllib.request
+          from pathlib import Path
+          request = urllib.request.Request(
+              'https://api.github.com/repos/enkv-sh/extensions/branches/main',
+              headers={'Accept': 'application/vnd.github+json', 'User-Agent': 'enkv-release'})
+          with urllib.request.urlopen(request, timeout=30) as response:
+              branch = json.load(response)
+          commit = branch.get('commit', {}).get('sha', '')
+          if branch.get('name') != 'main' or branch.get('protected') is not True:
+              raise SystemExit('extensions main must have branch protection or an active ruleset')
+          if not isinstance(commit, str) or not re.fullmatch('[0-9a-f]{40}', commit):
+              raise SystemExit('extensions main did not resolve to one full commit')
+          directory = Path(os.environ['RUNNER_TEMP']) / 'release-tools'
+          directory.mkdir()
+          (directory / 'commit').write_text(commit + '\n')
+          PY_TOOLS
+      - name: Retain selected extensions commit for this run
+        if: github.run_attempt == '1'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: release-tools-commit
+          path: ${{ runner.temp }}/release-tools/commit
+          if-no-files-found: error
+          retention-days: 90
+      - name: Restore the original extensions commit on reruns
+        id: restore-tools
+        if: github.run_attempt != '1'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: release-tools-commit
+          path: ${{ runner.temp }}/release-tools
+      - name: Check selected extensions commit
+        id: tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY_TOOLS'
+          import os, re
+          from pathlib import Path
+          value = (Path(os.environ['RUNNER_TEMP']) / 'release-tools/commit').read_text()
+          if not re.fullmatch('[0-9a-f]{40}\n', value):
+              raise SystemExit('the original run tools commit is missing or invalid; start a new workflow run')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('commit=' + value)
+          PY_TOOLS
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: ${{ inputs.source_commit }}
+          ref: ${{ github.sha }}
           path: source
           persist-credentials: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: enkv-sh/extensions
-          ref: ${{ vars.RELEASE_EXTENSIONS_COMMIT }}
+          ref: ${{ steps.tools.outputs.commit }}
           path: tools-source
           persist-credentials: false
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
@@ -107,13 +151,13 @@ jobs:
           test "$(getconf GNU_LIBC_VERSION)" = 'glibc 2.34'
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: ${{ inputs.source_commit }}
+          ref: ${{ github.sha }}
           path: source
           persist-credentials: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: enkv-sh/extensions
-          ref: ${{ vars.RELEASE_EXTENSIONS_COMMIT }}
+          ref: ${{ needs.prepare.outputs.tools_commit }}
           path: tools-source
           persist-credentials: false
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
@@ -136,6 +180,7 @@ jobs:
         shell: bash
         env:
           EXPECTED_PLATFORM: ${{ matrix.platform }}
+          TOOLS_COMMIT: ${{ needs.prepare.outputs.tools_commit }}
         run: |
           set -euo pipefail
           test "$(go env GOOS)/$(go env GOARCH)" = "$EXPECTED_PLATFORM"
@@ -146,6 +191,7 @@ jobs:
           tools-source/bin/enkv-release floor -binary "$RUNNER_TEMP/build/enkv" > "$RUNNER_TEMP/build/cli/evidence/native-environment.txt"
           uname -a >> "$RUNNER_TEMP/build/cli/evidence/native-environment.txt"
           go version -m "$RUNNER_TEMP/build/enkv" > "$RUNNER_TEMP/build/cli/evidence/buildinfo.txt"
+          printf 'Extensions tools commit: %s\n' "$TOOLS_COMMIT" >> "$RUNNER_TEMP/build/cli/evidence/native-environment.txt"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: ${{ matrix.tuple }}
@@ -161,13 +207,13 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: ${{ inputs.source_commit }}
+          ref: ${{ github.sha }}
           path: source
           persist-credentials: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: enkv-sh/extensions
-          ref: ${{ vars.RELEASE_EXTENSIONS_COMMIT }}
+          ref: ${{ needs.prepare.outputs.tools_commit }}
           path: tools-source
           persist-credentials: false
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
@@ -194,7 +240,7 @@ jobs:
         shell: bash
         env:
           SIGNING_KEY: ${{ secrets.CLI_SIGNING_KEY_PEM }}
-          SOURCE_COMMIT: ${{ inputs.source_commit }}
+          SOURCE_COMMIT: ${{ github.sha }}
         run: |
           set -euo pipefail
           umask 077
@@ -210,7 +256,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
   stage:
-    needs: sign
+    needs: [prepare, sign]
     runs-on: ubuntu-24.04
     environment: release-draft
     permissions:
@@ -218,13 +264,13 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: ${{ inputs.source_commit }}
+          ref: ${{ github.sha }}
           path: source
           persist-credentials: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: enkv-sh/extensions
-          ref: ${{ vars.RELEASE_EXTENSIONS_COMMIT }}
+          ref: ${{ needs.prepare.outputs.tools_commit }}
           path: tools-source
           persist-credentials: false
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
@@ -247,7 +293,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          SOURCE_COMMIT: ${{ inputs.source_commit }}
+          SOURCE_COMMIT: ${{ github.sha }}
         run: |
           set -euo pipefail
           mkdir "$RUNNER_TEMP/stage"

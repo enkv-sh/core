@@ -38,7 +38,7 @@ var runnerEstimates = map[string]float64{
 	"enkv.sh/core/internal/testmain\x00TestPreparedOrdinaryCancellationDuringConversionKeepsJoinedRows":   3,
 	"enkv.sh/core/internal/testmain\x00TestPreparedTestEventConverterKeepsHardHorizonAndCancellationTail": 31,
 	"enkv.sh/core/internal/testmain\x00TestReleaseSigningTemplates":                                       2,
-	"enkv.sh/core/internal/testmain\x00TestReleasePublicationTemplate":                                    6,
+	"enkv.sh/core/internal/testmain\x00TestReleasePublicationTemplate":                                    3,
 	"enkv.sh/core/internal/testmain\x00TestNativeCLIArchivesInstallOutsideCheckout":                       32,
 	"enkv.sh/core/internal/testmain\x00TestPluginInstallationOrdinaryCaptureBeforeCredentials":            21,
 	"enkv.sh/core/internal/testmain\x00TestVersionedPrivateCLIArchiveBuildsOutsideCheckout":               36,
