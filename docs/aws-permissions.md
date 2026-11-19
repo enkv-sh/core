@@ -7,7 +7,7 @@ perform. ENKV's authenticated recipient membership determines which selected
 secrets that caller can decrypt through a Recipient key.
 
 Use separate identities for provisioning, Authority operations and the
-application Recipient. A bucket reader can see public metadata and encrypted
+Recipient. A bucket reader can see public metadata and encrypted
 state; bucket access does not grant Authority signing or secret decryption.
 
 ## Required access by task
@@ -18,7 +18,7 @@ state; bucket access does not grant Authority signing or secret decryption.
 | Apply normal changes | Get and put; delete for supported cleanup | Sign with Authority key; decrypt with Authority encryption key; public-key/metadata reads for keys selected by the operation. |
 | Inspect, public plan or read receipts | Get | No signing or decryption. |
 | Prepare a new Recipient | Get | Get public key and metadata for that Recipient's key. |
-| Consume an application's secret | Get | Decrypt with that application's Recipient key. |
+| Materialize a granted secret as the Recipient | Get | Decrypt with the Recipient's key. |
 | Run garbage collection | Get, list and guarded delete | Normal Authority signing/decryption as required by the operation. |
 | Initialize with Recovery enabled | As for initialization | Also qualify and use the independent Recovery signing and encryption keys during initialization. |
 
@@ -31,8 +31,10 @@ will intentionally run that integration.
 
 The following example scopes object access to one bucket prefix and KMS access
 to three exact keys. It also permits bucket-wide listing for missing-object
-detection. Replace every `YOUR_...` value. The Region and account in each key
-ARN must be the key's actual values. Save the result as `authority-policy.json`.
+detection. Replace `YOUR_BUCKET_NAME` with the value of `ENKV_BUCKET`. For the three key
+ARNs below, use the values of `ENKV_AUTHORITY_SIGNING_KEY`,
+`ENKV_AUTHORITY_ENCRYPTION_KEY` and `RECIPIENT_ENCRYPTION_KEY`, respectively,
+from the quickstart. Save the result as `authority-policy.json`.
 
 ```json
 {
@@ -54,7 +56,7 @@ ARN must be the key's actual values. Save the result as `authority-policy.json`.
       "Sid": "ReadConfiguredPublicKeys",
       "Effect": "Allow",
       "Action": ["kms:DescribeKey", "kms:GetPublicKey"],
-      "Resource": ["YOUR_AUTHORITY_SIGNING_KEY_ARN", "YOUR_AUTHORITY_ENCRYPTION_KEY_ARN", "YOUR_APP_ENCRYPTION_KEY_ARN"]
+      "Resource": ["YOUR_AUTHORITY_SIGNING_KEY_ARN", "YOUR_AUTHORITY_ENCRYPTION_KEY_ARN", "YOUR_RECIPIENT_ENCRYPTION_KEY_ARN"]
     },
     {
       "Sid": "SignDomainChanges",
@@ -109,17 +111,16 @@ Configure the profile from that assignment. Do not edit the service-managed
 Organization policies, permissions boundaries, session policies, bucket policies
 and explicit denies can further restrict access. See [AWS policy evaluation](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html).
 
-The `ReadConfiguredPublicKeys` list includes the app key so that Authority can
-prepare the `app` Recipient. This permits public-key qualification; do not grant
-the Authority identity private use of the app key merely to add the Recipient. Authority already has its own domain decryption
-capability.
+`ReadConfiguredPublicKeys` lets Authority read the public part of the Recipient
+key to prepare the alias `recipient`. Authority decrypts with its own key.
 
-## Application Recipient access
+## Recipient access
 
-The application identity needs object reads and decryption with its own key.
-The quickstart exports this exact key ARN as `APP_ENCRYPTION_KEY`. Save the
-policy below as `app-policy.json`, replace the placeholders and assign it through
-the application's role or permission set using the same owner process.
+The Recipient needs object reads and decryption with the Recipient key. Use the
+same bucket as the Authority policy. Replace `YOUR_RECIPIENT_ENCRYPTION_KEY_ARN`
+in both policies with the ARN in `RECIPIENT_ENCRYPTION_KEY` from setup. Save
+this policy as `recipient-policy.json`. For the quickstart, assign it to the
+Recipient's permission set for the `orders-recipient` profile.
 
 ```json
 {
@@ -133,7 +134,7 @@ the application's role or permission set using the same owner process.
     {
       "Effect": "Allow",
       "Action": "kms:Decrypt",
-      "Resource": "YOUR_APP_ENCRYPTION_KEY_ARN"
+      "Resource": "YOUR_RECIPIENT_ENCRYPTION_KEY_ARN"
     }
   ]
 }
@@ -143,18 +144,17 @@ For an ordinary existing IAM role, attach it with:
 
 ```sh
 aws iam put-role-policy --profile "$ENKV_OWNER_PROFILE" \
-  --role-name YOUR_APP_ROLE_NAME --policy-name ENKVDemoRead \
-  --policy-document file://app-policy.json
+  --role-name YOUR_RECIPIENT_ROLE_NAME --policy-name ENKVDemoRecipient \
+  --policy-document file://recipient-policy.json
 ```
 
-Give the application the trusted configuration pair through your deployment
-process. Grant it membership only in the values it needs. It does not need
-Authority signing, Authority decryption, Recovery access, bucket writes or
-resource-administration permissions to consume its selected values.
+Authority grants the ENKV recipient access to selected entries and gives the
+Recipient the approved configuration pair. The Recipient runs `enkv materialize`
+with this profile. The local worker needs only permission to read the resulting file.
 
 A missing S3 object can appear as access denied when a caller lacks list
 permission. Treat such a read as a failure, not proof that the object is absent.
-The application policy deliberately does not grant bucket listing for ordinary
+The Recipient policy deliberately does not grant bucket listing for ordinary
 consumption.
 
 ## Enable Recovery before initialization
@@ -200,7 +200,7 @@ can use a temporary initialization role with those exact permissions.
 
 After initialization, use the limited normal Authority profile for daily work.
 Keep private Recovery permissions with the separate Recovery operator; do not
-leave them attached to the application role. Preserve the independent Recovery
+leave them attached to the Recipient role. Preserve the independent Recovery
 resource identifiers in your operational records. Changing the YAML flag later
 is not a supported way to change an initialized domain's Recovery choice.
 

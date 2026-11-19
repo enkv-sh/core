@@ -1,9 +1,10 @@
 # Manage recipient access
 
 A recipient is an ENKV identity with a current cloud encryption key binding.
-The name `app` in a configuration is a local reference to that identity. It is
-not a cloud account or IAM role. Cloud permissions let a process use a key;
-ENKV membership determines which entries that recipient may consume.
+The alias `recipient` refers to that identity in the walkthrough configuration.
+The person running ENKV signs in with their cloud credentials. Cloud permissions
+let the process use a key. ENKV membership determines which entries the selected
+recipient may consume.
 
 Authority is a mandatory recipient of every current entry. An ordinary
 recipient can consume granted entries but cannot change state or publish them.
@@ -12,20 +13,21 @@ See [concepts](concepts.md) for these responsibilities and the
 [AWS](aws-permissions.md) or [GCP](gcp-permissions.md) permission guide for cloud
 access.
 
-## Prepare a new application recipient
+## Prepare the Recipient binding
 
 First have the resource owner create an appropriate encryption key in the same
 cloud provider as the domain. Use its exact immutable AWS key ARN or GCP key
-version resource. Grant the application decryption permission on that key and
-object-read access to the domain. The preparation operator and Authority also
-need the public key and metadata permissions described in the cloud guide.
+version resource. The resource owner grants the Recipient's cloud identity
+decryption on that key and object-read access to the domain. Authority needs
+public-key and metadata reads on the Recipient key for preparation.
 
-Set `APP_ENCRYPTION_KEY` to that real selector, then prepare the local binding:
+Authority sets `RECIPIENT_ENCRYPTION_KEY` to that key ARN or version name and
+prepares the local alias `recipient`.
 
 ```sh
-enkv recipients add --json --source enkv.yaml --recipient app \
-  --mode create --display-name 'Demo application' \
-  --encryption-key "$APP_ENCRYPTION_KEY"
+enkv recipients add --json --source enkv.yaml --recipient recipient \
+  --mode create --display-name 'Demo Recipient' \
+  --encryption-key "$RECIPIENT_ENCRYPTION_KEY"
 ```
 
 The result must confirm local delivery. This step reads authenticated state and
@@ -39,7 +41,7 @@ It still requires that the intended recipient is absent from current state.
 To refresh public information for an exact already-current declaration, use:
 
 ```sh
-enkv recipients add --json --source enkv.yaml --recipient app --mode current
+enkv recipients add --json --source enkv.yaml --recipient recipient --mode current
 ```
 
 `--mode` is required. Create mode requires an alias. For current mode, you can
@@ -58,7 +60,7 @@ Add the reference to the entry's additional recipient list in `enkv.yaml`:
 entries:
   API_TOKEN:
     confidentiality: secret
-    recipients: [app]
+    recipients: [recipient]
     source:
       kind: supplied
 ```
@@ -93,44 +95,50 @@ entry. Inspection reports the exact RecipientID:
 enkv inspect --json --source enkv.yaml
 ```
 
-Use `--recipient app` to select the local alias. ENKV reads its managed ID from
+Use `--recipient recipient` to select the local alias. ENKV reads its managed ID from
 the configuration pair, then checks that identity against authenticated current
 state. To select an exact ID directly, use `--recipient-id ID` instead. The ID
 must be nonzero and contain 64 lowercase hexadecimal characters. The flags
 cannot be combined; an unknown alias does not select Authority or fall back to
 ID parsing.
 
-Verify application access under the application's cloud credentials:
+Give the Recipient the approved pair as in [the first-secret guide](first-secret.md#5-materialize-as-the-recipient).
+In their own directory and cloud login, the Recipient runs the following commands.
 
 ```sh
-enkv materialize --json --source enkv.yaml --recipient app \
-  --name API_TOKEN --out /protected/application.env
+umask 077
+mkdir -p .private
+enkv materialize --json --source enkv.yaml --recipient recipient \
+  --name API_TOKEN --out .private/worker.env
 ```
 
-Create the destination directory first. This writes plaintext to a private
-application file. Follow [your first secret](first-secret.md) for consumption
-and cleanup. A metadata inspection alone does not prove private decryption
-permission.
+Success verifies that the Recipient could materialize this entry. The
+[local worker](first-secret.md#6-read-the-file-with-a-local-worker) can then
+read the file. For the following changes, return to Authority's workspace and login.
 
 ## Remove access to one entry
 
-Remove `app` from that entry's `recipients`, review with `plan`, and apply as
+Remove `recipient` from that entry's `recipients`, review with `plan`, and apply as
 Authority. Preserve all other intended memberships. The recipient remains
 enrolled and can retain access to other entries.
 
 For an unchanged supplied secret, ENKV can accept a valid original seal for a
 recipient subset only after its private equality checks succeed. If the seal is
 unusable or the pending value changed, supply a fresh input with `set`.
-Removing access cannot recall bytes the application already obtained. Change
-the value too when the application must stop using the old secret.
+Removing membership prevents future materialization of the current entry as
+that recipient. Existing files and copies remain readable. If a deployed worker
+reads a published secret, the operator manages its access separately in the
+destination service. To invalidate a copied credential, revoke or rotate it at
+the service that issued it.
 
 ## Rename or retire a recipient
 
-To change only the local reference, use:
+For example, to change only the local reference, use the following command.
+The other guides continue to use the original alias `recipient`.
 
 ```sh
 enkv recipients rename --json --source enkv.yaml \
-  --recipient app --new-reference worker
+  --recipient recipient --new-reference reviewer
 ```
 
 This changes references in both files and preserves the RecipientID and current

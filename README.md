@@ -1,14 +1,20 @@
 # ENKV
 
-ENKV manages application secrets through an authenticated state stored in AWS
-S3 or Google Cloud Storage. AWS KMS or Google Cloud KMS supplies signing and
-secret-encryption keys. Each domain uses one cloud provider for storage, trust,
-encryption and optional Recovery.
+ENKV manages named configuration values and secrets in your AWS or Google Cloud
+account. You declare the values you want, review the changes with `enkv plan`,
+and make them current with `enkv apply`. You can supply values yourself or use
+a generator plugin. Each domain stores authenticated state in S3 or Cloud
+Storage and uses the same provider's KMS for signing and encryption.
 
-The full CLI supports both cloud providers on native macOS/arm64 and
-Linux/x86_64. Use it to store supplied or generated secrets, control application
-access and deliver current values to files or supported services. ENKV uses your
-cloud credentials; it does not create cloud resources or an ENKV account.
+ENKV encrypts secrets for their ENKV recipients. A recipient can write selected
+values to a private dotenv file. Authority can publish current values to AWS
+Secrets Manager, Google Cloud Secret Manager or GitHub Actions through output
+plugins. A manifest can give a consumer references to published secrets. Your
+deployment controls who can read the file. Your cloud IAM policies control which
+applications can read a secret published to AWS or GCP.
+
+The full CLI runs on native macOS/arm64 and Linux/x86_64 with your cloud
+credentials. The resource owner supplies the domain bucket, keys and permissions.
 
 ## Use ENKV
 

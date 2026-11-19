@@ -11,16 +11,18 @@ ENKV supports three delivery paths. Choose the path your application needs:
 These paths use authenticated current state. Editing `enkv.yaml` alone does not
 change the values, routes or output encoding that they use. Apply the intended
 configuration first. Start with [your first secret](first-secret.md) if the
-domain and `app` recipient are not ready.
+domain and `recipient` alias are not ready.
 
 ## Write a local application file
 
-Use the application's credential context, the `app` alias from your
-configuration, and an existing private output directory:
+In the walkthrough, the Recipient runs these commands in their own workspace
+with the cloud credentials from setup. The local worker reads the resulting file.
 
 ```sh
-enkv materialize --name API_TOKEN --recipient app \
-  --out /absolute/private/demo.env --json
+umask 077
+mkdir -p .private
+enkv materialize --name API_TOKEN --recipient recipient \
+  --out .private/worker.env --json
 ```
 
 Repeat `--name` to select more entries. The command requires at least one name.
@@ -54,8 +56,17 @@ The official outputs support AWS Secrets Manager, Google Cloud Secret Manager,
 and GitHub Actions repository, organization and environment secrets. Output
 services are independent of the cloud used by the ENKV domain.
 
-For AWS Secrets Manager, merge this `outputs` section into your complete
-configuration. Replace the account and region:
+Authority runs `publish` with permission to write the destination secret. If a
+deployed application reads that secret from AWS Secrets Manager, the operator
+grants its runtime identity read access through infrastructure as code. GCP
+Secret Manager also checks the consumer's IAM permissions. Changing ENKV entry
+membership leaves those grants in place. For a GitHub Actions organization
+secret, the output plugin can set visibility to all, private or selected repositories.
+See [AWS secret retrieval](https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html)
+and [GCP secret access](https://cloud.google.com/secret-manager/docs/access-secret-version#required_roles).
+
+In Authority's workspace, merge this AWS Secrets Manager `outputs` section into
+the complete configuration. Replace the account and region:
 
 ```yaml
 outputs:
@@ -143,12 +154,14 @@ A manifest tells a consumer where selected values belong. It carries plain
 values and secret references; it does not contain secret value bytes or fetch
 secrets for an application.
 
-Add `generic-json: {}` under the top-level `plugins` map, run `enkv prepare`,
-then write to an absent path in an existing directory:
+Add `generic-json: {}` under the top-level `plugins` map and run `enkv prepare`.
+With Store read access, select the `recipient` alias from the approved pair and
+write to an absent path in an existing directory. The alias selects the entries
+to describe. The consumer still needs its own access to each secret it retrieves.
 
 ```sh
 enkv manifest --plugin generic-json --settings '{}' \
-  --recipient app --name API_TOKEN \
+  --recipient recipient --name API_TOKEN \
   --out /absolute/private/demo.references.json --json
 ```
 

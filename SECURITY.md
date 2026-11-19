@@ -35,8 +35,9 @@ For ordinary bugs without security implications, use
 ## Operator responsibilities
 
 Protect the configuration pair, cloud credentials, private plaintext inputs and
-materialized files. Use separate permissions for normal Authority, application
-Recipients and enabled Recovery. Native plugins are trusted executable code;
+materialized files. Use separate permissions for normal Authority, Recipients
+and enabled Recovery. Use cloud IAM to grant a deployed application access to
+published AWS or GCP secrets. Native plugins are trusted executable code;
 protocol checks do not confine an untrusted program to a sandbox.
 
 Keep exact resources and independent trust records for recovery. Do not bypass

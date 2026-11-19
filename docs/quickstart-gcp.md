@@ -1,18 +1,16 @@
 # Start a domain on Google Cloud
 
-This guide creates an empty ENKV domain for an application named `demo`.
-You will use Cloud Storage for state and Cloud KMS for keys. Then continue to
-[your first secret](first-secret.md) to give the application a value.
+This guide creates an empty ENKV domain named `demo` with Cloud Storage and
+Cloud KMS. In [your first secret](first-secret.md), Authority grants access to
+one entry, the Recipient writes it to a file, and a local worker reads the file.
 
 Read [how ENKV works](concepts.md) and [install ENKV](install.md) first.
 You also need the [Google Cloud CLI](https://cloud.google.com/sdk/docs/install),
 an existing project with billing, and permission to create the resources below.
 Cloud Storage and Cloud KMS can incur charges.
 
-There are two kinds of work in this guide. The cloud resource owner creates
-resources and grants permissions. The Authority operator then uses ENKV with
-limited access to those resources. They can be different people. ENKV does not
-create cloud keys, service accounts or IAM grants.
+The cloud resource owner creates resources and grants permissions. Authority
+initializes the domain. The Recipient uses a separate login for the first read.
 
 Run the commands in order. Stop after any failed command and resolve its cause
 before continuing. The commands below change cloud resources only when the
@@ -70,8 +68,7 @@ See Google's [bucket creation options](https://cloud.google.com/sdk/gcloud/refer
 and [soft delete behavior](https://cloud.google.com/storage/docs/soft-delete).
 
 Create three separate keys. The first signs ENKV state. The second protects
-the Authority's secret access. The third belongs to the application Recipient
-that you will add in the next guide.
+the Authority's secret access. The third lets the Recipient decrypt granted secrets.
 
 ```sh
 gcloud kms keys create normal-signing \
@@ -79,7 +76,7 @@ gcloud kms keys create normal-signing \
   --keyring="$ENKV_GCP_KEYRING" --purpose=asymmetric-signing \
   --default-algorithm=ec-sign-p256-sha256 --protection-level=software
 
-for key in authority-encryption app-encryption; do
+for key in authority-encryption recipient-encryption; do
   gcloud kms keys create "$key" \
     --project="$ENKV_GCP_PROJECT" --location="$ENKV_GCP_REGION" \
     --keyring="$ENKV_GCP_KEYRING" --purpose=asymmetric-encryption \
@@ -100,7 +97,7 @@ resources; do not substitute a CryptoKey name without `/cryptoKeyVersions/1`.
 Asymmetric key generation can take time. Check all three versions before init:
 
 ```sh
-for key in normal-signing authority-encryption app-encryption; do
+for key in normal-signing authority-encryption recipient-encryption; do
   gcloud kms keys versions describe 1 --key="$key" \
     --project="$ENKV_GCP_PROJECT" --location="$ENKV_GCP_REGION" \
     --keyring="$ENKV_GCP_KEYRING" --format='value(state)'
@@ -115,27 +112,28 @@ ENKV does not admit a pending key. See [Cloud KMS key states](https://cloud.goog
 ENKV_GCP_KEY_BASE="projects/$ENKV_GCP_PROJECT/locations/$ENKV_GCP_REGION/keyRings/$ENKV_GCP_KEYRING/cryptoKeys"
 export NORMAL_SIGNING_KEY="$ENKV_GCP_KEY_BASE/normal-signing/cryptoKeyVersions/1"
 export AUTHORITY_ENCRYPTION_KEY="$ENKV_GCP_KEY_BASE/authority-encryption/cryptoKeyVersions/1"
-export APP_ENCRYPTION_KEY="$ENKV_GCP_KEY_BASE/app-encryption/cryptoKeyVersions/1"
+export RECIPIENT_ENCRYPTION_KEY="$ENKV_GCP_KEY_BASE/recipient-encryption/cryptoKeyVersions/1"
 ```
 
 Do not disable or destroy versions that ENKV still requires. Creating a newer
 version does not change an ENKV binding automatically.
 
-## 3. Grant operator and application access
+## 3. Grant Authority and Recipient access
 
-**Cloud resource owner:** complete [Google Cloud permissions](gcp-permissions.md).
-It creates the application service account and grants the Authority operator
-access to this bucket and these exact keys. It also prepares a separate,
-restricted application credential route for the first-secret exercise.
+**Cloud resource owner:** Follow the [permission guide](gcp-permissions.md)
+through creation of the Recipient service account and its IAM bindings. Give
+Authority the project, bucket, Region and three key version names from setup.
+Give the Recipient the project ID and the email of that service account.
 
-The Authority operator needs signing and decryption with the normal pair.
-The operator needs only public-key and metadata reads on `app-encryption`.
-The application receives decryption on its own key and read access to state.
+Authority uses its own keys for signing and decryption. On `recipient-encryption`,
+Authority needs only public-key and metadata reads. The Recipient impersonates
+the service account to read domain objects and decrypt with the Recipient key.
 
 ## 4. Select the Authority operator's credentials
 
-**Authority operator:** use Application Default Credentials (ADC). At the browser
-prompt, choose the limited operator account granted in the previous step.
+**Authority:** In your own OS login, set `ENKV_GCP_PROJECT` to the project ID
+from setup. Configure Application Default Credentials (ADC). At the browser
+prompt, choose the Authority user from the permission guide.
 
 ```sh
 gcloud auth application-default login
@@ -153,8 +151,9 @@ in the [quota-project command](https://cloud.google.com/sdk/gcloud/reference/aut
 
 ## 5. Write an empty configuration and initialize
 
-**Authority operator:** work in a new application directory. Set the resource
-variables above in this shell too if the owner used a different machine.
+**Authority:** Work in a new directory. Set `ENKV_GCP_REGION`, `ENKV_GCP_BUCKET`,
+`NORMAL_SIGNING_KEY`, `AUTHORITY_ENCRYPTION_KEY` and `RECIPIENT_ENCRYPTION_KEY`
+to the values from the owner. Keep the Recipient key version for the next guide.
 
 ```sh
 mkdir enkv-demo

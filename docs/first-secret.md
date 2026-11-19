@@ -1,32 +1,29 @@
 # Store and use your first secret
 
-This guide adds a supplied secret to an initialized `demo` domain and reads it
-as an application recipient. Finish [AWS setup](quickstart-aws.md) or
-[GCP setup](quickstart-gcp.md) first. You need:
+Finish [AWS setup](quickstart-aws.md) or [GCP setup](quickstart-gcp.md) for the
+`demo` domain. Two people use ENKV. Authority grants the Recipient access to
+`API_TOKEN`. The Recipient runs `enkv materialize` to write a private file.
+A local worker reads that file.
 
-- A successful empty-domain init and its complete `enkv.yaml` pair.
-- Normal Authority credentials for preparation and apply.
-- The app encryption key in `$APP_ENCRYPTION_KEY`, created by the cloud guide.
-- A separate app credential context with Store reads and app-key decryption.
+Authority runs steps 1–4 from the directory with `enkv.yaml` and its generated
+companion. Use the Authority credentials from setup. Set `RECIPIENT_ENCRYPTION_KEY`
+to the Recipient key ARN (AWS) or key version name (GCP) from the owner. Use the
+disposable value below for this exercise. Check each command result before continuing.
 
-Run commands in the directory containing `enkv.yaml`. Keep the same terminal
-environment from setup, or restore its non-secret resource variables. Stop and
-read the result if any command fails. Use a disposable example value for this
-first pass; the commands below do not contact a real API service.
+<a id="1-prepare-the-application-recipient"></a>
 
-## 1. Prepare the application recipient
+## 1. Prepare the Recipient binding
 
 With normal Authority credentials, run:
 
 ```sh
-enkv recipients add --json --recipient app --mode create \
-  --display-name 'Demo application' --encryption-key "$APP_ENCRYPTION_KEY"
+enkv recipients add --json --recipient recipient --mode create \
+  --display-name 'Demo Recipient' --encryption-key "$RECIPIENT_ENCRYPTION_KEY"
 ```
 
-This writes public recipient data to the local pair. It does not yet enroll
-the recipient in current domain state. ENKV writes the recipient's stable `id`
-and its public key binding. Later commands can select it with `--recipient app`;
-you do not need to copy the ID.
+`recipient` is a local alias. ENKV records a stable ID and the public key binding
+in the configuration pair. `Demo Recipient` is a display name. Authority enrolls
+this identity and grants its entry membership at `apply` in step 4.
 
 ## 2. Declare the secret and its access
 
@@ -37,7 +34,7 @@ other part of the initialized file, including `generated` and the recipient ID:
 entries:
   API_TOKEN:
     confidentiality: secret
-    recipients: [app]
+    recipients: [recipient]
     source:
       kind: supplied
 ```
@@ -105,79 +102,82 @@ issuing another mutation.
 You can now inspect the selected recipient without displaying secret content:
 
 ```sh
-enkv inspect --json --recipient app
+enkv inspect --json --recipient recipient
 ```
 
 Check that the result describes the expected recipient and `API_TOKEN` entry.
 
-## 5. Read as the application
+## 5. Materialize as the Recipient
 
-Switch to the limited application credential context. On AWS, use the profile
-from [AWS permissions](aws-permissions.md):
+Authority gives the Recipient the approved `enkv.yaml` and
+`.enkv/demo.generated.json` through a trusted channel. Preserve their relative
+paths. Keep Authority's plaintext input and credentials in Authority's workspace.
+
+The Recipient works in their own OS login, in the directory with their copy of
+`enkv.yaml`. On AWS, use the Region in `ENKV_REGION` and the Recipient profile
+from the quickstart.
 
 ```sh
-aws sso login --profile enkv-demo-app
-export AWS_PROFILE=enkv-demo-app
+aws sso login --profile orders-recipient
+export AWS_PROFILE=orders-recipient
+export AWS_REGION="$ENKV_REGION"
+aws sts get-caller-identity
 ```
 
-On GCP, use the application ADC procedure in
-[GCP permissions](gcp-permissions.md). A `gcloud` CLI account switch alone does
-not switch ENKV's ADC credentials. Keep the complete configuration pair, which
-maps the `app` alias to the recipient created in step 1.
+Check that the AWS account and role match the Recipient assignment. On GCP,
+follow [Sign in as the Recipient](gcp-permissions.md#sign-in-as-the-recipient)
+to select the Recipient service account through ADC.
 
-For a separate application machine, transfer the approved configuration pair
-through your normal controlled deployment process, preserving its relative
-paths. The cloud key identifier is not a private key to copy.
-
-As the application identity, write the current secret to a private file:
+With the Recipient credentials for your provider, write `API_TOKEN` to a file.
 
 ```sh
 umask 077
 mkdir -p .private
-enkv materialize --json --name API_TOKEN --recipient app \
-  --out .private/app.env
+enkv materialize --json --name API_TOKEN --recipient recipient \
+  --out .private/worker.env
 ```
 
-Expected result: successful materialization and a mode-0600 dotenv file. ENKV
-reads the current Store value, not a pending local proposal. It needs the app's
-decryption permission; it does not need Authority signing. The `--recipient app`
-flag selects the application. Omitting both recipient flags selects Authority,
-which needs its own decryption permission even for a shared value. A successful write
-replaces an existing regular destination file, so choose the path deliberately.
+Expect a successful result and a mode-0600 dotenv file. ENKV resolves the alias
+`recipient` in the pair and checks membership in the current entry. It reads the
+Store and uses the Recipient key to decrypt the secret. Omitting the recipient
+flag selects Authority, which needs its own decryption permission. A successful
+write replaces an existing regular file at the selected path.
 
-## 6. Let an application consume it
+## 6. Read the file with a local worker
 
 The builtin file profile supports **dotenv 18.0.9 default `parse`**, without
 expansion. Do not execute the file with `source` or assume compatibility with
 Docker env files. For other consumers, use a suitable
 [output or manifest route](outputs.md).
 
-For an optional Node.js example, use Node.js 24 and npm in a new directory:
+In the Recipient's OS login, run this local worker with Node.js 24 and npm.
+It needs read access to `.private/worker.env`. It makes no ENKV or cloud calls.
 
 ```sh
-mkdir consumer
-cd consumer
-npm init -y
-npm install --save-exact dotenv@18.0.9
-node - <<'JS'
+(
+  set -e
+  mkdir worker
+  cd worker
+  npm init -y
+  npm install --save-exact dotenv@18.0.9
+  node - <<'JS'
 const fs = require('node:fs');
 const dotenv = require('dotenv');
-const values = dotenv.parse(fs.readFileSync('../.private/app.env'));
+const values = dotenv.parse(fs.readFileSync('../.private/worker.env'));
 if (values.API_TOKEN !== 'demo-token-not-for-production') process.exit(1);
-console.log('Application received the expected demo value.');
+console.log('Worker read the expected demo value.');
 JS
-cd ..
+)
 ```
 
-The example checks the disposable value without printing it. Your application
-can use the returned value directly. See the
+The worker checks the exact disposable value without printing it. See the
 [versioned dotenv parse documentation](https://github.com/motdotla/dotenv/blob/v18.0.9/README.md#parse).
 
 ## After the example
 
-Return to the normal Authority credential context before later writes. Protect
-or remove the plaintext input and output according to your local policy;
-deletion does not prove physical erasure. Keep the configuration pair. Do not
+Run later domain changes in Authority's original workspace and login. Each
+person protects or removes the plaintext files they created. Deletion does not
+prove physical erasure. Keep the configuration pair. Do not
 delete the cloud keys or bucket while the domain still matters.
 
 Continue with [Daily operations](operations.md), [Access](access.md) or

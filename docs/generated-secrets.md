@@ -3,7 +3,7 @@
 ENKV can ask a generator plugin to create a value, then store that value for its
 recipients. The plugin can obtain random bytes locally or create a resource in
 an external service. This guide assumes that you have initialized the `demo`
-domain and added the `app` recipient. Start with [your first secret](first-secret.md)
+domain and added the `recipient` alias. Start with [your first secret](first-secret.md)
 if you have not done that.
 
 Run these commands from the directory that contains `enkv.yaml`. Use the normal
@@ -17,7 +17,7 @@ other entries and domain settings:
 ```yaml
   SESSION_SECRET:
     confidentiality: secret
-    recipients: [app]
+    recipients: [recipient]
     source:
       kind: generated
       plugin: local-random-secret
@@ -53,9 +53,9 @@ enkv generated list --json
 ```
 
 A successful apply selects the generated value. It does not print the secret or
-publish it to another service. Consume it through
-[materialization](outputs.md#write-a-local-application-file), using the `app`
-recipient's credentials and `--recipient app`. Use `--recipient-id ID` if you
+publish it to another service. Give the updated pair to the Recipient. In their
+own login, the Recipient can [materialize](outputs.md#write-a-local-application-file) `SESSION_SECRET` with
+`--recipient recipient --name SESSION_SECRET`. Use `--recipient-id ID` if you
 need to select an exact identity instead.
 
 Repeating apply with unchanged settings and the same epoch reuses the current
@@ -87,7 +87,7 @@ the account and permission-group ID that you intend to use:
 ```yaml
   CLOUDFLARE_TOKEN:
     confidentiality: secret
-    recipients: [app]
+    recipients: [recipient]
     source:
       kind: generated
       plugin: cloudflare-account-token

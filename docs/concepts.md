@@ -3,7 +3,8 @@
 ENKV manages named values such as `API_TOKEN` or `DATABASE_URL`. A value can be
 plain or secret. A secret is encrypted before it enters the domain's storage.
 ENKV can accept a value you supply or ask a trusted generator plugin to create
-one. You decide who can read it and how to deliver it to an application.
+one. Authority selects the ENKV recipients for each entry and the destinations
+for publication. The deployment assigns file access and cloud IAM permissions.
 
 ## The parts you operate
 
@@ -33,8 +34,8 @@ it can perform.
 
 The **RecipientID** is a 64-character identifier inside ENKV. It is not an AWS
 profile, GCP service account, key identifier, local reference or display name.
-For example, `app` can be the local alias for an application recipient. Use
-`--recipient app` to select that alias, or `--recipient-id ID` for its exact
+For example, the two-person walkthrough uses the local alias `recipient`. Use
+`--recipient recipient` to select that alias, or `--recipient-id ID` for its exact
 nonzero 64-character lowercase hexadecimal ID. Use only one flag. ENKV does not
 infer the recipient from your AWS profile or GCP login.
 
@@ -42,7 +43,7 @@ infer the recipient from your AWS profile or GCP login.
 are omitted, including for shared values. The credentials still need the access
 required by the operation. Plain `inspect` shows the domain overview.
 
-Reading a secret requires both ENKV membership and access to the recipient's
+Materializing a secret requires both ENKV membership and access to the recipient's
 current encryption key. Store access alone does not decrypt it. Access to a
 recipient key does not grant Authority signing or permission to change state.
 Cloud administrators who can change these permissions are part of your trust

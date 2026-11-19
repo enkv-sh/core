@@ -2,7 +2,7 @@
 
 Use this guide after [your first secret](first-secret.md). The examples use the
 complete `enkv.yaml` configuration pair for the `demo` domain. Run them from
-that application's directory, with the cloud credentials required for the task.
+Authority's workspace with the Authority credentials for domain changes.
 
 The editable file describes the **complete desired state**. `set` and manual
 edits prepare changes locally. `apply` makes accepted changes current in the
@@ -46,9 +46,9 @@ enkv apply --json --source enkv.yaml
 ```
 
 Read the result's state, warnings and remaining work. Successful apply leaves
-both input files unchanged. Refresh the application's [materialized values](first-secret.md)
-when it needs the new value. An application already holding the old bytes does
-not receive an automatic update.
+both input files unchanged. When the worker needs the new value, the Recipient can
+[materialize it again](first-secret.md#5-materialize-as-the-recipient). The worker
+must reload the file to use the new value.
 
 ## Add a secret or plain value
 

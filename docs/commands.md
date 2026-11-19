@@ -19,7 +19,7 @@ operation record.
 
 ## Recipient selection
 
-`--recipient REF` selects a local alias such as `app`. `--recipient-id ID`
+`--recipient REF` selects a local alias such as `recipient`. `--recipient-id ID`
 selects an exact nonzero 64-character lowercase hexadecimal ID. Use only one
 flag. An unknown alias or invalid ID fails; neither falls back to Authority.
 Even an alias that looks like a hexadecimal ID is treated only as an alias.

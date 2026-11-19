@@ -1,8 +1,8 @@
 # Google Cloud permissions
 
-Use this with [Google Cloud setup](quickstart-gcp.md). The commands in this
-guide are for the cloud resource owner. They change IAM and create one service
-account. Run them only for the project, bucket and keys you intend to use.
+Use this with [Google Cloud setup](quickstart-gcp.md). The cloud resource owner assigns IAM permissions
+and creates one service account. Authority and the Recipient each sign in
+under their own OS login.
 
 The example uses a dedicated bucket. Grants on that bucket cover every object
 in it, including other prefixes. Use separate buckets or a separately reviewed
@@ -13,14 +13,13 @@ IAM design when different domains need different cloud access.
 Keep the resource variables from the setup guide. Set two IAM member strings:
 
 ```sh
-export ENKV_GCP_OPERATOR='user:operator@example.com'
-export ENKV_GCP_APP_OPERATOR='user:application-operator@example.com'
+export ENKV_GCP_AUTHORITY_USER='user:authority@example.com'
+export ENKV_GCP_RECIPIENT_USER='user:recipient@example.com'
 ```
 
-Replace both addresses. The first person runs ENKV as Authority. The second
-may impersonate the restricted application service account for the tutorial.
-For a one-person exercise, both variables can name your user. That person can
-then use both routes; these grants do not create separation between people.
+Replace the addresses with the two people's Google accounts. Authority signs
+in directly. The Recipient signs in as the second user and impersonates the
+service account created below.
 
 ENKV roles come from the operation and keys used. They are not Google Cloud
 IAM roles and are not selected by a username in `enkv.yaml`.
@@ -29,8 +28,8 @@ IAM roles and are not selected by a username in `enkv.yaml`.
 |---|---|---|
 | Initialize with Recovery disabled | Read and write state | Normal signing and Authority decryption |
 | Ordinary apply | Read/write; deletion for required state cleanup | Normal signing and Authority decryption |
-| Prepare an application Recipient | Read state | None; public-key and metadata reads on its key |
-| Read as application Recipient | Read state | Application key decryption only |
+| Prepare the Recipient binding | Read state | None; public-key and metadata reads on its key |
+| Materialize a granted secret as the Recipient | Read state | Recipient key decryption only |
 | Public inspection and ordinary public plan | Read state | None when using a valid trusted configuration pair |
 
 Output and generator plugins need their own service permissions. Bucket or
@@ -49,28 +48,28 @@ gcloud iam roles create enkvPublicKeyRead --project="$ENKV_GCP_PROJECT" \
   --title='ENKV public key reads' --stage=GA \
   --permissions=cloudkms.cryptoKeys.get,cloudkms.cryptoKeyVersions.get,cloudkms.cryptoKeyVersions.viewPublicKey
 
-for key in normal-signing authority-encryption app-encryption; do
+for key in normal-signing authority-encryption recipient-encryption; do
   gcloud kms keys add-iam-policy-binding "$key" \
     --project="$ENKV_GCP_PROJECT" --location="$ENKV_GCP_REGION" \
-    --keyring="$ENKV_GCP_KEYRING" --member="$ENKV_GCP_OPERATOR" \
+    --keyring="$ENKV_GCP_KEYRING" --member="$ENKV_GCP_AUTHORITY_USER" \
     --role="projects/$ENKV_GCP_PROJECT/roles/enkvPublicKeyRead"
 done
 
 gcloud kms keys add-iam-policy-binding normal-signing \
   --project="$ENKV_GCP_PROJECT" --location="$ENKV_GCP_REGION" \
-  --keyring="$ENKV_GCP_KEYRING" --member="$ENKV_GCP_OPERATOR" \
+  --keyring="$ENKV_GCP_KEYRING" --member="$ENKV_GCP_AUTHORITY_USER" \
   --role=roles/cloudkms.signer
 
 gcloud kms keys add-iam-policy-binding authority-encryption \
   --project="$ENKV_GCP_PROJECT" --location="$ENKV_GCP_REGION" \
-  --keyring="$ENKV_GCP_KEYRING" --member="$ENKV_GCP_OPERATOR" \
+  --keyring="$ENKV_GCP_KEYRING" --member="$ENKV_GCP_AUTHORITY_USER" \
   --role=roles/cloudkms.cryptoKeyDecrypter
 
 gcloud storage buckets add-iam-policy-binding "gs://$ENKV_GCP_BUCKET" \
-  --member="$ENKV_GCP_OPERATOR" --role=roles/storage.objectUser
+  --member="$ENKV_GCP_AUTHORITY_USER" --role=roles/storage.objectUser
 
 gcloud projects add-iam-policy-binding "$ENKV_GCP_PROJECT" \
-  --member="$ENKV_GCP_OPERATOR" --role=roles/serviceusage.serviceUsageConsumer
+  --member="$ENKV_GCP_AUTHORITY_USER" --role=roles/serviceusage.serviceUsageConsumer
 ```
 
 If the custom role already exists, inspect it instead of recreating it or
@@ -90,62 +89,64 @@ requires narrower grants. Replacement needs both create and delete access.
 See the [Storage role reference](https://cloud.google.com/storage/docs/access-control/iam-roles)
 and [operation permissions](https://cloud.google.com/storage/docs/access-control/iam-permissions).
 
-## Prepare the application identity
+## Prepare the Recipient service account
 
 Create a service account with no downloaded private key:
 
 ```sh
-gcloud iam service-accounts create enkv-demo-app \
-  --project="$ENKV_GCP_PROJECT" --display-name='ENKV demo application'
-export ENKV_GCP_APP_ACCOUNT="enkv-demo-app@$ENKV_GCP_PROJECT.iam.gserviceaccount.com"
-export ENKV_GCP_APP_MEMBER="serviceAccount:$ENKV_GCP_APP_ACCOUNT"
+gcloud iam service-accounts create enkv-demo-recipient \
+  --project="$ENKV_GCP_PROJECT" --display-name='ENKV demo Recipient'
+export ENKV_GCP_RECIPIENT_ACCOUNT="enkv-demo-recipient@$ENKV_GCP_PROJECT.iam.gserviceaccount.com"
+export ENKV_GCP_RECIPIENT_MEMBER="serviceAccount:$ENKV_GCP_RECIPIENT_ACCOUNT"
 
 gcloud storage buckets add-iam-policy-binding "gs://$ENKV_GCP_BUCKET" \
-  --member="$ENKV_GCP_APP_MEMBER" --role=roles/storage.objectViewer
+  --member="$ENKV_GCP_RECIPIENT_MEMBER" --role=roles/storage.objectViewer
 
-gcloud kms keys add-iam-policy-binding app-encryption \
+gcloud kms keys add-iam-policy-binding recipient-encryption \
   --project="$ENKV_GCP_PROJECT" --location="$ENKV_GCP_REGION" \
-  --keyring="$ENKV_GCP_KEYRING" --member="$ENKV_GCP_APP_MEMBER" \
+  --keyring="$ENKV_GCP_KEYRING" --member="$ENKV_GCP_RECIPIENT_MEMBER" \
   --role=roles/cloudkms.cryptoKeyDecrypter
 
 gcloud projects add-iam-policy-binding "$ENKV_GCP_PROJECT" \
-  --member="$ENKV_GCP_APP_MEMBER" --role=roles/serviceusage.serviceUsageConsumer
+  --member="$ENKV_GCP_RECIPIENT_MEMBER" --role=roles/serviceusage.serviceUsageConsumer
 
 gcloud projects add-iam-policy-binding "$ENKV_GCP_PROJECT" \
-  --member="$ENKV_GCP_APP_OPERATOR" --role=roles/serviceusage.serviceUsageConsumer
+  --member="$ENKV_GCP_RECIPIENT_USER" --role=roles/serviceusage.serviceUsageConsumer
 
-gcloud iam service-accounts add-iam-policy-binding "$ENKV_GCP_APP_ACCOUNT" \
-  --project="$ENKV_GCP_PROJECT" --member="$ENKV_GCP_APP_OPERATOR" \
+gcloud iam service-accounts add-iam-policy-binding "$ENKV_GCP_RECIPIENT_ACCOUNT" \
+  --project="$ENKV_GCP_PROJECT" --member="$ENKV_GCP_RECIPIENT_USER" \
   --role=roles/iam.serviceAccountTokenCreator
 ```
 
 The service account has no normal signing or Authority decryption grant. Its
-bucket access exposes public metadata and encrypted state; ENKV membership and
-the application key determine which current secrets it can consume. The
-[service account command](https://cloud.google.com/sdk/gcloud/reference/iam/service-accounts/create)
+bucket access exposes public metadata and encrypted state. The Recipient can
+materialize a secret when its entry grants membership and the service account
+can decrypt with the Recipient key. The [service account command](https://cloud.google.com/sdk/gcloud/reference/iam/service-accounts/create)
 creates this identity. The [IAM binding command](https://cloud.google.com/sdk/gcloud/reference/iam/service-accounts/add-iam-policy-binding)
 grants the selected person the ability to obtain tokens for it.
 
-When [the first-secret guide](first-secret.md) tells you to switch to the
-application identity, run:
+## Sign in as the Recipient
+
+Do this at the [first read](first-secret.md#5-materialize-as-the-recipient).
+In the Recipient's own OS login, set `ENKV_GCP_PROJECT` to the same project ID
+used at setup. The following email must match the account the owner created.
+For this local ADC login, start with `GOOGLE_APPLICATION_CREDENTIALS` unset.
 
 ```sh
+export ENKV_GCP_RECIPIENT_ACCOUNT="enkv-demo-recipient@$ENKV_GCP_PROJECT.iam.gserviceaccount.com"
 gcloud auth application-default login \
-  --impersonate-service-account "$ENKV_GCP_APP_ACCOUNT"
+  --impersonate-service-account "$ENKV_GCP_RECIPIENT_ACCOUNT"
 gcloud auth application-default set-quota-project "$ENKV_GCP_PROJECT"
 ```
 
-Choose the application operator's user account at login. Token Creator permits
+Choose the Recipient user's Google account at login. Token Creator permits
 impersonation of this service account; it does not itself grant bucket or key
 access. Those permissions belong to the service account. Google's
 [ADC guide](https://cloud.google.com/docs/authentication/set-up-adc-local-dev-environment)
 documents local impersonated ADC support for Go applications such as ENKV.
 
-This replaces the workstation's current local ADC file. To return to Authority
-work, run `gcloud auth application-default login` again, choose the Authority
-operator, and set the quota project again. A `gcloud` configuration switch alone
-does not switch ADC. Check `GOOGLE_APPLICATION_CREDENTIALS` before either path:
-an explicit credentials file takes precedence over the local ADC file.
+This writes the Recipient's local ADC file. Keep it under that person's OS
+login. For later Authority work, return to Authority's OS login and its ADC.
 
 ## Recovery permissions
 
@@ -162,7 +163,7 @@ two private Recovery grants with
 using the same key, member, project, location, key ring and role arguments.
 Keep public reads available for later qualification. Arrange private Recovery
 access for the separate recovery operator before relying on it. Do not grant
-the application those capabilities.
+the Recipient those capabilities.
 
 ## Check a permission failure
 

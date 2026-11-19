@@ -1,6 +1,6 @@
 # Work with configuration files
 
-An initialized application has two related files:
+An initialized ENKV domain uses two related configuration files:
 
 ```text
 demo/
@@ -39,7 +39,7 @@ relationship when you copy or move a pair. Use regular files, not symlinks.
 |---|---|
 | `schema` | The configuration format, `enkv/configuration/v3`. |
 | `domain` | Local name, cloud provider, Store, Authority keys and Recovery choice. |
-| `recipients` | Additional recipients, keyed by local references such as `app`. |
+| `recipients` | Additional recipients, keyed by local references such as `recipient`. |
 | `entries` | The complete desired set of values and their memberships. |
 | `outputs` | Complete output destinations and routing. |
 | `plugins` | Optional plugin requirements and exact artifact-version pins. |
@@ -55,13 +55,13 @@ For an initialized pair, this is a plain entry inside `entries`:
 ```yaml
   APPLICATION_MODE:
     confidentiality: plain
-    recipients: [app]
+    recipients: [recipient]
     source:
       kind: supplied
       value: production
 ```
 
-This example assumes `app` has been prepared. Use `recipients: []` for
+This example assumes `recipient` has been prepared. Use `recipients: []` for
 Authority-only access. Authority is included implicitly; do not add an
 invented Authority reference to the list.
 
@@ -70,7 +70,7 @@ A supplied secret's editable declaration contains no plaintext:
 ```yaml
   API_TOKEN:
     confidentiality: secret
-    recipients: [app]
+    recipients: [recipient]
     source:
       kind: supplied
 ```

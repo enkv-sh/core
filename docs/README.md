@@ -1,9 +1,10 @@
 # ENKV operator guide
 
 ENKV stores application values in a domain backed by your AWS or Google Cloud
-resources. It encrypts secrets for the recipients you select. You use a local
-command-line tool to propose changes, apply them and deliver values to an
-application. There is no ENKV server or ENKV account to create.
+resources. It encrypts secrets for ENKV recipients. The CLI can write a file
+for a local worker or publish values to a configured service. Your deployment
+controls access to the file. For AWS and GCP outputs, cloud IAM controls access
+to the published secret. There is no ENKV server or ENKV account to create.
 
 These guides cover the full CLI on macOS with Apple silicon and Linux x86_64.
 They assume basic terminal use. You do not need the source code, Go or Git to
@@ -11,16 +12,16 @@ use a released binary.
 
 ## Start with one secret
 
-Follow this route in order. The example creates a `demo` domain and lets one
-application recipient read an `API_TOKEN` value.
+Follow this route in order. Authority grants the Recipient access to `API_TOKEN`
+in the `demo` domain. The Recipient runs ENKV to write a file. A local worker reads it.
 
 1. Read [How ENKV works](concepts.md). Learn which files and keys you must keep.
 2. [Install ENKV](install.md). Check the platform requirements and release notes.
 3. Choose **one** cloud guide: [AWS](quickstart-aws.md) or [GCP](quickstart-gcp.md).
-   The cloud resource owner creates storage, keys and permissions. The operator
+   The cloud resource owner creates storage, keys and permissions. Authority
    then initializes an empty domain. One domain uses one provider.
-4. Follow [Your first secret](first-secret.md) to store a value and read it as
-   the application recipient.
+4. Follow [Your first secret](first-secret.md) to store a value and read the file
+   with a local worker.
 5. Use [Daily operations](operations.md) for later changes.
 
 Cloud resources can incur charges. An ordinary cloud login does not grant all
@@ -34,7 +35,7 @@ permissions guide before you start.
 |---|---|
 | Understand or move the configuration files | [Configuration](configuration.md) |
 | Change, add or remove a supplied value | [Daily operations](operations.md) |
-| Add an application or change who can read a value | [Access and recipients](access.md) |
+| Grant or remove a recipient's access to an ENKV entry | [Access and recipients](access.md) |
 | Create or rotate a generated secret | [Generated secrets](generated-secrets.md) |
 | Prepare or select a plugin | [Plugins](plugins.md) |
 | Deliver values to a file or an external service | [Outputs and manifests](outputs.md) |
@@ -49,7 +50,7 @@ permissions guide before you start.
 
 Commands run from the directory that contains `enkv.yaml`, unless a guide says
 otherwise. Replace each placeholder with your own resource identifier. A shell
-variable such as `$APP_ENCRYPTION_KEY` must contain the exact value established
+variable such as `$RECIPIENT_ENCRYPTION_KEY` must contain the exact value established
 by the cloud guide; it is not an ENKV configuration variable.
 
 Stop a sequence when a command fails. `plan` has one special result: exit `1`

@@ -5,8 +5,9 @@ values and access rules, stored under one cloud storage location. You will use
 an S3 bucket for its state and two AWS KMS keys for its Authority. The Authority
 is the operator that can apply changes and decrypt the domain's secrets.
 
-After initialization, continue to [Your first secret](first-secret.md) to add an
-application Recipient, store a secret and read it as that application.
+After initialization, continue to [Your first secret](first-secret.md) for the two-person exercise.
+Authority grants access to a secret. The Recipient writes it to a file with
+`enkv materialize`. A local worker reads the file.
 
 ## Before you start
 
@@ -15,18 +16,17 @@ You need an AWS account, an AWS Region, and permission from the resource owner t
 create a bucket, KMS keys and the required access policies. AWS charges for these
 resources and their use.
 
-Keep three jobs distinct:
+Use these identities for the walkthrough.
 
 | Job | AWS identity |
 |---|---|
 | Create resources and assign permissions | The resource owner's provisioning identity. |
 | Initialize and change this domain | A limited Authority role or IAM Identity Center permission set. |
-| Consume the application's secrets | A separate application identity, prepared in the first-secret guide. |
+| Materialize the granted entry | The Recipient signs in with a separate role or permission set. |
 
-The commands in the next two sections are **for the resource owner**. ENKV does
-not create AWS resources, IAM roles or permissions. Use the organization's
-existing identity process; the [permissions guide](aws-permissions.md) explains
-what to assign.
+The next two sections are for the **cloud resource owner**. The owner creates
+the domain bucket and keys. The [permissions guide](aws-permissions.md) lists
+the IAM permissions to assign.
 
 This example keeps all resources in `ap-southeast-2` and the same account. Use a
 new general-purpose bucket whose name contains lowercase letters, digits and
@@ -75,7 +75,7 @@ versions. See [S3 Versioning](https://docs.aws.amazon.com/AmazonS3/latest/usergu
 ENKV garbage collection does not promise physical erasure of provider-retained
 copies.
 
-## 2. Create the Authority and application keys
+## 2. Create the Authority and Recipient keys
 
 Create separate KMS keys for signing and encryption. Capture the exact key ARNs
 from AWS; ENKV does not accept an alias in place of a key ARN.
@@ -95,17 +95,17 @@ ENKV_AUTHORITY_ENCRYPTION_KEY="$(aws kms create-key \
   --query KeyMetadata.Arn --output text)"
 export ENKV_AUTHORITY_ENCRYPTION_KEY
 
-APP_ENCRYPTION_KEY="$(aws kms create-key \
+RECIPIENT_ENCRYPTION_KEY="$(aws kms create-key \
   --profile "$ENKV_OWNER_PROFILE" --region "$ENKV_REGION" \
   --key-spec RSA_3072 --key-usage ENCRYPT_DECRYPT --origin AWS_KMS \
-  --description 'ENKV demo application encryption' \
+  --description 'ENKV demo Recipient encryption' \
   --query KeyMetadata.Arn --output text)"
-export APP_ENCRYPTION_KEY
+export RECIPIENT_ENCRYPTION_KEY
 ```
 
-The application key is a third key. The first-secret guide enrolls it as the
-`app` Recipient. Keep `APP_ENCRYPTION_KEY` set to its exact returned ARN for
-that guide. Give the application private access only to this key.
+Give Authority the ARN returned in `RECIPIENT_ENCRYPTION_KEY`. Authority uses
+it to prepare the ENKV alias `recipient` in the first-secret guide. Give the
+Recipient permission to decrypt with this third key.
 
 The required types are P-256 signing with `ECDSA_SHA_256` and RSA-3072 encryption
 with `RSAES_OAEP_SHA_256`. A symmetric KMS key, a different RSA size or an
@@ -122,59 +122,72 @@ retained work requires them.
 
 The owner must assign the [Authority policy](aws-permissions.md#authority-access)
 to the intended role or permission set before initialization. Also assign the
-[application policy](aws-permissions.md#application-recipient-access) to a
-separate application role or permission set. A login alone does not establish
+[Recipient policy](aws-permissions.md#recipient-access) to the Recipient's
+separate role or permission set. A login alone does not establish
 those permissions.
 
-For IAM Identity Center, create a named profile and sign in. Choose the account
-and limited Authority role that the owner assigned:
+Authority and the Recipient each use their own workstation or OS login and
+IAM Identity Center session. Each person starts in a shell without credentials
+for another identity. The owner gives Authority the values of `ENKV_BUCKET`,
+`ENKV_REGION`, `ENKV_ACCOUNT_ID`, `ENKV_AUTHORITY_SIGNING_KEY`,
+`ENKV_AUTHORITY_ENCRYPTION_KEY` and `RECIPIENT_ENCRYPTION_KEY` from setup.
+Authority sets those variables in their own shell. The owner also gives the
+Recipient the value of `ENKV_REGION` for the first read.
+
+Authority signs in with the assigned account and Authority role:
 
 ```sh
-aws configure sso --profile enkv-demo-authority
-aws sso login --profile enkv-demo-authority
-export AWS_PROFILE=enkv-demo-authority
-export AWS_REGION=ap-southeast-2
+aws configure sso --profile orders-authority
+aws sso login --profile orders-authority
+export AWS_PROFILE=orders-authority
+export AWS_REGION="$ENKV_REGION"
 aws sts get-caller-identity
 ```
 
-Configure the application's separate profile now, using its limited assignment:
+Check that the returned account and role match the Authority assignment.
+
+In their own shell, the Recipient sets `ENKV_REGION` to the Region from setup
+and configures a profile for the account and Recipient role the owner assigned:
 
 ```sh
-aws configure sso --profile enkv-demo-app
+aws configure sso --profile orders-recipient
 ```
 
-Keep `AWS_PROFILE=enkv-demo-authority` for initialization and the writer steps in
-the first-secret guide. When that guide asks for application credentials, use
-`aws sso login --profile enkv-demo-app` and select `AWS_PROFILE=enkv-demo-app`.
-For a deployed workload, its assigned IAM role can supply credentials through
-the standard AWS SDK chain instead of an interactive SSO login.
+Continue in Authority's shell with `AWS_PROFILE=orders-authority`. The Recipient
+uses `orders-recipient` in the first-secret guide. These are local AWS profile
+names. The ENKV configuration uses the alias `recipient`.
 
-Check the returned account and role. ENKV uses the AWS SDK's standard credential
-chain. Environment credentials can take precedence over a named profile; use a
-shell without credentials for another identity. ENKV does not have an AWS login
+A deployed workload that runs ENKV as a Recipient can use its assigned IAM
+role through the standard AWS SDK credential chain.
+
+ENKV uses the AWS SDK's standard credential chain. Environment credentials can
+take precedence over a named profile. ENKV does not have an AWS login
 command. See [AWS IAM Identity Center login](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sso.html)
 and [credential setting precedence](https://docs.aws.amazon.com/sdkref/latest/guide/settings-reference.html).
 
 ## 4. Write the empty configuration
 
-Create a working directory and save this as `enkv.yaml`. Replace the bucket,
-account and key values with the actual values from the owner. ENKV does not
-expand shell variables inside YAML.
+In Authority's shell, use the resource values from setup to write `enkv.yaml`.
+The shell expands the variables when it writes the file.
 
-```yaml
+```sh
+mkdir enkv-demo
+cd enkv-demo
+umask 077
+cat > enkv.yaml <<EOF
 schema: enkv/configuration/v3
 domain:
   name: demo
   provider: aws
   store:
-    region: ap-southeast-2
-    bucket: YOUR_BUCKET_NAME
+    region: "$ENKV_REGION"
+    bucket: "$ENKV_BUCKET"
     prefix: enkv/demo
-    expected_owner: 'YOUR_12_DIGIT_ACCOUNT_ID'
+    expected_owner: "$ENKV_ACCOUNT_ID"
   authority:
-    display_name: Demo operator
-    signing_key: YOUR_AUTHORITY_SIGNING_KEY_ARN
-    encryption_key: YOUR_AUTHORITY_ENCRYPTION_KEY_ARN
+    display_name: Demo Authority
+    signing_key: "$ENKV_AUTHORITY_SIGNING_KEY"
+    encryption_key: "$ENKV_AUTHORITY_ENCRYPTION_KEY"
   recovery:
     enabled: false
 recipients: {}
@@ -182,6 +195,7 @@ entries: {}
 outputs:
   destinations: {}
   routing: {}
+EOF
 ```
 
 `expected_owner` is the twelve-digit account that owns the bucket. Keep it

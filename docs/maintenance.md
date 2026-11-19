@@ -59,7 +59,7 @@ Use retirement when the identity itself must leave the domain, rather than
 removing its access to just one entry:
 
 ```sh
-enkv recipients retire --json --source enkv.yaml --recipient app \
+enkv recipients retire --json --source enkv.yaml --recipient recipient \
   --out ../demo-next/enkv.yaml
 ```
 
@@ -82,11 +82,11 @@ To replace an ordinary recipient key, Authority uses:
 
 ```sh
 enkv keys replace --json --source enkv.yaml --target recipient \
-  --recipient app --encryption "$successor_encryption_key" \
+  --recipient recipient --encryption "$successor_encryption_key" \
   --out ../demo-next/enkv.yaml
 ```
 
-For recipient retirement and key replacement, `--recipient app` selects the
+For recipient retirement and key replacement, `--recipient recipient` selects the
 local alias. Use `--recipient-id ID` instead to select an existing local
 recipient by exact ID. These operations require an explicit target; the two
 flags cannot be combined.
