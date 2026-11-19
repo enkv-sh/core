@@ -2,7 +2,6 @@
 
 import base64
 import hashlib
-import io
 import json
 import os
 import re
@@ -11,7 +10,6 @@ import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
-import urllib.error
 
 
 WORKFLOW = Path(__file__).resolve().parents[1] / '.github/workflows/release.yml'
@@ -78,31 +76,49 @@ class CoreReleaseWorkflowTests(unittest.TestCase):
                 self.assertEqual(result.returncode == 0, name == 'valid', result.stderr.decode())
 
     def test_extensions_branch_selection(self):
-        script = compile(inline_python('Select protected extensions main once'), str(WORKFLOW), 'exec')
+        name = 'Select protected extensions main once'
+        step = WORKFLOW.read_text().split('      - name: ' + name + '\n', 1)[1].split('      - name:', 1)[0]
+        self.assertIn('        env:\n          GH_TOKEN: ${{ github.token }}\n', step)
+        script = compile(inline_python(name), str(WORKFLOW), 'exec')
+        valid = {'name': 'main', 'protected': True, 'commit': {'sha': COMMIT}}
         cases = {
-            'valid': {'name': 'main', 'protected': True, 'commit': {'sha': COMMIT}},
-            'unprotected': {'name': 'main', 'protected': False, 'commit': {'sha': COMMIT}},
-            'other-branch': {'name': 'other', 'protected': True, 'commit': {'sha': COMMIT}},
-            'malformed-sha': {'name': 'main', 'protected': True, 'commit': {'sha': 'main'}},
-            'multiple-shas': {'name': 'main', 'protected': True, 'commit': {'sha': COMMIT + '\n' + COMMIT}},
-            'missing-branch': {},
+            'valid': (200, valid),
+            'unprotected': (200, {**valid, 'protected': False}),
+            'other-branch': (200, {**valid, 'name': 'other'}),
+            'malformed-sha': (200, {**valid, 'commit': {'sha': 'main'}}),
+            'multiple-shas': (200, {**valid, 'commit': {'sha': COMMIT + '\n' + COMMIT}}),
+            'missing-branch': (200, {}),
+            'rate-limited': (403, valid),
+            'redirect': (302, valid),
         }
-        for name, branch in cases.items():
+        for name, (status, branch) in cases.items():
             with self.subTest(name=name), tempfile.TemporaryDirectory() as scratch:
-                response = io.StringIO(json.dumps(branch))
-                with patch.dict(os.environ, RUNNER_TEMP=scratch), patch('urllib.request.urlopen', return_value=response) as request:
+                with patch.dict(os.environ, RUNNER_TEMP=scratch, GH_TOKEN='test-job-token'), patch('http.client.HTTPSConnection') as connect:
+                    connection = connect.return_value
+                    response = connection.getresponse.return_value
+                    response.status = status
+                    response.read.return_value = json.dumps(branch).encode()
                     if name == 'valid':
                         exec(script, {})
+                    elif status != 200:
+                        with self.assertRaisesRegex(SystemExit, 'HTTP ' + str(status)):
+                            exec(script, {})
                     else:
                         with self.assertRaises(SystemExit):
                             exec(script, {})
-                self.assertEqual(request.call_args.args[0].full_url, 'https://api.github.com/repos/enkv-sh/extensions/branches/main')
+                connect.assert_called_once_with('api.github.com', timeout=30)
+                connection.request.assert_called_once()
+                args, kwargs = connection.request.call_args
+                self.assertEqual(args, ('GET', '/repos/enkv-sh/extensions/branches/main'))
+                self.assertEqual(kwargs['headers']['Authorization'], 'Bearer test-job-token')
+                connection.close.assert_called_once_with()
                 selected = Path(scratch) / 'release-tools/commit'
                 self.assertEqual(selected.exists(), name == 'valid')
                 if selected.exists():
                     self.assertEqual(selected.read_text(), COMMIT + '\n')
-        with tempfile.TemporaryDirectory() as scratch, patch.dict(os.environ, RUNNER_TEMP=scratch), patch('urllib.request.urlopen', side_effect=urllib.error.URLError('unavailable')):
-            with self.assertRaises(urllib.error.URLError):
+        with tempfile.TemporaryDirectory() as scratch, patch.dict(os.environ, RUNNER_TEMP=scratch, GH_TOKEN='test-job-token'), patch('http.client.HTTPSConnection') as connect:
+            connect.return_value.getresponse.side_effect = OSError('unavailable')
+            with self.assertRaises(OSError):
                 exec(script, {})
             self.assertFalse((Path(scratch) / 'release-tools/commit').exists())
 

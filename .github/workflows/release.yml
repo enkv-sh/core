@@ -58,16 +58,25 @@ jobs:
         id: select-tools
         if: github.run_attempt == '1'
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           python3 - <<'PY_TOOLS'
-          import json, os, re, urllib.request
+          import http.client, json, os, re
           from pathlib import Path
-          request = urllib.request.Request(
-              'https://api.github.com/repos/enkv-sh/extensions/branches/main',
-              headers={'Accept': 'application/vnd.github+json', 'User-Agent': 'enkv-release'})
-          with urllib.request.urlopen(request, timeout=30) as response:
+          connection = http.client.HTTPSConnection('api.github.com', timeout=30)
+          try:
+              connection.request('GET', '/repos/enkv-sh/extensions/branches/main', headers={
+                  'Accept': 'application/vnd.github+json', 'User-Agent': 'enkv-release',
+                  'Authorization': 'Bearer ' + os.environ['GH_TOKEN'],
+              })
+              response = connection.getresponse()
+              if response.status != 200:
+                  raise SystemExit(f'Cannot select extensions/main: GitHub returned HTTP {response.status} {response.reason}')
               branch = json.load(response)
+          finally:
+              connection.close()
           commit = branch.get('commit', {}).get('sha', '')
           if branch.get('name') != 'main' or branch.get('protected') is not True:
               raise SystemExit('extensions main must have branch protection or an active ruleset')
