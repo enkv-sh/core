@@ -156,7 +156,7 @@ jobs:
         shell: sh
         run: |
           set -eu
-          dnf install -y gcc gcc-c++ glibc-devel git tar gzip python3 findutils
+          dnf install -y gcc gcc-c++ glibc-devel git tar gzip python3 findutils diffutils
           test "$(getconf GNU_LIBC_VERSION)" = 'glibc 2.34'
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:

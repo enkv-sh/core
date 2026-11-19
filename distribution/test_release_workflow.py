@@ -31,6 +31,14 @@ def public_pem(der):
 
 
 class CoreReleaseWorkflowTests(unittest.TestCase):
+    def test_linux_build_installs_cmp_before_checking_go_mod(self):
+        build = WORKFLOW.read_text().split('\n  build:\n', 1)[1].split('\n  sign:\n', 1)[0]
+        setup, _, _ = build.partition('          cmp source/compositions/full/go.mod "$RUNNER_TEMP/bootstrap.go.mod"\n')
+        self.assertNotEqual(setup, build, 'missing bootstrap go.mod comparison')
+        packages = re.search(r'^          dnf install -y (.+)$', setup, re.M)
+        self.assertIsNotNone(packages, 'missing Linux package installation')
+        self.assertIn('diffutils', packages[1].split(), 'AlmaLinux supplies cmp in diffutils')
+
     def test_jobs_checkout_the_dispatch_source_and_the_saved_tools_revision(self):
         text = WORKFLOW.read_text().split('\njobs:\n', 1)[1]
         jobs = re.split(r'^  (\w+):\n', text, flags=re.M)
