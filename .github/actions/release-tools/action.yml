@@ -1,0 +1,26 @@
+name: Verify original release tools
+description: Verify the protected first-attempt decision and its exact artifact
+outputs:
+  commit:
+    description: Verified extensions commit
+    value: ${{ steps.verify.outputs.commit }}
+runs:
+  using: composite
+  steps:
+    - id: decision
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        ACTION_DIR: ${{ github.action_path }}
+      run: python3 -I "$ACTION_DIR/decision.py" lookup
+    - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+      with:
+        artifact-ids: ${{ steps.decision.outputs.artifact_id }}
+        merge-multiple: true
+        path: ${{ runner.temp }}/verified-release-tools
+    - id: verify
+      shell: bash
+      env:
+        EXPECTED_COMMIT: ${{ steps.decision.outputs.commit }}
+        ACTION_DIR: ${{ github.action_path }}
+      run: python3 -I "$ACTION_DIR/decision.py" verify

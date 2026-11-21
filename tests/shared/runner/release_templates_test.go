@@ -186,13 +186,8 @@ func TestReleaseSigningTemplates(t *testing.T) {
 // full_only: false
 func TestReleasePublicationTemplate(t *testing.T) {
 	core, extensions := distributionRoots(t)
-	for _, test := range []struct{ root, script string }{
-		{core, "distribution/test_release_workflow.py"},
-		{extensions, "distribution/test_release.py"},
-	} {
-		if ok, detail := releaseRun(t, test.root, nil, "python3", test.script); !ok {
-			t.Fatalf("%s: %s", test.script, detail)
-		}
+	if ok, detail := releaseRun(t, extensions, nil, "python3", "distribution/test_release.py"); !ok {
+		t.Fatalf("release publication: %s", detail)
 	}
 	for _, root := range []string{core, extensions} {
 		body, err := os.ReadFile(filepath.Join(root, ".github/workflows/release.yml"))

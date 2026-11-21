@@ -12,14 +12,14 @@ env:
   CLI_PUBLIC_KEY_PEM: ${{ vars.CLI_PUBLIC_KEY_PEM }}
   PLUGIN_PUBLIC_KEY_PEM: ${{ vars.PLUGIN_PUBLIC_KEY_PEM }}
 jobs:
-  prepare:
+  select:
     if: github.event_name == 'workflow_dispatch' && github.repository == 'enkv-sh/core' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
     outputs:
-      matrix: ${{ steps.matrix.outputs.matrix }}
-      tools_commit: ${{ steps.tools.outputs.commit }}
+      commit: ${{ steps.select-tools.outputs.commit }}
+      artifact_id: ${{ steps.upload.outputs.artifact-id }}
     steps:
       - name: Check owner release inputs
         shell: bash
@@ -85,8 +85,11 @@ jobs:
           directory = Path(os.environ['RUNNER_TEMP']) / 'release-tools'
           directory.mkdir()
           (directory / 'commit').write_text(commit + '\n')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              print('commit=' + commit, file=output)
           PY_TOOLS
       - name: Retain selected extensions commit for this run
+        id: upload
         if: github.run_attempt == '1'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
@@ -94,32 +97,30 @@ jobs:
           path: ${{ runner.temp }}/release-tools/commit
           if-no-files-found: error
           retention-days: 90
-      - name: Restore the original extensions commit on reruns
-        id: restore-tools
-        if: github.run_attempt != '1'
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          name: release-tools-commit
-          path: ${{ runner.temp }}/release-tools
-      - name: Check selected extensions commit
-        id: tools
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY_TOOLS'
-          import os, re
-          from pathlib import Path
-          value = (Path(os.environ['RUNNER_TEMP']) / 'release-tools/commit').read_text()
-          if not re.fullmatch('[0-9a-f]{40}\n', value):
-              raise SystemExit('the original run tools commit is missing or invalid; start a new workflow run')
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
-              output.write('commit=' + value)
-          PY_TOOLS
+  record:
+    needs: select
+    name: ${{ github.run_attempt == '1' && format('Release tools {0} {1}', needs.select.outputs.commit, needs.select.outputs.artifact_id) || 'Reuse original release tools' }}
+    runs-on: ubuntu-24.04
+    permissions: {}
+    steps:
+      - run: echo 'Use the decision recorded by GitHub for attempt one.'
+  prepare:
+    needs: record
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: ${{ github.sha }}
           path: source
           persist-credentials: false
+      - name: Verify original release tools
+        id: tools
+        uses: ./source/.github/actions/release-tools
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: enkv-sh/extensions
@@ -149,6 +150,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     container: ${{ matrix.container }}
     permissions:
+      actions: read
       contents: read
     steps:
       - name: Prepare native Linux C toolchain
@@ -163,10 +165,13 @@ jobs:
           ref: ${{ github.sha }}
           path: source
           persist-credentials: false
+      - name: Verify original release tools
+        id: tools
+        uses: ./source/.github/actions/release-tools
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: enkv-sh/extensions
-          ref: ${{ needs.prepare.outputs.tools_commit }}
+          ref: ${{ steps.tools.outputs.commit }}
           path: tools-source
           persist-credentials: false
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
@@ -189,7 +194,7 @@ jobs:
         shell: bash
         env:
           EXPECTED_PLATFORM: ${{ matrix.platform }}
-          TOOLS_COMMIT: ${{ needs.prepare.outputs.tools_commit }}
+          TOOLS_COMMIT: ${{ steps.tools.outputs.commit }}
         run: |
           set -euo pipefail
           test "$(go env GOOS)/$(go env GOARCH)" = "$EXPECTED_PLATFORM"
@@ -212,6 +217,7 @@ jobs:
     runs-on: ubuntu-24.04
     environment: release-signing
     permissions:
+      actions: read
       contents: read
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -219,10 +225,13 @@ jobs:
           ref: ${{ github.sha }}
           path: source
           persist-credentials: false
+      - name: Verify original release tools
+        id: tools
+        uses: ./source/.github/actions/release-tools
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: enkv-sh/extensions
-          ref: ${{ needs.prepare.outputs.tools_commit }}
+          ref: ${{ steps.tools.outputs.commit }}
           path: tools-source
           persist-credentials: false
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
@@ -269,6 +278,7 @@ jobs:
     runs-on: ubuntu-24.04
     environment: release-draft
     permissions:
+      actions: read
       contents: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -276,10 +286,13 @@ jobs:
           ref: ${{ github.sha }}
           path: source
           persist-credentials: false
+      - name: Verify original release tools
+        id: tools
+        uses: ./source/.github/actions/release-tools
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: enkv-sh/extensions
-          ref: ${{ needs.prepare.outputs.tools_commit }}
+          ref: ${{ steps.tools.outputs.commit }}
           path: tools-source
           persist-credentials: false
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
