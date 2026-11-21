@@ -23,6 +23,7 @@ func (q *applyPublicQualifier) Qualify(ctx context.Context, binding contract.KMS
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.publicCalls++
+	f.pendingQualifications++
 	if ctx.Err() != nil {
 		return privatecrypto.KeyResult{Status: privatecrypto.KeyCancelled}
 	}
@@ -73,7 +74,15 @@ func (f *Fixture) applyPublicQualifiers(q contract.CryptoCompareRequest, current
 		}
 		owned := row
 		owned.Binding.SPKI = slices.Clone(row.Binding.SPKI)
+		f.pendingRoutes++
 		public[row.SubjectID] = &applyPublicQualifier{owner: f, row: owned}
 	}
 	return public, nil
+}
+
+// PendingKeyCalls counts route construction and qualification for proposed recipients.
+func (f *Fixture) PendingKeyCalls() (routes, qualifications int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.pendingRoutes, f.pendingQualifications
 }

@@ -102,7 +102,7 @@ func (s *StateSession) prepareGeneratedRecord(ctx context.Context, permit *admit
 			p.operation.sourceCount++
 		}
 	}
-	p.operation.qualificationCounts = s.generatedQualificationCounts(bindings)
+	// Recording a completed result or failure has no pending-key reads.
 	reply, res := p.exchange(ctx, contract.CryptoCompare, body)
 	if res.Outcome != 0 {
 		return nil, res

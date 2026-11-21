@@ -56,7 +56,7 @@ func generatedInstalledPlan(input contract.GeneratedPlanInput) generatedPlanAdmi
 
 func NewGeneratedReservationCustody(r *Runtime, q contract.CryptoGeneratedCompareRequest, control contract.ControlCore, construction GeneratedCustodyConstruction, input contract.GeneratedReservationInput, deadline time.Time) (*GeneratedCustody, error) {
 	return newGeneratedCustody(r, func() (*generatedAdmission, error) {
-		session, err := r.generatedInstalledSession(q, control, construction, input.Session, input.Plan)
+		session, err := r.generatedInstalledSession(q, control, construction, input.Session, input.Plan, false)
 		if err != nil || construction.FileIdentity.IsZero() {
 			return nil, ErrAdmission
 		}
@@ -98,7 +98,7 @@ func NewGeneratedProducerCustody(r *Runtime, q contract.CryptoGeneratedCompareRe
 		if launcher == nil {
 			return nil, ErrAdmission
 		}
-		session, err := r.generatedInstalledSession(q, control, construction, input.Session, input.Plan)
+		session, err := r.generatedInstalledSession(q, control, construction, input.Session, input.Plan, false)
 		if err != nil {
 			return nil, err
 		}
@@ -109,7 +109,7 @@ func NewGeneratedProducerCustody(r *Runtime, q contract.CryptoGeneratedCompareRe
 
 func NewGeneratedAdoptionCustody(r *Runtime, q contract.CryptoGeneratedCompareRequest, control contract.ControlCore, construction GeneratedCustodyConstruction, input contract.GeneratedAdoptionInput, deadline time.Time) (*GeneratedCustody, error) {
 	return newGeneratedCustody(r, func() (*generatedAdmission, error) {
-		session, err := r.generatedInstalledSession(q, control, construction, input.Session, input.Plan)
+		session, err := r.generatedInstalledSession(q, control, construction, input.Session, input.Plan, false)
 		if err != nil {
 			return nil, err
 		}
@@ -119,7 +119,7 @@ func NewGeneratedAdoptionCustody(r *Runtime, q contract.CryptoGeneratedCompareRe
 
 func NewGeneratedFinalCustody(r *Runtime, q contract.CryptoGeneratedCompareRequest, control contract.ControlCore, construction GeneratedCustodyConstruction, input contract.GeneratedFinalInput, deadline time.Time) (*GeneratedCustody, error) {
 	return newGeneratedCustody(r, func() (*generatedAdmission, error) {
-		session, err := r.generatedInstalledSession(q, control, construction, input.Session, input.Plan)
+		session, err := r.generatedInstalledSession(q, control, construction, input.Session, input.Plan, len(input.EntryAdmissions) != 0)
 		if err != nil {
 			return nil, err
 		}

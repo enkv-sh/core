@@ -683,7 +683,7 @@ func TestGeneratedLocalFailureCandidateConservesActualSelectedFacts(t *testing.T
 
 // full_only: false
 func TestGeneratedLocalFailureRefusesForeignReceiverReasonAndTuple(t *testing.T) {
-	for _, damage := range []string{"receiver", "unentered same tuple", "reason", "tuple"} {
+	for _, damage := range []string{"receiver", "unentered same tuple", "reason", "tuple", "material"} {
 		t.Run(damage, func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
 				f := generatedLocalFailureCandidateFixture(t, false, false, 0)
@@ -712,6 +712,9 @@ func TestGeneratedLocalFailureRefusesForeignReceiverReasonAndTuple(t *testing.T)
 				}
 				if damage == "tuple" {
 					f.input.Attempt.RequestDigest = consumerID("another original command")
+				}
+				if damage == "material" {
+					f.input.Custody.Material.Core.OperationMaterialID = consumerID("different operation material")
 				}
 				body, err := contract.EncodeGeneratedAttemptRecord(f.input.Attempt)
 				if err != nil {

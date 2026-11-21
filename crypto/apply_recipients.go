@@ -16,22 +16,24 @@ func sameApplyRecipient(a, b contract.RecipientRecord) bool {
 // Ordinary apply preserves every current identity and binding; only absent rows
 // need creation evidence and an independently installed public qualifier.
 func applyRecipientAdmission(q contract.CryptoCompareRequest, current []contract.RecipientRecord, public map[contract.ID]PublicKeyQualifier, control contract.ControlCore) (bool, map[contract.ID]PublicKeyQualifier, bool) {
-	if !validApplyCurrentRecipients(current, control) || len(q.Recipients) < len(current) || len(q.Recipients) > contract.CryptoMaxRecipients || len(public) > contract.CryptoMaxRecipients {
-		return false, nil, false
-	}
 	predecessor, err := contract.DecodeRef(q.Context.PredecessorRootRef[:], contract.CanonicalSchema)
 	if err != nil {
 		return false, nil, false
 	}
-	return applyRecipientAdmissionAtSnapshot(q, current, public, control, predecessor.Object)
+	changed, pending, ok := applyRecipientChangesAtSnapshot(q, current, control, predecessor.Object)
+	if !ok {
+		return false, nil, false
+	}
+	routes, ok := pendingRecipientRoutes(pending, public, control.Provider)
+	return ok && changed, routes, ok
 }
 
-func applyRecipientAdmissionAtSnapshot(q contract.CryptoCompareRequest, current []contract.RecipientRecord, public map[contract.ID]PublicKeyQualifier, control contract.ControlCore, snapshot contract.ID) (bool, map[contract.ID]PublicKeyQualifier, bool) {
-	if snapshot.IsZero() || !validApplyCurrentRecipients(current, control) || len(q.Recipients) < len(current) || len(q.Recipients) > contract.CryptoMaxRecipients || len(public) > contract.CryptoMaxRecipients {
+func applyRecipientChangesAtSnapshot(q contract.CryptoCompareRequest, current []contract.RecipientRecord, control contract.ControlCore, snapshot contract.ID) (bool, []contract.ID, bool) {
+	if snapshot.IsZero() || !validApplyCurrentRecipients(current, control) || len(q.Recipients) < len(current) || len(q.Recipients) > contract.CryptoMaxRecipients {
 		return false, nil, false
 	}
 	changed, before := false, 0
-	qualified := make(map[contract.ID]PublicKeyQualifier, len(public))
+	var pending []contract.ID
 	for _, input := range q.Recipients {
 		row := input.Recipient
 		bindingIndex := applyBindingIndex(q.Bindings, row.RecipientID)
@@ -61,17 +63,28 @@ func applyRecipientAdmissionAtSnapshot(q contract.CryptoCompareRequest, current 
 		if err != nil || row.CurrentBinding.BindingID != binding || row.CurrentBinding.BindingIncarnationID != incarnation || row.CurrentBinding.BindingSerial != 1 {
 			return false, nil, false
 		}
-		route := public[id]
-		if route == nil || route.Family() != control.Provider || route.CredentialRoute().IsZero() {
-			return false, nil, false
-		}
-		qualified[id] = route
+		pending = append(pending, id)
 		changed = true
 	}
-	if before != len(current) || len(qualified) != len(public) {
+	if before != len(current) {
 		return false, nil, false
 	}
-	return changed, qualified, true
+	return changed, pending, true
+}
+
+func pendingRecipientRoutes(pending []contract.ID, public map[contract.ID]PublicKeyQualifier, family contract.Family) (map[contract.ID]PublicKeyQualifier, bool) {
+	if len(public) != len(pending) {
+		return nil, false
+	}
+	qualified := make(map[contract.ID]PublicKeyQualifier, len(pending))
+	for _, id := range pending {
+		route := public[id]
+		if qualified[id] != nil || route == nil || route.Family() != family || route.CredentialRoute().IsZero() {
+			return nil, false
+		}
+		qualified[id] = route
+	}
+	return qualified, true
 }
 
 func validApplyCurrentRecipients(current []contract.RecipientRecord, control contract.ControlCore) bool {

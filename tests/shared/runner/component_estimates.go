@@ -42,6 +42,7 @@ var componentEstimates = map[string]float64{
 	"TestInstalledPackagedNativeRecoveryCandidateCharges":                                 50,
 	"TestInstalledPackagedSequenceCandidateCharges":                                       7,
 	"TestApplyReceiptFirstEndWorkChargesFutureApplicationPages":                           71,
+	"TestInstalledLocalFailureCompletesWithPendingKeyUnavailable":                         6,
 	"TestInstalledLocalGeneratorExportedResultPUTNeverBecomesCallbackFailure":             7,
 	"TestInstalledLocalGeneratorMixedFinalPreservesActualCFClosure":                       11,
 	"TestInstalledLocalNoEffectFinalReleasesDomain":                                       2,

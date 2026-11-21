@@ -288,3 +288,47 @@ func TestGeneratedCandidateReceiptsBindCommonOrder(t *testing.T) {
 		t.Fatal("alternate ordered receipt candidate refused")
 	}
 }
+
+// full_only: false
+func TestGeneratedRecordingValidatesRegistryWithoutPendingRoutes(t *testing.T) {
+	for _, damage := range []string{"none", "registry image", "current page", "authority binding", "first binding proof"} {
+		t.Run(damage, func(t *testing.T) {
+			f, in, construction, _ := generatedInstalledRegistryFixture(t)
+			construction.Public = nil
+			control := f.base.control
+			switch damage {
+			case "registry image":
+				in.Plan.RegistryImage = nil
+			case "current page":
+				in.Session.CurrentRecipientRefs[0].Object = consumerID("changed current page")
+			case "authority binding":
+				control.AuthorityKMSBinding.BindingID = consumerID("unselected authority binding")
+			case "first binding proof":
+				image, err := contract.DecodeGeneratedRecipientRegistryImage(in.Plan.RegistryImage)
+				if err != nil {
+					t.Fatal(err)
+				}
+				for i := range image.Recipients {
+					if proof := image.Recipients[i].Creation; proof != nil {
+						proof.Nonce = consumerID("different creation nonce")
+					}
+				}
+				in.Plan.RegistryImage, err = contract.EncodeGeneratedRecipientRegistryImage(image)
+				if err != nil {
+					t.Fatal(err)
+				}
+				refreshGeneratedRegistryFixture(t, &f, &in)
+			}
+			f.compare.Purpose = contract.CryptoGeneratedAdoptionPurpose
+			session, err := installedGeneratedSession(f.compare, control, construction, in.Session, in.Plan.RegistryImage)
+			if damage == "none" {
+				if err != nil || session.Registry == nil || len(session.Registry.public) != 0 ||
+					len(session.Registry.desired) != len(session.Registry.current)+1 || !session.Registry.changed {
+					t.Fatal("recording lost proposed registry facts or required a key route", err)
+				}
+			} else if !errors.Is(err, ErrAdmission) {
+				t.Fatal("recording accepted damaged registry facts", err)
+			}
+		})
+	}
+}

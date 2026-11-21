@@ -45,6 +45,8 @@ type Fixture struct {
 	qualificationUses         *uint32
 	generatedProcess          *generatorhost.NativeLauncher
 	publicationOutputs        map[string]publicationOutput
+
+	pendingRoutes, pendingQualifications int
 }
 
 // ForkGenerated gives an independent producer its own Crypto session while

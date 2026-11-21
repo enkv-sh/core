@@ -441,3 +441,54 @@ func TestConfigurationApplyRecipientQualificationHasOnlyAbsentPublicRoutes(t *te
 		})
 	}
 }
+
+// full_only: false
+func TestConfigurationGeneratedPendingKeyRoutesFollowPurpose(t *testing.T) {
+	ctx, _, _ := localConfigs(t)
+	source := configurationApplyPair(t, "gcp", configuration.JSON, nil)
+	model, err := configuration.Parse(ctx, source.pair)
+	if err != nil {
+		t.Fatal(err)
+	}
+	installation, _, err := configurationApplyInput(model)
+	if err != nil {
+		t.Fatal(err)
+	}
+	image := contract.GeneratedRecipientRegistryImage{Schema: contract.GeneratedRecipientRegistrySchema, DomainID: model.DomainID, OperationID: localResultID(1), OriginalPredecessorSnapshotID: localResultID(2), Recipients: installation.DesiredRecipients}
+	slices.SortFunc(image.Recipients, func(a, b contract.ApplyRecipientInput) int {
+		return bytes.Compare(a.Recipient.RecipientID[:], b.Recipient.RecipientID[:])
+	})
+	var session contract.GeneratedSessionInput
+	for _, row := range image.Recipients {
+		if row.Recipient.RecipientID == model.Authority.ID {
+			session.CurrentRecipients = append(session.CurrentRecipients, row.Recipient)
+		} else {
+			image.InitiallyAbsent = append(image.InitiallyAbsent, row.Recipient.RecipientID)
+		}
+	}
+	body, err := contract.EncodeGeneratedRecipientRegistryImage(image)
+	if err != nil || len(image.InitiallyAbsent) == 0 {
+		t.Fatal("invalid pending registry fixture", err)
+	}
+	plan := contract.GeneratedPlanInput{RegistryImage: body}
+	for _, tc := range []struct {
+		name                string
+		purpose             contract.CryptoGeneratedPurpose
+		selects, needsRoute bool
+	}{
+		{"reservation", contract.CryptoGeneratedReservationPurpose, false, true},
+		{"producer", contract.CryptoGeneratedProducerPreparationPurpose, false, true},
+		{"record", contract.CryptoGeneratedAdoptionPurpose, false, false},
+		{"failed Final", contract.CryptoGeneratedFinalPreparationPurpose, false, false},
+		{"selecting Final", contract.CryptoGeneratedFinalPreparationPurpose, true, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// This installation has no provider configuration for the proposed key.
+			route, file := localResultID(3), localResultID(4)
+			got, err := configurationGeneratedConstruction(ctx, Config{}, route, file, session, plan, tc.purpose, tc.selects)
+			if (err != nil) != tc.needsRoute || got.RouteID != route || got.FileIdentity != file || len(got.Public) != 0 {
+				t.Fatal("unexpected pending route requirement", err)
+			}
+		})
+	}
+}

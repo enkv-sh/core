@@ -62,6 +62,11 @@ func (c localAuthorObservedCrypto) Exchange(ctx context.Context, q contract.Cryp
 
 func installedLocalEngine(t testing.TB, ctx context.Context, f installedApplyTestFixture, selected *StateSession, input []ApplyEntryInput, author installedLocalAuthor, entries *int, observeCompletion ...func(bool)) *InstalledApply {
 	t.Helper()
+	return installedLocalEngineWithRecipients(t, ctx, f, selected, input, currentApplyRecipients(selected.registry()), author, entries, observeCompletion...)
+}
+
+func installedLocalEngineWithRecipients(t testing.TB, ctx context.Context, f installedApplyTestFixture, selected *StateSession, input []ApplyEntryInput, desired []contract.ApplyRecipientInput, author installedLocalAuthor, entries *int, observeCompletion ...func(bool)) *InstalledApply {
+	t.Helper()
 	row := author.config.Artifact
 	implementations := []contract.GeneratorImplementation{row}
 	var remote *GeneratedApplyInstallation
@@ -70,7 +75,6 @@ func installedLocalEngine(t testing.TB, ctx context.Context, f installedApplyTes
 		remote = installedGeneratedRetirementCallbacks(t, f, process)
 	}
 	validator := NewPublicConfigurationValidator(selected.admission.outputInterpreter)
-	desired := currentApplyRecipients(selected.registry())
 	configuration := installedApplyTestConfiguration(t, ctx, selected, input, desired, validator)
 	for at := range configuration.Entries.Value {
 		public := &configuration.Entries.Value[at]

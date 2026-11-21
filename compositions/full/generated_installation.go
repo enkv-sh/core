@@ -236,7 +236,7 @@ func configurationGeneratedRequestDigest(ctx context.Context, row contract.Gener
 	return digest, nil
 }
 
-func configurationGeneratedConstruction(ctx context.Context, config Config, route, fileIdentity contract.ID, session contract.GeneratedSessionInput, plan contract.GeneratedPlanInput) (enkvcrypto.GeneratedCustodyConstruction, error) {
+func configurationGeneratedConstruction(ctx context.Context, config Config, route, fileIdentity contract.ID, session contract.GeneratedSessionInput, plan contract.GeneratedPlanInput, purpose contract.CryptoGeneratedPurpose, selectsEntries bool) (enkvcrypto.GeneratedCustodyConstruction, error) {
 	out := enkvcrypto.GeneratedCustodyConstruction{RouteID: route, FileIdentity: fileIdentity}
 	if ctx == nil {
 		return out, ErrCell
@@ -244,7 +244,7 @@ func configurationGeneratedConstruction(ctx context.Context, config Config, rout
 	if err := ctx.Err(); err != nil {
 		return out, errors.Join(ErrCell, err)
 	}
-	if len(plan.RegistryImage) == 0 {
+	if !purpose.QualifiesPendingRecipients(selectsEntries) || len(plan.RegistryImage) == 0 {
 		return out, nil
 	}
 	image, err := contract.DecodeGeneratedRecipientRegistryImage(plan.RegistryImage)
@@ -278,7 +278,7 @@ func configurationGeneratedInstallation(ctx context.Context, config Config, runt
 		return configurationGeneratedCustody(owner), nil
 	}
 	i.AdmitReservation = func(ctx context.Context, q contract.CryptoGeneratedCompareRequest, control contract.ControlCore, input contract.GeneratedReservationInput, deadline time.Time) (*core.InstalledGeneratedCustody, error) {
-		construction, err := configurationGeneratedConstruction(ctx, config, route, fileIdentity, input.Session, input.Plan)
+		construction, err := configurationGeneratedConstruction(ctx, config, route, fileIdentity, input.Session, input.Plan, q.Purpose, false)
 		if err != nil {
 			return nil, err
 		}
@@ -289,7 +289,7 @@ func configurationGeneratedInstallation(ctx context.Context, config Config, runt
 		return configurationGeneratedCustody(owner), nil
 	}
 	i.AdmitAdoption = func(ctx context.Context, q contract.CryptoGeneratedCompareRequest, control contract.ControlCore, input contract.GeneratedAdoptionInput, deadline time.Time) (*core.InstalledGeneratedCustody, error) {
-		construction, err := configurationGeneratedConstruction(ctx, config, route, fileIdentity, input.Session, input.Plan)
+		construction, err := configurationGeneratedConstruction(ctx, config, route, fileIdentity, input.Session, input.Plan, q.Purpose, false)
 		if err != nil {
 			return nil, err
 		}
@@ -300,7 +300,7 @@ func configurationGeneratedInstallation(ctx context.Context, config Config, runt
 		return configurationGeneratedCustody(owner), nil
 	}
 	i.AdmitFinal = func(ctx context.Context, q contract.CryptoGeneratedCompareRequest, control contract.ControlCore, input contract.GeneratedFinalInput, deadline time.Time) (*core.InstalledGeneratedCustody, error) {
-		construction, err := configurationGeneratedConstruction(ctx, config, route, fileIdentity, input.Session, input.Plan)
+		construction, err := configurationGeneratedConstruction(ctx, config, route, fileIdentity, input.Session, input.Plan, q.Purpose, len(input.EntryAdmissions) != 0)
 		if err != nil {
 			return nil, err
 		}
@@ -317,7 +317,7 @@ func configurationGeneratedInstallation(ctx context.Context, config Config, runt
 		if err != nil {
 			return nil, err
 		}
-		construction, err := configurationGeneratedConstruction(ctx, config, route, fileIdentity, input.Session, input.Plan)
+		construction, err := configurationGeneratedConstruction(ctx, config, route, fileIdentity, input.Session, input.Plan, q.Purpose, false)
 		if err != nil {
 			return nil, err
 		}
@@ -339,7 +339,7 @@ func configurationGeneratedInstallation(ctx context.Context, config Config, runt
 		producer.LocalFailureReason = reason
 		if admit != nil {
 			producer.AdmitLocalFailure = func(ctx context.Context, q contract.CryptoGeneratedCompareRequest, control contract.ControlCore, input contract.GeneratedLocalFailureInput, deadline time.Time) (*core.InstalledGeneratedCustody, error) {
-				construction, err := configurationGeneratedConstruction(ctx, config, route, fileIdentity, input.Session, input.Plan)
+				construction, err := configurationGeneratedConstruction(ctx, config, route, fileIdentity, input.Session, input.Plan, q.Purpose, false)
 				if err != nil {
 					return nil, err
 				}

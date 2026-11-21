@@ -324,7 +324,9 @@ func (s *StateSession) prepareGeneratedFinal(ctx context.Context, permit *admitt
 	if err != nil {
 		return nil, refused(AdmissionInvalid)
 	}
-	p.operation.qualificationCounts = s.generatedQualificationCounts(bindings)
+	if permit.plan.request.Purpose.QualifiesPendingRecipients(len(permit.plan.entryPlans) != 0) {
+		p.operation.qualificationCounts = s.generatedQualificationCounts(bindings)
+	}
 	reply, res := p.exchange(ctx, contract.CryptoCompare, body)
 	if res.Outcome != 0 {
 		return nil, res

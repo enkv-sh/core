@@ -10,7 +10,7 @@ import (
 // This path has no process configuration or credential route. Verification
 // delegates actual original-result admission and authentication to Crypto.
 func (f *Fixture) NewInstalledGeneratedVerification(q contract.CryptoGeneratedCompareRequest, control contract.ControlCore, input contract.GeneratedVerificationInput, deadline time.Time) (*InstalledGeneratedOwner, error) {
-	construction, err := f.installedGeneratedConstruction(control, input.Session, contract.GeneratedPlanInput{}, contract.ID{})
+	construction, err := f.installedGeneratedConstruction(control, input.Session, contract.GeneratedPlanInput{}, contract.ID{}, q.Purpose, false)
 	if err != nil {
 		return nil, err
 	}

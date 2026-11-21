@@ -165,7 +165,7 @@ func (s *generatedLocalFailureOutcome) admit(ctx context.Context, r *Runtime, q 
 		return nil, ErrAdmission
 	}
 	beforePhase := *input.Session.SelectionPhase
-	session, err := r.generatedInstalledSession(q, control, construction, input.Session, input.Plan)
+	session, err := r.generatedInstalledSession(q, control, construction, input.Session, input.Plan, false)
 	if err != nil {
 		return nil, err
 	}

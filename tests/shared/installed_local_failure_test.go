@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"reflect"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -594,5 +595,162 @@ func TestInstalledLocalNoEffectFinalReleasesDomain(t *testing.T) {
 	clean := selectActualGeneratedInboxRelease(t, ctx, f.env, f.open(t, ctx), store, effect.Record.AttemptID, false)
 	if len(mustSelectedGeneratedWork(t, clean).releases) != 0 {
 		t.Fatal("cold cleanup kept the completed handoff")
+	}
+}
+
+// full_only: false
+func TestInstalledLocalFailureCompletesWithPendingKeyUnavailable(t *testing.T) {
+	failed := installedLocalAuthor{config: custody.BuildInstalledUnavailableLocalAuthor(t, installedLocalPublicRoot(t))}
+	success := buildInstalledLocalAuthor(t, false)
+	for _, scenario := range []string{"before recording", "after recording with sibling", "selecting final"} {
+		t.Run(scenario, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+			defer cancel()
+			f := newInstalledApplyTestFixture(t, ctx, contract.GCP, false)
+			desired := installedApplyPreparedRecipient(t, f.selected, "pending generator recipient")
+			var pending contract.ID
+			for _, row := range desired {
+				if row.Creation != nil {
+					pending = row.Recipient.RecipientID
+				}
+			}
+			if pending.IsZero() || f.selected.recipientRecord(pending) != nil {
+				t.Fatal("expected one new recipient")
+			}
+			author := failed
+			if scenario == "selecting final" {
+				author = success
+			}
+			readers := []contract.ID{f.selected.admission.recipient, pending}
+			slices.SortFunc(readers, compareGeneratedIDs)
+			makeEntry := func(name string, gen *contract.GeneratorDeclaredGeneration) ApplyEntryInput {
+				return ApplyEntryInput{Name: name, ValueSource: contract.Generated, ConfidentialityClass: contract.Secret,
+					InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw,
+					Recipients: readers, Generated: gen}
+			}
+			input := []ApplyEntryInput{makeEntry("alpha", &contract.GeneratorDeclaredGeneration{Schema: contract.GeneratorDeclaredGenerationSchema,
+				LifecycleMode: contract.GeneratorLifecycleNone, ConfigContractID: author.config.Artifact.ConfigContractID, Intent: installedLocalCanonicalIntent()})}
+			var remoteCalls func() (int, []string)
+			if scenario == "after recording with sibling" {
+				process, count := installedGeneratedRetirementProcess(t, "acknowledged")
+				f.env.GeneratedProcess = process
+				remoteCalls = count
+				input = append(input, makeEntry("omega", &contract.GeneratorDeclaredGeneration{Schema: contract.GeneratorDeclaredGenerationSchema,
+					LifecycleMode: contract.GeneratorLifecycleManaged, RetirementMode: contract.GeneratedRetirementManual, ConfigContractID: process.Implementation.ConfigContractID,
+					ResourceContractID: hermeticCloudflareResourceContractID(), CompletionClass: contract.GeneratedCompletionAcknowledged, Intent: bytes.Clone(process.Intent)}))
+			}
+			admissions := 0
+			var localCalls atomic.Int32
+			open := func(s *StateSession) *InstalledApply {
+				return installedLocalEngineWithRecipients(t, ctx, f, s, input, desired, author, &admissions, func(bool) { localCalls.Add(1) })
+			}
+			engine := open(f.selected)
+			callbacks := engine.installation.Generated
+			var startRoutes, startKeys int
+			denyPending := func() {
+				startRoutes, startKeys = f.keys.PendingKeyCalls()
+				if startRoutes == 0 || startKeys == 0 {
+					t.Fatal("pending key was never qualified before dispatch")
+				}
+				f.keys.SetDenied(pending, true)
+			}
+			if scenario == "selecting final" {
+				final := callbacks.AdmitFinal
+				callbacks.AdmitFinal = func(ctx context.Context, q contract.CryptoGeneratedCompareRequest, control contract.ControlCore, in contract.GeneratedFinalInput, deadline time.Time) (*InstalledGeneratedCustody, error) {
+					denyPending()
+					return final(ctx, q, control, in, deadline)
+				}
+			} else {
+				producer := callbacks.AdmitProducer
+				callbacks.AdmitProducer = func(ctx context.Context, q contract.CryptoGeneratedCompareRequest, control contract.ControlCore, in contract.GeneratedProducerInput, impl contract.GeneratorImplementation, deadline time.Time) (*InstalledGeneratedProducerCustody, error) {
+					o, err := producer(ctx, q, control, in, impl, deadline)
+					if err == nil && o != nil && o.AdmitLocalFailure != nil {
+						record := o.AdmitLocalFailure
+						o.AdmitLocalFailure = func(ctx context.Context, q contract.CryptoGeneratedCompareRequest, control contract.ControlCore, in contract.GeneratedLocalFailureInput, deadline time.Time) (*InstalledGeneratedCustody, error) {
+							denyPending()
+							if scenario == "before recording" {
+								f.keys.SetDenied(f.selected.admission.recipient, true)
+							}
+							return record(ctx, q, control, in, deadline)
+						}
+					}
+					return o, err
+				}
+				callbacks.AdmitFinal = func(context.Context, contract.CryptoGeneratedCompareRequest, contract.ControlCore, contract.GeneratedFinalInput, time.Time) (*InstalledGeneratedCustody, error) {
+					return nil, contract.ErrRecord
+				}
+			}
+			got := engine.Apply(ctx, testID("pending recipient apply"), input)
+			engine.Close()
+			if scenario == "before recording" {
+				f.keys.SetDenied(f.selected.admission.recipient, false)
+			}
+			cold := f.open(t, ctx)
+			if startKeys == 0 || got.OperationID.IsZero() || len(got.Receipt) != 0 || cold.root.Generated.ActiveOwner != got.OperationID || cold.recipientRecord(pending) != nil || localCalls.Load() != 1 {
+				t.Fatal("did not reach the intended interruption", got.Result.Outcome, got.Result.Reason, got.Diagnostics, startKeys, localCalls.Load())
+			}
+			work := mustSelectedGeneratedWork(t, cold)
+			foundLocal := false
+			for _, a := range work.attempts {
+				if a.record.LifecycleMode != contract.GeneratorLifecycleNone {
+					continue
+				}
+				foundLocal = true
+				if scenario == "after recording with sibling" && (a.record.State != contract.GeneratedEffectFailedTerminal || a.record.FailureReason != contract.GeneratorFailureUnavailable) {
+					t.Fatal("joined local failure was not durably recorded", a.record.State, a.record.FailureReason)
+				}
+				if scenario == "before recording" && a.record.State != contract.GeneratedEffectTransmitted {
+					t.Fatal("terminal evidence appeared before recording")
+				}
+			}
+			if !foundLocal {
+				t.Fatal("checkpoint lost its original local attempt")
+			}
+			if scenario == "selecting final" {
+				routes, keys := f.keys.PendingKeyCalls()
+				if routes <= startRoutes || keys <= startKeys {
+					t.Fatal("selecting Final did not qualify the proposed key")
+				}
+				f.keys.SetDenied(pending, false)
+			}
+			resumed := open(cold)
+			final := resumed.Continue(ctx, testID("resume pending recipient"), got.OperationID)
+			resumed.Close()
+			after := f.open(t, ctx)
+			if final.OperationID != got.OperationID || localCalls.Load() != 1 || admissions != len(input) {
+				t.Fatal("continuation changed operation or repeated a callback", admissions)
+			}
+			if scenario == "selecting final" {
+				if final.Result.Outcome != ObservedCurrent || after.recipientRecord(pending) == nil || after.root.ValueEntryCount != 1 {
+					t.Fatal("restored selecting Final failed to install recipient", final.Result)
+				}
+				return
+			}
+			routes, keys := f.keys.PendingKeyCalls()
+			if routes != startRoutes || keys != startKeys || !reflect.DeepEqual(f.selected.registry(), after.registry()) {
+				t.Fatal("failure continuation constructed or qualified a proposed key or changed current recipients", routes-startRoutes, keys-startKeys)
+			}
+			if scenario == "before recording" {
+				if final.Result.Outcome != EvidenceUnavailable || len(final.Receipt) != 0 || after.root.Generated.ActiveOwner != got.OperationID {
+					t.Fatal("continuation invented a failure after loss of the original receiver", final.Result)
+				}
+				return
+			}
+			receipt, err := contract.InspectCompactMutationReceipt(final.Receipt)
+			if err != nil || receipt.StateResult != contract.ReceiptStateEffectTerminalFailure || receipt.CanonicalOutcome != contract.ReceiptCanonicalNotSelected ||
+				!after.root.Generated.ActiveOwner.IsZero() || after.root.ValueEntryCount != 0 || after.root.Generated.Duties != 1 {
+				t.Fatal("fresh Final did not preserve the predecessor and managed sibling", final.Result, err)
+			}
+			nextInput := []ApplyEntryInput{{Name: "next", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, Recipients: []contract.ID{after.admission.recipient}, InputBytes: []byte("next"), InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw}}
+			next := f.engine(t, after, nextInput, nil)
+			progress := next.Apply(ctx, testID("after failed pending membership"), nextInput)
+			next.Close()
+			if progress.Result.Outcome != ObservedCurrent || len(progress.Receipt) == 0 {
+				t.Fatal("domain did not accept the next mutation", progress.Result)
+			}
+			if creates, deletes := remoteCalls(); creates != 1 || len(deletes) != 0 {
+				t.Fatal("managed sibling repeated an effect")
+			}
+		})
 	}
 }

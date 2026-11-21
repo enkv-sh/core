@@ -38,7 +38,7 @@ func (o *InstalledGeneratedOwner) Close() {
 	}
 }
 
-func (f *Fixture) installedGeneratedConstruction(control contract.ControlCore, session contract.GeneratedSessionInput, plan contract.GeneratedPlanInput, file contract.ID) (privatecrypto.GeneratedCustodyConstruction, error) {
+func (f *Fixture) installedGeneratedConstruction(control contract.ControlCore, session contract.GeneratedSessionInput, plan contract.GeneratedPlanInput, file contract.ID, purpose contract.CryptoGeneratedPurpose, selectsEntries bool) (privatecrypto.GeneratedCustodyConstruction, error) {
 	out := privatecrypto.GeneratedCustodyConstruction{FileIdentity: file}
 	f.mu.Lock()
 	out.RouteID = f.routes[control.AuthorityKMSBinding.BindingID]
@@ -46,7 +46,7 @@ func (f *Fixture) installedGeneratedConstruction(control contract.ControlCore, s
 	if out.RouteID.IsZero() {
 		return out, privatecrypto.ErrAdmission
 	}
-	if len(plan.RegistryImage) == 0 {
+	if !purpose.QualifiesPendingRecipients(selectsEntries) || len(plan.RegistryImage) == 0 {
 		return out, nil
 	}
 	image, err := contract.DecodeGeneratedRecipientRegistryImage(plan.RegistryImage)
@@ -86,7 +86,7 @@ func (f *Fixture) installedGeneratedOwner(construction privatecrypto.GeneratedCu
 	return &InstalledGeneratedOwner{owner: owner, runtime: runtime}, nil
 }
 func (f *Fixture) NewInstalledGeneratedReservation(q contract.CryptoGeneratedCompareRequest, control contract.ControlCore, input contract.GeneratedReservationInput, file contract.ID, deadline time.Time) (*InstalledGeneratedOwner, error) {
-	construction, err := f.installedGeneratedConstruction(control, input.Session, input.Plan, file)
+	construction, err := f.installedGeneratedConstruction(control, input.Session, input.Plan, file, q.Purpose, false)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +95,7 @@ func (f *Fixture) NewInstalledGeneratedReservation(q contract.CryptoGeneratedCom
 	})
 }
 func (f *Fixture) NewInstalledGeneratedAdoption(q contract.CryptoGeneratedCompareRequest, control contract.ControlCore, input contract.GeneratedAdoptionInput, deadline time.Time) (*InstalledGeneratedOwner, error) {
-	construction, err := f.installedGeneratedConstruction(control, input.Session, input.Plan, contract.ID{})
+	construction, err := f.installedGeneratedConstruction(control, input.Session, input.Plan, contract.ID{}, q.Purpose, false)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +104,7 @@ func (f *Fixture) NewInstalledGeneratedAdoption(q contract.CryptoGeneratedCompar
 	})
 }
 func (f *Fixture) NewInstalledGeneratedFinal(q contract.CryptoGeneratedCompareRequest, control contract.ControlCore, input contract.GeneratedFinalInput, deadline time.Time) (*InstalledGeneratedOwner, error) {
-	construction, err := f.installedGeneratedConstruction(control, input.Session, input.Plan, contract.ID{})
+	construction, err := f.installedGeneratedConstruction(control, input.Session, input.Plan, contract.ID{}, q.Purpose, len(input.EntryAdmissions) != 0)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +116,7 @@ func (f *Fixture) NewInstalledGeneratedProducer(ctx context.Context, q contract.
 	if ctx == nil || ctx.Err() != nil {
 		return nil, privatecrypto.ErrAdmission
 	}
-	construction, err := f.installedGeneratedConstruction(control, input.Session, input.Plan, contract.ID{})
+	construction, err := f.installedGeneratedConstruction(control, input.Session, input.Plan, contract.ID{}, q.Purpose, false)
 	if err != nil {
 		return nil, err
 	}
@@ -164,7 +164,7 @@ func (f *Fixture) InstalledGeneratedLocalFailure(original *InstalledGeneratedOwn
 		return nil
 	}
 	return &InstalledGeneratedLocalFailure{reason: reason, admit: func(ctx context.Context, q contract.CryptoGeneratedCompareRequest, control contract.ControlCore, input contract.GeneratedLocalFailureInput, deadline time.Time) (*InstalledGeneratedOwner, error) {
-		construction, err := f.installedGeneratedConstruction(control, input.Session, input.Plan, contract.ID{})
+		construction, err := f.installedGeneratedConstruction(control, input.Session, input.Plan, contract.ID{}, q.Purpose, false)
 		if err != nil {
 			return nil, err
 		}

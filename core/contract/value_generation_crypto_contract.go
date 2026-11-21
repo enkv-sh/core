@@ -30,6 +30,14 @@ const (
 	CryptoGeneratedOriginalVerificationPurpose CryptoGeneratedPurpose = 5
 )
 
+// QualifiesPendingRecipients identifies transitions that can enter a new
+// effect or install membership. Recording and nonselecting Final still
+// authenticate the complete registry image and current bindings.
+func (p CryptoGeneratedPurpose) QualifiesPendingRecipients(selectsEntries bool) bool {
+	return p == CryptoGeneratedReservationPurpose || p == CryptoGeneratedProducerPreparationPurpose ||
+		p == CryptoGeneratedFinalPreparationPurpose && selectsEntries
+}
+
 func (p CryptoGeneratedPurpose) valid() bool {
 	return p >= CryptoGeneratedReservationPurpose && p <= CryptoGeneratedOriginalVerificationPurpose
 }

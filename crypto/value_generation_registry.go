@@ -71,18 +71,18 @@ func installedGeneratedSession(q contract.CryptoGeneratedCompareRequest, control
 	if err != nil {
 		return generatedSessionAdmissionInput{}, ErrAdmission
 	}
-	return installedGeneratedSessionWithGraph(q, control, construction, input, image, graph)
+	return installedGeneratedSessionWithGraph(q, control, construction, input, image, graph, false)
 }
 
-func (r *Runtime) generatedInstalledSession(q contract.CryptoGeneratedCompareRequest, control contract.ControlCore, construction GeneratedCustodyConstruction, input contract.GeneratedSessionInput, plan contract.GeneratedPlanInput) (generatedSessionAdmissionInput, error) {
+func (r *Runtime) generatedInstalledSession(q contract.CryptoGeneratedCompareRequest, control contract.ControlCore, construction GeneratedCustodyConstruction, input contract.GeneratedSessionInput, plan contract.GeneratedPlanInput, selectsEntries bool) (generatedSessionAdmissionInput, error) {
 	validated, _, err := r.validateGeneratedPlan(input.Graph, plan.Declaration, false)
 	if err != nil {
 		return generatedSessionAdmissionInput{}, err
 	}
-	return installedGeneratedSessionWithGraph(q, control, construction, input, plan.RegistryImage, validated.graph)
+	return installedGeneratedSessionWithGraph(q, control, construction, input, plan.RegistryImage, validated.graph, selectsEntries)
 }
 
-func installedGeneratedSessionWithGraph(q contract.CryptoGeneratedCompareRequest, control contract.ControlCore, construction GeneratedCustodyConstruction, input contract.GeneratedSessionInput, image []byte, graph contract.GeneratorPlanBundle) (generatedSessionAdmissionInput, error) {
+func installedGeneratedSessionWithGraph(q contract.CryptoGeneratedCompareRequest, control contract.ControlCore, construction GeneratedCustodyConstruction, input contract.GeneratedSessionInput, image []byte, graph contract.GeneratorPlanBundle, selectsEntries bool) (generatedSessionAdmissionInput, error) {
 	out := generatedSessionAdmissionInput{Control: control, RouteID: construction.RouteID, Graph: input.Graph, BeforePublic: input.BeforePublic, Output: input.Output}
 	selectedPhase, phaseErr := generatedSelectedPhase(q, input)
 	if phaseErr != nil {
@@ -166,7 +166,7 @@ func installedGeneratedSessionWithGraph(q contract.CryptoGeneratedCompareRequest
 		}
 	}
 	request := contract.CryptoCompareRequest{Context: q.Context, Bindings: out.Bindings, Recipients: accepted.Recipients}
-	changed, public, ok := applyRecipientAdmissionAtSnapshot(request, current, construction.Public, control, accepted.OriginalPredecessorSnapshotID)
+	changed, pending, ok := applyRecipientChangesAtSnapshot(request, current, control, accepted.OriginalPredecessorSnapshotID)
 	if !ok || !controlBindingsValid(control, out.Bindings) || input.BeforeReceipts.DomainID != control.DomainID {
 		return out, ErrAdmission
 	}
@@ -192,6 +192,13 @@ func installedGeneratedSessionWithGraph(q contract.CryptoGeneratedCompareRequest
 	for _, row := range receipts {
 		fact, err := contract.InspectSupportRecordDigest(control.DomainID, row)
 		if err != nil || !slices.Contains(input.Output.Rows.Facts, fact) {
+			return out, ErrAdmission
+		}
+	}
+	var public map[contract.ID]PublicKeyQualifier
+	if q.Purpose.QualifiesPendingRecipients(selectsEntries) {
+		public, ok = pendingRecipientRoutes(pending, construction.Public, control.Provider)
+		if !ok {
 			return out, ErrAdmission
 		}
 	}
