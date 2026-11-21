@@ -871,6 +871,28 @@ func TestGeneratedCleanCapacitySeparatesSealedAndRetainedAtJointLimit(t *testing
 }
 
 // full_only: false
+func TestGeneratedPublicRecoveryCapacityCountsReachableAttempts(t *testing.T) {
+	shape := generatedCapacityShape{ValueEntryCount: 2, ValueEntryPageCount: 1, Recipients: 1, Secrets: 2, Memberships: 2, SecretMemberships: 2,
+		Generated: 2, Creates: 2, ValueEntryPlanCount: 2, DeclarationBytes: 512, publicRecovery: true}
+	groups, err := generatedCleanCapacity(shape)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Each of the two managed lineages has one initial CREATE and one
+	// confirmed-no-effect successor. Each has its own cleanup template.
+	if _, templates := shape.createCapacity(); templates != 8 {
+		t.Fatal("clean operation reserved the wrong number of graph templates", templates)
+	}
+	if groups[contract.GeneratorCapacityCreates].MaxCount != 4 || groups[contract.GeneratorCapacityCreateResults].MaxCount != 4 {
+		t.Fatal("clean operation reserved the wrong number of enterable CREATEs")
+	}
+	rows, _, _, err := generatedAdministrativeRowEnvelope(shape)
+	if err != nil || rows[contract.GeneratedCreateEvidenceSupportKind] != 4 {
+		t.Fatal("administrative capacity disagrees with admitted CREATEs", err)
+	}
+}
+
+// full_only: false
 func TestGeneratedBacklogCapacityAdmitsDetachedRetirement(t *testing.T) {
 	s, _, _ := generatedDetachedRetirementState(t, "absent", 0)
 	selected, err := s.selectedGeneratedWork(context.Background())

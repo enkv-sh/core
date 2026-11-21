@@ -312,10 +312,10 @@ func continuationCreatePaths(lineage contract.GeneratorLineageTemplate, branch u
 	x := lineage.Templates[branch]
 	paths := [][]contract.GeneratorAttemptTemplate{{x}}
 	for _, nextGate := range []uint8{contract.GeneratorGuardQualifiedNoEffect, contract.GeneratorGuardResidue} {
-		if gate != 0 && nextGate != gate || nextGate == contract.GeneratorGuardQualifiedNoEffect && x.NoEffectBudget == 0 || nextGate == contract.GeneratorGuardResidue && x.ResidueBudget == 0 {
+		if gate != 0 && nextGate != gate {
 			continue
 		}
-		next, present, err := contract.GeneratorSuccessorBranch(branch, nextGate)
+		next, present, err := x.SuccessorBranch(nextGate)
 		if err != nil {
 			return nil, err
 		}
@@ -624,7 +624,7 @@ func continuationLineageOptions(image *selectedImage, population continuationPop
 			}
 			fenced := slices.Clone(reaches)
 			fenced[i].write, fenced[i].hazard = true, true
-			_, successor, err := contract.GeneratorSuccessorBranch(path[i].Branch, contract.GeneratorGuardResidue)
+			_, successor, err := path[i].SuccessorBranch(contract.GeneratorGuardResidue)
 			if err != nil {
 				return nil, err
 			}

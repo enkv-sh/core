@@ -56,7 +56,7 @@ func generatedNextNoEffect(g *generatedSelection, current contract.GeneratorAtte
 	if g == nil || len(g.bundles) == 0 || current.Action != contract.GeneratorActionCreate {
 		return contract.GeneratorAttemptTemplate{}, contract.GeneratorResultUse{}, false
 	}
-	nextBranch, present, err := contract.GeneratorSuccessorBranch(current.Branch, contract.GeneratorGuardQualifiedNoEffect)
+	nextBranch, present, err := current.SuccessorBranch(contract.GeneratorGuardQualifiedNoEffect)
 	if err != nil || !present {
 		return contract.GeneratorAttemptTemplate{}, contract.GeneratorResultUse{}, false
 	}

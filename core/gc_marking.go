@@ -182,7 +182,7 @@ func gcMarkActiveGraph(marks *gcMarkSet, generated *generatedSelection) error {
 				continue
 			}
 			for _, guard := range []uint8{contract.GeneratorGuardQualifiedNoEffect, contract.GeneratorGuardResidue} {
-				next, present, err := contract.GeneratorSuccessorBranch(branch, guard)
+				next, present, err := template.SuccessorBranch(guard)
 				if err != nil {
 					return err
 				}

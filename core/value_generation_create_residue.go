@@ -182,7 +182,7 @@ func generatedCreateResidueRows(g *generatedSelection) (generatedCreateResidueCh
 	replacement = append(replacement, hazardHistoryCarriers...)
 
 	x := selected.expected.Template
-	nextBranch, present, err := contract.GeneratorSuccessorBranch(x.Branch, contract.GeneratorGuardResidue)
+	nextBranch, present, err := x.SuccessorBranch(contract.GeneratorGuardResidue)
 	if err != nil {
 		return out, err
 	}
@@ -202,7 +202,10 @@ func generatedCreateResidueRows(g *generatedSelection) (generatedCreateResidueCh
 		out.next, out.hasSuccessor = next, true
 	}
 	out.attempt, out.hazard, out.hazardBody, out.replacement = selected.record, hazard, hazardBody, replacement
-	out.noEffectUsed, out.residueUsed = g.phase.NoEffectUsed, 1
+	out.noEffectUsed, out.residueUsed = g.phase.NoEffectUsed, g.phase.ResidueUsed
+	if out.hasSuccessor {
+		out.residueUsed = 1
+	}
 	if x.Branch == contract.GeneratorBranchNoEffect || x.Branch >= contract.GeneratorBranchNoEffectThenResidue {
 		out.noEffectUsed = 1
 	}

@@ -177,13 +177,14 @@ func InspectGeneratedSelectedCreateAncestry(domain, snapshot ID, records []Suppo
 	}
 	var selectedLineage, previousLineage GeneratorLineageTemplate
 	var creates, templates uint32
+	public := header.RecoveryPolicyID == GeneratorRecoveryPolicyID()
 	lineages, err := v.vector("lineage-templates", GeneratorMaxLineageTemplates, minimumLineage, GeneratorLineageTemplateMaxLength, func(body []byte) error {
 		l, err := InspectGeneratorLineageTemplate(body)
 		if err != nil || l.Schema != schema || l.DomainID != domain || l.OperationID != original.OperationID {
 			return ErrRecord
 		}
 		owned, err := l.Own()
-		if err != nil || !previousLineage.LineageID.IsZero() && generatorLineageCompare(previousLineage, owned) >= 0 {
+		if err != nil || !generatorRecoveryLineageValid(public, &owned) || !previousLineage.LineageID.IsZero() && generatorLineageCompare(previousLineage, owned) >= 0 {
 			return ErrRecord
 		}
 		// Only ordering metadata survives this row, not every graph lineage.

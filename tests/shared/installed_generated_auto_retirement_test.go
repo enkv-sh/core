@@ -153,7 +153,7 @@ func TestInstalledGeneratedRotationRetiresWithinOriginalApply(t *testing.T) {
 			process, effects := installedGeneratedRetirementProcess(t, "acknowledged")
 			f := newInstalledApplyTestFixture(t, ctx, contract.GCP, tc.recovery)
 			f.env.GeneratedProcess = process
-			input := []ApplyEntryInput{{Name: "healthy", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain,
+			input := []ApplyEntryInput{{Name: "healthy", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw,
 				Recipients: []contract.ID{f.selected.admission.recipient}, InputBytes: []byte("unchanged supplied sibling")}}
 			for at := range tc.modes {
 				meta := &contract.GeneratorDeclaredGeneration{Schema: contract.GeneratorDeclaredGenerationSchema, LifecycleMode: contract.GeneratorLifecycleManaged, Epoch: 0, RetirementMode: contract.GeneratedRetirementManual,

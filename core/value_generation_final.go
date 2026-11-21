@@ -190,7 +190,7 @@ func generatedLineageTerminalUncertain(g *generatedSelection, lineage contract.G
 		return false
 	}
 	state, err := contract.InspectGeneratedLineageRecord(lineageRow.Body)
-	return err == nil && state.Frontier == frontier.expected.Template.Branch && state.Branch == state.Frontier && state.ResidueUsed == 1
+	return err == nil && state.Frontier == frontier.expected.Template.Branch && state.Branch == state.Frontier && frontier.expected.Template.ResidueBudget == 0
 }
 
 // PrepareGeneratedFinal prepares every generated output before one atomic

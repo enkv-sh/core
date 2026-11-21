@@ -16,7 +16,6 @@ const (
 	generatedEdgeCharge              = 256
 	generatedEdgesPerTemplate        = 4
 	generatedCarriersPerTemplate     = 4
-	generatedTemplatesPerCreate      = 2 * contract.GeneratorCreateLineageTemplates
 	generatedParentPlanCharge        = 16 << 10
 	generatedResultUseCharge         = 4 + contract.GeneratorResultUseLength
 	generatedSourceUseCharge         = 4 + contract.GeneratorSourceUseLength
@@ -51,6 +50,7 @@ type generatedCapacityShape struct {
 	DeclarationBytes, RegistryBytes, OldIntentBytes                                              uint64
 	DesiredOutputBytes                                                                           uint64
 	outputSupport                                                                                *generatedOutputSupportCapacity
+	publicRecovery                                                                               bool
 	// A fresh delete copies this accepted vector into its new operation namespace.
 	deleteSupport                   contract.GeneratorDescriptor
 	ProjectedCurrentIntentFragments uint64
@@ -137,6 +137,16 @@ func (s *StateSession) generatedOutputSupportCapacity(ctx context.Context, outpu
 	return out, nil
 }
 
+// The clean bound counts enterable attempts separately from graph templates.
+// Each managed CREATE template also reserves its own exact cleanup template.
+func (v generatedCapacityShape) createCapacity() (attempts, templates uint64) {
+	if v.publicRecovery {
+		attempts = contract.GeneratorPublicCreateLineageTemplates * v.Creates
+		return attempts, 2 * attempts
+	}
+	return contract.GeneratorMaxEnteredCreateAttempts * v.Creates, 2 * contract.GeneratorCreateLineageTemplates * v.Creates
+}
+
 func (v generatedCapacityShape) valid() bool {
 	if v.deleteSupport != (contract.GeneratorDescriptor{}) && !contract.GeneratorVectorShapeValid(contract.GeneratorVectorSupport, v.deleteSupport) {
 		return false
@@ -205,7 +215,7 @@ func generatedCleanCapacity(v generatedCapacityShape) ([contract.GeneratorCapaci
 		groups[contract.GeneratorCapacityCurrentAccess] = contract.GeneratorCapacityGroup{MaxCount: v.Secrets, MaxFramedBytes: bytes,
 			MaxPages: uint32(1 + (bytes-1)/nonfinal)}
 	}
-	creates := contract.GeneratorMaxEnteredCreateAttempts * v.Creates
+	creates, createTemplates := v.createCapacity()
 	deletes := v.Retirements + creates + v.ControlledRetirements + v.Cleanups + v.ControlledCleanups
 	materials := creates + deletes
 	fullAccess := uint64(contract.AccessRecordFixedLength + contract.WrapRowWireLength*(v.Recipients+recovery))
@@ -269,9 +279,7 @@ func generatedCleanCapacity(v generatedCapacityShape) ([contract.GeneratorCapaci
 	support(contract.GeneratorCapacityReceipts, 2*contract.MutationReceiptWindowLimit, format.ReceiptSupport)
 	newDeclarationFragments := fragments(v.DeclarationBytes)
 	fragmentGroup(contract.GeneratorCapacityIntents, v.DeclarationBytes, newDeclarationFragments)
-	// Five create and five exact-resource cleanup templates exist per lineage.
-	// Only three compatible create Attempts contribute result/owner groups.
-	templates := generatedTemplatesPerCreate*v.Creates + v.Retirements + v.ControlledRetirements + v.Cleanups + v.ControlledCleanups
+	templates := createTemplates + v.Retirements + v.ControlledRetirements + v.Cleanups + v.ControlledCleanups
 	// Source rows produce two additional carrier streams in the initial
 	// selected image. A retained source has Duty and Parent consumers; a
 	// sealed source has a Parent consumer and a second declaration slice.

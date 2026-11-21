@@ -205,6 +205,23 @@ func TestInstalledGeneratedContinuationUsesCurrentExistingBindingAndOriginalPend
 	input.Session.CurrentRecipients = current
 	input.Session.CurrentRecipientRefs = []contract.Ref{ref}
 	f.compare.Purpose = contract.CryptoGeneratedProducerPreparationPurpose
+	t.Run("older policy cannot enter a producer", func(t *testing.T) {
+		legacy := generatedRuntimePlanFixture(t, false)
+		public := input.Session
+		public.Graph = legacy.graph
+		routes := construction
+		routes.Public = nil
+		q := f.compare
+		q.Purpose = contract.CryptoGeneratedAdoptionPurpose
+		if _, err := installedGeneratedSession(q, f.base.control, routes, public, nil); err != nil {
+			t.Fatal("evidence-only session refused", err)
+		}
+		q.Purpose = contract.CryptoGeneratedProducerPreparationPurpose
+		if _, err := installedGeneratedSession(q, f.base.control, routes, public, nil); !errors.Is(err, ErrAdmission) {
+			t.Fatal("older policy authorized a producer", err)
+		}
+	})
+
 	root, err := contract.DecodeRef(f.compare.Context.PredecessorRootRef[:], contract.CanonicalSchema)
 	if err != nil {
 		t.Fatal(err)

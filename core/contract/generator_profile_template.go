@@ -1,5 +1,17 @@
 package contract
 
+// SuccessorBranch returns the next branch permitted by this template.
+func (v GeneratorAttemptTemplate) SuccessorBranch(guard uint8) (uint8, bool, error) {
+	next, present, err := GeneratorSuccessorBranch(v.Branch, guard)
+	if err != nil || !present {
+		return 0, false, err
+	}
+	if v.Action != GeneratorActionCreate || v.NoEffectBudget == 0 && guard == GeneratorGuardQualifiedNoEffect || v.ResidueBudget == 0 && guard == GeneratorGuardResidue {
+		return 0, false, nil
+	}
+	return next, true, nil
+}
+
 func (v GeneratorAttemptTemplate) valid() bool {
 	if v.Schema != GeneratorAttemptTemplateSchema || (v.ResultReaderID != GeneratorResultReaderID() && !v.SupportsValueEncodingFailure()) || !v.LifecycleMode.resourceValid(v.ResourceContractID) || !publicIDsValid(v.LineageID, v.AttemptID, v.ResourceIncarnationID, v.PlannedValueSlotID, v.DutyID, v.TransmissionID, v.ResultID, v.InboxID, v.DescriptorID, v.ConfigContractID, v.ExecutorID, v.CredentialRouteID, v.ResultContractID, v.RequestPlanDigest, v.IntentDigest) || v.RequiredAuthoritySet&GeneratorAuthorityNormal == 0 || v.RequiredAuthoritySet > GeneratorAuthorityMask || v.Branch > GeneratorBranchResidueThenNoEffect {
 		return false
@@ -47,7 +59,7 @@ func (v GeneratorAttemptTemplate) valid() bool {
 		if v.Branch == GeneratorBranchInitial || v.Branch == GeneratorBranchNoEffect {
 			residue = 1
 		}
-		if v.NoEffectBudget != noEffect || v.ResidueBudget != residue {
+		if v.NoEffectBudget != noEffect || v.ResidueBudget > residue {
 			return false
 		}
 	}

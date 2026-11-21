@@ -189,7 +189,7 @@ func (s *StateSession) installedGeneratedPlan(ctx context.Context, i ApplyInstal
 			if err := i.Generated.CheckCreateReadiness(ctx, entry.Name, implementation, meta.Intent); err != nil {
 				return nil, err
 			}
-			lineage := contract.GeneratorLineageTemplate{Schema: contract.GeneratorLineageTemplateSchema, Purpose: contract.GeneratorLineageCreate, DomainID: s.root.Domain, OperationID: operation, Name: entry.Name, EntryIncarnationID: incarnation, Epoch: meta.Epoch, IntentDigest: plan.IntentDigest, TemplateCount: 5}
+			lineage := contract.GeneratorLineageTemplate{Schema: contract.GeneratorLineageTemplateSchema, Purpose: contract.GeneratorLineageCreate, DomainID: s.root.Domain, OperationID: operation, Name: entry.Name, EntryIncarnationID: incarnation, Epoch: meta.Epoch, IntentDigest: plan.IntentDigest, TemplateCount: contract.GeneratorPublicCreateLineageTemplates}
 			local := meta.LifecycleMode == contract.GeneratorLifecycleNone
 			maxSecret, maxFacts := uint32(65536), uint32(4096)
 			if local {
@@ -206,20 +206,13 @@ func (s *StateSession) installedGeneratedPlan(ctx context.Context, i ApplyInstal
 				x.ResultContractID = fixed(contract.GeneratedResultContractID(implementation, x.Action, x.CompletionClass, maxSecret, maxFacts, entry.InputEncoding))
 				x.AttemptID = fixed(contract.GeneratorAttemptID(lineage.LineageID, x.Branch))
 				if branch != 0 {
-					pre := uint8(0)
-					if branch > 2 {
-						pre = uint8(branch - 2)
-					}
-					x.PredecessorAttemptID = fixed(contract.GeneratorAttemptID(lineage.LineageID, pre))
+					x.PredecessorAttemptID = lineage.Templates[0].AttemptID
 				}
 				x.ResourceIncarnationID = fixed(contract.GeneratorResourceID(s.root.Domain, operation, x.AttemptID))
 				x.DutyID = fixed(contract.GeneratorDutyID(s.root.Domain, operation, x.AttemptID, 1))
 				completeGeneratedTemplate(&x, s.root.Domain, operation, fixed)
-				if !local && (branch == 0 || branch == 2) {
+				if !local && branch == 0 {
 					x.NoEffectBudget = 1
-				}
-				if !local && (branch == 0 || branch == 1) {
-					x.ResidueBudget = 1
 				}
 				lineage.Templates[branch] = x
 			}
@@ -412,7 +405,7 @@ func (s *StateSession) installedGeneratedPlan(ctx context.Context, i ApplyInstal
 					if x.Action != 1 || x.SemanticLifecycleMode() == contract.GeneratorLifecycleNone {
 						continue
 					}
-					next, present, err := contract.GeneratorSuccessorBranch(x.Branch, guard)
+					next, present, err := x.SuccessorBranch(guard)
 					if err != nil {
 						return nil, err
 					}

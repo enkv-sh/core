@@ -481,7 +481,7 @@ func generatedAdministrativeRowEnvelope(v generatedCapacityShape) (generatedAdmi
 	if err != nil {
 		return generatedAdministrativeRowCounts{}, 0, 0, err
 	}
-	creates := contract.GeneratorMaxEnteredCreateAttempts * v.Creates
+	creates, _ := v.createCapacity()
 	noncreate := v.Retirements + v.ControlledRetirements + v.Cleanups + v.ControlledCleanups
 	attempts := creates + noncreate
 	lineages := v.Creates + noncreate

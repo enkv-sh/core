@@ -22,7 +22,7 @@ func TestInstalledGeneratedAutomaticTerminalPreservesEarlierCreateHazard(t *test
 			process, effects := installedGeneratedRetirementProcess(t, "create-hazard-"+mode)
 			f := newInstalledApplyTestFixture(t, ctx, contract.GCP, true)
 			f.env.GeneratedProcess = process
-			input := []ApplyEntryInput{{Name: "generated", ValueSource: contract.Generated, ConfidentialityClass: contract.Secret,
+			input := []ApplyEntryInput{{Name: "generated", InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ValueSource: contract.Generated, ConfidentialityClass: contract.Secret,
 				Recipients: []contract.ID{f.selected.admission.recipient},
 				Generated: &contract.GeneratorDeclaredGeneration{Schema: contract.GeneratorDeclaredGenerationSchema,
 					LifecycleMode: contract.GeneratorLifecycleManaged, RetirementMode: contract.GeneratedRetirementManual,
@@ -37,11 +37,23 @@ func TestInstalledGeneratedAutomaticTerminalPreservesEarlierCreateHazard(t *test
 			before := f.open(t, ctx)
 			_, old := observeCurrentValueEntry(t, before, "generated")
 			oldToken := generatedEntryProviderToken(t, before, old)
+			input[0].Generated.Epoch, input[0].Generated.RetirementMode = 1, contract.GeneratedRetirementAuto
+			attempt := installedGeneratedTestEngine(t, ctx, f, before, input, currentApplyRecipients(before.registry()), installedGeneratedRetirementCallbacks(t, f, process))
+			uncertain := attempt.Apply(ctx, testID("uncertain rotation "+mode), input)
+			attempt.Close()
+			creates, deletes := effects()
+			if uncertain.Generated == nil || uncertain.Generated.StateResult != "effect-unknown" || creates != 2 || len(deletes) != 0 || len(uncertain.Generated.Hazards) != 1 {
+				t.Fatal("uncertain rotation replaced or retired the selected resource", uncertain.Result, creates, deletes)
+			}
+			before = f.open(t, ctx)
+			_, retained := observeCurrentValueEntry(t, before, "generated")
+			if !reflect.DeepEqual(old, retained) || !before.root.Generated.ActiveOwner.IsZero() {
+				t.Fatal("uncertain rotation changed the selected value or held the domain")
+			}
 			windows, err := before.receiptWindows(ctx)
 			if err != nil {
 				t.Fatal(err)
 			}
-			input[0].Generated.Epoch, input[0].Generated.RetirementMode = 1, contract.GeneratedRetirementAuto
 			callbacks := installedGeneratedRetirementCallbacks(t, f, process)
 			producer := callbacks.AdmitProducer
 			var original generatedAttempt
@@ -59,7 +71,7 @@ func TestInstalledGeneratedAutomaticTerminalPreservesEarlierCreateHazard(t *test
 					selected := f.open(t, ctx)
 					work := mustSelectedGeneratedWork(t, selected)
 					if !generatedSelectionAnchored(work) || selected.root.Generated.Hazards != 1 {
-						t.Fatal("automatic delete did not follow selected successor and one earlier Hazard")
+						t.Fatal("automatic retirement lost the separately authorized replacement or earlier Hazard")
 					}
 					for _, row := range work.records {
 						if row.Kind == contract.GeneratedHazardSupportKind {
@@ -81,20 +93,20 @@ func TestInstalledGeneratedAutomaticTerminalPreservesEarlierCreateHazard(t *test
 						keep := row.Kind == contract.GeneratedHazardSupportKind && row.RecordID == hazard.HazardID ||
 							row.Kind == contract.GeneratedAttemptSupportKind && row.RecordID == original.record.AttemptID ||
 							row.Kind == contract.GeneratedResultSupportKind && row.RecordID == original.record.ResultID ||
-							row.Kind == contract.OperationMaterialSupportKind && row.RecordID == work.parent.MaterialID
+							row.Kind == contract.OperationMaterialSupportKind && row.RecordID == original.expected.Use.MaterialID
 						if row.Kind == contract.GeneratorVectorSupportKind {
 							vector, e := contract.InspectGeneratorVectorCarrier(row.Body)
 							if e != nil {
 								t.Fatal(e)
 							}
 							keep = vector.OwnerID == original.record.AttemptID || vector.OwnerID == hazard.HazardID ||
-								vector.OwnerID == work.parent.OperationID && vector.VectorKind == contract.GeneratorVectorSupport
+								vector.OwnerID == hazard.OriginalOperationID && vector.VectorKind == contract.GeneratorVectorSupport
 						}
 						if keep {
 							preserved = append(preserved, row)
 						}
 					}
-					seed = *generatedFixtureMaterialAccess(t, selected, contract.OperationSeedMaterialKind, work.parent.MaterialID)
+					seed = *generatedFixtureMaterialAccess(t, selected, contract.OperationSeedMaterialKind, original.expected.Use.MaterialID)
 					current = sessionConsumerSelection(t, selected, selected.admission.recipient, "generated")
 				}
 				return producer(ctx, q, control, in, implementation, deadline)
@@ -102,35 +114,29 @@ func TestInstalledGeneratedAutomaticTerminalPreservesEarlierCreateHazard(t *test
 			engine := installedGeneratedTestEngine(t, ctx, f, before, input, currentApplyRecipients(before.registry()), callbacks)
 			got := engine.Apply(ctx, testID("hazard automatic rotation "+mode), input)
 			engine.Close()
-			creates, deletes := effects()
+			creates, deletes = effects()
 			if deleteAdmissions != 1 || creates != 3 || !slices.Equal(deletes, []string{oldToken}) {
-				t.Fatal("rotation did not enter exactly initial CREATE, uncertain CREATE, successor CREATE and old DELETE", creates, len(deletes), deleteAdmissions)
+				t.Fatal("explicit replacement did not create once and retire the previous selected token", creates, len(deletes), deleteAdmissions)
 			}
 			if got.Result.Outcome != ObservedCurrent || len(got.Receipt) == 0 {
 				diagnoseInstalledGeneratedAutomaticClose(t, ctx, f.open(t, ctx))
 				t.Fatal("last automatic transition did not validate and close with the earlier CREATE Hazard", got.Result)
 			}
-			wantDuties, wantUnknown, wantAcknowledged := 0, uint32(1), uint32(1)
+			wantDuties, wantUnknown, wantAcknowledged := 0, uint32(0), uint32(1)
 			wantState, wantReceiptState := "success", uint16(contract.ReceiptStateSuccess)
 			if mode == "unknown" {
-				wantDuties, wantUnknown, wantAcknowledged = 1, 2, 0
+				wantDuties, wantUnknown, wantAcknowledged = 1, 1, 0
 				wantState, wantReceiptState = "retirement-pending", contract.ReceiptStateRetirementPending
 			}
 			if got.Generated == nil || got.Generated.StateResult != wantState || got.Generated.CanonicalOutcome != contract.ReceiptCanonicalSelected ||
-				len(got.Generated.Effects) != 3 || len(got.Generated.Duties) != wantDuties || len(got.Generated.Hazards) != 1 ||
-				got.Generated.UnknownCount != wantUnknown || got.Generated.AcknowledgedCount != wantAcknowledged || !got.Generated.Warnings.PossibleLiveResidue ||
-				!slices.Equal(got.Generated.RelatedHazardIDs, []contract.ID{hazard.HazardID}) {
+				len(got.Generated.Effects) != 2 || len(got.Generated.Duties) != wantDuties || len(got.Generated.Hazards) != 0 ||
+				got.Generated.UnknownCount != wantUnknown || got.Generated.AcknowledgedCount != wantAcknowledged || got.Generated.Warnings.PossibleLiveResidue ||
+				len(got.Generated.RelatedHazardIDs) != 0 {
 				t.Fatal("terminal result changed entered effects, uncertainty or surviving obligations")
 			}
 			for at, effect := range got.Generated.Effects {
 				wantAction, wantEffectState := uint8(contract.GeneratorActionCreate), uint8(contract.GeneratedEffectSucceeded)
-				if at == 0 {
-					wantEffectState = contract.GeneratedEffectClosedWithResidue
-					if effect.Record != original.record || effect.Record.ResultID != original.expected.Template.ResultID {
-						t.Fatal("terminal effects replaced the uncertain original CREATE")
-					}
-				}
-				if at == 2 {
+				if at == 1 {
 					wantAction = contract.GeneratorActionDelete
 					if mode == "unknown" {
 						wantEffectState = contract.GeneratedEffectUnknown
@@ -145,9 +151,9 @@ func TestInstalledGeneratedAutomaticTerminalPreservesEarlierCreateHazard(t *test
 			}
 			receipt, err := contract.InspectCompactMutationReceipt(got.Receipt)
 			if err != nil || receipt.OperationID != got.OperationID || receipt.OperationKind != contract.OperationApplyDeclaration || receipt.StateResult != wantReceiptState ||
-				receipt.CanonicalOutcome != contract.ReceiptCanonicalSelected || receipt.SummaryCounts[contract.ReceiptEffectCount] != 3 ||
-				receipt.SummaryCounts[contract.ReceiptDutyCount] != uint32(wantDuties) || receipt.SummaryCounts[contract.ReceiptHazardCount] != 1 ||
-				receipt.UnknownCount != wantUnknown || receipt.AcknowledgedCount != wantAcknowledged || receipt.WarningBits&contract.ReceiptWarningPossibleLive == 0 {
+				receipt.CanonicalOutcome != contract.ReceiptCanonicalSelected || receipt.SummaryCounts[contract.ReceiptEffectCount] != 2 ||
+				receipt.SummaryCounts[contract.ReceiptDutyCount] != uint32(wantDuties) || receipt.SummaryCounts[contract.ReceiptHazardCount] != 0 ||
+				receipt.UnknownCount != wantUnknown || receipt.AcknowledgedCount != wantAcknowledged || receipt.WarningBits&contract.ReceiptWarningPossibleLive != 0 {
 				t.Fatal("terminal receipt lost the exact parent outcome", err)
 			}
 			closed := f.open(t, ctx)

@@ -110,7 +110,7 @@ func (b *generatedSelectionBuilder) validateActiveLineages() error {
 			if want.Branch == contract.GeneratorBranchNoEffect || want.Branch == contract.GeneratorBranchResidueThenNoEffect {
 				guard, outcome = contract.GeneratorGuardQualifiedNoEffect, contract.GeneratedEffectConfirmedNoEffect
 			}
-			next, present, err := contract.GeneratorSuccessorBranch(want.Frontier, guard)
+			next, present, err := lineage.Templates[want.Frontier].SuccessorBranch(guard)
 			if err != nil || !present || next != want.Branch {
 				return contract.ErrRecord
 			}

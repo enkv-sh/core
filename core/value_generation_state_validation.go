@@ -225,7 +225,7 @@ func (s *selectedGeneratedProof) validGeneratedCreateResidueSelection(g *generat
 	if !g.phase.AcceptedResultID.IsZero() || !g.phase.ResultDigest.IsZero() || g.phase.OperationID != a.record.OperationID {
 		return false
 	}
-	branch, successor, err := contract.GeneratorSuccessorBranch(x.Branch, contract.GeneratorGuardResidue)
+	branch, successor, err := x.SuccessorBranch(contract.GeneratorGuardResidue)
 	if err != nil {
 		return false
 	}
@@ -248,7 +248,7 @@ func (s *selectedGeneratedProof) validGeneratedCreateResidueSelection(g *generat
 			return false
 		}
 	} else if g.phase.FrontierAttemptID != a.record.AttemptID || g.phase.Branch != x.Branch ||
-		g.phase.Stage != contract.GeneratedStageTerminal || g.phase.ResidueUsed != 1 {
+		g.phase.Stage != contract.GeneratedStageTerminal || g.phase.ResidueUsed != boolByte(x.Branch >= contract.GeneratorBranchResidue) {
 		return false
 	}
 	evidence, err := contract.GeneratorRecordSetDescriptor(contract.GeneratorPhaseHazards, s.root.Domain, []contract.SupportRecord{hazardRow})

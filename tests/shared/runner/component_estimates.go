@@ -8,7 +8,9 @@ package main
 // Omitted, failed, partial and unobserved roots keep prior or provisional weights.
 // Unlisted tests use the one-second fallback.
 var componentEstimates = map[string]float64{
-	"TestInstalledManagedCreateKeepsCleanupTargetAfterValueEncodingRefusal":               18,
+	"TestInstalledGeneratedAutomaticTerminalPreservesEarlierCreateHazard": 13,
+	"TestInstalledManagedCreateRecoversAcrossStoreLoss":                                   20,
+	"TestInstalledManagedCreateKeepsCleanupTargetAfterValueEncodingRefusal":               19,
 	"TestInstalledGeneratedCleanupRecordsProviderIdentityConflict":                        6,
 	"TestGeneratedOrdinaryCleanupAmbiguityRefusesInvalidFactsWithoutStateChange":          1,
 	"TestGeneratedCleanupIdentityConflictRetainsExactOwner":                               1,
@@ -34,7 +36,7 @@ var componentEstimates = map[string]float64{
 	"TestInstalledGeneratedListRechecksAdmissionAfterHazardQualification":                 12,
 	"TestInstalledGeneratedListCloseJoinsHazardQualification":                             4,
 	"TestInstalledNormalHandoffAddsRecipientAcrossPageBoundary":                           8,
-	"TestInstalledGeneratedCleanupLateCreateReflectionAllowsFollowingCleanup":             14,
+	"TestInstalledGeneratedCleanupLateCreateReflectionAllowsFollowingCleanup":             12,
 	"TestGCActiveLocalAndMixedGraphPublicReadersProtectAdmittedInboxes":                   5,
 	"TestApplyPreparationExcludesPublicationImmutableWrites":                              13,
 	"TestInstalledApplyPreparationRetainsActualImmutableEvidence":                         2,
@@ -1337,7 +1339,7 @@ var componentEstimates = map[string]float64{
 	"TestPublicationRetainedBlockerCapacityPrecedesOwner":                         2,
 	"TestEndWorkWarnsForRetainedDeletePermissionBeforeProviderEntry":              4,
 	"TestGeneratedClaimedFinalRejectsProducerRequests":                            3,
-	"TestGeneratedRecoveredLineagesReachExactFinal":                               11,
+	"TestGeneratedRecoveredLineagesReachExactFinal":                               10,
 	"TestGeneratedRetainedClosureComponents":                                      18,
 	"TestGeneratedSignedColdCleanupRequiresCompleteOwnedSets":                     4,
 	"TestGeneratedSuppliedCurrentUsesTotalEntryBound":                             10,
@@ -1352,7 +1354,7 @@ var componentEstimates = map[string]float64{
 
 	"TestGeneratedOrdinaryCleanupRequiresEveryOwnedInvocation":                          2,
 	"TestPublicInitializationObserverAuthenticatesManifestAndHistoricalExpiry":          3,
-	"TestInstalledGeneratedRotationRetiresWithinOriginalApply":                          26,
+	"TestInstalledGeneratedRotationRetiresWithinOriginalApply":                          39,
 	"TestInstalledLocalGeneratorSharedDeleteReleaseRetainsOnlyActualIntents":            22,
 	"TestInstalledGeneratedAutomaticCryptoRejectsPostSelectionDrift":                    49,
 	"TestInstalledGeneratedRetirementAcknowledgesOnlyExactOldTarget":                    5,
@@ -1362,7 +1364,7 @@ var componentEstimates = map[string]float64{
 	"TestGeneratedPlanningUsesFixedObservationWithoutEffects":                           2,
 	"TestPlanningDisplaySelectorsRefuseBeforePrivateAcquisition":                        2,
 	"TestInstalledGeneratedAutomaticUnknownParksAndAdvances":                            11,
-	"TestInstalledGeneratedMixedCreateOutcomesPreserveCompletePredecessor":              16,
+	"TestInstalledGeneratedMixedCreateOutcomesPreserveCompletePredecessor":              14,
 	"TestInstalledGeneratedEpochConflictsRefuseBeforeAnyProducer":                       3,
 	"TestInstalledGeneratedAutomaticCryptoRejectsOmittedSelectionWitness":               17,
 	"TestInstalledGeneratedApplyChecksOriginalSealedSecretBeforeCreate":                 4,

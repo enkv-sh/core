@@ -1157,7 +1157,7 @@ func (a *generatedAdmission) candidateTerminalUncertain(c generatedCandidate) bo
 				}
 				guard = contract.GeneratorGuardQualifiedNoEffect
 			}
-			branch, present, err := contract.GeneratorSuccessorBranch(previous.Branch, guard)
+			branch, present, err := previous.SuccessorBranch(guard)
 			if err != nil || !present || branch != x.Branch {
 				return false
 			}
@@ -1236,7 +1236,7 @@ func (a *generatedAdmission) terminalResultlessHistoryMatches(c generatedCandida
 					if want.Outcome == contract.GeneratedEffectConfirmedNoEffect {
 						want.Edge = contract.GeneratorGuardQualifiedNoEffect
 					}
-					branch, present, err := contract.GeneratorSuccessorBranch(x.Branch, want.Edge)
+					branch, present, err := x.SuccessorBranch(want.Edge)
 					if err != nil || !present || branch != next.Branch {
 						return contract.ErrRecord
 					}

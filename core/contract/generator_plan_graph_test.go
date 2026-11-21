@@ -288,7 +288,7 @@ func generatorGraphEdgesFixture(t testing.TB, header GeneratorGraphHeader, linea
 			for guard := uint8(1); guard <= 4; guard++ {
 				branch, destination := x.Branch, join
 				if guard < 3 {
-					if x.Action != 1 {
+					if x.Action != 1 || guard == GeneratorGuardResidue && x.ResidueBudget == 0 || guard == GeneratorGuardQualifiedNoEffect && x.NoEffectBudget == 0 {
 						continue
 					}
 					next, present, err := GeneratorSuccessorBranch(x.Branch, guard)

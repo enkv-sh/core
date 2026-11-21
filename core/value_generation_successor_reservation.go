@@ -68,7 +68,7 @@ func generatedPlannedSuccessor(g *generatedSelection) (contract.GeneratorAttempt
 	if x.Branch == contract.GeneratorBranchNoEffect || x.Branch == contract.GeneratorBranchResidueThenNoEffect {
 		guard, outcome = contract.GeneratorGuardQualifiedNoEffect, contract.GeneratedEffectConfirmedNoEffect
 	}
-	next, present, err := contract.GeneratorSuccessorBranch(predecessor.Branch, guard)
+	next, present, err := predecessor.SuccessorBranch(guard)
 	if err != nil || !present || next != x.Branch {
 		return contract.GeneratorAttemptTemplate{}, contract.GeneratorResultUse{}, contract.GeneratedAttemptRecord{}, contract.ErrRecord
 	}
@@ -495,7 +495,7 @@ func (s *selectedGeneratedProof) validGeneratedSuccessorReservationSelection(g *
 	if x.Branch == contract.GeneratorBranchNoEffect || x.Branch == contract.GeneratorBranchResidueThenNoEffect {
 		guard, outcome = contract.GeneratorGuardQualifiedNoEffect, contract.GeneratedEffectConfirmedNoEffect
 	}
-	next, present, err := contract.GeneratorSuccessorBranch(predecessor.Branch, guard)
+	next, present, err := predecessor.SuccessorBranch(guard)
 	if err != nil || !present || next != x.Branch {
 		return false
 	}

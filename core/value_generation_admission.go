@@ -272,7 +272,7 @@ func (s *StateSession) generatedAdmissionShapeWithRegistry(ctx context.Context, 
 	before := make(map[string]uint16, len(s.root.Names))
 	currentOnlyDelete := g.Request.OperationKind == contract.OperationCleanOwnedFailureResidue ||
 		g.Request.OperationKind == contract.OperationRetireGeneratedGeneration
-	var shape generatedCapacityShape
+	shape := generatedCapacityShape{publicRecovery: g.Header.RecoveryPolicyID == contract.GeneratorRecoveryPolicyID()}
 	var finalImageReaders uint64
 	shape.finalImageReaders = &finalImageReaders
 	shape.Recipients, shape.Recovery = uint64(s.root.RecipientCount), s.root.CurrentAccess.Core.Recovery != nil

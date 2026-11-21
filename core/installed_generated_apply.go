@@ -501,8 +501,7 @@ func (e *InstalledApply) driveGenerated(ctx context.Context, out PublicApplyResu
 		}
 		if unknown {
 			// The native family has no terminal-observation, exact retry, or
-			// confirmed-no-effect capability. Its only admitted automatic recovery is
-			// the existing residue fence and fixed successor, if one remains.
+			// confirmed-no-effect capability. Fence the original as possible-live.
 			plan, err := s.generatedCreateResidueRequest(ctx, attempt.record.AttemptID, c)
 			if err != nil {
 				return fail(installedApplyPreparationFailure(err))

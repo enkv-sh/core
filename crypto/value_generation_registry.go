@@ -104,7 +104,7 @@ func installedGeneratedSessionWithGraph(q contract.CryptoGeneratedCompareRequest
 		return out, nil
 	}
 	if graph.Request.Schema == contract.GeneratorRequestCoreSchema {
-		if q.Purpose == contract.CryptoGeneratedReservationPurpose || len(image) != 0 || len(construction.Public) != 0 {
+		if q.Purpose == contract.CryptoGeneratedReservationPurpose || q.Purpose == contract.CryptoGeneratedProducerPreparationPurpose || len(image) != 0 || len(construction.Public) != 0 {
 			return out, ErrAdmission
 		}
 		return out, nil

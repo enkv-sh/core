@@ -368,7 +368,7 @@ func installedGeneratedNativeLateCreateFixture(t *testing.T, ctx context.Context
 	closed := f.open(t, ctx)
 	work := mustSelectedGeneratedWork(t, closed)
 	original := work.attempts[originalID]
-	if work.parent != nil || work.phase != nil || len(work.attempts) != 2 || original.record.State != contract.GeneratedEffectClosedWithResidue || len(original.result) != 0 ||
+	if work.parent != nil || work.phase != nil || len(work.attempts) != 1 || original.record.State != contract.GeneratedEffectClosedWithResidue || len(original.result) != 0 ||
 		!reflect.DeepEqual(before.pages, closed.pages) || !reflect.DeepEqual(before.registry(), closed.registry()) {
 		t.Fatal("native lost observation did not retain exact uncertainty and current state")
 	}
@@ -567,17 +567,9 @@ func TestInstalledGeneratedCleanupLateCreateReflectionAllowsFollowingCleanup(t *
 			var closed *StateSession
 			if process != nil {
 				creates, deletes := providerEffects()
-				if creates != 2 || len(deletes) != 0 {
-					t.Fatal("reflection sent a provider request", creates, deletes)
-				}
-				wantToken := ""
-				for _, token := range []string{"00000000000000000000000000000001", "00000000000000000000000000000002"} {
-					if hermeticCloudflareResourceDigest(token) == next.target.ResourceDigest {
-						wantToken = token
-					}
-				}
-				if wantToken == "" {
-					t.Fatal("following cleanup selected an uncreated target")
+				const wantToken = "00000000000000000000000000000001"
+				if creates != 1 || len(deletes) != 0 || next.target.OriginalAttemptID != original.record.AttemptID || next.target.ResourceDigest != hermeticCloudflareResourceDigest(wantToken) {
+					t.Fatal("reflection lost the exact original target or sent another request", creates, deletes)
 				}
 				fixture := installedApplyTestFixture{env: env, keys: env.Custody}
 				callbacks := installedGeneratedRetirementCallbacks(t, fixture, process)
@@ -589,7 +581,7 @@ func TestInstalledGeneratedCleanupLateCreateReflectionAllowsFollowingCleanup(t *
 					len(cleaned.Generated.Effects) != 1 || cleaned.Generated.Effects[0].Record.OperationID != cleaned.OperationID || cleaned.OperationID == got.OperationID ||
 					cleaned.Generated.Effects[0].Action != contract.GeneratorActionDelete || cleaned.Generated.Effects[0].Target == nil || *cleaned.Generated.Effects[0].Target != next.target ||
 					cleaned.Generated.AcknowledgedCount != 1 || cleaned.Generated.ConfirmedCount != 0 || len(cleaned.Receipt) != 0 ||
-					creates != 2 || !slices.Equal(deletes, []string{wantToken}) {
+					creates != 1 || !slices.Equal(deletes, []string{wantToken}) {
 					t.Fatal("following installed cleanup did not complete its own exact effect", cleaned.Result, creates, deletes)
 				}
 				closed = generatedLifecycleReopen(t, ctx, cold, env.Store)
@@ -886,15 +878,15 @@ func TestInstalledManagedCreateKeepsCleanupTargetAfterValueEncodingRefusal(t *te
 		}
 	})
 	for _, tc := range []struct {
-		name                                     string
-		encoding                                 uint8
-		pauseBeforeFinal, successor, validBase64 bool
+		name                                       string
+		encoding                                   uint8
+		pauseBeforeFinal, replacement, validBase64 bool
 	}{
 		{name: "raw", encoding: contract.InputEncodingRaw},
 		{name: "valid-base64", encoding: contract.InputEncodingBase64, validBase64: true},
 		{name: "strict-base64", encoding: contract.InputEncodingBase64},
 		{name: "restart-before-final", encoding: contract.InputEncodingBase64, pauseBeforeFinal: true},
-		{name: "rejection-on-successor", encoding: contract.InputEncodingBase64, successor: true},
+		{name: "rejection-after-explicit-replacement", encoding: contract.InputEncodingBase64, replacement: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
@@ -903,7 +895,7 @@ func TestInstalledManagedCreateKeepsCleanupTargetAfterValueEncodingRefusal(t *te
 			if tc.validBase64 {
 				mode = "valid-base64"
 			}
-			if tc.successor {
+			if tc.replacement {
 				mode, wantCreates = "first-create-unknown", 2
 			}
 			token := fmt.Sprintf("%032x", wantCreates)
@@ -923,6 +915,20 @@ func TestInstalledManagedCreateKeepsCleanupTargetAfterValueEncodingRefusal(t *te
 			result := engine.Apply(ctx, testID("create with declared "+tc.name), entries)
 			engine.Close()
 			cold := f.open(t, ctx)
+			if tc.replacement {
+				creates, deletes := counts()
+				if result.Generated == nil || result.Generated.StateResult != "effect-unknown" || creates != 1 || len(deletes) != 0 || !cold.root.Generated.ActiveOwner.IsZero() {
+					t.Fatal("uncertain first CREATE did not finish without replacement", result.Result, creates, deletes)
+				}
+				firstID := result.OperationID
+				engine = installedGeneratedTestEngine(t, ctx, f, cold, entries, currentApplyRecipients(cold.registry()), callbacks)
+				result = engine.Apply(ctx, testID("explicit replacement after uncertain CREATE"), entries)
+				engine.Close()
+				cold = f.open(t, ctx)
+				if firstID == result.OperationID {
+					t.Fatal("replacement reused the original operation")
+				}
+			}
 			if tc.encoding == contract.InputEncodingRaw || tc.validBase64 {
 				creates, deletes := counts()
 				if result.Result.Outcome != ObservedCurrent || creates != 1 || len(deletes) != 0 || cold.root.Generated.GeneratedCurrent != 1 {

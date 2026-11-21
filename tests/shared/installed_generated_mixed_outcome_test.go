@@ -226,7 +226,7 @@ func TestInstalledGeneratedMixedCreateOutcomesPreserveCompletePredecessor(t *tes
 			}
 			<-joined
 			engine.Close()
-			assertCleanup := func(result PublicApplyResult) {
+			assertCleanup := func(result PublicApplyResult, invoked bool) {
 				t.Helper()
 				count := 0
 				for _, diagnostic := range result.Diagnostics {
@@ -235,14 +235,14 @@ func TestInstalledGeneratedMixedCreateOutcomesPreserveCompletePredecessor(t *tes
 					}
 				}
 				want := 0
-				if tc.cleanupDiagnostic {
+				if tc.cleanupDiagnostic && invoked {
 					want = 1
 				}
 				if count != want {
 					t.Fatal("joined original cleanup aggregation differs", count, want)
 				}
 			}
-			assertCleanup(got)
+			assertCleanup(got, true)
 			if tc.custodyFailure {
 				stopped := f.open(t, ctx)
 				assertPrior(stopped)
@@ -270,7 +270,7 @@ func TestInstalledGeneratedMixedCreateOutcomesPreserveCompletePredecessor(t *tes
 				if continued.OperationID != got.OperationID || continued.RequestIdentity != got.RequestIdentity {
 					t.Fatal("cold continuation replaced the accepted parent or request")
 				}
-				assertCleanup(continued)
+				assertCleanup(continued, false)
 				got = continued
 			}
 			closed := f.open(t, ctx)
@@ -278,18 +278,18 @@ func TestInstalledGeneratedMixedCreateOutcomesPreserveCompletePredecessor(t *tes
 			if got.Result.Outcome != ObservedCurrent || got.Generated == nil || got.Generated.StateResult != "effect-unknown" ||
 				got.Generated.CanonicalOutcome != contract.ReceiptCanonicalNotSelected || got.Generated.EffectSummary != contract.ReceiptEffectUnknown ||
 				!got.Generated.EffectsAvailable || !got.Generated.RelatedWorkAvailable || !got.Generated.SummaryCountsAvailable ||
-				len(got.Generated.Effects) != 3 || len(got.Generated.Duties) != 1 || len(got.Generated.Hazards) != 2 || got.Generated.UnknownCount != 2 ||
-				!got.Generated.Warnings.PossibleLiveResidue || got.Payload == nil || len(got.Receipt) == 0 || creates() != 3 || len(attempts) != 3 ||
+				len(got.Generated.Effects) != 2 || len(got.Generated.Duties) != 1 || len(got.Generated.Hazards) != 1 || got.Generated.UnknownCount != 1 ||
+				!got.Generated.Warnings.PossibleLiveResidue || got.Payload == nil || len(got.Receipt) == 0 || creates() != 2 || len(attempts) != 2 ||
 				!closed.root.Generated.ActiveOwner.IsZero() || !closed.root.Generated.ActivePhase.IsZero() || !closed.root.Generated.ActiveGraph.IsZero() {
 				t.Fatal("mixed create did not close with the complete failed aggregate", got.Result, creates())
 			}
 			counts := got.Generated.SummaryCounts
-			if counts[contract.ReceiptEffectCount] != 3 || counts[contract.ReceiptSummarySuccessCount] != 1 || counts[contract.ReceiptSummaryUnknownCount] != 1 ||
-				counts[contract.ReceiptPreservedResidueCount] != 1 || counts[contract.ReceiptDutyCount] != 1 || counts[contract.ReceiptHazardCount] != 2 {
+			if counts[contract.ReceiptEffectCount] != 2 || counts[contract.ReceiptSummarySuccessCount] != 1 || counts[contract.ReceiptSummaryUnknownCount] != 1 ||
+				counts[contract.ReceiptPreservedResidueCount] != 0 || counts[contract.ReceiptDutyCount] != 1 || counts[contract.ReceiptHazardCount] != 1 {
 				t.Fatal("mixed create summary omitted an entered sibling")
 			}
 			work := mustSelectedGeneratedWork(t, closed)
-			if work.parent != nil || len(work.attempts) != 3 || closed.root.Generated.Duties != 1 || closed.root.Generated.Hazards != 2 {
+			if work.parent != nil || len(work.attempts) != 2 || closed.root.Generated.Duties != 1 || closed.root.Generated.Hazards != 1 {
 				t.Fatal("cold closure lost exact failed aggregate support")
 			}
 			var dutyIDs, hazardIDs []contract.ID
@@ -322,7 +322,7 @@ func TestInstalledGeneratedMixedCreateOutcomesPreserveCompletePredecessor(t *tes
 					dutyIDs = append(dutyIDs, x.DutyID)
 					continue
 				}
-				if observed.name != "omega" || x.Branch != contract.GeneratorBranchInitial && x.Branch != contract.GeneratorBranchResidue ||
+				if observed.name != "omega" || x.Branch != contract.GeneratorBranchInitial ||
 					actual.record.State != contract.GeneratedEffectClosedWithResidue || got.Generated.Effects[at].HazardID != x.HazardID {
 					t.Fatal("unknown lineage exceeded or lost its admitted residue path")
 				}
@@ -349,14 +349,14 @@ func TestInstalledGeneratedMixedCreateOutcomesPreserveCompletePredecessor(t *tes
 			receipt, err := contract.InspectCompactMutationReceipt(got.Receipt)
 			if err != nil || receipt.OperationID != got.OperationID || receipt.RequestIdentityDigest != got.RequestIdentity ||
 				receipt.OperationKind != contract.OperationApplyDeclaration || receipt.StateResult != contract.ReceiptStateEffectUnknown ||
-				receipt.CanonicalOutcome != contract.ReceiptCanonicalNotSelected || receipt.SummaryCounts != counts || receipt.UnknownCount != 2 {
+				receipt.CanonicalOutcome != contract.ReceiptCanonicalNotSelected || receipt.SummaryCounts != counts || receipt.UnknownCount != 1 {
 				t.Fatal("failed aggregate receipt differs from the complete public result", err)
 			}
 			observer := installedGeneratedTestEngine(t, ctx, f, closed, input, currentApplyRecipients(closed.registry()), nil)
 			observed := observer.Continue(ctx, testID("mixed failed aggregate receipt observation"), got.OperationID)
 			observer.Close()
 			if observed.Result.Outcome != ObservedCurrent || observed.Generated == nil || !observed.Generated.ReceiptObservation ||
-				!bytes.Equal(observed.Receipt, got.Receipt) || creates() != 3 {
+				!bytes.Equal(observed.Receipt, got.Receipt) || creates() != 2 {
 				t.Fatal("terminal continuation repeated a create or changed its retained receipt")
 			}
 			if check := f.keys.Consume(ctx, sessionConsumerSelection(t, closed, authority[0], "secret"), custody.StandardValue); check.Code != contract.CryptoSuccess || !check.ValueMatched {
@@ -367,7 +367,7 @@ func TestInstalledGeneratedMixedCreateOutcomesPreserveCompletePredecessor(t *tes
 			next := f.engine(t, closed, nextInput, nil)
 			progress := next.Apply(ctx, testID("mutation after failed mixed create"), nextInput)
 			next.Close()
-			if progress.Result.Outcome != ObservedCurrent || len(progress.Receipt) == 0 || creates() != 3 {
+			if progress.Result.Outcome != ObservedCurrent || len(progress.Receipt) == 0 || creates() != 2 {
 				t.Fatal("failed Final kept the domain blocked or repeated a create", progress.Result)
 			}
 		})

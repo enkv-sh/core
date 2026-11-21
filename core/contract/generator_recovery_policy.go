@@ -4,8 +4,8 @@ package contract
 // allowances. Recovery key protection is independent of this effect policy.
 func GeneratorRecoveryPolicyID() ID {
 	return generatorDigest("recovery-policy", []byte{
-		0, 1,
+		0, 2,
 		GeneratedStageRetainedResult, GeneratedStageObservation, GeneratedStageExactRetry, GeneratedStageResidue,
-		1, 1, 1, GeneratorMaxEnteredCreateAttempts,
+		1, 0, 1, GeneratorPublicCreateLineageTemplates,
 	})
 }

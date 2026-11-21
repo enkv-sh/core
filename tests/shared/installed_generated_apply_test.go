@@ -3,6 +3,7 @@ package core
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"os"
@@ -15,6 +16,250 @@ import (
 	"enkv.sh/core/format"
 	"enkv.sh/crypto/testsupport/custody"
 )
+
+// full_only: false
+func TestInstalledManagedCreateRecoversAcrossStoreLoss(t *testing.T) {
+	for _, mode := range []string{"reservation-not-sent", "reservation-ack-lost", "result-ack-lost", "result-not-saved"} {
+		t.Run(mode, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+			defer cancel()
+			process, count := installedGeneratedRetirementProcess(t, "acknowledged")
+			f := newInstalledApplyTestFixture(t, ctx, contract.GCP, true)
+			f.env.GeneratedProcess = process
+			input := installedGeneratedRetirementEntries(process, f.selected.admission.recipient, 0, "proposed")
+			input[0].InputEncoding = contract.InputEncodingBase64
+			base := requireAdmittedMemoryStore(t, f.env.Store)
+			proxy := &applyPreparationTestStore{Store: base, memory: base}
+			f.env.Store = proxy
+			callbacks := installedGeneratedRetirementCallbacks(t, f, process)
+			var original contract.GeneratorAttemptTemplate
+			var inbox string
+			admit := callbacks.AdmitProducer
+			callbacks.AdmitProducer = func(ctx context.Context, q contract.CryptoGeneratedCompareRequest, control contract.ControlCore, in contract.GeneratedProducerInput, row contract.GeneratorImplementation, deadline time.Time) (*InstalledGeneratedProducerCustody, error) {
+				x := in.Expected.Template
+				if x.Branch == contract.GeneratorBranchInitial {
+					original = x
+					var err error
+					inbox, err = format.GeneratedResultKey(base.desc.Prefix, f.env.Domain, x.InboxID)
+					if err != nil {
+						t.Fatal(err)
+					}
+				}
+				return admit(ctx, q, control, in, row, deadline)
+			}
+			// Only the selected original inbox loses its write reply. The test
+			// retains a digest for comparison, never a packet for recovery.
+			var attemptedDigest contract.ID
+			denyRead, invalidRead, interruptWrite := false, false, true
+			proxy.read = func(ctx context.Context, key string, max uint32) contract.ReadResult {
+				if key == inbox && invalidRead {
+					return contract.ReadResult{Status: contract.ReadOK, Body: []byte("damaged packet")}
+				}
+				if key == inbox && denyRead {
+					return contract.ReadResult{Status: contract.ReadUnavailable, Reason: contract.ReasonAccess}
+				}
+				return base.Read(ctx, key, max)
+			}
+			proxy.create = func(ctx context.Context, key string, body []byte) contract.WriteResult {
+				if key != inbox || !interruptWrite {
+					return base.Create(ctx, key, body)
+				}
+				attemptedDigest = sha256.Sum256(body)
+				denyRead = true
+				if mode == "result-ack-lost" {
+					if result := base.Create(ctx, key, body); result.Status != contract.WriteAcknowledged {
+						t.Error("fixture did not commit the original result", result.Status)
+					}
+				}
+				return contract.WriteResult{Status: contract.WriteUnknown, Reason: contract.ReasonTransport}
+			}
+			reservationCAS := base.cas
+			switch mode {
+			case "reservation-not-sent":
+				base.casMode = "lost-before"
+			case "reservation-ack-lost":
+				base.casMode = "lost-after"
+				base.readHook = func(key string, result contract.ReadResult) contract.ReadResult {
+					if key == base.desc.HeadKey && base.cas > reservationCAS {
+						return contract.ReadResult{Status: contract.ReadUnavailable, Reason: contract.ReasonAccess}
+					}
+					return result
+				}
+			}
+			engine := installedGeneratedTestEngine(t, ctx, f, f.selected, input, currentApplyRecipients(f.selected.registry()), callbacks)
+			start := engine.Apply(ctx, testID(mode+" apply"), input)
+			engine.Close()
+			interruptWrite = false
+			base.casMode = ""
+			base.readHook = nil
+			cold := f.open(t, ctx)
+			creates, deletes := count()
+			if original.AttemptID.IsZero() || len(start.Receipt) != 0 || len(deletes) != 0 {
+				t.Fatal("did not reach the original reservation boundary", start.Result, creates, len(deletes))
+			}
+			t.Logf("predecessor=%x reopened=%x active=%t creates=%d deletes=%d", f.selected.head.Core.Revision, cold.head.Core.Revision, !cold.root.Generated.ActiveOwner.IsZero(), creates, len(deletes))
+			if mode == "reservation-not-sent" {
+				if base.cas == reservationCAS || start.Result.Outcome != EvidenceUnavailable || start.Result.CommitMayHaveOccurred || creates != 0 || !attemptedDigest.IsZero() || cold.head.Core.Revision != f.selected.head.Core.Revision || !cold.root.Generated.ActiveOwner.IsZero() {
+					t.Fatal("failed reservation admitted an effect or changed HEAD", start.Result, creates)
+				}
+				return
+			}
+			work := mustSelectedGeneratedWork(t, cold)
+			a, ok := work.attempts[original.AttemptID]
+			if !ok || len(work.attempts) != 1 || len(a.result) != 0 || work.parent == nil || work.parent.OperationID != start.OperationID ||
+				cold.root.Generated.ActiveOwner != start.OperationID || a.record.State != contract.GeneratedEffectTransmitted || a.record.InboxID != original.InboxID {
+				t.Fatal("reopen lost the transmitted original or its inbox", start.Result)
+			}
+			pauseFinal := false
+			resume := func(s *StateSession, label string) PublicApplyResult {
+				t.Helper()
+				// Fresh installation, without the first producer's private result.
+				callbacks := installedGeneratedRetirementCallbacks(t, f, process)
+				if pauseFinal {
+					callbacks.AdmitFinal = func(context.Context, contract.CryptoGeneratedCompareRequest, contract.ControlCore, contract.GeneratedFinalInput, time.Time) (*InstalledGeneratedCustody, error) {
+						return nil, contract.ErrRecord
+					}
+				}
+				next := installedGeneratedTestEngine(t, ctx, f, s, input, currentApplyRecipients(s.registry()), callbacks)
+				defer next.Close()
+				return next.Continue(ctx, testID(mode+" "+label), start.OperationID)
+			}
+			if mode == "reservation-ack-lost" {
+				if start.Result.Outcome != UnresolvedCommit || !start.Result.CommitMayHaveOccurred || creates != 0 || !attemptedDigest.IsZero() {
+					t.Fatal("observing a committed reservation restored the initial send")
+				}
+				checkFreshGeneratedProcess(t, base, cold)
+				done := resume(cold, "missing result before dispatch")
+				after := f.open(t, ctx)
+				creates, deletes = count()
+				if done.Generated == nil || done.Generated.StateResult != "effect-unknown" || !done.Generated.Warnings.PossibleLiveResidue ||
+					!after.root.Generated.ActiveOwner.IsZero() || after.root.Generated.Hazards != 1 || creates != 0 || len(deletes) != 0 {
+					t.Fatal("restart after a lost reservation reply created a token or lost the warning", done.Result, creates, deletes)
+				}
+				checkFreshGeneratedProcess(t, base, after)
+				return
+			}
+			if creates != 1 || attemptedDigest.IsZero() {
+				t.Fatal("inbox outage missed the provider return", creates)
+			}
+			blocked := resume(cold, "read denied")
+			again := f.open(t, ctx)
+			creates, deletes = count()
+			if blocked.Result.Outcome != EvidenceUnavailable || blocked.Result.StoreReason != contract.ReasonAccess || again.head.Core.Revision != cold.head.Core.Revision ||
+				creates != 1 || len(deletes) != 0 || len(blocked.Receipt) != 0 {
+				t.Fatal("unreadable inbox advanced recovery", blocked.Result, creates, deletes)
+			}
+			denyRead = false
+			invalidRead = true
+			bad := resume(again, "damaged result")
+			invalidRead = false
+			creates, deletes = count()
+			if bad.Result.Outcome != IntegrityFailure || len(bad.Receipt) != 0 || f.open(t, ctx).head.Core.Revision != again.head.Core.Revision || creates != 1 || len(deletes) != 0 {
+				t.Fatal("invalid result advanced recovery", bad.Result, creates, deletes)
+			}
+			read := base.Read(ctx, inbox, uint32(contract.GeneratedResultRecordMaxLength))
+			saved := mode == "result-ack-lost"
+			if saved {
+				if read.Status != contract.ReadOK || sha256.Sum256(read.Body) != attemptedDigest {
+					t.Fatal("committed inbox lost its exact bytes")
+				}
+			} else {
+				if read.Status != contract.ReadMissing {
+					t.Fatal("original result persisted unexpectedly", read.Status)
+				}
+				base.casMode = "lost-before"
+				interrupted := resume(again, "fence write unavailable")
+				base.casMode = ""
+				again = f.open(t, ctx)
+				creates, deletes = count()
+				if interrupted.Result.Outcome == ObservedCurrent || len(interrupted.Receipt) != 0 || again.head.Core.Revision != cold.head.Core.Revision ||
+					again.root.Generated.ActiveOwner != start.OperationID || creates != 1 || len(deletes) != 0 {
+					t.Fatal("failed fence write released the domain or sent a request", interrupted.Result, creates, deletes)
+				}
+			}
+			checkFreshGeneratedProcess(t, base, again)
+			if !saved {
+				pauseFinal = true
+				interrupted := resume(again, "after durable fence")
+				pauseFinal = false
+				again = f.open(t, ctx)
+				creates, deletes = count()
+				fenced := mustSelectedGeneratedWork(t, again).attempts[original.AttemptID]
+				if len(interrupted.Receipt) != 0 || again.root.Generated.ActiveOwner != start.OperationID || again.root.Generated.Hazards != 1 ||
+					fenced.record.State != contract.GeneratedEffectClosedWithResidue || creates != 1 || len(deletes) != 0 {
+					t.Fatal("interruption before Final lost the original attempt or released the domain", interrupted.Result, creates, deletes)
+				}
+				checkFreshGeneratedProcess(t, base, again)
+			}
+			done := resume(again, "read restored")
+			final := f.open(t, ctx)
+			creates, deletes = count()
+			if done.Result.Outcome != ObservedCurrent || len(done.Receipt) == 0 || done.Generated == nil ||
+				!final.root.Generated.ActiveOwner.IsZero() || final.root.Generated.GeneratedCurrent != 0 ||
+				final.root.Generated.Hazards != 1 || creates != 1 || len(deletes) != 0 {
+				t.Fatal("recovery did not close the original operation after one CREATE", done.Result, final.root.Generated, creates, deletes)
+			}
+			checkFreshGeneratedProcess(t, base, final)
+			selection, found, err := final.readGeneratedCleanup(ctx)
+			if err != nil || found != saved {
+				t.Fatal("cleanup eligibility disagrees with the stored evidence", found, err)
+			}
+			originalState := mustSelectedGeneratedWork(t, final).attempts[original.AttemptID]
+			const token = "00000000000000000000000000000001"
+			if saved {
+				if selection.kind != generatedCleanupHazard || selection.target.ResourceDigest != hermeticCloudflareResourceDigest(token) ||
+					selection.target.OriginalAttemptID != original.AttemptID || originalState.record.State != contract.GeneratedEffectFailedTerminal ||
+					sha256.Sum256(originalState.result) != attemptedDigest {
+					t.Fatal("recovery lost the original result or exact cleanup target")
+				}
+			} else if originalState.record.State != contract.GeneratedEffectClosedWithResidue || len(originalState.result) != 0 ||
+				done.Generated.StateResult != "effect-unknown" || !done.Generated.Warnings.PossibleLiveResidue ||
+				len(done.Generated.Hazards) != 1 || done.Generated.Hazards[0].Record.OriginalAttemptID != original.AttemptID ||
+				done.Generated.Hazards[0].Record.Exposure != contract.GeneratedExposurePossibleLive || done.Generated.Hazards[0].Target != nil {
+				t.Fatal("closing an unknown CREATE lost the warning or assigned a target")
+			}
+			for _, label := range []string{"first terminal observation", "second terminal observation"} {
+				seen := resume(f.open(t, ctx), label)
+				if seen.Generated == nil || !seen.Generated.ReceiptObservation || !bytes.Equal(seen.Receipt, done.Receipt) ||
+					!saved && !seen.Generated.Warnings.PossibleLiveResidue {
+					t.Fatal("terminal continuation changed the receipt or warnings", seen.Result)
+				}
+			}
+			cleaner := installedGeneratedRetirementEngine(t, ctx, f, final, installedGeneratedRetirementCallbacks(t, f, process))
+			cleaned := cleaner.CleanupGenerated(ctx, testID(mode+" cleanup"))
+			cleaner.Close()
+			creates, deletes = count()
+			after := f.open(t, ctx)
+			if saved {
+				if cleaned.Generated == nil || cleaned.Generated.StateResult != "success" || creates != 1 || !slices.Equal(deletes, []string{token}) || after.root.Generated.Hazards != 0 {
+					t.Fatal("cleanup missed the original known token", cleaned.Result, creates, deletes)
+				}
+				return
+			}
+			if cleaned.Result.Outcome != Unchanged || creates != 1 || len(deletes) != 0 || after.head.Core.Revision != final.head.Core.Revision {
+				t.Fatal("cleanup acted without a known target", cleaned.Result, creates, deletes)
+			}
+			plain := []ApplyEntryInput{{Name: "healthy", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, Recipients: []contract.ID{after.admission.recipient},
+				InputBytes: []byte("independent"), InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw}}
+			writer := installedGeneratedTestEngine(t, ctx, f, after, plain, currentApplyRecipients(after.registry()), installedGeneratedRetirementCallbacks(t, f, process))
+			changed := writer.Apply(ctx, testID(mode+" independent apply"), plain)
+			writer.Close()
+			after = f.open(t, ctx)
+			creates, deletes = count()
+			if changed.Result.Outcome != ObservedCurrent || after.head.Core.Revision == final.head.Core.Revision || after.root.Generated.Hazards != 1 ||
+				creates != 1 || len(deletes) != 0 {
+				t.Fatal("independent apply lost the warning or sent a request", changed.Result, creates, deletes)
+			}
+			writer = installedGeneratedTestEngine(t, ctx, f, after, input, currentApplyRecipients(after.registry()), installedGeneratedRetirementCallbacks(t, f, process))
+			replacement := writer.Apply(ctx, testID(mode+" explicit replacement"), input)
+			writer.Close()
+			creates, deletes = count()
+			if replacement.OperationID == start.OperationID || replacement.Result.Outcome != ObservedCurrent || creates != 2 || len(deletes) != 0 {
+				t.Fatal("new apply did not independently authorize exactly one replacement", replacement.Result, creates, deletes)
+			}
+		})
+	}
+}
 
 // full_only: false
 func TestInstalledGeneratedApplySelectsCompleteGeneratedAndSuppliedSet(t *testing.T) {

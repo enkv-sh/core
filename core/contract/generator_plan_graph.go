@@ -37,21 +37,22 @@ const (
 )
 
 const (
-	GeneratorRequestCoreLength        = 348
-	GeneratorApplyRequestCoreLength   = 394
-	GeneratorGraphHeaderLength        = 168
-	GeneratorValueEntryPlanMaxLength  = 495
-	GeneratorEdgeLength               = 102
-	GeneratorResultUseLength          = 235
-	GeneratorSourceUseLength          = 187
-	GeneratorUsePlanCoreLength        = 248
-	GeneratorGraphMaxLength           = 8 << 20
-	GeneratorMaxTemplates             = 1408
-	GeneratorMaxLineageTemplates      = 896
-	GeneratorLineageTemplateMaxLength = 3924
-	GeneratorCreateLineageTemplates   = 5
-	GeneratorObligationTemplates      = 1
-	GeneratorMaxCreateLineages        = 128
+	GeneratorRequestCoreLength            = 348
+	GeneratorApplyRequestCoreLength       = 394
+	GeneratorGraphHeaderLength            = 168
+	GeneratorValueEntryPlanMaxLength      = 495
+	GeneratorEdgeLength                   = 102
+	GeneratorResultUseLength              = 235
+	GeneratorSourceUseLength              = 187
+	GeneratorUsePlanCoreLength            = 248
+	GeneratorGraphMaxLength               = 8 << 20
+	GeneratorMaxTemplates                 = 1408
+	GeneratorMaxLineageTemplates          = 896
+	GeneratorLineageTemplateMaxLength     = 3924
+	GeneratorCreateLineageTemplates       = 5
+	GeneratorPublicCreateLineageTemplates = 2
+	GeneratorObligationTemplates          = 1
+	GeneratorMaxCreateLineages            = 128
 )
 
 type GeneratorLineagePurpose uint8
@@ -652,6 +653,10 @@ type GeneratorLineageTemplateView struct {
 	Templates                           [5]GeneratorAttemptTemplate
 }
 
+func generatorCreateTemplateCountValid(count uint8) bool {
+	return count == 1 || count == GeneratorPublicCreateLineageTemplates || count == GeneratorCreateLineageTemplates
+}
+
 func generatorLineageTemplateError(v GeneratorLineageTemplate, name []byte) error {
 	if len(name) > CryptoMaxName || v.TemplateCount > GeneratorCreateLineageTemplates {
 		return ErrRecordCapacity
@@ -663,7 +668,7 @@ func generatorLineageTemplateError(v GeneratorLineageTemplate, name []byte) erro
 	var wantLineage ID
 	var err error
 	if v.Purpose == GeneratorLineageCreate {
-		if !v.ResourceIncarnationID.IsZero() || v.Schema == GeneratorLineageTemplateSchema && (v.TemplateCount != 1 && v.TemplateCount != 5) {
+		if !v.ResourceIncarnationID.IsZero() || !generatorCreateTemplateCountValid(v.TemplateCount) {
 			return ErrRecord
 		}
 		wantLineage, err = GeneratorLineageID(v.DomainID, v.OperationID, string(name), v.EntryIncarnationID, v.Epoch, v.IntentDigest)
@@ -686,12 +691,22 @@ func generatorLineageTemplateError(v GeneratorLineageTemplate, name []byte) erro
 		if !x.valid() || x.Schema != v.Schema || x.LineageID != v.LineageID || x.Branch != uint8(i) || x.IntentDigest != v.IntentDigest {
 			return ErrRecord
 		}
-		if v.Schema == GeneratorLineageTemplateSchema {
-			if x.LifecycleMode != v.Templates[0].LifecycleMode || x.LifecycleMode == GeneratorLifecycleNone && (v.Purpose != GeneratorLineageCreate || v.TemplateCount != 1) || x.LifecycleMode == GeneratorLifecycleManaged && v.Purpose == GeneratorLineageCreate && v.TemplateCount != 5 {
-				return ErrRecord
-			}
+		if x.LifecycleMode != v.Templates[0].LifecycleMode {
+			return ErrRecord
+		}
+		if x.LifecycleMode == GeneratorLifecycleNone && (v.Purpose != GeneratorLineageCreate || v.TemplateCount != 1) {
+			return ErrRecord
 		}
 		if v.Purpose == GeneratorLineageCreate {
+			if x.LifecycleMode == GeneratorLifecycleManaged {
+				if v.TemplateCount == 1 {
+					return ErrRecord
+				}
+				wantResidue := v.TemplateCount == GeneratorCreateLineageTemplates && x.Branch <= GeneratorBranchNoEffect
+				if (x.ResidueBudget != 0) != wantResidue {
+					return ErrRecord
+				}
+			}
 			resource, err := GeneratorResourceID(v.DomainID, v.OperationID, x.AttemptID)
 			if err != nil || x.Action != GeneratorActionCreate || x.ResourceIncarnationID != resource {
 				return ErrRecord
@@ -784,7 +799,7 @@ func InspectGeneratorLineageTemplate(b []byte) (GeneratorLineageTemplateView, er
 		return GeneratorLineageTemplateView{}, ErrRecordCapacity
 	}
 	if v.Purpose < GeneratorLineageCreate || v.Purpose > GeneratorLineageCleanup ||
-		v.Purpose == GeneratorLineageCreate && (v.Schema == GeneratorLineageTemplateSchema && v.TemplateCount != 1 && v.TemplateCount != 5) ||
+		v.Purpose == GeneratorLineageCreate && !generatorCreateTemplateCountValid(v.TemplateCount) ||
 		v.Purpose != GeneratorLineageCreate && v.TemplateCount != GeneratorObligationTemplates {
 		return GeneratorLineageTemplateView{}, ErrRecord
 	}
@@ -887,11 +902,19 @@ type generatorTemplateRef struct {
 	lineage  *GeneratorLineageTemplate
 }
 
+// The public recovery policy fixes a single qualified-no-effect successor.
+// Other graph shapes cannot authorize an effect under that policy.
+func generatorRecoveryLineageValid(public bool, lineage *GeneratorLineageTemplate) bool {
+	return lineage.Purpose != GeneratorLineageCreate || lineage.Templates[0].LifecycleMode != GeneratorLifecycleManaged ||
+		(lineage.TemplateCount == GeneratorPublicCreateLineageTemplates) == public
+}
+
 func generatorTemplateRefs(header GeneratorGraphHeader, lineages []GeneratorLineageTemplate, refs *[GeneratorMaxTemplates]generatorTemplateRef) (int, error) {
 	count, creates := 0, 0
+	public := header.RecoveryPolicyID == GeneratorRecoveryPolicyID()
 	for i := range lineages {
 		lineage := &lineages[i]
-		if lineage.Schema != header.Schema || lineage.DomainID != header.DomainID || lineage.OperationID != header.OperationID {
+		if lineage.Schema != header.Schema || lineage.DomainID != header.DomainID || lineage.OperationID != header.OperationID || !generatorRecoveryLineageValid(public, lineage) {
 			return 0, ErrRecord
 		}
 		if lineage.Purpose == GeneratorLineageCreate {
@@ -1041,7 +1064,7 @@ func generatorGraphEdgesError(join ID, refs []generatorTemplateRef, edges []Gene
 			if x.Action != GeneratorActionCreate || x.LifecycleMode == GeneratorLifecycleNone {
 				return ErrRecord
 			}
-			next, present, err := GeneratorSuccessorBranch(x.Branch, edge.Guard)
+			next, present, err := x.SuccessorBranch(edge.Guard)
 			if err != nil || !present {
 				return ErrRecord
 			}
@@ -1058,15 +1081,11 @@ func generatorGraphEdgesError(join ID, refs []generatorTemplateRef, edges []Gene
 	}
 	for i, ref := range refs {
 		want := uint8(generatorGuardSuccessBit | generatorGuardTerminalBit)
-		if ref.template.Action == GeneratorActionCreate && ref.template.LifecycleMode != GeneratorLifecycleNone {
-			switch ref.template.Branch {
-			case GeneratorBranchInitial:
-				want = generatorGuardNoEffectBit | generatorGuardResidueBit | generatorGuardSuccessBit | generatorGuardTerminalBit
-			case GeneratorBranchNoEffect:
-				want = generatorGuardResidueBit | generatorGuardSuccessBit | generatorGuardTerminalBit
-			case GeneratorBranchResidue:
-				want = generatorGuardNoEffectBit | generatorGuardSuccessBit | generatorGuardTerminalBit
-			}
+		if ref.template.NoEffectBudget != 0 {
+			want |= generatorGuardNoEffectBit
+		}
+		if ref.template.ResidueBudget != 0 {
+			want |= generatorGuardResidueBit
 		}
 		if seen[i] != want {
 			return ErrRecord

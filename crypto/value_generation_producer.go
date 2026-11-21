@@ -552,7 +552,7 @@ func (a *generatedAdmission) candidateSuccessorReservationProducer(c generatedCa
 	if x.Branch == contract.GeneratorBranchNoEffect || x.Branch == contract.GeneratorBranchResidueThenNoEffect {
 		guard, outcome = contract.GeneratorGuardQualifiedNoEffect, contract.GeneratedEffectConfirmedNoEffect
 	}
-	branch, present, err := contract.GeneratorSuccessorBranch(predecessor.Branch, guard)
+	branch, present, err := predecessor.SuccessorBranch(guard)
 	if err != nil || !present || branch != x.Branch {
 		return false
 	}
