@@ -121,10 +121,10 @@ func RefreshPublic(m *Model) error {
 }
 
 func publicOutputBindings(m *Model) ([]contract.PublicOutputBinding, error) {
-	var needed map[string]map[string]bool
+	var needed map[string]map[string]uint8
 	if slices.ContainsFunc(m.Outputs, func(source OutputBinding) bool { return source.canonicalRecord != nil }) {
 		var err error
-		needed, err = outputTargetEntries(m)
+		needed, err = m.OutputTargetEncodings()
 		if err != nil {
 			return nil, err
 		}
@@ -156,7 +156,7 @@ func publicOutputBindings(m *Model) ([]contract.PublicOutputBinding, error) {
 				// Saved targets describe the earlier route set, not edits to its source.
 				currentTargets = len(binding.Targets) == len(needed[source.DestinationID])
 				for _, target := range binding.Targets {
-					if !needed[source.DestinationID][target.Name] {
+					if encoding, routed := needed[source.DestinationID][target.Name]; !routed || target.Target.PayloadEncoding != encoding {
 						currentTargets = false
 						break
 					}

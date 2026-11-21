@@ -21,11 +21,12 @@ func TestConfigurationPlanningPreservesSourcesAndTrustedConstruction(t *testing.
 	for _, family := range []string{"aws", "gcp"} {
 		for _, proposed := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/candidate-%t", family, proposed), func(t *testing.T) {
-				trusted := configurationReaderPair(t, family, configuration.JSON, nil)
+				trusted := configurationReaderPair(t, family, configuration.JSON, configurationReaderWithoutOutputs)
 				var candidate *configuration.Pair
 				desiredSource := trusted
 				if proposed {
 					desiredSource = configurationReaderPair(t, family, configuration.YAML, func(editable, generated map[string]any) {
+						configurationReaderWithoutOutputs(editable, generated)
 						editable["domain"].(map[string]any)["store"].(map[string]any)["bucket"] = "candidate-only-bucket"
 						generated["public_basis"].(map[string]any)["descriptor"] = []byte{1}
 						entries := editable["entries"].(map[string]any)
@@ -107,7 +108,7 @@ func TestConfigurationPlanningPreservesSourcesAndTrustedConstruction(t *testing.
 	}
 	for _, files := range []bool{false, true} {
 		t.Run(fmt.Sprintf("display/files-%t", files), func(t *testing.T) {
-			source := configurationReaderPair(t, "aws", configuration.JSON, nil)
+			source := configurationReaderPair(t, "aws", configuration.JSON, configurationReaderWithoutOutputs)
 			ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 			defer cancel()
 			factory, err := newPlanningDisplayWriter(func(context.Context) (planningDisplayOutput, error) {
@@ -146,7 +147,8 @@ func TestConfigurationPlanningRefusesBeforeConstruction(t *testing.T) {
 	for _, condition := range []string{"trusted-unresolved", "candidate-malformed", "candidate-unresolved", "trusted-invalid-output", "candidate-invalid-output", "trusted-wrong-authority", "display", "display-files", "feasibility", "no-deadline", "cancelled"} {
 		t.Run(condition, func(t *testing.T) {
 			invalidOutput := func(editable, generated map[string]any) {
-				editable["outputs"].(map[string]any)["destinations"].(map[string]any)["unused-invalid"] = configurationReaderInvalidBinding(t, generated, "unused-invalid")
+				configurationReaderWithoutOutputs(editable, generated)
+				configurationReaderConflictingTargets(t, editable, generated, "second")
 			}
 			var edit func(map[string]any, map[string]any)
 			if condition == "trusted-invalid-output" {
@@ -154,6 +156,7 @@ func TestConfigurationPlanningRefusesBeforeConstruction(t *testing.T) {
 			}
 			if condition == "trusted-wrong-authority" {
 				edit = func(editable, generated map[string]any) {
+					configurationReaderWithoutOutputs(editable, generated)
 					selector := "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012"
 					editable["domain"].(map[string]any)["authority"].(map[string]any)["encryption_key"] = selector
 					generated["domain"].(map[string]any)["authority"].(map[string]any)["encryption"].(map[string]any)["selector"] = selector

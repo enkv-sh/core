@@ -380,7 +380,7 @@ func TestOutputNormalizationAggregatePolicyBytesPrecedeOwnership(t *testing.T) {
 				var normalized *outputApplyInput
 				var err error
 				if owned {
-					normalized, err = normalizeOwnedOutputApply(ctx, entries, recipients, input.Authority.RecipientID.Value, source, interpret)
+					normalized, err = normalizeOwnedOutputApply(ctx, entries, recipients, input.Authority.RecipientID.Value, source, interpret, false)
 				} else {
 					normalized, err = normalizeOutputApply(ctx, entries, recipients, input.Authority.RecipientID.Value, source, interpret)
 				}
@@ -452,7 +452,7 @@ func TestOutputNormalizationRetainsExistingTargetsAndDerivesOnlyMissingNames(t *
 		return validator.interpret(ctx, destinationID, destination, name, encoding)
 	}
 	got, err := normalizeOutputApply(t.Context(), entries, recipients, input.Authority.RecipientID.Value, source, interpret)
-	if err != nil || got == nil || !slices.Equal(calls, []string{"beta"}) || !outputApplyTargetsEqual(got.bindings[0].targets[0].target, retained) || !got.bindings[0].targetsComplete {
+	if err != nil || got == nil || !slices.Equal(calls, []string{"beta"}) || !got.bindings[0].targets[0].target.Equal(retained) || !got.bindings[0].targetsComplete {
 		t.Fatal("retained targets drifted or were reinterpreted", err, calls)
 	}
 	if got, err := normalizeOutputApply(t.Context(), entries, recipients, input.Authority.RecipientID.Value, source, nil); !errors.Is(err, ErrPublicOutputUnavailable) || got != nil {
@@ -483,7 +483,7 @@ func TestOutputNormalizationRetainsExistingTargetsAndDerivesOnlyMissingNames(t *
 			expectedAlpha := beforeAlpha
 			expectedAlpha.PayloadEncoding = nextEncoding
 			actual := returned.Configuration.OutputBindings.Value[0].Targets.Value
-			if len(actual) != 2 || !outputApplyTargetsEqual(publicTargetValue(actual[0]), expectedAlpha) || !outputApplyTargetsEqual(publicTargetValue(actual[1]), beforeBeta) {
+			if len(actual) != 2 || !publicTargetValue(actual[0]).Equal(expectedAlpha) || !publicTargetValue(actual[1]).Equal(beforeBeta) {
 				t.Error("public normalization returned stale targets after the owning entry tag changed")
 			}
 			if changed.OutputBindings.Value[0].Targets.Value[0].PayloadEncoding.Value != oldEncoding {
@@ -717,6 +717,77 @@ func TestOutputInterpretationUnavailableKeepsContextPriority(t *testing.T) {
 					t.Errorf("unavailable interpretation lost context priority: got %+v want %+v", got.Diagnostics, want)
 				}
 			})
+		})
+	}
+}
+
+// full_only: false
+func TestProposedOutputRoutesRequireIndependentInterpretation(t *testing.T) {
+	input, plugin, calls := outputNormalizationFixture(t, "alpha", "beta")
+	input.Routing = publicPresent([]contract.PublicRoutingRule{outputNormalizationRoute(contract.PublicDefaultRoute, "", "a")})
+	baseline := plugin.Validate(t.Context(), input)
+	if !baseline.Valid || !baseline.Complete || *calls != 2 {
+		t.Fatal("fixture target derivation", baseline.Diagnostics)
+	}
+	if baseline.CheckedRouteValidator() != nil {
+		t.Fatal("structural validation supplied proposed route authority")
+	}
+	for _, mode := range []string{"exact", "missing-plugin", "target", "locator", "target-data"} {
+		t.Run(mode, func(t *testing.T) {
+			proposed := ownPublicConfiguration(baseline.Configuration)
+			row := &proposed.OutputBindings.Value[0].Targets.Value[0]
+			validator := plugin
+			switch mode {
+			case "missing-plugin":
+				validator = NewPublicConfigurationValidator(nil)
+			case "target":
+				row.CanonicalTarget.Value = "other/slot"
+			case "locator":
+				row.ConsumerLocator.Value = "other/locator"
+			case "target-data":
+				row.TargetData.Value = []byte("different")
+			}
+			before := *calls
+			result := validator.ValidateProposed(t.Context(), proposed)
+			switch mode {
+			case "exact":
+				if !result.Valid || !result.Complete || *calls-before != 2 {
+					t.Error("exact proposed routes need two independent interpretations", result.Diagnostics, *calls-before)
+				}
+				captured := result.CheckedRouteValidator()
+				if captured == nil {
+					t.Fatal("missing checked routes")
+				}
+				same := captured.ValidateProposed(t.Context(), result.Configuration)
+				if !same.Valid || !same.Complete || *calls-before != 2 {
+					t.Fatal("exact handoff changed or repeated interpretation", same.Diagnostics)
+				}
+				for _, edit := range []string{"address", "settings", "entry-encoding", "route"} {
+					changed := ownPublicConfiguration(result.Configuration)
+					switch edit {
+					case "address":
+						changed.OutputBindings.Value[0].Targets.Value[0].CanonicalTarget.Value = "other/slot"
+					case "settings":
+						changed.OutputBindings.Value[0].Destination.Value.CanonicalSettings = []byte(`{"changed":true}`)
+					case "entry-encoding":
+						changed.Entries.Value[0].OutputEncoding.Value = contract.OutputEncodingBase64
+					case "route":
+						changed.Routing.Value[0].Destinations.Value = nil
+					}
+					got := captured.ValidateProposed(t.Context(), changed)
+					if got.Valid && got.Complete || got.CheckedRouteValidator() != nil {
+						t.Fatal("modified source inherited verified route", edit)
+					}
+				}
+			case "missing-plugin":
+				if result.Complete || *calls != before {
+					t.Error("unavailable route interpretation", result.Diagnostics)
+				}
+			default:
+				if result.Valid || *calls == before {
+					t.Error("offered route disagrees with its interpretation", result.Diagnostics)
+				}
+			}
 		})
 	}
 }

@@ -19,8 +19,8 @@ import (
 
 // configurationNormalizePlugins retains source settings and installs their exact
 // canonical meaning. Only trustedPair selects the local installation scope.
-func configurationNormalizePlugins(ctx context.Context, trustedPair, sourcePair *configuration.Pair, model *configuration.Model) (*configurationInstalledPlugins, core.PublicOutputInterpreter, error) {
-	return configurationNormalizePluginsWithOutputValidator(ctx, trustedPair, configurationNormalizationSourceCheck(trustedPair, sourcePair), model, nil, outputhost.NewPublicValidator)
+func configurationNormalizePlugins(ctx context.Context, trustedPair, sourcePair *configuration.Pair, model *configuration.Model) (*configurationInstalledPlugins, *core.PublicConfigurationValidator, error) {
+	return configurationNormalizePluginsWithOutputValidator(ctx, trustedPair, configurationNormalizationSourceCheck(trustedPair, sourcePair), model, true, nil, outputhost.NewPublicValidator)
 }
 
 func configurationNormalizationSourceCheck(trusted, source *configuration.Pair) func(context.Context) error {
@@ -38,8 +38,8 @@ func configurationNormalizationSourceCheck(trusted, source *configuration.Pair) 
 	}
 }
 
-func configurationNormalizePluginsWithOutputValidator(ctx context.Context, trustedPair *configuration.Pair, checkSource func(context.Context) error, model *configuration.Model, plugins *configurationInstalledPlugins,
-	newOutputValidator func(context.Context, string, *outputhost.Installation) (*outputhost.PublicValidator, error)) (*configurationInstalledPlugins, core.PublicOutputInterpreter, error) {
+func configurationNormalizePluginsWithOutputValidator(ctx context.Context, trustedPair *configuration.Pair, checkSource func(context.Context) error, model *configuration.Model, proposed bool, plugins *configurationInstalledPlugins,
+	newOutputValidator func(context.Context, string, *outputhost.Installation) (*outputhost.PublicValidator, error)) (*configurationInstalledPlugins, *core.PublicConfigurationValidator, error) {
 	if ctx == nil || model == nil || trustedPair == nil || checkSource == nil {
 		return nil, nil, ErrCell
 	}
@@ -176,18 +176,14 @@ func configurationNormalizePluginsWithOutputValidator(ctx context.Context, trust
 		if err := checkSource(callCtx); err != nil {
 			return contract.OutputTarget{}, err
 		}
-		deadline, err := configurationPassiveDeadline(callCtx)
-		if err != nil {
-			return contract.OutputTarget{}, err
-		}
-		result, err := byDestination[index].validator.InterpretTarget(callCtx, output.InterpretRequest{Schema: 1, DeadlineUnixMillis: deadline, Destination: configurationProtocolDestination(destination), EntryName: name, PayloadEncoding: encoding})
+		target, err := configurationInterpretOutput(callCtx, byDestination[index].validator, destination, name, encoding)
 		if err != nil {
 			return contract.OutputTarget{}, err
 		}
 		if err := checkSource(callCtx); err != nil {
 			return contract.OutputTarget{}, err
 		}
-		return configurationOutputTarget(result.Target, destination.Policy), nil
+		return target, nil
 	})
 	if len(byDestination) == 0 {
 		interpret = nil
@@ -195,7 +191,12 @@ func configurationNormalizePluginsWithOutputValidator(ctx context.Context, trust
 	if err := configurationProjectNormalized(model); err != nil {
 		return nil, nil, err
 	}
-	validated := core.NewPublicConfigurationValidator(interpret).Validate(ctx, model.Public)
+	validator := core.NewPublicConfigurationValidator(interpret)
+	check := validator.Validate
+	if proposed {
+		check = validator.ValidateProposed
+	}
+	validated := check(ctx, model.Public)
 	if !validated.Valid || !validated.Complete || !validated.DiagnosticsComplete {
 		return nil, nil, &configurationNormalizationError{validation: validated}
 	}
@@ -214,7 +215,19 @@ func configurationNormalizePluginsWithOutputValidator(ctx context.Context, trust
 	if err := checkSource(ctx); err != nil {
 		return nil, nil, err
 	}
-	return plugins, interpret, nil
+	return plugins, validated.CheckedRouteValidator(), nil
+}
+
+func configurationInterpretOutput(ctx context.Context, validator *outputhost.PublicValidator, destination contract.OutputDestination, name string, encoding uint8) (contract.OutputTarget, error) {
+	deadline, err := configurationPassiveDeadline(ctx)
+	if err != nil {
+		return contract.OutputTarget{}, err
+	}
+	result, err := validator.InterpretTarget(ctx, output.InterpretRequest{Schema: 1, DeadlineUnixMillis: deadline, Destination: configurationProtocolDestination(destination), EntryName: name, PayloadEncoding: encoding})
+	if err != nil {
+		return contract.OutputTarget{}, err
+	}
+	return configurationOutputTarget(result.Target, destination.Policy), nil
 }
 
 // Update derived fields in place so captured source locations remain attached.
@@ -362,16 +375,16 @@ func (e *configurationNormalizationError) Is(target error) bool {
 	return slices.ContainsFunc(e.validation.Diagnostics, func(diagnostic contract.Diagnostic) bool { return diagnostic.Reason == reason })
 }
 
-func configurationNormalizationValidation(ctx context.Context, trusted, source *configuration.Pair, model *configuration.Model) (result core.PublicConfigurationValidation, selector func(context.Context, core.PublicationPolicyActionInput) (uint8, error), resultErr error) {
+func configurationNormalizationValidation(ctx context.Context, trusted, source *configuration.Pair, model *configuration.Model, proposed bool) (result core.PublicConfigurationValidation, selector func(context.Context, core.PublicationPolicyActionInput) (uint8, error), routes *core.PublicConfigurationValidator, resultErr error) {
 	var scope outputhost.PublicValidationScope
 	var normalizationErr error
 	defer func() {
 		if err := scope.Close(); err != nil {
 			resultErr = errors.Join(normalizationErr, resultErr, err)
-			selector = nil
+			selector, routes = nil, nil
 		}
 	}()
-	plugins, _, err := configurationNormalizePluginsWithOutputValidator(ctx, trusted, configurationNormalizationSourceCheck(trusted, source), model, nil, func(ctx context.Context, path string, installation *outputhost.Installation) (*outputhost.PublicValidator, error) {
+	plugins, routes, err := configurationNormalizePluginsWithOutputValidator(ctx, trusted, configurationNormalizationSourceCheck(trusted, source), model, proposed, nil, func(ctx context.Context, path string, installation *outputhost.Installation) (*outputhost.PublicValidator, error) {
 		return scope.NewValidator(ctx, path, installation)
 	})
 	normalizationErr = err
@@ -380,11 +393,11 @@ func configurationNormalizationValidation(ctx context.Context, trusted, source *
 		if errors.As(err, &invalid) {
 			result := invalid.validation
 			result.Configuration = contract.PublicConfiguration{}
-			return result, nil, nil
+			return result, nil, nil, nil
 		}
-		return core.PublicConfigurationValidation{}, nil, err
+		return core.PublicConfigurationValidation{}, nil, nil, err
 	}
-	return core.PublicConfigurationValidation{Valid: true, Complete: true, DiagnosticsComplete: true}, configurationPolicyActionSelector(plugins, model), nil
+	return core.PublicConfigurationValidation{Valid: true, Complete: true, DiagnosticsComplete: true}, configurationPolicyActionSelector(plugins, model), routes, nil
 }
 
 func configurationPluginUnavailable(err error) bool {

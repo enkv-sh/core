@@ -34,6 +34,7 @@ func TestPublicGeneratedPlanningReportsRequestedCreation(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			config.InterpretOutput = readerFixtureInterpretOutput
 			reader, err := open(ctx, config)
 			if err != nil {
 				t.Fatal(err)
@@ -57,6 +58,7 @@ func TestPublicGeneratedPlanningReportsRequestedCreation(t *testing.T) {
 					Retirement: readerPresent(contract.GeneratedRetirementManual), Completion: readerPresent(contract.GeneratedCompletionAcknowledged),
 				},
 			})
+			proposed.Routing.Value = append(proposed.Routing.Value, contract.PublicRoutingRule{Key: contract.PublicRoutingKey{EntrySelector: contract.PublicNamedEntry, EntryName: name}, Destinations: readerPresent([]string{})})
 			result := ConfigurationComparisonResult{PublicComparisonResult: reader.Compare(ctx, contract.Hash([]byte("public requested generated creation")), proposed), InstallationRequirements: InstallationRequirementComparison{Differences: []InstallationRequirementDifference{}}}
 			h.assertNoEffects(t)
 			source.assertUnchanged(t)
@@ -95,8 +97,9 @@ func TestPublicGeneratedPlanningReportsRequestedCreation(t *testing.T) {
 func TestConfigurationPlanningKeepsGeneratedIntentAndSuppliedInputs(t *testing.T) {
 	for _, family := range []string{"aws", "gcp"} {
 		t.Run(family, func(t *testing.T) {
-			trusted := configurationReaderPair(t, family, configuration.JSON, nil)
+			trusted := configurationReaderPair(t, family, configuration.JSON, configurationReaderWithoutOutputs)
 			candidate := configurationReaderPair(t, family, configuration.YAML, func(editable, generated map[string]any) {
+				configurationReaderWithoutOutputs(editable, generated)
 				editable["entries"].(map[string]any)["future"] = map[string]any{"confidentiality": "secret", "recipients": []string{}, "source": dependencyCanonicalGeneratorSource(generated, "future", true)}
 			})
 			ctx, cancel := context.WithTimeout(t.Context(), time.Minute)

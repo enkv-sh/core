@@ -155,7 +155,7 @@ func TestConfigurationValidationOwnsRetainedOutputLifetime(t *testing.T) {
 			}
 			recorder := telemetry.NewRecorder()
 			callCtx := telemetry.WithCapability(ctx, telemetry.NewCapability(nil, recorder))
-			result, _, err := configurationNormalizationValidation(callCtx, source.pair, source.pair, model)
+			result, _, _, err := configurationNormalizationValidation(callCtx, source.pair, source.pair, model, true)
 			if condition == "complete" {
 				if err != nil || !result.Valid || !result.Complete || !result.DiagnosticsComplete {
 					t.Fatal("complete validation lost its result", result, err)

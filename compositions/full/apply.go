@@ -59,7 +59,7 @@ func applyConfigurationWithIdentity(ctx context.Context, requestID contract.ID, 
 	if err != nil {
 		return refuse("parse", err)
 	}
-	plugins, interpret, err := configurationNormalizePlugins(ctx, pair, pair, m)
+	plugins, routes, err := configurationNormalizePlugins(ctx, pair, pair, m)
 	if err != nil {
 		return refuse("declaration", err)
 	}
@@ -77,7 +77,7 @@ func applyConfigurationWithIdentity(ctx context.Context, requestID contract.ID, 
 	if !finite || !time.Now().Before(deadline) {
 		return refuse("context", &configuration.Diagnostic{Reason: "expired"})
 	}
-	i.ConfigurationValidator = core.NewPublicConfigurationValidator(interpret)
+	i.ConfigurationValidator = routes
 	engine, err := open(ctx, m, i, plugins)
 	if err != nil || engine == nil {
 		out := refuse("construction", nil)
@@ -177,8 +177,8 @@ func configurationApplyFailure(ctx context.Context, out core.PublicApplyResult, 
 	return out
 }
 
-func configurationApplyInput(m *configuration.Model) (core.ApplyInstallation, []core.ApplyEntryInput, error) {
-	refuse := func() (core.ApplyInstallation, []core.ApplyEntryInput, error) {
+func configurationApplyAccess(m *configuration.Model) (core.ApplyInstallation, map[string]contract.ID, error) {
+	refuse := func() (core.ApplyInstallation, map[string]contract.ID, error) {
 		return core.ApplyInstallation{}, nil, &configuration.Diagnostic{Reason: "unsupported-apply-change"}
 	}
 	if m == nil || !m.Resolved {
@@ -239,6 +239,18 @@ func configurationApplyInput(m *configuration.Model) (core.ApplyInstallation, []
 		registry = append(registry, proposed)
 		references[row.Reference] = row.ID
 	}
+	return core.ApplyInstallation{ExpectedDomain: m.DomainID, ExpectedStore: store, PublicBasis: basis, ExpectedControl: control, DesiredRecipients: registry, PublicConfiguration: m.Public,
+		FileIdentity: m.FileID, CompositionID: CompatibilityManifest().Identity}, references, nil
+}
+
+func configurationApplyInput(m *configuration.Model) (core.ApplyInstallation, []core.ApplyEntryInput, error) {
+	installed, references, err := configurationApplyAccess(m)
+	if err != nil {
+		return core.ApplyInstallation{}, nil, err
+	}
+	refuse := func() (core.ApplyInstallation, []core.ApplyEntryInput, error) {
+		return core.ApplyInstallation{}, nil, &configuration.Diagnostic{Reason: "unsupported-apply-change"}
+	}
 	input := make([]core.ApplyEntryInput, 0, len(m.Entries))
 	for _, row := range m.Entries {
 		members := []contract.ID{m.Authority.ID}
@@ -283,8 +295,7 @@ func configurationApplyInput(m *configuration.Model) (core.ApplyInstallation, []
 		}
 		input = append(input, entry)
 	}
-	return core.ApplyInstallation{ExpectedDomain: m.DomainID, ExpectedStore: store, PublicBasis: basis, ExpectedControl: control, DesiredRecipients: registry, PublicConfiguration: m.Public,
-		FileIdentity: m.FileID, CompositionID: CompatibilityManifest().Identity}, input, nil
+	return installed, input, nil
 }
 
 func configurationApplyBinding(family contract.Family, key configuration.Key) (contract.KMSBinding, error) {

@@ -102,7 +102,7 @@ func TestOrdinaryOutputApplyRefusesInvalidDerivedTargets(t *testing.T) {
 					for _, named := range expected.bindings[0].targets {
 						want := named.target
 						want.EntryIncarnationID = opened.valueEntry(entrySlot(t, opened, named.entryName)).Incarnation
-						if !slices.ContainsFunc(configurationAfter.Bindings[0].Targets, func(got contract.OutputTarget) bool { return outputApplyTargetsEqual(got, want) }) {
+						if !slices.ContainsFunc(configurationAfter.Bindings[0].Targets, func(got contract.OutputTarget) bool { return got.Equal(want) }) {
 							t.Fatal("single ordinary apply control changed an independently authored target", named.entryName)
 						}
 					}

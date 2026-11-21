@@ -84,11 +84,11 @@ func configurationApplyPublication(ctx context.Context, applyRequestID, publicat
 	var input []core.ApplyEntryInput
 	var plugins *configurationInstalledPlugins
 	if operationID.IsZero() {
-		var interpret core.PublicOutputInterpreter
-		plugins, interpret, err = configurationNormalizePlugins(ctx, pair, pair, m)
+		var routes *core.PublicConfigurationValidator
+		plugins, routes, err = configurationNormalizePlugins(ctx, pair, pair, m)
 		if err == nil {
 			installation, input, err = configurationApplyInput(m)
-			installation.ConfigurationValidator = core.NewPublicConfigurationValidator(interpret)
+			installation.ConfigurationValidator = routes
 		}
 	} else {
 		installation, err = configurationAcceptedGeneratedInput(m)

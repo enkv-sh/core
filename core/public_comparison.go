@@ -92,7 +92,7 @@ func (e *ReaderEngine) comparePublic(ctx context.Context, requestID contract.ID,
 		result.Context.ExpectedDomain = e.expectedDomain
 		e.mu.Unlock()
 	}
-	desired := validator.Validate(ctx, input)
+	desired := validator.ValidateProposed(ctx, input)
 	result.Diagnostics = desired.Diagnostics
 	result.DiagnosticsComplete = desired.DiagnosticsComplete
 	if !desired.Valid || !desired.Complete || !desired.DiagnosticsComplete {

@@ -80,6 +80,15 @@ func readerFixtureOutputTarget(profile readerFixtureProfile, encoding uint8) con
 	return contract.OutputTarget{ServiceContractID: profile.provider, TargetContractID: "fixture/target/v1", CanonicalTarget: profile.slot, ConsumerLocator: locator, TargetData: []byte("target:" + profile.slot), PayloadEncoding: encoding, LocatorRequiresCreation: assigned, Capabilities: caps, CreateValueBounds: contract.OutputPayloadBounds{Maximum: 65536}, WriteValueBounds: contract.OutputPayloadBounds{Maximum: 65536}, Policy: profile.policy}
 }
 
+func readerFixtureInterpretOutput(_ context.Context, id string, destination contract.OutputDestination, name string, encoding uint8) (contract.OutputTarget, error) {
+	for _, profile := range readerFixtureProfiles(name) {
+		if id == profile.destination && reflect.DeepEqual(destination, readerFixtureDestination(profile)) {
+			return readerFixtureOutputTarget(profile, encoding), nil
+		}
+	}
+	return contract.OutputTarget{}, contract.ErrRecord
+}
+
 // This expectation frames the two policy blobs independently of the Product codecs.
 func readerFixturePolicyJSON(domain contract.ID, policy contract.OutputPolicy) string {
 	if policy.ContractID == "" {
@@ -468,6 +477,7 @@ func TestInstalledReaderCompositionsCompareAndIssueFiveDestinationManifest(t *te
 				}
 				config = ReaderConfig{Family: contract.GCP, GCP: &compositiongcp.ReaderConfig{Candidate: gcpprovider.CandidateReadConfig{Client: client, Region: "australia-southeast1", Bucket: "fixture-bucket", Prefix: "fixture", CredentialRoute: "Reader GCP GET route"}, ExpectedDomain: basis.DomainID, ExpectedStore: descriptor, PublicBasis: publicBasis}}
 			}
+			config.InterpretOutput = readerFixtureInterpretOutput
 			config.PrepareManifestRenderer = func(context.Context, contract.ManifestRendererSelection) (manifestsdk.Renderer, manifestsdk.Failure) {
 				return genericjson.Render, ""
 			}

@@ -144,7 +144,8 @@ func TestReconstructionCommittedBasisReachesFreshPairAdmission(t *testing.T) {
 					return installedOpen(ctx, c)
 				}
 				ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
-				compared := compareConfiguration(ctx, contract.Hash([]byte("committed pair fresh admission")), pair, nil, open)
+				candidate := configurationReaderPairWithOutputs(t, family, encoding, nil)
+				compared := compareReaderFixture(ctx, contract.Hash([]byte("committed pair fresh admission")), pair, candidate.pair, open)
 				cancel()
 				if compared.Verdict != contract.ComparisonMatch || compared.StateResult != contract.ReaderSuccess || len(compared.Diagnostics) != 0 || calls != 1 || compared.Observation == nil {
 					t.Fatal("portable pair did not admit through fresh ordinary Reader", compared.Verdict, compared.StateResult, compared.Diagnostics)

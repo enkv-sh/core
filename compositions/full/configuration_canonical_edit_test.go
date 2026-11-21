@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -154,9 +156,13 @@ func TestRecoveredSettingsEditsUseInstalledCanonicalValidationAndTargets(t *test
 			if edited == editable.String() {
 				t.Fatal("operator edit did not change source")
 			}
-			for _, condition := range []string{"accepted", "generator-default-forbidden", "output-default-forbidden"} {
+			for _, condition := range []string{"accepted", "unchanged", "different-offered-target", "generator-default-forbidden", "output-default-forbidden"} {
 				t.Run(condition, func(t *testing.T) {
 					candidate := edited
+					unchanged := condition == "unchanged" || condition == "different-offered-target"
+					if unchanged {
+						candidate = editable.String()
+					}
 					if condition == "generator-default-forbidden" {
 						candidate = strings.ReplaceAll(candidate, afterTokens[0], emptyTokens[0])
 					}
@@ -165,6 +171,30 @@ func TestRecoveredSettingsEditsUseInstalledCanonicalValidationAndTargets(t *test
 					}
 					if err := os.WriteFile(source.path, []byte(candidate), 0600); err != nil {
 						t.Fatal(err)
+					}
+					wantOffered := oldTarget
+					if condition == "different-offered-target" {
+						wantOffered.CanonicalTarget = server.URL + "/values/other/QVBJX1RPS0VO"
+						body, err := contract.EncodeNormalOutputBinding(contract.NormalOutputBinding{DestinationID: "vault", Destination: oldDestination, Targets: []contract.NormalOutputTarget{{Name: "API_TOKEN", Target: wantOffered}}})
+						if err != nil {
+							t.Fatal(err)
+						}
+						old := []byte(base64.StdEncoding.EncodeToString(binding))
+						if bytes.Count(source.generatedBytes, old) != 1 {
+							t.Fatal("fixture canonical backing")
+						}
+						changed := bytes.Replace(source.generatedBytes, old, []byte(base64.StdEncoding.EncodeToString(body)), 1)
+						if err := os.Chmod(source.generated, 0600); err != nil {
+							t.Fatal(err)
+						}
+						if err := os.WriteFile(source.generated, changed, 0600); err != nil {
+							t.Fatal(err)
+						}
+						defer func() {
+							if err := os.WriteFile(source.generated, source.generatedBytes, 0600); err != nil {
+								t.Error(err)
+							}
+						}()
 					}
 					beforeFiles := configurationApplySourceImage(t, filepath.Dir(source.path))
 					pair, err := configuration.Capture(ctx, source.path, format)
@@ -180,20 +210,44 @@ func TestRecoveredSettingsEditsUseInstalledCanonicalValidationAndTargets(t *test
 					if err != nil {
 						t.Fatal(err)
 					}
-					if model.Outputs[0].Binding.Targets != nil {
+					if unchanged {
+						rows := model.Outputs[0].Binding.Targets
+						if len(rows) != 1 || !rows[0].Target.Equal(wantOffered) {
+							t.Fatal("missing exact canonical target for verification")
+						}
+					} else if model.Outputs[0].Binding.Targets != nil {
 						t.Fatal("edited destination retained stale proposed targets")
 					}
 					coordinator, err := plugininstallation.New(assembly)
 					if err != nil {
 						t.Fatal(err)
 					}
-					session, _, err := coordinator.Resolve(ctx, plugininstallation.Request{Directory: scope, Requirements: []plugininstallation.Requirement{{Name: "private-local-token"}, {Name: "private-local-values"}}, Mode: plugininstallation.Ordinary, CheckSource: pair.CheckUnchanged})
+					session, installations, err := coordinator.Resolve(ctx, plugininstallation.Request{Directory: scope, Requirements: []plugininstallation.Requirement{{Name: "private-local-token"}, {Name: "private-local-values"}}, Mode: plugininstallation.Ordinary, CheckSource: pair.CheckUnchanged})
 					if err != nil {
 						t.Fatal(err)
 					}
 					captured := &configurationInstalledPlugins{session: session, coordinator: coordinator}
-					_, _, err = configurationNormalizePluginsWithOutputValidator(ctx, pair, pair.CheckUnchanged, model, captured, outputhost.NewPublicValidator)
-					if condition != "accepted" {
+					if unchanged {
+						byName := make(map[string]plugininstallation.Installation)
+						for _, row := range installations {
+							byName[row.Name] = row
+						}
+						facts, err := configurationCanonicalDependencyChecks(ctx, pair, model, captured, byName)
+						result, checked := facts[prepareCanonicalDependency{role: "output", name: "private-local-values", semantic: oldDestination.ConfigContractID}]
+						if err != nil || !checked || result.unavailable || result.refused != (condition == "different-offered-target") {
+							t.Fatal("canonical target readiness", result, checked, err)
+						}
+					}
+					_, _, err = configurationNormalizePluginsWithOutputValidator(ctx, pair, pair.CheckUnchanged, model, true, captured, outputhost.NewPublicValidator)
+					if condition == "different-offered-target" {
+						if !errors.Is(err, contract.ErrRecord) {
+							t.Fatal("offered physical target passed installed interpretation", err)
+						}
+					} else if condition == "unchanged" {
+						if err != nil || !model.Outputs[0].Binding.Targets[0].Target.Equal(oldTarget) {
+							t.Fatal("exact independently interpreted source refused", err)
+						}
+					} else if condition != "accepted" {
 						if err == nil {
 							t.Fatal("canonical edit acquired author-input defaults")
 						}

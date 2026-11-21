@@ -27,5 +27,9 @@ func readerConfigWithValidator(c ReaderConfig) (ReaderConfig, error) {
 	if !validReaderConfig(c) {
 		return ReaderConfig{}, ErrCell
 	}
-	return providerReaderConfigWithValidator(c, core.NewPublicConfigurationValidator(c.InterpretOutput), c.PrepareManifestRenderer), nil
+	validator := c.checkedRoutes
+	if validator == nil {
+		validator = core.NewPublicConfigurationValidator(c.InterpretOutput)
+	}
+	return providerReaderConfigWithValidator(c, validator, c.PrepareManifestRenderer), nil
 }

@@ -227,7 +227,7 @@ func (e *InstalledPlanning) plan(ctx context.Context, requestID contract.ID, pub
 		out.fail(readerRefusal(contract.ReasonInvalidInput))
 		return out
 	}
-	desired := reader.validator.Validate(ctx, capturedPublic)
+	desired := reader.validator.ValidateProposed(ctx, capturedPublic)
 	if !desired.Valid || !desired.Complete || !desired.DiagnosticsComplete {
 		refusal := RefusePublicComparisonSource(requestID, reader.expectedDomain, desired)
 		out.ComparisonPayload, out.Result, out.StateResult = refusal.ComparisonPayload, refusal.Result, refusal.StateResult

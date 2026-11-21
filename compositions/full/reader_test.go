@@ -122,6 +122,7 @@ func TestReaderKeepsCanonicalGeneratorIntentWithoutPlugin(t *testing.T) {
 	intent = binary.BigEndian.AppendUint32(intent, uint32(len(settings)))
 	intent = append(intent, settings...)
 	source := configurationReaderPair(t, "aws", configuration.JSON, func(editable, generated map[string]any) {
+		configurationReaderWithoutOutputs(editable, generated)
 		editable["entries"].(map[string]any)["secret"].(map[string]any)["source"] = map[string]any{"kind": "generated", "plugin": nil, "epoch": 7, "canonical": map[string]any{"settings": json.RawMessage(settings)}}
 		configurationCanonicalBacking(generated, "generators", "secret", intent)
 		editable["plugins"] = map[string]any{"unused-renderer": map[string]any{"version": "1.0.0"}}
@@ -133,8 +134,8 @@ func TestReaderKeepsCanonicalGeneratorIntentWithoutPlugin(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plugins, interpret, err := configurationNormalizePlugins(ctx, source.pair, source.pair, model)
-	if err != nil || plugins != nil || interpret != nil {
+	plugins, routes, err := configurationNormalizePlugins(ctx, source.pair, source.pair, model)
+	if err != nil || plugins != nil || routes == nil {
 		t.Fatal("canonical recovery acquired an unrelated plugin", err)
 	}
 	entry := slices.IndexFunc(model.Entries, func(row configuration.Entry) bool { return row.Name == "secret" })

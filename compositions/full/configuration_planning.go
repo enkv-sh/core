@@ -75,18 +75,18 @@ func planConfigurationWithIdentity(ctx context.Context, requestID contract.ID, t
 		return configurationPlanningFailure(ctx, requestID, baseline.DomainID, "trusted", context.DeadlineExceeded)
 	}
 	q.Stage = "public-configuration"
-	baselineValidation, selectPolicy, err := configurationNormalizationValidation(ctx, trusted, trusted, baseline)
+	baselineValidation, selectPolicy, routes, err := configurationNormalizationValidation(ctx, trusted, trusted, baseline, candidate == nil)
 	if err != nil {
 		return configurationPlanningFailure(ctx, requestID, baseline.DomainID, "trusted", err)
 	}
 	validations := []core.PublicConfigurationValidation{baselineValidation}
 	valid := baselineValidation.Valid && baselineValidation.Complete && baselineValidation.DiagnosticsComplete
 	if candidate != nil {
-		validation, candidateSelector, err := configurationNormalizationValidation(ctx, trusted, proposedPair, desired)
+		validation, candidateSelector, candidateRoutes, err := configurationNormalizationValidation(ctx, trusted, proposedPair, desired, true)
 		if err != nil {
 			return configurationPlanningFailure(ctx, requestID, baseline.DomainID, "candidate", err)
 		}
-		selectPolicy = candidateSelector
+		selectPolicy, routes = candidateSelector, candidateRoutes
 		validations = append(validations, validation)
 		valid = valid && validation.Valid && validation.Complete && validation.DiagnosticsComplete
 	}
@@ -102,6 +102,7 @@ func planConfigurationWithIdentity(ctx context.Context, requestID contract.ID, t
 		return configurationPlanningFailure(ctx, requestID, baseline.DomainID, "candidate", err)
 	}
 	reader.SelectPolicyAction = selectPolicy
+	reader.checkedRoutes = routes
 	installed, err := configurationPlanningConfig(baseline, reader)
 	if err != nil {
 		return configurationPlanningFailure(ctx, requestID, baseline.DomainID, "trusted", err)

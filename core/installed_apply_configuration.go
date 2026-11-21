@@ -23,7 +23,7 @@ func (s *StateSession) installedApplyInputs(ctx context.Context, i ApplyInstalla
 	if !publicConfigurationInputLimits(&limits, i.PublicConfiguration) {
 		return nil, nil, refused(CapacityExceeded)
 	}
-	desired := i.ConfigurationValidator.validateOwned(ctx, i.PublicConfiguration)
+	desired := i.ConfigurationValidator.validateOwned(ctx, i.PublicConfiguration, true)
 	if !desired.Valid || !desired.Complete || !desired.DiagnosticsComplete || !installedApplyConfigurationCarriers(desired.Configuration, input, i.DesiredRecipients) {
 		return nil, nil, refused(InvalidIntent)
 	}

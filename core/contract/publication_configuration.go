@@ -95,6 +95,11 @@ type OutputTarget struct {
 	Policy                                                                OutputPolicy
 }
 
+// Equal compares all target facts, including both opaque byte fields.
+func (a OutputTarget) Equal(b OutputTarget) bool {
+	return normalOutputTargetsEqual(a, b)
+}
+
 type OutputBinding struct {
 	IncarnationID ID
 	DestinationID string

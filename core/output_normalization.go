@@ -34,12 +34,6 @@ func ownOutputTarget(v contract.OutputTarget) contract.OutputTarget {
 func outputPoliciesEqual(a, b contract.OutputPolicy) bool {
 	return a.ContractID == b.ContractID && bytes.Equal(a.Data, b.Data)
 }
-func outputApplyTargetsEqual(a, b contract.OutputTarget) bool {
-	return a.EntryIncarnationID == b.EntryIncarnationID && a.ServiceContractID == b.ServiceContractID && a.TargetContractID == b.TargetContractID &&
-		a.CanonicalTarget == b.CanonicalTarget && a.ConsumerLocator == b.ConsumerLocator && bytes.Equal(a.TargetData, b.TargetData) &&
-		a.PayloadEncoding == b.PayloadEncoding && a.LocatorRequiresCreation == b.LocatorRequiresCreation && a.Capabilities == b.Capabilities &&
-		a.CreateValueBounds == b.CreateValueBounds && a.WriteValueBounds == b.WriteValueBounds && outputPoliciesEqual(a.Policy, b.Policy)
-}
 
 type publicOutputInterpretationError struct {
 	destinationID, entryName string
@@ -108,12 +102,12 @@ func normalizeOutputApply(ctx context.Context, entries []ApplyEntryInput, recipi
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	return normalizeOwnedOutputApply(ctx, entries, recipients, authority, ownOutputApplyInput(input), interpret)
+	return normalizeOwnedOutputApply(ctx, entries, recipients, authority, ownOutputApplyInput(input), interpret, false)
 }
 
 // Public capture already owns these rows. The private path owns them once in
 // normalizeOutputApply before entering the same checks and passive derivation.
-func normalizeOwnedOutputApply(ctx context.Context, entries []ApplyEntryInput, recipients []contract.ID, authority contract.ID, input *outputApplyInput, interpret PublicOutputInterpreter) (*outputApplyInput, error) {
+func normalizeOwnedOutputApply(ctx context.Context, entries []ApplyEntryInput, recipients []contract.ID, authority contract.ID, input *outputApplyInput, interpret PublicOutputInterpreter, verifyOffered bool) (*outputApplyInput, error) {
 	if !outputApplyInputAxes(input) || len(entries) > contract.CryptoMaxValueEntries || len(recipients) > contract.CryptoMaxRecipients {
 		return nil, contract.ErrRecordCapacity
 	}
@@ -283,14 +277,14 @@ func normalizeOwnedOutputApply(ctx context.Context, entries []ApplyEntryInput, r
 
 			offeredIndex, hasOffered := slices.BinarySearchFunc(offered, name, func(row outputApplyTarget, name string) int { return strings.Compare(row.entryName, name) })
 			var target contract.OutputTarget
-			if hasOffered && offered[offeredIndex].target.PayloadEncoding != encoding {
+			if !verifyOffered && hasOffered && offered[offeredIndex].target.PayloadEncoding != encoding {
 				hasOffered = false
 				binding.targetsComplete = false
 			}
-			if hasOffered {
+			if hasOffered && !verifyOffered {
 				target = offered[offeredIndex].target
 			} else {
-				if binding.targetsComplete {
+				if !hasOffered && binding.targetsComplete {
 					return refuse(contract.ErrRecord)
 				}
 				if interpret == nil {
@@ -300,6 +294,9 @@ func normalizeOwnedOutputApply(ctx context.Context, entries []ApplyEntryInput, r
 				target, err = interpret(ctx, binding.destinationID, binding.destination, name, encoding)
 				if err != nil {
 					return refuse(publicOutputInterpretationError{binding.destinationID, name, err})
+				}
+				if hasOffered && !offered[offeredIndex].target.Equal(target) {
+					return refuse(publicOutputInterpretationError{binding.destinationID, name, contract.ErrRecord})
 				}
 			}
 			if err := ctx.Err(); err != nil {
@@ -485,7 +482,7 @@ func normalizePublicDefaultRoute(c *publicConfigurationCheck, configuration *con
 	configuration.Routing.Value = rows
 }
 
-func (v *PublicConfigurationValidator) normalizePublicOutputs(c *publicConfigurationCheck, configuration *contract.PublicConfiguration) bool {
+func (v *PublicConfigurationValidator) normalizePublicOutputs(c *publicConfigurationCheck, configuration *contract.PublicConfiguration, verifyOffered bool) bool {
 	entries := make([]ApplyEntryInput, len(configuration.Entries.Value))
 	for i, entry := range configuration.Entries.Value {
 		entries[i] = ApplyEntryInput{Name: entry.Name, Recipients: entry.Memberships.Value, InputEncoding: entry.InputEncoding.Value, OutputEncoding: entry.OutputEncoding.Value}
@@ -495,7 +492,7 @@ func (v *PublicConfigurationValidator) normalizePublicOutputs(c *publicConfigura
 		recipients[i] = recipient.RecipientID
 	}
 	input := publicOutputApplyInput(*configuration)
-	normalized, err := normalizeOwnedOutputApply(c.ctx, entries, recipients, configuration.Authority.RecipientID.Value, input, v.interpret)
+	normalized, err := normalizeOwnedOutputApply(c.ctx, entries, recipients, configuration.Authority.RecipientID.Value, input, v.interpret, verifyOffered)
 	if err != nil {
 		var collisions publicOutputCollisionError
 		if errors.As(err, &collisions) {

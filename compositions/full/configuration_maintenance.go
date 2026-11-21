@@ -38,12 +38,12 @@ func configureMaintenanceOutput(ctx context.Context, pair *configuration.Pair, m
 	if err := output.CheckUnchanged(ctx); err != nil {
 		return err
 	}
-	plugins, interpret, err := configurationNormalizePluginsWithOutputValidator(ctx, pair, output.CheckUnchanged, model, nil, outputhost.NewPublicValidator)
+	plugins, routes, err := configurationNormalizePluginsWithOutputValidator(ctx, pair, output.CheckUnchanged, model, true, nil, outputhost.NewPublicValidator)
 	if err != nil {
 		return err
 	}
-	if interpret != nil {
-		installed.ConfigurationValidator = core.NewPublicConfigurationValidator(interpret)
+	if routes != nil {
+		installed.ConfigurationValidator = routes
 	}
 	pins, err := replacementObservationPins(pair, model)
 	if err != nil {
@@ -124,7 +124,7 @@ func maintenanceReadback(ctx context.Context, trusted *configuration.Pair, readb
 	if model.Maintenance == nil {
 		return core.MaintenanceReadback{}, configuration.ErrEdit
 	}
-	if _, _, err := configurationNormalizePluginsWithOutputValidator(ctx, trusted, checkSource, model, plugins, outputhost.NewPublicValidator); err != nil {
+	if _, _, err := configurationNormalizePluginsWithOutputValidator(ctx, trusted, checkSource, model, true, plugins, outputhost.NewPublicValidator); err != nil {
 		return core.MaintenanceReadback{}, err
 	}
 	metadata := model.Maintenance

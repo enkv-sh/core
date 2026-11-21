@@ -3,6 +3,7 @@ package core
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"errors"
 	"reflect"
 	"slices"
@@ -14,7 +15,7 @@ import (
 
 // PublicOutputInterpreter receives bounded public source facts after the
 // composition admits the selected installed implementation. It grants no effect
-// permission and is unnecessary for complete canonical or stored targets.
+// permission. Authenticated stored targets can be read without an interpreter.
 type PublicOutputInterpreter func(context.Context, string, contract.OutputDestination, string, uint8) (contract.OutputTarget, error)
 
 // ErrPublicOutputUnavailable reports required target facts that the selected
@@ -25,7 +26,10 @@ type PublicOutputError struct{ Field contract.DiagnosticField }
 
 func (e PublicOutputError) Error() string { return "public output field refused" }
 
-type PublicConfigurationValidator struct{ interpret PublicOutputInterpreter }
+type PublicConfigurationValidator struct {
+	interpret     PublicOutputInterpreter
+	checkedRoutes contract.ID
+}
 
 // The result owns all returned mutable bytes and collections. Valid/Complete
 // report this call only and cannot serve as Reader admission or trusted state.
@@ -34,10 +38,33 @@ type PublicConfigurationValidation struct {
 	Diagnostics         []contract.Diagnostic
 	Valid, Complete     bool
 	DiagnosticsComplete bool
+	checkedRoutes       contract.ID
 }
 
 func NewPublicConfigurationValidator(interpret PublicOutputInterpreter) *PublicConfigurationValidator {
 	return &PublicConfigurationValidator{interpret: interpret}
+}
+
+// CheckedRouteValidator rechecks the exact public routing facts after the
+// source plugin has joined. The digest is captured during successful proposal
+// validation, independently of subsequent modifications to Configuration.
+func (r PublicConfigurationValidation) CheckedRouteValidator() *PublicConfigurationValidator {
+	if r.checkedRoutes.IsZero() {
+		return nil
+	}
+	return &PublicConfigurationValidator{checkedRoutes: r.checkedRoutes}
+}
+
+func publicRoutingDigest(c *contract.PublicConfiguration) contract.ID {
+	h := sha256.New()
+	hashPublicSemantic(h, reflect.ValueOf(c.Store.DomainID))
+	hashPublicSemantic(h, reflect.ValueOf(c.OutputBindings))
+	hashPublicSemantic(h, reflect.ValueOf(c.Routing))
+	for _, entry := range c.Entries.Value {
+		hashPublicSemantic(h, reflect.ValueOf(entry.Name))
+		hashPublicSemantic(h, reflect.ValueOf(entry.OutputEncoding))
+	}
+	return contract.ID(h.Sum(nil))
 }
 
 type publicConfigurationCheck struct {
@@ -243,6 +270,16 @@ func publicIDsReason(ids []contract.ID) contract.DiagnosticReason {
 // Validate borrows stable input through capture and returns independently owned
 // public facts. Callers must not change its backing while this call runs.
 func (v *PublicConfigurationValidator) Validate(ctx context.Context, input contract.PublicConfiguration) PublicConfigurationValidation {
+	return v.validate(ctx, input, false)
+}
+
+// ValidateProposed verifies every routed target against its installed output
+// interpreter before a caller can admit routing from a proposed configuration.
+func (v *PublicConfigurationValidator) ValidateProposed(ctx context.Context, input contract.PublicConfiguration) PublicConfigurationValidation {
+	return v.validate(ctx, input, true)
+}
+
+func (v *PublicConfigurationValidator) validate(ctx context.Context, input contract.PublicConfiguration, verifyOffered bool) PublicConfigurationValidation {
 	c := publicConfigurationCheck{ctx: ctx, result: PublicConfigurationValidation{Valid: true, Complete: true, DiagnosticsComplete: true}}
 	configuration := contract.DiagnosticSubject{Kind: contract.SubjectConfiguration}
 	if ctx == nil {
@@ -265,12 +302,12 @@ func (v *PublicConfigurationValidator) Validate(ctx context.Context, input contr
 		c.add(configuration, contract.FieldPresence, contract.ReasonLimitExceeded, nil)
 		return c.result
 	}
-	return v.validateOwned(ctx, ownPublicConfiguration(input))
+	return v.validateOwned(ctx, ownPublicConfiguration(input), verifyOffered)
 }
 
 // validateOwned consumes exclusively owned, bounded backing. It runs the same
 // field owners as Validate without making a second complete projection.
-func (v *PublicConfigurationValidator) validateOwned(ctx context.Context, owned contract.PublicConfiguration) PublicConfigurationValidation {
+func (v *PublicConfigurationValidator) validateOwned(ctx context.Context, owned contract.PublicConfiguration, verifyOffered bool) PublicConfigurationValidation {
 	c := publicConfigurationCheck{ctx: ctx, result: PublicConfigurationValidation{Valid: true, Complete: true, DiagnosticsComplete: true}}
 	configuration := contract.DiagnosticSubject{Kind: contract.SubjectConfiguration}
 	if ctx == nil {
@@ -324,7 +361,15 @@ func (v *PublicConfigurationValidator) validateOwned(ctx context.Context, owned 
 		}
 	}
 	if c.result.Valid && c.result.Complete && ctx.Err() == nil {
-		if !v.normalizePublicOutputs(&c, &owned) {
+		interpretRoutes := verifyOffered
+		if verifyOffered && !v.checkedRoutes.IsZero() {
+			if publicRoutingDigest(&owned) != v.checkedRoutes {
+				c.add(configuration, contract.FieldTargets, contract.ReasonInvalidInput, nil)
+				return c.result
+			}
+			interpretRoutes = false
+		}
+		if !v.normalizePublicOutputs(&c, &owned, interpretRoutes) {
 			slices.SortFunc(c.result.Diagnostics, comparePublicDiagnostics)
 			return c.result
 		}
@@ -336,6 +381,9 @@ func (v *PublicConfigurationValidator) validateOwned(ctx context.Context, owned 
 	slices.SortFunc(c.result.Diagnostics, comparePublicDiagnostics)
 	c.cleanConfiguration(&owned)
 	c.result.Configuration = owned
+	if verifyOffered && c.result.Valid && c.result.Complete && c.result.DiagnosticsComplete {
+		c.result.checkedRoutes = publicRoutingDigest(&owned)
+	}
 	return c.result
 }
 

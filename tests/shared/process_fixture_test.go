@@ -1042,7 +1042,7 @@ func installFreshGeneratedOutputSources(t testing.TB, s *StateSession, bindings 
 					continue
 				}
 				for _, offered := range previous.targets {
-					if offered.entryName == named.Name && !outputApplyTargetsEqual(offered.target, named.Target) {
+					if offered.entryName == named.Name && !offered.target.Equal(named.Target) {
 						t.Fatal("fresh generated output sources conflict for one entry")
 					}
 				}

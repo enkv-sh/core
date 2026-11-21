@@ -164,7 +164,8 @@ func parseRoute(p *parser, m *Model, route Route, charge *uint64) {
 	m.Routes = append(m.Routes, route)
 }
 
-func outputTargetEntries(m *Model) (map[string]map[string]bool, error) {
+// OutputTargetEncodings returns the effective entry encodings for each destination.
+func (m *Model) OutputTargetEncodings() (map[string]map[string]uint8, error) {
 	invalid := func() error { return sourceError("outputs", "invalid-output-reference") }
 	entries := make(map[string]bool, len(m.Entries))
 	for _, entry := range m.Entries {
@@ -196,9 +197,9 @@ func outputTargetEntries(m *Model) (map[string]map[string]bool, error) {
 		}
 		routes[key] = route.Destinations
 	}
-	needed := make(map[string]map[string]bool, len(destinations))
+	needed := make(map[string]map[string]uint8, len(destinations))
 	for id := range destinations {
-		needed[id] = make(map[string]bool)
+		needed[id] = make(map[string]uint8)
 	}
 	targetCount := 0
 	for _, entry := range m.Entries {
@@ -211,14 +212,14 @@ func outputTargetEntries(m *Model) (map[string]map[string]bool, error) {
 			if targetCount > contract.MaxOutputTargets {
 				return nil, invalid()
 			}
-			needed[id][entry.Name] = true
+			needed[id][entry.Name] = entry.OutputEncoding
 		}
 	}
 	return needed, nil
 }
 
 func validateOutputReferences(m *Model) error {
-	_, err := outputTargetEntries(m)
+	_, err := m.OutputTargetEncodings()
 	if err != nil {
 		return err
 	}

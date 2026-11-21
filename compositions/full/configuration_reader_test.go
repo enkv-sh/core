@@ -183,6 +183,55 @@ func configurationReaderPair(t *testing.T, family string, format configuration.F
 	return configurationReaderSource{pair: pair, path: path, generated: generatedPath, editableBytes: bytes.Clone(editableBody), generatedBytes: generatedBody, archive: fixture.Archive}
 }
 
+func configurationReaderPairWithOutputs(t *testing.T, family string, format configuration.Format, edit func(map[string]any, map[string]any)) configurationReaderSource {
+	t.Helper()
+	return configurationReaderPair(t, family, format, func(editable, generated map[string]any) {
+		for id, destination := range editable["outputs"].(map[string]any)["destinations"].(map[string]any) {
+			destination.(map[string]any)["plugin"] = "fixture-" + id
+		}
+		if edit != nil {
+			edit(editable, generated)
+		}
+	})
+}
+
+// The archived selections use fixture-specific output contracts. Derive their
+// targets from the installed fixture profiles, independently of the companion.
+func compareReaderFixture(ctx context.Context, request contract.ID, trusted, candidate *configuration.Pair, open func(context.Context, ReaderConfig) (*core.ReaderEngine, error)) ConfigurationComparisonResult {
+	correlation, err := newConfigurationComparisonResult(request, trusted.Format)
+	if err != nil {
+		return correlation
+	}
+	return compareConfigurationWithIdentity(ctx, request, trusted, candidate, open, validateReaderFixtureSource, correlation)
+}
+
+func validateReaderFixtureSource(ctx context.Context, trusted, source *configuration.Pair, model *configuration.Model, proposed bool) (core.PublicConfigurationValidation, func(context.Context, core.PublicationPolicyActionInput) (uint8, error), *core.PublicConfigurationValidator, error) {
+	if err := configurationNormalizationSourceCheck(trusted, source)(ctx); err != nil {
+		return core.PublicConfigurationValidation{}, nil, nil, err
+	}
+	validator := core.NewPublicConfigurationValidator(func(ctx context.Context, id string, destination contract.OutputDestination, name string, encoding uint8) (contract.OutputTarget, error) {
+		for _, binding := range model.Outputs {
+			if binding.DestinationID == id && binding.Plugin == "fixture-"+id {
+				return readerFixtureInterpretOutput(ctx, id, destination, name, encoding)
+			}
+		}
+		return contract.OutputTarget{}, core.ErrPublicOutputUnavailable
+	})
+	check := validator.Validate
+	if proposed {
+		check = validator.ValidateProposed
+	}
+	result := check(ctx, model.Public)
+	model.Public = result.Configuration
+	result.Configuration = contract.PublicConfiguration{}
+	return result, nil, result.CheckedRouteValidator(), nil
+}
+
+func configurationReaderWithoutOutputs(editable, generated map[string]any) {
+	editable["outputs"] = map[string]any{"destinations": map[string]any{}, "routing": map[string]any{"default": []string{}}}
+	generated["canonical_records"].(map[string]any)["outputs"] = map[string]any{}
+}
+
 func configurationReaderKey(key contract.KMSBinding) map[string]any {
 	protection := "software"
 	if key.ProtectionClass == contract.HardwareProtection {
@@ -250,6 +299,23 @@ func configurationReaderInvalidBinding(t *testing.T, generated map[string]any, i
 	return map[string]any{"plugin": nil, "canonical": map[string]any{"settings": json.RawMessage(binding.Destination.CanonicalSettings)}}
 }
 
+func configurationReaderConflictingTargets(t *testing.T, editable, generated map[string]any, id string) {
+	t.Helper()
+	outputs := editable["outputs"].(map[string]any)
+	routes := outputs["routing"].(map[string]any)
+	routes["entries"] = map[string]any{"secret": []string{"first", id}}
+	for _, name := range []string{"first", id} {
+		profile := readerFixtureProfiles("secret")[1]
+		binding := contract.NormalOutputBinding{DestinationID: name, Destination: readerFixtureDestination(profile), Targets: []contract.NormalOutputTarget{{Name: "secret", Target: readerFixtureOutputTarget(profile, contract.OutputEncodingRaw)}}}
+		body, err := contract.EncodeNormalOutputBinding(binding)
+		if err != nil {
+			t.Fatal(err)
+		}
+		outputs["destinations"].(map[string]any)[name] = map[string]any{"plugin": nil, "canonical": map[string]any{"settings": json.RawMessage(binding.Destination.CanonicalSettings)}}
+		configurationCanonicalBacking(generated, "outputs", name, body)
+	}
+}
+
 // full_only: false
 func TestConfigurationPairReaderComparesExactPublicMeaning(t *testing.T) {
 	for _, family := range []string{"aws", "gcp"} {
@@ -257,13 +323,13 @@ func TestConfigurationPairReaderComparesExactPublicMeaning(t *testing.T) {
 			t.Run(fmt.Sprintf("%s/%d", family, format), func(t *testing.T) {
 				t.Setenv("GOOGLE_API_USE_CLIENT_CERTIFICATE", "false")
 				t.Setenv("EXPERIMENTAL_GOOGLE_API_USE_S2A", "false")
-				source := configurationReaderPair(t, family, format, nil)
+				source := configurationReaderPairWithOutputs(t, family, format, nil)
 				h := &readerHTTPFixture{archive: source.archive, reads: map[string]int{}}
 				calls := 0
 				open := configurationReaderOpener(t, source, h, &calls)
 				ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 				defer cancel()
-				result := compareConfiguration(ctx, contract.Hash([]byte("pair Reader match")), source.pair, nil, open)
+				result := compareReaderFixture(ctx, contract.Hash([]byte("pair Reader match")), source.pair, nil, open)
 				if result.Verdict != contract.ComparisonMatch || result.StateResult != contract.ReaderSuccess || len(result.Diagnostics) != 0 || calls != 1 || result.Observation == nil {
 					t.Fatalf("complete pair comparison failed: verdict=%s state=%s diagnostics=%+v calls=%d", result.Verdict, result.StateResult, result.Diagnostics, calls)
 				}
@@ -336,8 +402,8 @@ func TestCandidatePairCannotReplaceTrustedConstruction(t *testing.T) {
 		t.Run(family, func(t *testing.T) {
 			t.Setenv("GOOGLE_API_USE_CLIENT_CERTIFICATE", "false")
 			t.Setenv("EXPERIMENTAL_GOOGLE_API_USE_S2A", "false")
-			baseline := configurationReaderPair(t, family, configuration.JSON, nil)
-			candidate := configurationReaderPair(t, family, configuration.YAML, func(editable, generated map[string]any) {
+			baseline := configurationReaderPairWithOutputs(t, family, configuration.JSON, nil)
+			candidate := configurationReaderPairWithOutputs(t, family, configuration.YAML, func(editable, generated map[string]any) {
 				editable["domain"].(map[string]any)["store"].(map[string]any)["bucket"] = "different-bucket"
 				generated["public_basis"].(map[string]any)["descriptor"] = []byte{1}
 			})
@@ -346,7 +412,7 @@ func TestCandidatePairCannotReplaceTrustedConstruction(t *testing.T) {
 			open := configurationReaderOpener(t, baseline, h, &calls)
 			ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 			defer cancel()
-			result := compareConfiguration(ctx, contract.Hash([]byte("candidate cannot replace baseline")), baseline.pair, candidate.pair, open)
+			result := compareReaderFixture(ctx, contract.Hash([]byte("candidate cannot replace baseline")), baseline.pair, candidate.pair, open)
 			expected := []contract.ComparisonChange{{Subject: contract.DiagnosticSubject{Kind: contract.SubjectStore}, Path: []contract.DiagnosticField{contract.FieldBucket}, Action: contract.ComparisonChanged, Before: proposedSide(contract.ComparisonText(baseline.archive.Location.Bucket)), After: proposedSide(contract.ComparisonText("different-bucket"))}}
 			if result.Verdict != contract.ComparisonMismatch || result.StateResult != contract.ReaderSuccess || calls != 1 || len(result.Diagnostics) != 0 || !reflect.DeepEqual(result.Changes, expected) {
 				t.Fatal("candidate altered verification or lost desired difference", result.Verdict, result.StateResult, result.Diagnostics)
@@ -408,6 +474,7 @@ func TestConfigurationPairRefusalsPrecedeCredentialConstruction(t *testing.T) {
 func TestConfigurationPairInstalledValidationPrecedesCredentials(t *testing.T) {
 	current := func(t testing.TB, edit func(map[string]any, map[string]any)) func(map[string]any, map[string]any) {
 		return func(editable, generated map[string]any) {
+			configurationReaderWithoutOutputs(editable, generated)
 			basis := generated["public_basis"].(map[string]any)
 			descriptor, err := contract.DecodeGenesisDescriptorCore(basis["descriptor"].([]byte))
 			if err != nil {
@@ -424,16 +491,27 @@ func TestConfigurationPairInstalledValidationPrecedesCredentials(t *testing.T) {
 		}
 	}
 	invalid := func(editable, generated map[string]any) {
-		editable["outputs"].(map[string]any)["destinations"].(map[string]any)["unused-invalid"] = configurationReaderInvalidBinding(t, generated, "unused-invalid")
+		configurationReaderConflictingTargets(t, editable, generated, "second-candidate")
 	}
 	invalidTrusted := func(editable, generated map[string]any) {
-		invalid(editable, generated)
-		destinations := editable["outputs"].(map[string]any)["destinations"].(map[string]any)
-		destinations["unused-trusted"] = configurationReaderInvalidBinding(t, generated, "unused-trusted")
-		delete(destinations, "unused-invalid")
-		delete(generated["canonical_records"].(map[string]any)["outputs"].(map[string]any), "unused-invalid")
+		configurationReaderConflictingTargets(t, editable, generated, "second-trusted")
 	}
 	for _, family := range []string{"aws", "gcp"} {
+		t.Run(family+"/stale-targets-without-selection", func(t *testing.T) {
+			trusted := configurationReaderPair(t, family, configuration.JSON, current(t, func(editable, generated map[string]any) {
+				editable["outputs"].(map[string]any)["destinations"].(map[string]any)["previous"] = configurationReaderInvalidBinding(t, generated, "previous")
+			}))
+			ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
+			defer cancel()
+			got := compareConfiguration(ctx, contract.Hash([]byte("missing selection for obsolete inventory")), trusted.pair, nil, func(context.Context, ReaderConfig) (*core.ReaderEngine, error) {
+				t.Fatal("unresolved source opened credentials")
+				return nil, ErrCell
+			})
+			if got.StateResult != contract.ReaderUnavailable || got.Observation != nil || !got.DiagnosticsComplete || len(got.Diagnostics) != 1 || got.Diagnostics[0].Reason != contract.ReasonPublicFactUnavailable || got.Diagnostics[0].Subject.DestinationID != "previous" {
+				t.Fatal("obsolete target inventory became current source evidence", got.StateResult, got.Diagnostics)
+			}
+			trusted.assertUnchanged(t)
+		})
 		t.Run(family+"/valid-control", func(t *testing.T) {
 			trusted := configurationReaderPair(t, family, configuration.JSON, current(t, nil))
 			ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
@@ -487,13 +565,13 @@ func TestConfigurationPairInstalledValidationPrecedesCredentials(t *testing.T) {
 				if calls != 0 || result.StateResult != contract.ReaderRefused || result.Verdict != contract.ComparisonUnable || result.Observation != nil || result.Context.ExpectedDomain != baseline.DomainID {
 					t.Fatal("parseable invalid installed-profile source reached credentials or lost source refusal", calls, result.StateResult, result.Verdict)
 				}
-				unresolvedReference, trustedFact, candidateFact := false, false, false
+				conflict, trustedFact, candidateFact := false, false, false
 				for _, diagnostic := range result.Diagnostics {
-					unresolvedReference = unresolvedReference || diagnostic.Reason == contract.ReasonUnresolvedReference
-					trustedFact = trustedFact || diagnostic.Subject.DestinationID == "unused-trusted"
-					candidateFact = candidateFact || diagnostic.Subject.DestinationID == "unused-invalid"
+					conflict = conflict || diagnostic.Reason == contract.ReasonDuplicateKey
+					trustedFact = trustedFact || diagnostic.Subject.DestinationID == "second-trusted"
+					candidateFact = candidateFact || diagnostic.Subject.DestinationID == "second-candidate"
 				}
-				if !unresolvedReference || !result.DiagnosticsComplete || condition == "trusted-and-candidate-invalid" && (!trustedFact || !candidateFact) {
+				if !conflict || !result.DiagnosticsComplete || condition == "trusted-and-candidate-invalid" && (!trustedFact || !candidateFact) {
 					t.Fatal("source validation diagnostic priority or independent source facts lost")
 				}
 				for _, scope := range result.CheckedScope {
@@ -582,8 +660,8 @@ func TestConfigurationSourceRefusalPreservesCorePriorityAndOwnedDiagnostics(t *t
 
 // full_only: false
 func TestConfigurationPairLateProofFailureDiscardsPublicDifferences(t *testing.T) {
-	baseline := configurationReaderPair(t, "aws", configuration.JSON, nil)
-	candidate := configurationReaderPair(t, "aws", configuration.JSON, func(editable, generated map[string]any) {
+	baseline := configurationReaderPairWithOutputs(t, "aws", configuration.JSON, nil)
+	candidate := configurationReaderPairWithOutputs(t, "aws", configuration.JSON, func(editable, generated map[string]any) {
 		editable["entries"].(map[string]any)["a/\n雪"].(map[string]any)["source"].(map[string]any)["bytes"] = []byte{0, 10, 66}
 	})
 	h := &readerHTTPFixture{archive: baseline.archive, reads: map[string]int{}}
@@ -591,7 +669,7 @@ func TestConfigurationPairLateProofFailureDiscardsPublicDifferences(t *testing.T
 	open := configurationReaderOpener(t, baseline, h, &calls)
 	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
-	first := compareConfiguration(ctx, contract.Hash([]byte("complete candidate comparison")), baseline.pair, candidate.pair, open)
+	first := compareReaderFixture(ctx, contract.Hash([]byte("complete candidate comparison")), baseline.pair, candidate.pair, open)
 	if first.Verdict != contract.ComparisonMismatch {
 		t.Fatal("fixture lacks public difference", first.Verdict)
 	}
@@ -601,7 +679,7 @@ func TestConfigurationPairLateProofFailureDiscardsPublicDifferences(t *testing.T
 		t.Fatal("fixture did not reach late required child")
 	}
 	h.reset(false, outputKey, count)
-	failed := compareConfiguration(ctx, contract.Hash([]byte("late source comparison proof failure")), baseline.pair, candidate.pair, open)
+	failed := compareReaderFixture(ctx, contract.Hash([]byte("late source comparison proof failure")), baseline.pair, candidate.pair, open)
 	expected := []contract.Diagnostic{{Subject: contract.DiagnosticSubject{Kind: contract.SubjectObservation}, Path: []contract.DiagnosticField{contract.FieldPresence}, Outcome: contract.DiagnosticUnable, Reason: contract.ReasonSelectedObjectInvalid}}
 	if failed.Verdict != contract.ComparisonUnable || failed.StateResult != contract.ReaderPositiveDefect || failed.Observation == nil || !reflect.DeepEqual(failed.Diagnostics, expected) {
 		t.Fatal("late child failure retained a provisional difference", failed.Verdict, failed.StateResult, failed.Diagnostics)

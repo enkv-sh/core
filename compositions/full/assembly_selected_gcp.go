@@ -20,6 +20,7 @@ type Config struct {
 	GCP    *compositiongcp.Config
 }
 type ReaderConfig struct {
+	checkedRoutes           *core.PublicConfigurationValidator
 	SelectPolicyAction      func(context.Context, core.PublicationPolicyActionInput) (uint8, error)
 	InterpretOutput         core.PublicOutputInterpreter
 	Family                  contract.Family

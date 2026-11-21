@@ -388,7 +388,8 @@ func TestReconstructionConfigurationEmitsAuthenticatedCompletePair(t *testing.T)
 				calls := 0
 				open := configurationReaderOpener(t, baseline, h, &calls)
 				ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
-				compared := compareConfiguration(ctx, contract.Hash([]byte("reconstructed pair comparison")), pair, nil, open)
+				candidate := configurationReaderPairWithOutputs(t, family, encoding, nil)
+				compared := compareReaderFixture(ctx, contract.Hash([]byte("reconstructed pair comparison")), pair, candidate.pair, open)
 				cancel()
 				if compared.Verdict != contract.ComparisonMatch || compared.StateResult != contract.ReaderSuccess || len(compared.Diagnostics) != 0 || calls != 1 || compared.Observation == nil {
 					t.Fatal("emitted pair did not match installed current state", compared.Verdict, compared.StateResult, compared.Diagnostics)

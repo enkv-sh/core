@@ -62,7 +62,7 @@ func (s *StateSession) maintenanceSourceFeasibility(ctx context.Context, request
 	if validator == nil {
 		return refused(AdmissionInvalid)
 	}
-	validation := validator.Validate(ctx, public)
+	validation := validator.ValidateProposed(ctx, public)
 	if !validation.Valid || !validation.Complete || !validation.DiagnosticsComplete {
 		return refused(InvalidIntent)
 	}

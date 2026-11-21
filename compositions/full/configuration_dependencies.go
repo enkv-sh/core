@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"maps"
 	"slices"
 	"strings"
 
@@ -237,7 +238,7 @@ func configurationCanonicalDependencyChecks(ctx context.Context, pair *configura
 		}
 		err = errors.Join(err, checkSource())
 		if err != nil {
-			if (errors.Is(err, generatorhost.ErrPassiveRefused) || errors.Is(err, outputhost.ErrPassiveRefused)) && !configurationPluginUnavailable(err) && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) && !errors.Is(err, plugininstallation.ErrSourceChanged) {
+			if (errors.Is(err, generatorhost.ErrPassiveRefused) || errors.Is(err, outputhost.ErrPassiveRefused) || errors.Is(err, contract.ErrRecord)) && !configurationPluginUnavailable(err) && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) && !errors.Is(err, plugininstallation.ErrSourceChanged) {
 				facts.refused = true
 			} else {
 				facts.unavailable = true
@@ -276,6 +277,10 @@ func configurationCanonicalDependencyChecks(ctx context.Context, pair *configura
 			return configurationNormalizeGenerator(ctx, validator, generatorprotocol.ID{}, g)
 		})
 	}
+	routes, err := model.OutputTargetEncodings()
+	if err != nil {
+		return results, errors.Join(resultErr, err)
+	}
 	for _, binding := range model.Outputs {
 		if binding.Plugin == "" || binding.Settings != nil {
 			continue
@@ -298,8 +303,32 @@ func configurationCanonicalDependencyChecks(ctx context.Context, pair *configura
 			if err != nil {
 				return err
 			}
-			_, err = validator.ValidateCanonical(ctx, outputprotocol.CanonicalRequest{Schema: 1, DeadlineUnixMillis: deadline, Destination: configurationProtocolDestination(binding.Binding.Destination)})
-			return err
+			if _, err := validator.ValidateCanonical(ctx, outputprotocol.CanonicalRequest{Schema: 1, DeadlineUnixMillis: deadline, Destination: configurationProtocolDestination(binding.Binding.Destination)}); err != nil {
+				return err
+			}
+			at := slices.IndexFunc(model.Public.OutputBindings.Value, func(row contract.PublicOutputBinding) bool { return row.DestinationID == binding.DestinationID })
+			if at < 0 {
+				return contract.ErrRecord
+			}
+			offered := model.Public.OutputBindings.Value[at].Targets
+			encodings := routes[binding.DestinationID]
+			names := slices.Sorted(maps.Keys(encodings))
+			if offered.State == contract.PublicPresent && len(offered.Value) != len(names) {
+				return contract.ErrRecord
+			}
+			for i, name := range names {
+				if err := checkSource(); err != nil {
+					return err
+				}
+				target, err := configurationInterpretOutput(ctx, validator, binding.Binding.Destination, name, encodings[name])
+				if err != nil {
+					return err
+				}
+				if offered.State == contract.PublicPresent && (offered.Value[i].EntryName != name || !target.Equal(configurationCanonicalTarget(offered.Value[i]))) {
+					return contract.ErrRecord
+				}
+			}
+			return nil
 		})
 	}
 	return results, resultErr

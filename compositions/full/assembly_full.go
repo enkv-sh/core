@@ -26,6 +26,7 @@ type Config struct {
 
 // ReaderConfig fixes one GET-only provider and its passive interpretation.
 type ReaderConfig struct {
+	checkedRoutes           *core.PublicConfigurationValidator
 	SelectPolicyAction      func(context.Context, core.PublicationPolicyActionInput) (uint8, error)
 	InterpretOutput         core.PublicOutputInterpreter
 	Family                  contract.Family

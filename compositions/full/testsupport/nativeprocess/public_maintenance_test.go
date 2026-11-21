@@ -134,7 +134,9 @@ func TestPublicNativeMaintenancePreservesPluginSettingsAndCanonicalMeaning(t *te
 				if len(delivered.Outputs) != 1 || !bytes.Equal(delivered.Outputs[0].Settings, model.Outputs[0].Settings) || !reflect.DeepEqual(delivered.Outputs[0].Binding, model.Outputs[0].Binding) || delivered.Outputs[0].Plugin != model.Outputs[0].Plugin {
 					t.Fatal("successor rewrote exact output source meaning")
 				}
-				observed := f.run(t, "reader", true, nil, args...)
+				// A fresh Reader has the exact source and successor but no local plugin installation.
+				observed := workflowRun(t, f.store, cli, "reader", observer.Policy{NoKMS: true}, nil, args...)
+				f.children = append(f.children, observed)
 				var result struct {
 					State       string `json:"state_result"`
 					Usability   string `json:"source_usability"`

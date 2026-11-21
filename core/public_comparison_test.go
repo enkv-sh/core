@@ -441,7 +441,7 @@ func TestPublicComparisonRequestMeaningAndOwnedValidation(t *testing.T) {
 	input := publicConfigurationFixture(t)
 	owned := ownPublicConfiguration(input)
 	key := owned.Authority.Signing.PublicKey.Value
-	got := v.validateOwned(context.Background(), owned)
+	got := v.validateOwned(context.Background(), owned, false)
 	if !got.Valid || !got.Complete || len(got.Diagnostics) != 0 || unsafe.SliceData(got.Configuration.Authority.Signing.PublicKey.Value) != unsafe.SliceData(key) {
 		t.Fatal("exclusive validation cloned or changed meaning")
 	}

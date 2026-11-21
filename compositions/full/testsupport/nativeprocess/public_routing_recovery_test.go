@@ -21,7 +21,7 @@ func TestPublicNativeRecoveredRoutingKeepsOverridesAfterDefaultChange(t *testing
 	binaries := buildNativeOutputExecutables(t, output.server.URL)
 	binaries.nativePluginFixture = newNativePluginFixture(t, append(slices.Clone(binaries.builds), nativeManifestProductionBuild(t))...)
 	s := newWorkflowServer(t, "aws", false)
-	s.childLimit, s.childRequestLimit, s.objectLimit = 13, 2048, 512
+	s.childLimit, s.childRequestLimit, s.objectLimit = 14, 2048, 512
 	const account, project, owner = "000000000001", "900000000001", "routing"
 	source := filepath.Join(t.TempDir(), "configuration.json")
 	if err := os.WriteFile(source, workflowSetup(t, s, false), 0600); err != nil {
@@ -99,6 +99,18 @@ func TestPublicNativeRecoveredRoutingKeepsOverridesAfterDefaultChange(t *testing
 			t.Fatal("reconstruction did not preserve canonical output settings without plugin selection")
 		}
 	}
+	unselected := workflowRunEnvironment(t, s, binaries.cli, "reader", observer.Policy{NoKMS: true}, nil, environment, "plan", "--trusted", recovered, "--trusted-format", "json", "--json")
+	var unavailable workflowOutput
+	if err := json.Unmarshal(unselected.out, &unavailable); err != nil || unselected.code != 3 || unavailable.State != "unavailable" || unavailable.Payload.Verdict != string(contract.ComparisonUnable) || !unavailable.Payload.DiagnosticsComplete || unavailable.Observation.Revision != "" {
+		t.Fatal("recovered local route without a selected plugin received the wrong admission result", unselected.code, unavailable.State)
+	}
+	for _, event := range unselected.capture.Events {
+		if event.Kind == "http-start" || event.Kind == "plaintext" || event.Kind == "recovery-plaintext" {
+			t.Fatal("local route refusal reached a domain or private operation", event.Kind)
+		}
+	}
+	workflowUnchanged(t, recovered, pair)
+	children = append(children, unselected)
 	nativePublicationSource(t, recovered, func(value map[string]any) {
 		for id, raw := range value["outputs"].(map[string]any)["destinations"].(map[string]any) {
 			plugin := "gcp-secret-manager"
@@ -174,7 +186,7 @@ func TestPublicNativeRecoveredRoutingKeepsOverridesAfterDefaultChange(t *testing
 	manifest("repository")
 	workflowUnchanged(t, recovered, pending)
 	_, afterConsumers := workflowHead(t, s)
-	if !reflect.DeepEqual(afterConsumers, afterApply) || s.objectCount() != objectsAfterApply || output.effectCount() != 0 || s.children != 13 {
+	if !reflect.DeepEqual(afterConsumers, afterApply) || s.objectCount() != objectsAfterApply || output.effectCount() != 0 || s.children != 14 {
 		t.Fatal("routing consumers changed selected state, reached an output service or lost a child")
 	}
 	for _, child := range children {
@@ -183,7 +195,7 @@ func TestPublicNativeRecoveredRoutingKeepsOverridesAfterDefaultChange(t *testing
 		}
 	}
 	nativePublicationNoEffects(t, binaries, beforeEffects)
-	nativeMaterializationJoined(t, children, 13)
+	nativeMaterializationJoined(t, children, 14)
 	s.clean(t)
 }
 

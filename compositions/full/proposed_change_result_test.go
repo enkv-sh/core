@@ -93,13 +93,13 @@ func TestProposedChangeJSONIncludesCompleteMembershipDelta(t *testing.T) {
 
 func proposedChangeComparison(t *testing.T, edit func(map[string]any, map[string]any)) (ConfigurationComparisonResult, *readerHTTPFixture, configurationReaderSource, configurationReaderSource) {
 	t.Helper()
-	baseline := configurationReaderPair(t, "aws", configuration.JSON, nil)
-	candidate := configurationReaderPair(t, "aws", configuration.YAML, edit)
+	baseline := configurationReaderPairWithOutputs(t, "aws", configuration.JSON, nil)
+	candidate := configurationReaderPairWithOutputs(t, "aws", configuration.YAML, edit)
 	h := &readerHTTPFixture{archive: baseline.archive, reads: map[string]int{}}
 	calls := 0
 	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
-	result := compareConfiguration(ctx, contract.Hash([]byte(t.Name())), baseline.pair, candidate.pair, configurationReaderOpener(t, baseline, h, &calls))
+	result := compareReaderFixture(ctx, contract.Hash([]byte(t.Name())), baseline.pair, candidate.pair, configurationReaderOpener(t, baseline, h, &calls))
 	if calls != 1 {
 		t.Fatalf("comparison opened %d readers", calls)
 	}

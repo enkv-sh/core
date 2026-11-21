@@ -70,10 +70,16 @@ func TestConfigurationRequirementComparisonPreservesSourceFacts(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(configDirectory, "enkv", "plugins.json"), []byte("invalid settings must not be read"), 0600); err != nil {
 				t.Fatal(err)
 			}
-			trusted := configurationReaderPair(t, "aws", configuration.JSON, func(editable, _ map[string]any) {
+			trusted := configurationReaderPairWithOutputs(t, "aws", configuration.JSON, func(editable, generated map[string]any) {
+				if condition.private {
+					configurationReaderWithoutOutputs(editable, generated)
+				}
 				editable["plugins"] = map[string]any{"generic-json": map[string]any{"version": "1.0.0"}}
 			})
-			candidate := configurationReaderPair(t, "aws", configuration.JSON, func(editable, _ map[string]any) {
+			candidate := configurationReaderPairWithOutputs(t, "aws", configuration.JSON, func(editable, generated map[string]any) {
+				if condition.private {
+					configurationReaderWithoutOutputs(editable, generated)
+				}
 				editable["plugins"] = map[string]any{
 					"aws-secrets-manager":      map[string]any{},
 					"cloudflare-account-token": map[string]any{"version": "3.0.0"},
@@ -110,7 +116,7 @@ func TestConfigurationRequirementComparisonPreservesSourceFacts(t *testing.T) {
 						return nil, errors.New("controlled Reader construction failure")
 					}
 				}
-				result := compareConfiguration(ctx, requestID, trusted.pair, proposed, open)
+				result := compareReaderFixture(ctx, requestID, trusted.pair, proposed, open)
 				if condition.fail {
 					if result.StateResult != contract.ReaderUnavailable || result.Verdict != contract.ComparisonUnable || ComparisonExitCode(result) != 3 {
 						t.Fatal("source preferences changed public failure facts", result)

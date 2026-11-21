@@ -6,7 +6,6 @@ import (
 	"errors"
 
 	"enkv.sh/compositions/configuration"
-	"enkv.sh/compositions/outputhost"
 	"enkv.sh/core"
 	"enkv.sh/core/contract"
 )
@@ -21,18 +20,11 @@ func observeMaintenanceConfiguration(ctx context.Context, nonce contract.ID, sou
 	if err != nil {
 		return result, err
 	}
-	plugins, _, err := configurationNormalizePluginsWithOutputValidator(ctx, source, output.CheckUnchanged, baseline, nil, outputhost.NewPublicValidator)
-	if err != nil {
-		return result, err
-	}
 	sourcePins, err := replacementObservationPins(source, baseline)
 	if err != nil {
 		return result, err
 	}
 	existing := output.Existing()
-	if _, _, err := configurationNormalizePluginsWithOutputValidator(ctx, source, output.CheckUnchanged, existing, plugins, outputhost.NewPublicValidator); err != nil {
-		return result, err
-	}
 	identity, err := output.OutputIdentity()
 	if err != nil {
 		return result, err
@@ -42,7 +34,7 @@ func observeMaintenanceConfiguration(ctx context.Context, nonce contract.ID, sou
 	if err != nil {
 		return result, err
 	}
-	apply, _, err := configurationApplyInput(existing)
+	apply, _, err := configurationApplyAccess(existing)
 	if err != nil {
 		return result, err
 	}

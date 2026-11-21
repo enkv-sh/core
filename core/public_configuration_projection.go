@@ -186,7 +186,7 @@ func projectSelectedPublicConfiguration(ctx context.Context, image *selectedImag
 	if !publicConfigurationBounded(input) || !publicConfigurationBackingBounded(input) {
 		return empty, readerRefusal(contract.ReasonLimitExceeded)
 	}
-	result := validator.validateOwned(ctx, input)
+	result := validator.validateOwned(ctx, input, false)
 	for i := range result.Diagnostics {
 		d := &result.Diagnostics[i]
 		if d.Reason != contract.ReasonPublicFactUnavailable && d.Reason != contract.ReasonUnsupportedProfile && d.Reason != contract.ReasonUnsupportedSchema && d.Reason != contract.ReasonCancelled && d.Reason != contract.ReasonExpired && d.Reason != contract.ReasonSelectedRelationInvalid {

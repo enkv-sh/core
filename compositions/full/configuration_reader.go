@@ -32,7 +32,7 @@ func compareConfiguration(ctx context.Context, requestID contract.ID, trusted, c
 	if err != nil {
 		return correlation
 	}
-	return compareConfigurationWithIdentity(ctx, requestID, trusted, candidate, open, correlation, options...)
+	return compareConfigurationWithIdentity(ctx, requestID, trusted, candidate, open, configurationNormalizationValidation, correlation, options...)
 }
 
 func newConfigurationComparisonResult(requestID contract.ID, format configuration.Format) (ConfigurationComparisonResult, error) {
@@ -44,8 +44,10 @@ func newConfigurationComparisonResult(requestID contract.ID, format configuratio
 	return out, err
 }
 
+type configurationSourceValidator func(context.Context, *configuration.Pair, *configuration.Pair, *configuration.Model, bool) (core.PublicConfigurationValidation, func(context.Context, core.PublicationPolicyActionInput) (uint8, error), *core.PublicConfigurationValidator, error)
+
 func compareConfigurationWithIdentity(ctx context.Context, requestID contract.ID, trusted, candidate *configuration.Pair,
-	open func(context.Context, ReaderConfig) (*core.ReaderEngine, error), correlation ConfigurationComparisonResult, options ...contract.ComparisonOptions) (out ConfigurationComparisonResult) {
+	open func(context.Context, ReaderConfig) (*core.ReaderEngine, error), validateSource configurationSourceValidator, correlation ConfigurationComparisonResult, options ...contract.ComparisonOptions) (out ConfigurationComparisonResult) {
 	defer func() { finishPublicationComparisonRequest(&out, options) }()
 	if len(options) > 1 {
 		return configurationComparisonFailure(ctx, requestID, contract.ID{}, "trusted", nil)
@@ -87,18 +89,18 @@ func compareConfigurationWithIdentity(ctx context.Context, requestID contract.ID
 		return configurationComparisonFailure(ctx, requestID, baseline.DomainID, "trusted", context.DeadlineExceeded)
 	}
 	q.Stage = "public-configuration"
-	baselineValidation, selectPolicy, err := configurationNormalizationValidation(ctx, trusted, trusted, baseline)
+	baselineValidation, selectPolicy, routes, err := validateSource(ctx, trusted, trusted, baseline, candidate == nil)
 	if err != nil {
 		return configurationComparisonFailure(ctx, requestID, baseline.DomainID, "trusted", err)
 	}
 	validations := []core.PublicConfigurationValidation{baselineValidation}
 	valid := baselineValidation.Valid && baselineValidation.Complete && baselineValidation.DiagnosticsComplete
 	if candidate != nil {
-		candidateValidation, candidateSelector, err := configurationNormalizationValidation(ctx, trusted, candidate, desired)
+		candidateValidation, candidateSelector, candidateRoutes, err := validateSource(ctx, trusted, candidate, desired, true)
 		if err != nil {
 			return configurationComparisonFailure(ctx, requestID, baseline.DomainID, "candidate", err)
 		}
-		selectPolicy = candidateSelector
+		selectPolicy, routes = candidateSelector, candidateRoutes
 		validations = append(validations, candidateValidation)
 		valid = valid && candidateValidation.Valid && candidateValidation.Complete && candidateValidation.DiagnosticsComplete
 	}
@@ -110,6 +112,7 @@ func compareConfigurationWithIdentity(ctx context.Context, requestID contract.ID
 	}
 	q.Stage = "construction"
 	installed.SelectPolicyAction = selectPolicy
+	installed.checkedRoutes = routes
 	reader, err := open(ctx, installed)
 	if err != nil || reader == nil {
 		return configurationComparisonUnavailable(ctx, requestID, baseline.DomainID, "trusted")
@@ -167,7 +170,7 @@ func CompareConfigurationFiles(ctx context.Context, requestID contract.ID, trust
 		}
 	}
 	q.Format = configurationSourceFormat(trustedFormat)
-	result := compareConfigurationWithIdentity(ctx, requestID, trusted, candidate, NewDefaultReader, correlation, options...)
+	result := compareConfigurationWithIdentity(ctx, requestID, trusted, candidate, NewDefaultReader, configurationNormalizationValidation, correlation, options...)
 	return result
 }
 
