@@ -276,3 +276,31 @@ func TestLocalConfigurationPendingRecoveryAndResult(t *testing.T) {
 		})
 	}
 }
+
+// full_only: false
+func TestRecipientRenameCollisionLeavesPairUnchanged(t *testing.T) {
+	for _, format := range []configuration.Format{configuration.JSON, configuration.YAML} {
+		t.Run(fmt.Sprint(format), func(t *testing.T) {
+			var old string
+			source := configurationSetPair(t, "aws", format, func(editable, generated map[string]any) {
+				declarations := editable["recipients"].(map[string]any)
+				for ref := range declarations {
+					old = ref
+					break
+				}
+				rows := generated["recipients"].(map[string]any)
+				row := rows[old].(map[string]any)
+				rows["occupied"] = map[string]any{"id": strings.Repeat("71", 32), "encryption": row["encryption"]}
+			})
+			configurationSetWritable(t, source)
+			configurationSetModel(t, source.path, format)
+			ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
+			defer cancel()
+			result, err := RenameConfigurationRecipientReference(ctx, source.path, format, old, "occupied")
+			if err == nil || LocalEditExitCode(result, err) != 2 {
+				t.Fatal("rename to an occupied companion reference was accepted")
+			}
+			source.assertUnchanged(t)
+		})
+	}
+}

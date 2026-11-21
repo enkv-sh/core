@@ -71,6 +71,9 @@ func RenameConfigurationSelectedRecipient(ctx context.Context, path string, form
 		if err != nil {
 			return err
 		}
+		if err := edit.ValidateCandidate(model); err != nil {
+			return err
+		}
 		return commitLocalEditCandidate(ctx, result, session, candidate, model)
 	})
 }

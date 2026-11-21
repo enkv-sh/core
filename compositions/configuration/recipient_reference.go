@@ -2,12 +2,17 @@ package configuration
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/binary"
 	"encoding/json"
 	"io"
 	"sort"
 )
 
-type RecipientReferenceEdit struct{ edits capturedEdits }
+type RecipientReferenceEdit struct {
+	edits capturedEdits
+	joins [sha256.Size]byte
+}
 
 func PrepareRecipientReferenceEdit(ctx context.Context, pair *Pair, oldReference, newReference string) (*RecipientReferenceEdit, error) {
 	if !referenceValid(oldReference) || !referenceValid(newReference) || oldReference == newReference {
@@ -61,6 +66,17 @@ func PrepareRecipientReferenceEdit(ctx context.Context, pair *Pair, oldReference
 			if err != nil {
 				return nil, err
 			}
+			end := span.Offset + span.Length
+			if pair.Format == YAML && value[0] != '"' && end < pair.Editable.Size() {
+				var suffix [1]byte
+				if _, err := pair.Editable.ReadAt(suffix[:], end); err != nil {
+					return nil, err
+				}
+				if suffix[0] == '#' {
+					// Only a quoted scalar can end immediately before a comment.
+					value = key
+				}
+			}
 			edit.edits.editable = append(edit.edits.editable, Edit{Offset: span.Offset, Length: span.Length, Replacement: value})
 		}
 	}
@@ -86,7 +102,60 @@ func PrepareRecipientReferenceEdit(ctx context.Context, pair *Pair, oldReference
 	edit.edits.recipients = container
 	orderRecipientRecords(edit.edits.records)
 	sort.Slice(edit.edits.editable, func(i, j int) bool { return edit.edits.editable[i].Offset < edit.edits.editable[j].Offset })
+	edit.joins = recipientJoinDigest(model, oldReference, newReference)
 	return edit, nil
+}
+
+// ValidateCandidate checks the declarations and entry memberships after both
+// emitted files have been parsed and joined, before either can be installed.
+func (e *RecipientReferenceEdit) ValidateCandidate(m *Model) error {
+	if e == nil || m == nil || !m.Resolved || m.parsedPair == nil || recipientJoinDigest(m, "", "") != e.joins {
+		return ErrEdit
+	}
+	return nil
+}
+
+// Hash the expected rename in source order for memberships and reference
+// order for declarations. Only the fixed digest survives candidate staging.
+func recipientJoinDigest(m *Model, oldReference, newReference string) [sha256.Size]byte {
+	ref := func(s string) string {
+		if s == oldReference {
+			return newReference
+		}
+		return s
+	}
+	h := sha256.New()
+	number := func(n int) {
+		var field [4]byte
+		binary.BigEndian.PutUint32(field[:], uint32(n))
+		h.Write(field[:])
+	}
+	name := func(s string) {
+		number(len(s))
+		io.WriteString(h, s)
+	}
+	h.Write(m.Authority.ID[:])
+	for _, rows := range [][]Recipient{m.Recipients, m.GeneratedRecipients} {
+		number(len(rows))
+		order := make([]int, len(rows))
+		for i := range order {
+			order[i] = i
+		}
+		sort.Slice(order, func(i, j int) bool { return ref(rows[order[i]].Reference) < ref(rows[order[j]].Reference) })
+		for _, i := range order {
+			name(ref(rows[i].Reference))
+			h.Write(rows[i].ID[:])
+		}
+	}
+	number(len(m.Entries))
+	for _, entry := range m.Entries {
+		name(entry.Name)
+		number(len(entry.Recipients))
+		for _, member := range entry.Recipients {
+			name(ref(member))
+		}
+	}
+	return [sha256.Size]byte(h.Sum(nil))
 }
 
 func (e *RecipientReferenceEdit) EmitEditable(ctx context.Context, out io.Writer, reference string) error {

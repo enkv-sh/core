@@ -246,3 +246,51 @@ func TestRecipientRoutingRejectsUnknownEmptyBlocks(t *testing.T) {
 		}
 	}
 }
+
+// full_only: false
+func TestRecipientReferenceKeepsCommentBoundary(t *testing.T) {
+	for _, flow := range []bool{false, true} {
+		t.Run(fmt.Sprintf("flow-%t", flow), func(t *testing.T) {
+			otherID := strings.Repeat("07", 32)
+			declaration := `{"old":{"id":"` + preparedSourceRecipientID + `","display_name":"","encryption_key":"` + sourceEncryptionSelector + `"},"new#keep":{"id":"` + otherID + `","display_name":"","encryption_key":"` + sourceEncryptionSelector + `"}}`
+			members := "\n      - 'old'#keep"
+			if flow {
+				members = " [\"old\"#keep\r\n      ]"
+			}
+			entry := "entries:\n  item:\n    confidentiality: plain\n    recipients:" + members + "\n    source: {kind: supplied, value: unchanged}\n  sibling: {confidentiality: plain, recipients: ['new#keep'], source: {kind: supplied, value: other}}\n"
+			source := strings.Replace(preparationEditable(YAML, declaration), "entries: {}\n", entry, 1)
+			otherRow := strings.Replace(preparationRecipientRow(), preparedSourceRecipientID, otherID, 1)
+			generated := strings.Replace(sourceGeneratedJSON, `"recipients":{}`, `"recipients":{"old":`+preparationRecipientRow()+`,"new#keep":`+otherRow+`}`, 1)
+			pair := writePair(t, source, generated, YAML)
+			edit, err := PrepareRecipientReferenceEdit(t.Context(), pair, "old", "new")
+			if err != nil {
+				t.Fatal(err)
+			}
+			var out bytes.Buffer
+			if err := edit.EmitEditable(t.Context(), &out, ".enkv/prod.generated.json"); err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(out.String(), `"new"#keep`) {
+				t.Fatal("adjacent comment lost its scalar boundary")
+			}
+			var companion bytes.Buffer
+			if err := edit.EmitGenerated(t.Context(), &companion); err != nil {
+				t.Fatal(err)
+			}
+			candidate, err := Parse(t.Context(), captureEditableEmission(t, out.Bytes(), companion.Bytes(), YAML, ".enkv/prod.generated.json"))
+			if err != nil || edit.ValidateCandidate(candidate) != nil {
+				t.Fatal("renamed candidate refused", err)
+			}
+			if len(candidate.Entries) != 2 || !reflect.DeepEqual(candidate.Entries[0].Recipients, []string{"new"}) || !reflect.DeepEqual(candidate.Entries[1].Recipients, []string{"new#keep"}) || candidate.Public.Entries.Value[0].Memberships.Value[1] == candidate.Public.Entries.Value[1].Memberships.Value[1] {
+				t.Fatal("recipient identities changed")
+			}
+			// Exercise the pre-commit comparison with an independent local
+			// membership edit. Both versions have valid public declarations.
+			changed := strings.Replace(out.String(), "recipients: ['new#keep']", "recipients: [new]", 1)
+			different, err := Parse(t.Context(), captureEditableEmission(t, []byte(changed), companion.Bytes(), YAML, ".enkv/prod.generated.json"))
+			if err != nil || !errors.Is(edit.ValidateCandidate(different), ErrEdit) {
+				t.Fatal("candidate comparison missed a different sibling membership", err)
+			}
+		})
+	}
+}
