@@ -805,7 +805,7 @@ func (s *StateSession) bindAutomaticHistoricalConsumers(root format.Root, pages 
 					// The admitted Delete can use a different implementation from
 					// the original Create; their shared relation is the resource and intent.
 					if duty != x.DutyID || resource != x.ResourceIncarnationID || core.DomainID != root.Domain || core.ConfigContractID != x.ConfigContractID ||
-						x.Action != contract.GeneratorActionDelete || facts.Action != contract.GeneratorActionCreate || facts.Disposition != contract.GeneratorDispositionCompleteCreate ||
+						x.Action != contract.GeneratorActionDelete || facts.Action != contract.GeneratorActionCreate || core.Disposition(facts.Disposition) != contract.GeneratorDispositionCompleteCreate ||
 						facts.LifecycleMode != x.LifecycleMode || facts.ResourceContractID != x.ResourceContractID || !generatedResourceFactsMatch(facts.GeneratorSafeFacts, x.ResourceDigest) ||
 						facts.IntentDigest != x.IntentDigest || facts.IntentDigest != lineage.IntentDigest || evidence.CompletionClass != x.CompletionClass {
 						continue

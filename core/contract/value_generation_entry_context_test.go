@@ -152,34 +152,49 @@ func TestGeneratedMemberDetachedEvidenceRequiresUsableExactOrigin(t *testing.T) 
 			}
 		})
 	}
-	entry, evidence, intent := generatedEntryEvidenceFixture(t, 0)
-	facts, err := DecodeGeneratorSafeFacts(evidence.SafeFacts)
-	if err != nil {
-		t.Fatal(err)
-	}
-	facts.Disposition, facts.Reason = 2, 1
-	evidence.SafeFacts, err = EncodeGeneratorSafeFacts(facts)
-	if err != nil {
-		t.Fatal(err)
-	}
-	core, err := InspectGeneratedResultCore(evidence.ResultCore)
-	if err != nil {
-		t.Fatal(err)
-	}
-	core.SafeFactsDigest, err = GeneratorSafeFactsDigest(facts)
-	if err != nil {
-		t.Fatal(err)
-	}
-	evidence.ResultCore, err = EncodeGeneratedResultCore(core)
-	if err != nil {
-		t.Fatal(err)
-	}
-	entry.Generated.CreateEvidence, err = GeneratedCreateEvidenceDescriptor(evidence)
-	if err != nil {
-		t.Fatal("owned-resource evidence must remain valid for cleanup", err)
-	}
-	if err := ValidateGeneratedValueEntryEvidence(generatedRecordID(1), entry, evidence, intent); err == nil {
-		t.Fatal("owned resource without usable return became canonical")
+	for _, reason := range []string{"provider returned unusable", "host rejected encoding"} {
+		t.Run(reason, func(t *testing.T) {
+			entry, evidence, intent := generatedEntryEvidenceFixture(t, 0)
+			facts, err := DecodeGeneratorSafeFacts(evidence.SafeFacts)
+			if err != nil {
+				t.Fatal(err)
+			}
+			core, err := InspectGeneratedResultCore(evidence.ResultCore)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if reason == "host rejected encoding" {
+				core.Schema = GeneratedResultEncodingFailureSchema
+			} else {
+				facts.Disposition, facts.Reason = GeneratorDispositionOwnedUnusableCreate, GeneratorReasonMissingValue
+				evidence.SafeFacts, err = EncodeGeneratorSafeFacts(facts)
+				if err != nil {
+					t.Fatal(err)
+				}
+				core.SafeFactsDigest, err = GeneratorSafeFactsDigest(facts)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			evidence.ResultCore, err = EncodeGeneratedResultCore(core)
+			if err != nil {
+				t.Fatal(err)
+			}
+			entry.Generated.CreateEvidence, err = GeneratedCreateEvidenceDescriptor(evidence)
+			if err != nil {
+				t.Fatal("detached cleanup evidence was refused", err)
+			}
+			m := entry.Generated
+			target := GeneratorTarget{Schema: GeneratorTargetSchema, Name: entry.Name, IncarnationID: entry.Incarnation, Epoch: m.Epoch,
+				ResourceID: m.ResourceIncarnationID, ResourceDigest: m.ResourceDigest, ConfigContractID: m.ConfigContractID, ResourceContractID: m.ResourceContractID,
+				OriginalOperationID: m.OriginOperationID, OriginalAttemptID: m.OriginAttemptID, ResultContractID: core.ResultContractID, LifecycleMode: m.LifecycleMode, CompletionClass: m.CompletionClass}
+			if err := ValidateGeneratedTargetEvidence(core.DomainID, target, evidence, intent); err != nil {
+				t.Fatal("lost exact detached cleanup target", err)
+			}
+			if err := ValidateGeneratedValueEntryEvidence(core.DomainID, entry, evidence, intent); err == nil {
+				t.Fatal("owned resource without usable return became canonical")
+			}
+		})
 	}
 }
 

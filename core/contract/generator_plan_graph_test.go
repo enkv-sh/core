@@ -452,6 +452,18 @@ func TestGeneratorGraphRefusesMissingEdgesAndChangedBranches(t *testing.T) {
 	if _, err := GeneratorGraphID(header, badEntryPlans, lineages, edges); err == nil {
 		t.Fatal("member initial slot changed")
 	}
+	for i := range lineages[0].Templates {
+		x := &lineages[0].Templates[i]
+		x.ResultReaderID = GeneratorResultReaderFor(x.Action, x.CompletionClass, InputEncodingBase64)
+	}
+	edges = generatorGraphEdgesFixture(t, header, lineages)
+	if _, err := GeneratorGraphID(header, entryPlans, lineages, edges); err == nil {
+		t.Fatal("admitted managed Base64 reader for a raw value")
+	}
+	entryPlans[0].InputEncoding = InputEncodingBase64
+	if _, err := GeneratorGraphID(header, entryPlans, lineages, edges); err != nil {
+		t.Fatal("refused managed Base64 reader with the matching value plan", err)
+	}
 	badHeader := header
 	badHeader.RequestCoreDigest = generatedRecordID(99)
 	if err := ValidateGeneratorGraphRequest(generatorGraphRequestFixture(), badHeader); !errors.Is(err, ErrRecord) {

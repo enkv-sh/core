@@ -93,6 +93,22 @@ func TestGeneratedImplementationResolverKeepsExactRetainedSupport(t *testing.T) 
 			t.Fatal("current selection replaced accepted original support", use.action, use.inputEncoding, err)
 		}
 	}
+	request.Retained = generatedInstallationRequest(t, original)
+	retained := request.Retained
+	retained.InputEncoding = contract.InputEncodingBase64
+	legacy, err := contract.GeneratedResultContractForReader(original, retained.Action, retained.CompletionClass, retained.MaxSecret, retained.MaxFacts, retained.InputEncoding, contract.GeneratorResultReaderID())
+	currentContract, currentErr := contract.GeneratedResultContractID(original, retained.Action, retained.CompletionClass, retained.MaxSecret, retained.MaxFacts, retained.InputEncoding)
+	if err != nil || currentErr != nil || legacy == currentContract {
+		t.Fatal("managed Base64 must distinguish the admitted reader", err, currentErr)
+	}
+	retained.ResultContractID = legacy
+	if _, err := resolveConfigurationGeneratedImplementation(request, original); err != nil {
+		t.Fatal("lost the pinned earlier Base64 reader", err)
+	}
+	retained.InputEncoding = contract.InputEncodingRaw
+	if _, err := resolveConfigurationGeneratedImplementation(request, original); !errors.Is(err, ErrCell) {
+		t.Fatal("earlier Base64 result accepted under a different encoding", err)
+	}
 	// A selected build may validate older semantics through the passive exchange.
 	request.Retained = nil
 	request.ConfigContractID = contract.Hash([]byte("older canonical settings"))

@@ -33,6 +33,22 @@ type GeneratedImplementationIdentity struct {
 	Action, CompletionClass, InputEncoding                        uint8
 	MaxSecret, MaxFacts                                           uint32
 }
+
+// Matches checks the executor and the exact result contract, including the
+// reader pinned by earlier managed Base64 creates.
+func (v GeneratedImplementationIdentity) Matches(row contract.GeneratorImplementation) bool {
+	if row.DescriptorID != v.DescriptorID || row.ExecutorID != v.ExecutorID || row.CredentialRouteID != v.CredentialRouteID {
+		return false
+	}
+	reader := contract.GeneratorResultReaderFor(v.Action, v.CompletionClass, v.InputEncoding)
+	id, err := contract.GeneratedResultContractForReader(row, v.Action, v.CompletionClass, v.MaxSecret, v.MaxFacts, v.InputEncoding, reader)
+	if err != nil || id == v.ResultContractID || reader == contract.GeneratorResultReaderID() {
+		return err == nil && id == v.ResultContractID
+	}
+	id, err = contract.GeneratedResultContractForReader(row, v.Action, v.CompletionClass, v.MaxSecret, v.MaxFacts, v.InputEncoding, contract.GeneratorResultReaderID())
+	return err == nil && id == v.ResultContractID
+}
+
 type InstalledGeneratedCustody struct {
 	Crypto        contract.Crypto
 	BindCandidate func(context.Context, contract.GeneratedCandidateInput) contract.CryptoResultCode

@@ -70,6 +70,10 @@ func InspectGeneratedSelectedCreateAncestry(domain, snapshot ID, records []Suppo
 		if err != nil || core.DescriptorID != source.DescriptorID || core.ExecutorID != source.ExecutorID || create.CredentialRouteID != source.CredentialRouteID {
 			return 0, ErrRecord
 		}
+		facts, err := InspectGeneratorSafeFacts(create.SafeFacts)
+		if err != nil || source.Hazard.Fenced == 0 && core.Disposition(facts.Disposition) != GeneratorDispositionOwnedUnusableCreate {
+			return 0, ErrRecord
+		}
 		return 0, nil
 	}
 	original, err := InspectGeneratedAttemptRecord(row.Body)
@@ -98,7 +102,9 @@ func InspectGeneratedSelectedCreateAncestry(domain, snapshot ID, records []Suppo
 	}
 	if source.Record.Kind == GeneratedHazardSupportKind {
 		descriptor, err := GeneratorRecordSetDescriptor(GeneratorHazardResults, domain, []SupportRecord{find(GeneratedResultSupportKind, original.ResultID)})
-		if err != nil || descriptor != source.Hazard.OriginalResults || original.State != GeneratedEffectFailedTerminal && original.State != GeneratedEffectClosedWithResidue {
+		if err != nil || descriptor != source.Hazard.OriginalResults ||
+			(original.State != GeneratedEffectFailedTerminal || result.Disposition() != GeneratorDispositionOwnedUnusableCreate) &&
+				(original.State != GeneratedEffectClosedWithResidue || source.Hazard.Fenced != 1) {
 			return 0, ErrRecord
 		}
 	} else if original.State != GeneratedEffectSucceeded {
@@ -291,9 +297,8 @@ func InspectGeneratedSelectedCreateAncestry(domain, snapshot ID, records []Suppo
 	}
 	material, err := InspectOperationMaterialRecord(find(OperationMaterialSupportKind, header.MaterialID).Body)
 	expected := GeneratorResultExpectation{InputEncoding: selectedEntryPlan.InputEncoding, Plan: plan, Template: x, Use: originalUse, RequestDigest: original.RequestDigest}
-	core, coreErr := ExpectedGeneratedResultCore(expected, material, result.SafeFacts.GeneratorSafeFacts)
-	if err != nil || coreErr != nil || result.Core != core || result.SafeFacts.IntentDigest != x.IntentDigest ||
-		source.Record.Kind == GeneratedDutySupportKind && result.SafeFacts.Disposition != GeneratorDispositionCompleteCreate ||
+	if err != nil || !result.Core.matchesExpectation(expected, material, result.SafeFacts.GeneratorSafeFacts) || result.SafeFacts.IntentDigest != x.IntentDigest ||
+		source.Record.Kind == GeneratedDutySupportKind && result.Disposition() != GeneratorDispositionCompleteCreate ||
 		source.Record.Kind == GeneratedHazardSupportKind && result.SafeFacts.Disposition != GeneratorDispositionCompleteCreate && result.SafeFacts.Disposition != GeneratorDispositionOwnedUnusableCreate {
 		return 0, ErrRecord
 	}
@@ -412,8 +417,8 @@ func InspectGeneratedSelectedCreateAncestry(domain, snapshot ID, records []Suppo
 						use = candidate
 					}
 				}
-				core, coreErr := ExpectedGeneratedResultCore(GeneratorResultExpectation{InputEncoding: selectedEntryPlan.InputEncoding, Plan: plan, Template: x, Use: use, RequestDigest: a.RequestDigest}, material, r.SafeFacts.GeneratorSafeFacts)
-				if err != nil || coreErr != nil || r.Core != core || !reflected && (h.ResultID != a.ResultID || h.ResultDigest != Hash(packet.Body)) ||
+				expected := GeneratorResultExpectation{InputEncoding: selectedEntryPlan.InputEncoding, Plan: plan, Template: x, Use: use, RequestDigest: a.RequestDigest}
+				if err != nil || !r.Core.matchesExpectation(expected, material, r.SafeFacts.GeneratorSafeFacts) || !reflected && (h.ResultID != a.ResultID || h.ResultDigest != Hash(packet.Body)) ||
 					h.Outcome == GeneratedEffectConfirmedNoEffect && r.SafeFacts.Disposition != GeneratorDispositionConfirmedNoEffect {
 					return ErrRecord
 				}

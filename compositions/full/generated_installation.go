@@ -24,12 +24,8 @@ func resolveConfigurationGeneratedImplementation(request core.GeneratedImplement
 		(request.LifecycleMode == contract.GeneratorLifecycleNone) != request.ResourceContractID.IsZero() {
 		return contract.GeneratorImplementation{}, ErrCell
 	}
-	if identity := request.Retained; identity != nil {
-		result, err := contract.GeneratedResultContractID(row, identity.Action, identity.CompletionClass, identity.MaxSecret, identity.MaxFacts, identity.InputEncoding)
-		if err != nil || row.DescriptorID != identity.DescriptorID || row.ExecutorID != identity.ExecutorID ||
-			row.CredentialRouteID != identity.CredentialRouteID || result != identity.ResultContractID {
-			return contract.GeneratorImplementation{}, ErrCell
-		}
+	if request.Retained != nil && !request.Retained.Matches(row) {
+		return contract.GeneratorImplementation{}, ErrCell
 	}
 	row.CredentialRoute = bytes.Clone(row.CredentialRoute)
 	return row, nil

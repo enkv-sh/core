@@ -66,7 +66,7 @@ func (b *generatedSelectionBuilder) resolveHazards(rows []contract.SupportRecord
 			}
 		case contract.GeneratedEffectFailedTerminal:
 			result, err := contract.InspectGeneratedResultRecord(selected.result)
-			if err != nil || result.SafeFacts.Disposition != contract.GeneratorDispositionOwnedUnusableCreate ||
+			if err != nil || result.Disposition() != contract.GeneratorDispositionOwnedUnusableCreate ||
 				h.Fenced == 1 && (g.parent != nil && g.parent.OperationID == h.OriginalOperationID || h.Exposure != contract.GeneratedExposureLateEffect) {
 				return contract.ErrRecord
 			}
@@ -142,7 +142,7 @@ func (b *generatedSelectionBuilder) resolveDetachedCreateHazards(rows []contract
 			return contract.ErrRecord
 		}
 		facts, err := contract.InspectGeneratorSafeFacts(evidence.SafeFacts)
-		if err != nil || h.Fenced == 0 && facts.Disposition != contract.GeneratorDispositionOwnedUnusableCreate {
+		if err != nil || h.Fenced == 0 && core.Disposition(facts.Disposition) != contract.GeneratorDispositionOwnedUnusableCreate {
 			return contract.ErrRecord
 		}
 		targets, err := b.vectors.resolve(contract.GeneratedHazardSupportKind, h.HazardID, contract.GeneratorVectorTargets, h.Target)

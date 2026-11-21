@@ -66,7 +66,7 @@ func selectedFinalResults(g *generatedSelection) (generatedFinalResultFacts, err
 			}
 			result, err := contract.InspectGeneratedResultRecord(a.result)
 			state := uint8(contract.GeneratedEffectSucceeded)
-			switch result.SafeFacts.Disposition {
+			switch result.Disposition() {
 			case contract.GeneratorDispositionCompleteCreate:
 			case contract.GeneratorDispositionOwnedUnusableCreate:
 				state = contract.GeneratedEffectFailedTerminal
@@ -97,7 +97,7 @@ func selectedFinalResults(g *generatedSelection) (generatedFinalResultFacts, err
 		if err != nil || result.SafeFacts.Disposition < contract.GeneratorDispositionCompleteCreate || result.SafeFacts.Disposition > contract.GeneratorDispositionUnknown {
 			return out, contract.ErrRecord
 		}
-		if result.SafeFacts.Disposition != contract.GeneratorDispositionCompleteCreate {
+		if result.Disposition() != contract.GeneratorDispositionCompleteCreate {
 			selecting = false
 			continue
 		}

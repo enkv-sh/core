@@ -64,7 +64,7 @@ func ValidateGeneratedValueEntryEvidence(domain ID, entry ValueEntry, evidence G
 		return err
 	}
 	m := entry.Generated
-	if facts.Disposition != GeneratorDispositionCompleteCreate || core.ResultID != m.CreateResultID || facts.IntentDigest != m.IntentDigest {
+	if core.Disposition(facts.Disposition) != GeneratorDispositionCompleteCreate || core.ResultID != m.CreateResultID || facts.IntentDigest != m.IntentDigest {
 		return ErrRecord
 	}
 	target := GeneratorTarget{Schema: GeneratorTargetSchema, Name: entry.Name, IncarnationID: entry.Incarnation, Epoch: m.Epoch, ResourceID: m.ResourceIncarnationID, ConfigContractID: m.ConfigContractID, ResourceContractID: m.ResourceContractID, ResourceDigest: m.ResourceDigest, OriginalOperationID: m.OriginOperationID, OriginalAttemptID: m.OriginAttemptID, ResultContractID: core.ResultContractID, LifecycleMode: m.LifecycleMode, CompletionClass: m.CompletionClass}

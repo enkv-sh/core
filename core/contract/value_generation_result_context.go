@@ -38,7 +38,7 @@ func (v GeneratorResultExpectation) Validate(material OperationMaterialRecord) e
 	if m.DomainID != p.DomainID || m.OperationID != p.OperationID || m.OperationMaterialID != p.MaterialID || m.UsePlanDigest != digest || u.AttemptID != t.AttemptID || u.ResultID != t.ResultID || u.InboxID != t.InboxID || u.ExecutorID != t.ExecutorID || u.ResultContractID != t.ResultContractID || u.PlannedValueSlotID != t.PlannedValueSlotID || u.MaterialID != p.MaterialID || (t.Action == GeneratorActionDelete) != (u.MaxSecret == 0) {
 		return ErrRecord
 	}
-	if (t.Action == GeneratorActionCreate) != v.TargetResourceDigest.IsZero() || t.Action == GeneratorActionDelete && !t.ResourceDigest.IsZero() && v.TargetResourceDigest != t.ResourceDigest {
+	if t.SupportsValueEncodingFailure() && v.InputEncoding != InputEncodingBase64 || (t.Action == GeneratorActionCreate) != v.TargetResourceDigest.IsZero() || t.Action == GeneratorActionDelete && !t.ResourceDigest.IsZero() && v.TargetResourceDigest != t.ResourceDigest {
 		return ErrRecord
 	}
 	result, err := GeneratorResultID(p.DomainID, p.OperationID, t.AttemptID, t.TransmissionID, t.Action)
@@ -86,14 +86,25 @@ func ExpectedGeneratedResultCore(v GeneratorResultExpectation, material Operatio
 	m := material.Core
 	return GeneratedResultCore{Schema: GeneratedResultCoreSchema, Profile: m.Profile, DomainID: m.DomainID, OperationID: m.OperationID, MaterialID: m.OperationMaterialID, UsePlanDigest: m.UsePlanDigest, PlanGraphID: v.Plan.PlanGraphID, AttemptID: t.AttemptID, TransmissionID: t.TransmissionID, ResultID: t.ResultID, ExecutorID: t.ExecutorID, DescriptorID: t.DescriptorID, ConfigContractID: t.ConfigContractID, ResultContractID: t.ResultContractID, RequestDigest: v.RequestDigest, SafeFactsDigest: digest}, nil
 }
+func (core GeneratedResultCore) matchesExpectation(v GeneratorResultExpectation, material OperationMaterialRecord, facts GeneratorSafeFacts) bool {
+	want, err := ExpectedGeneratedResultCore(v, material, facts)
+	if err != nil {
+		return false
+	}
+	if core.Schema == GeneratedResultEncodingFailureSchema && v.Template.SupportsValueEncodingFailure() &&
+		v.InputEncoding == InputEncodingBase64 && core.acceptsFacts(facts) {
+		want.Schema = core.Schema
+	}
+	return core == want
+}
+
 func ValidateGeneratedResult(v GeneratorResultExpectation, material OperationMaterialRecord, result GeneratedResultRecord) error {
-	core, err := ExpectedGeneratedResultCore(v, material, result.SafeFacts)
-	if err != nil || result.Core != core || result.Payload.ContentLength > v.Use.MaxSecret || result.Payload.InputEncoding != v.InputEncoding {
+	if !result.Core.matchesExpectation(v, material, result.SafeFacts) || result.Payload.ContentLength > v.Use.MaxSecret || result.Payload.InputEncoding != v.InputEncoding {
 		return ErrRecord
 	}
 	if result.Transfer.Core.CompatibilityID != material.Core.CompatibilityID || result.Transfer.Core.CryptoSupportID != material.Core.CryptoSupportID {
 		return ErrRecord
 	}
-	_, err = GeneratedResultRecordLength(result)
+	_, err := GeneratedResultRecordLength(result)
 	return err
 }

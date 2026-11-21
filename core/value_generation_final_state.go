@@ -686,11 +686,11 @@ func (s *StateSession) generatedFailedFinalSupport(g *generatedSelection, plan *
 				contract.SupportRecord{Kind: contract.PendingInboxReleaseSupportKind, RecordID: mapping.InboxID, Body: release})
 			continue
 		}
-		if result.SafeFacts.Disposition == contract.GeneratorDispositionCompleteCreate {
+		if result.Disposition() == contract.GeneratorDispositionCompleteCreate {
 			successAttempts[selected.attempt.record.AttemptID] = true
 			successDuties[selected.attempt.record.OwnerID] = true
 		}
-		if result.SafeFacts.Disposition == contract.GeneratorDispositionOwnedUnusableCreate {
+		if result.Disposition() == contract.GeneratorDispositionOwnedUnusableCreate {
 			a := selected.attempt
 			row, ok := g.records[generatedRecordKey{contract.GeneratedDutySupportKind, a.record.OwnerID}]
 			d, err := contract.InspectGeneratedDutyRecord(row.Body)

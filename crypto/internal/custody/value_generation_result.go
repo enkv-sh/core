@@ -3,6 +3,7 @@ package custody
 import (
 	"crypto/rand"
 	"crypto/subtle"
+	"encoding/base64"
 
 	"enkv.sh/core/contract"
 )
@@ -17,8 +18,17 @@ func generatedResultTransfer(material contract.OperationMaterialCore, core contr
 func SealGeneratedResult(expected contract.GeneratorResultExpectation, material contract.OperationMaterialRecord, facts contract.GeneratorSafeFacts, seed, plaintext []byte) (contract.GeneratedResultRecord, error) {
 	core, err := contract.ExpectedGeneratedResultCore(expected, material, facts)
 	content, contentErr := contract.InputContentLength(expected.InputEncoding, plaintext)
-	if err != nil || contentErr != nil || content > expected.Use.MaxSecret ||
+	if err != nil || content > expected.Use.MaxSecret ||
 		(facts.Disposition == contract.GeneratorDispositionCompleteCreate) != (len(plaintext) != 0) {
+		return contract.GeneratedResultRecord{}, ErrPayload
+	}
+	if contentErr == contract.ErrRecord && expected.InputEncoding == contract.InputEncodingBase64 &&
+		facts.LifecycleMode == contract.GeneratorLifecycleManaged && facts.Disposition == contract.GeneratorDispositionCompleteCreate &&
+		expected.Template.SupportsValueEncodingFailure() && len(plaintext) <= base64.StdEncoding.EncodedLen(int(expected.Use.MaxSecret)) {
+		// Preserve the verified creation even though its value cannot be used.
+		core.Schema = contract.GeneratedResultEncodingFailureSchema
+		plaintext, content = nil, 0
+	} else if contentErr != nil {
 		return contract.GeneratedResultRecord{}, ErrPayload
 	}
 	check, err := SeedCheck(material.Core, seed)

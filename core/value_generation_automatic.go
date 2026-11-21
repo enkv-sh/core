@@ -415,7 +415,7 @@ func generatedAutomaticReleasedTarget(ctx context.Context, g *generatedSelection
 		if duty != x.DutyID {
 			continue
 		}
-		if target != nil {
+		if core.Schema == contract.GeneratedResultEncodingFailureSchema || target != nil {
 			return nil, contract.ErrRecord
 		}
 		facts, err := contract.InspectGeneratorSafeFacts(evidence.SafeFacts)

@@ -399,7 +399,14 @@ func validateGeneratedCleanup(r PublicApplyResult) error {
 	var classes [contract.ReceiptSummaryCount]uint32
 	for _, f := range g.Effects {
 		targetFree := cleanupTargetFreeCreateReflection(r, f)
-		if f.Record.DomainID != r.DomainID || f.Record.OperationID != b.OriginalOperationID || f.Record.AttemptID != b.OriginalAttemptID || f.Record.OwnerID != b.OriginalOwnerID || f.Action != contract.GeneratorActionCreate && f.Action != contract.GeneratorActionDelete || !cleanupText(f.Name, contract.CryptoMaxName) || f.EntryIncarnationID.IsZero() || f.PlannedValueSlotID.IsZero() || f.ResourceDigest.IsZero() && !targetFree || f.Action == contract.GeneratorActionCreate && f.Record.State == contract.GeneratedEffectConfirmedNoEffect && !targetFree || f.Reason > contract.GeneratorReasonIdentityConflict || !cleanupCeiling(f.EvidenceCeiling) || f.SummaryClass < contract.ReceiptSummarySuccessCount || f.SummaryClass > contract.ReceiptNoEffectPredecessorCount || !cleanupTargetMatches(f.Target, f.Record.ResourceID, f.Record.ConfigContractID, f.Record.ResourceContractID) {
+		if f.Reason > contract.GeneratorReasonIdentityConflict {
+			lateCreate := b.Kind == GeneratedCleanupReflection && b.OriginalResult != nil && f.Record.State == contract.GeneratedEffectClosedWithResidue
+			if f.Reason != GeneratedReasonValueEncoding || f.Action != contract.GeneratorActionCreate || f.Record.LifecycleMode != contract.GeneratorLifecycleManaged ||
+				(f.Record.State != contract.GeneratedEffectFailedTerminal && !lateCreate) || f.Target == nil || f.EvidenceCeiling != contract.ReceiptEvidenceProviderFacts {
+				return contract.ErrRecord
+			}
+		}
+		if f.Record.DomainID != r.DomainID || f.Record.OperationID != b.OriginalOperationID || f.Record.AttemptID != b.OriginalAttemptID || f.Record.OwnerID != b.OriginalOwnerID || f.Action != contract.GeneratorActionCreate && f.Action != contract.GeneratorActionDelete || !cleanupText(f.Name, contract.CryptoMaxName) || f.EntryIncarnationID.IsZero() || f.PlannedValueSlotID.IsZero() || f.ResourceDigest.IsZero() && !targetFree || f.Action == contract.GeneratorActionCreate && f.Record.State == contract.GeneratedEffectConfirmedNoEffect && !targetFree || !cleanupCeiling(f.EvidenceCeiling) || f.SummaryClass < contract.ReceiptSummarySuccessCount || f.SummaryClass > contract.ReceiptNoEffectPredecessorCount || !cleanupTargetMatches(f.Target, f.Record.ResourceID, f.Record.ConfigContractID, f.Record.ResourceContractID) {
 			return contract.ErrRecord
 		}
 		if f.Target != nil && (f.Target.Name != f.Name || f.Target.IncarnationID != f.EntryIncarnationID || f.Target.Epoch != f.Epoch || f.Target.ResourceDigest != f.ResourceDigest || b.Target == nil || *f.Target != *b.Target) {

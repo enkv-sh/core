@@ -181,6 +181,9 @@ func generatedQueryReason(p core.GeneratedEffectFact) string {
 		}
 		return map[uint8]string{contract.GeneratorFailureInvalid: "invalid", contract.GeneratorFailureUnavailable: "unavailable", contract.GeneratorFailureCancelled: "cancelled", contract.GeneratorFailureExpired: "expired", contract.GeneratorFailureProtocol: "protocol"}[p.Reason]
 	}
+	if p.Reason == core.GeneratedReasonValueEncoding {
+		return "value-encoding-rejected"
+	}
 	return generatedSafeFactsReason(p.Reason)
 }
 

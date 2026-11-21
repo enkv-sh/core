@@ -304,7 +304,7 @@ func generatedRecordedRows(g *generatedSelection, plan *generatedRecordPlan, pha
 		return nil, err
 	}
 	a.State, a.Stage = contract.GeneratedEffectSucceeded, contract.GeneratedStageTerminal
-	switch r.SafeFacts.Disposition {
+	switch r.Disposition() {
 	case contract.GeneratorDispositionCompleteCreate:
 	case contract.GeneratorDispositionOwnedUnusableCreate:
 		a.State = contract.GeneratedEffectFailedTerminal

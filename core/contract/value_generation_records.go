@@ -1037,7 +1037,7 @@ func GeneratedCreateEvidenceLength(v GeneratedCreateEvidence) (int, error) {
 		return 0, err
 	}
 	digest, err := GeneratorSafeFactsDigest(facts.GeneratorSafeFacts)
-	if err != nil || core.ResultID != v.OriginalResultID || core.RequestDigest != facts.RequestDigest || core.SafeFactsDigest != digest || facts.Action != GeneratorActionCreate || facts.LifecycleMode != v.LifecycleMode || facts.Disposition != GeneratorDispositionCompleteCreate && facts.Disposition != GeneratorDispositionOwnedUnusableCreate || v.LifecycleMode == GeneratorLifecycleNone && v.CompletionClass != 0 || v.LifecycleMode == GeneratorLifecycleManaged && !generatedCompletionValid(v.CompletionClass) {
+	if err != nil || core.ResultID != v.OriginalResultID || core.RequestDigest != facts.RequestDigest || core.SafeFactsDigest != digest || !core.acceptsFacts(facts.GeneratorSafeFacts) || facts.Action != GeneratorActionCreate || facts.LifecycleMode != v.LifecycleMode || facts.Disposition != GeneratorDispositionCompleteCreate && facts.Disposition != GeneratorDispositionOwnedUnusableCreate || v.LifecycleMode == GeneratorLifecycleNone && v.CompletionClass != 0 || v.LifecycleMode == GeneratorLifecycleManaged && !generatedCompletionValid(v.CompletionClass) {
 		return 0, ErrRecord
 	}
 	return 120 + len(v.ResultCore) + len(v.SafeFacts), nil

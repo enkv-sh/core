@@ -596,7 +596,7 @@ func (b *generatedSelectionBuilder) validateRecordedAttempt(a generatedAttempt, 
 		return err
 	}
 	state := uint8(contract.GeneratedEffectSucceeded)
-	switch result.SafeFacts.Disposition {
+	switch result.Disposition() {
 	case contract.GeneratorDispositionCompleteCreate:
 	case contract.GeneratorDispositionOwnedUnusableCreate:
 		state = contract.GeneratedEffectFailedTerminal

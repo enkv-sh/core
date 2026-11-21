@@ -28,13 +28,17 @@ func installedGeneratedRetirementProcess(t testing.TB, mode string) (*generatedP
 		switch request.Method {
 		case http.MethodPost:
 			creates++
-			if creates == 2 && (mode == "create-hazard-acknowledged" || mode == "create-hazard-unknown") {
+			if creates == 1 && mode == "first-create-unknown" || creates == 2 && (mode == "create-hazard-acknowledged" || mode == "create-hazard-unknown") {
 				if _, err := w.Write([]byte(`{"success":true,"errors":[],"messages":[],"result":{}}`)); err != nil {
 					t.Error("controlled ambiguous generated create response failed")
 				}
 				return
 			}
-			_, err := fmt.Fprintf(w, `{"success":true,"errors":[],"messages":[],"result":{"id":"%032x","value":"%s","status":"active","name":"generated","policies":[{"effect":"allow","permission_groups":[{"id":"%s"}],"resources":{"com.cloudflare.api.account.%s":"*"}}]}}`, creates, hermeticCloudflareSecret, hermeticCloudflarePermission, hermeticCloudflareAccount)
+			value := hermeticCloudflareSecret
+			if mode == "valid-base64" {
+				value = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMN"
+			}
+			_, err := fmt.Fprintf(w, `{"success":true,"errors":[],"messages":[],"result":{"id":"%032x","value":"%s","status":"active","name":"generated","policies":[{"effect":"allow","permission_groups":[{"id":"%s"}],"resources":{"com.cloudflare.api.account.%s":"*"}}]}}`, creates, value, hermeticCloudflarePermission, hermeticCloudflareAccount)
 			if err != nil {
 				t.Error("controlled generated create response failed")
 			}

@@ -66,8 +66,110 @@ func generatedResultContext(t testing.TB, action uint8) (contract.GeneratorResul
 	return expected, material, facts, seed
 }
 
+func managedResultEncodingFailure(t *testing.T) {
+	expected, material, facts, seed := generatedResultContext(t, contract.GeneratorActionCreate)
+	defer clear(seed)
+	expected.InputEncoding = contract.InputEncodingBase64
+	expected.Template.ResultReaderID = contract.GeneratorResultReaderFor(expected.Template.Action, expected.Template.CompletionClass, expected.InputEncoding)
+	private := []byte("bad_")
+	rejected, err := SealGeneratedResult(expected, material, facts, seed, private)
+	if err != nil {
+		t.Fatal(err)
+	}
+	original, err := contract.EncodeGeneratorSafeFacts(facts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	retained, err := contract.EncodeGeneratorSafeFacts(rejected.SafeFacts)
+	if err != nil || !bytes.Equal(original, retained) || rejected.Core.Schema != contract.GeneratedResultEncodingFailureSchema ||
+		rejected.Payload.RetainedLength != 0 || rejected.Payload.ContentLength != 0 {
+		t.Fatal("rejection lost the provider facts or retained private bytes", err)
+	}
+	opened, err := OpenGeneratedResult(expected, material, seed, rejected)
+	if err != nil || len(opened) != 0 {
+		t.Fatal("rejected result failed original verification", err)
+	}
+	usable, err := SealGeneratedResult(expected, material, facts, seed, []byte("Zg=="))
+	if err != nil || usable.Disposition() != contract.GeneratorDispositionCompleteCreate {
+		t.Fatal("valid Base64", err)
+	}
+	opened, err = OpenGeneratedResult(expected, material, seed, usable)
+	if err != nil || !bytes.Equal(opened, []byte("Zg==")) {
+		t.Fatal("valid Base64 changed", err)
+	}
+	clear(opened)
+
+	legacy := expected
+	legacy.Template.ResultReaderID = contract.GeneratorResultReaderID()
+	if _, err := OpenGeneratedResult(legacy, material, seed, rejected); err == nil {
+		t.Fatal("earlier reader accepted the host rejection")
+	}
+	if _, err := SealGeneratedResult(legacy, material, facts, seed, private); err == nil {
+		t.Fatal("earlier reader produced the host rejection")
+	}
+	previous, err := SealGeneratedResult(legacy, material, facts, seed, []byte("Zg=="))
+	if err != nil || previous.Core.Schema != contract.GeneratedResultCoreSchema {
+		t.Fatal("earlier reader lost its valid result", err)
+	}
+
+	other := expected
+	other.Template.AttemptID[0] ^= 1
+	if _, err := OpenGeneratedResult(other, material, seed, rejected); err == nil {
+		t.Fatal("other attempt accepted the rejection")
+	}
+	for name, modify := range map[string]func(*contract.GeneratedResultRecord){
+		"remove host rejection": func(r *contract.GeneratedResultRecord) { r.Core.Schema = contract.GeneratedResultCoreSchema },
+		"replace transfer":      func(r *contract.GeneratedResultRecord) { r.Transfer = usable.Transfer },
+		"replace ciphertext": func(r *contract.GeneratedResultRecord) {
+			r.Payload.Ciphertext = bytes.Clone(r.Payload.Ciphertext)
+			r.Payload.Ciphertext[0] ^= 1
+		},
+		"change target":        func(r *contract.GeneratedResultRecord) { r.SafeFacts.ResourceData = []byte("other target") },
+		"attach private value": func(r *contract.GeneratedResultRecord) { r.Payload = usable.Payload },
+	} {
+		t.Run(name, func(t *testing.T) {
+			changed := rejected
+			modify(&changed)
+			if p, err := OpenGeneratedResult(expected, material, seed, changed); err == nil || p != nil {
+				t.Fatal("changed result verified")
+			}
+		})
+	}
+	for _, invalid := range [][]byte{nil, bytes.Repeat([]byte("_"), contract.CryptoMaxRetainedValue+1)} {
+		if _, err := SealGeneratedResult(expected, material, facts, seed, invalid); err == nil {
+			t.Fatal("missing or oversized bytes became host rejection")
+		}
+	}
+	local, localMaterial, localFacts, localSeed := localGeneratedResultContext(t)
+	defer clear(localSeed)
+	local.InputEncoding = contract.InputEncodingBase64
+	if _, err := SealGeneratedResult(local, localMaterial, localFacts, localSeed, private); err == nil {
+		t.Fatal("local CREATE emitted managed encoding evidence")
+	}
+	for name, modify := range map[string]func(*contract.GeneratorResultExpectation){
+		"raw encoding": func(v *contract.GeneratorResultExpectation) { v.InputEncoding = contract.InputEncodingRaw },
+		"delete":       func(v *contract.GeneratorResultExpectation) { v.Template.Action = contract.GeneratorActionDelete },
+		"resource-free": func(v *contract.GeneratorResultExpectation) {
+			v.Template.LifecycleMode = contract.GeneratorLifecycleNone
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			incompatible := expected
+			modify(&incompatible)
+			if _, err := OpenGeneratedResult(incompatible, material, seed, rejected); err == nil {
+				t.Fatal("wrong result context accepted the host rejection")
+			}
+		})
+	}
+	seed[0] ^= 1
+	if _, err := SealGeneratedResult(expected, material, facts, seed, private); err == nil {
+		t.Fatal("seed failure became host rejection")
+	}
+}
+
 // full_only: false
 func TestGeneratedResultSealOpenAndRefusals(t *testing.T) {
+	t.Run("managed value encoding failure", managedResultEncodingFailure)
 	for _, action := range []uint8{1, 2} {
 		expected, material, facts, seed := generatedResultContext(t, action)
 		defer clear(seed)

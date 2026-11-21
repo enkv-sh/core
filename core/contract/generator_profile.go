@@ -35,6 +35,9 @@ const (
 	GeneratorSupportBindingSchema      uint16 = 2
 )
 
+// GeneratedResultEncodingFailureSchema authenticates the host's rejection of a managed CREATE value.
+const GeneratedResultEncodingFailureSchema uint16 = 5
+
 func (v GeneratorLifecycleMode) resourceValid(resource ID) bool {
 	return v == GeneratorLifecycleNone && resource.IsZero() || v == GeneratorLifecycleManaged && !resource.IsZero()
 }
@@ -44,6 +47,18 @@ func generatorMeaningID(label string) ID {
 	return generatorDigest("meaning", w.b)
 }
 func GeneratorResultReaderID() ID { return generatorMeaningID("GENERATOR-RESULT-READER/v4") }
+
+func GeneratorResultReaderFor(action, completion, encoding uint8) ID {
+	if action == GeneratorActionCreate && completion != 0 && encoding == InputEncodingBase64 {
+		return generatorMeaningID("GENERATOR-RESULT-READER/v5")
+	}
+	return GeneratorResultReaderID()
+}
+
+func (v GeneratorAttemptTemplate) SupportsValueEncodingFailure() bool {
+	return v.Action == GeneratorActionCreate && v.LifecycleMode == GeneratorLifecycleManaged &&
+		v.ResultReaderID == generatorMeaningID("GENERATOR-RESULT-READER/v5")
+}
 func (v GeneratorAttemptTemplate) ResultReaderIdentity() ID {
 	if v.Schema != GeneratorAttemptTemplateSchema {
 		return ID{}

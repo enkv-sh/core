@@ -35,6 +35,15 @@ func TestGeneratedResultCoreIndependentBytes(t *testing.T) {
 	if err != nil || parsed != core {
 		t.Fatalf("core inspection: %v", err)
 	}
+	// The host rejection changes only the authenticated two-byte schema tag.
+	rejectedCore := core
+	rejectedCore.Schema = GeneratedResultEncodingFailureSchema
+	rejectedBytes := bytes.Clone(want)
+	rejectedBytes[1] = 5
+	gotRejected, err := EncodeGeneratedResultCore(rejectedCore)
+	if err != nil || !bytes.Equal(gotRejected, rejectedBytes) {
+		t.Fatal("encoding rejection core differs from independent bytes", err)
+	}
 	for n := range want {
 		if _, err := InspectGeneratedResultCore(want[:n]); err == nil {
 			t.Fatalf("accepted truncation %d", n)

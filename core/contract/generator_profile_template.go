@@ -1,7 +1,7 @@
 package contract
 
 func (v GeneratorAttemptTemplate) valid() bool {
-	if v.Schema != GeneratorAttemptTemplateSchema || v.ResultReaderID != GeneratorResultReaderID() || !v.LifecycleMode.resourceValid(v.ResourceContractID) || !publicIDsValid(v.LineageID, v.AttemptID, v.ResourceIncarnationID, v.PlannedValueSlotID, v.DutyID, v.TransmissionID, v.ResultID, v.InboxID, v.DescriptorID, v.ConfigContractID, v.ExecutorID, v.CredentialRouteID, v.ResultContractID, v.RequestPlanDigest, v.IntentDigest) || v.RequiredAuthoritySet&GeneratorAuthorityNormal == 0 || v.RequiredAuthoritySet > GeneratorAuthorityMask || v.Branch > GeneratorBranchResidueThenNoEffect {
+	if v.Schema != GeneratorAttemptTemplateSchema || (v.ResultReaderID != GeneratorResultReaderID() && !v.SupportsValueEncodingFailure()) || !v.LifecycleMode.resourceValid(v.ResourceContractID) || !publicIDsValid(v.LineageID, v.AttemptID, v.ResourceIncarnationID, v.PlannedValueSlotID, v.DutyID, v.TransmissionID, v.ResultID, v.InboxID, v.DescriptorID, v.ConfigContractID, v.ExecutorID, v.CredentialRouteID, v.ResultContractID, v.RequestPlanDigest, v.IntentDigest) || v.RequiredAuthoritySet&GeneratorAuthorityNormal == 0 || v.RequiredAuthoritySet > GeneratorAuthorityMask || v.Branch > GeneratorBranchResidueThenNoEffect {
 		return false
 	}
 	if v.LifecycleMode == GeneratorLifecycleNone {

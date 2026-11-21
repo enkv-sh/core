@@ -857,7 +857,7 @@ func continuationMaySelectFinal(ctx context.Context, image *selectedImage, gener
 		if err != nil {
 			return false, false, err
 		}
-		if result.SafeFacts.Disposition != contract.GeneratorDispositionCompleteCreate {
+		if result.Disposition() != contract.GeneratorDispositionCompleteCreate {
 			return false, false, nil
 		}
 	}

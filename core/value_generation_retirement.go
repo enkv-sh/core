@@ -206,17 +206,22 @@ func (g *generatedSelection) retirementTarget(ctx context.Context, d contract.Ge
 	if err != nil {
 		return contract.GeneratorTarget{}, err
 	}
-	if facts.Disposition != contract.GeneratorDispositionCompleteCreate {
+	if facts.resultDisposition != contract.GeneratorDispositionCompleteCreate {
 		return contract.GeneratorTarget{}, contract.ErrRecord
 	}
 	return target, nil
 }
 
-func (g *generatedSelection) createTargetEvidence(ctx context.Context, target contract.GeneratorTarget) (contract.GeneratorSafeFactsView, error) {
+type generatedCreateTargetEvidence struct {
+	contract.GeneratorSafeFactsView
+	resultDisposition uint8
+}
+
+func (g *generatedSelection) createTargetEvidence(ctx context.Context, target contract.GeneratorTarget) (generatedCreateTargetEvidence, error) {
 	domain := g.image.root.Domain
 	result, err := generatedCreateResultID(domain, target.OriginalOperationID, target.OriginalAttemptID)
 	if err != nil {
-		return contract.GeneratorSafeFactsView{}, err
+		return generatedCreateTargetEvidence{}, err
 	}
 	row, ok := g.record(contract.GeneratedCreateEvidenceSupportKind, result)
 	if !ok {
@@ -224,11 +229,11 @@ func (g *generatedSelection) createTargetEvidence(ctx context.Context, target co
 	}
 	evidence, err := contract.InspectGeneratedCreateEvidence(row.Body)
 	if err != nil {
-		return contract.GeneratorSafeFactsView{}, err
+		return generatedCreateTargetEvidence{}, err
 	}
 	facts, err := contract.InspectGeneratorSafeFacts(evidence.SafeFacts)
 	if err != nil {
-		return contract.GeneratorSafeFactsView{}, err
+		return generatedCreateTargetEvidence{}, err
 	}
 	var intent []byte
 	if g.image.fragmentFacts != nil {
@@ -237,12 +242,16 @@ func (g *generatedSelection) createTargetEvidence(ctx context.Context, target co
 		intent, err = g.content.readLogical(contract.GeneratorContentIntent, facts.IntentDigest, evidence.Intent, contract.GeneratorIntentMaxLength)
 	}
 	if err != nil {
-		return contract.GeneratorSafeFactsView{}, err
+		return generatedCreateTargetEvidence{}, err
 	}
 	if err := contract.ValidateGeneratedTargetEvidence(domain, target, contract.GeneratedCreateEvidence(evidence), intent); err != nil {
-		return contract.GeneratorSafeFactsView{}, err
+		return generatedCreateTargetEvidence{}, err
 	}
-	return facts, nil
+	core, err := contract.InspectGeneratedResultCore(evidence.ResultCore)
+	if err != nil {
+		return generatedCreateTargetEvidence{}, err
+	}
+	return generatedCreateTargetEvidence{facts, core.Disposition(facts.Disposition)}, nil
 }
 
 // liveCreateTargetEvidence validates the pre-handoff form used by an exact
@@ -250,20 +259,20 @@ func (g *generatedSelection) createTargetEvidence(ctx context.Context, target co
 // cleanup that still retains its qualified original Result may bind that same
 // target without first inventing a canonical handoff.
 
-func (g *generatedSelection) liveCreateTargetEvidence(ctx context.Context, target contract.GeneratorTarget, resultID contract.ID) (contract.GeneratorSafeFactsView, error) {
+func (g *generatedSelection) liveCreateTargetEvidence(ctx context.Context, target contract.GeneratorTarget, resultID contract.ID) (generatedCreateTargetEvidence, error) {
 	a, ok := g.attempts[target.OriginalAttemptID]
 	if !ok || len(a.result) == 0 || a.record.DomainID != g.image.root.Domain ||
 		a.record.OperationID != target.OriginalOperationID || a.record.ResultID != resultID ||
 		a.record.ResourceID != target.ResourceID || a.record.ConfigContractID != target.ConfigContractID ||
 		a.record.ResourceContractID != target.ResourceContractID || a.record.ResultContractID != target.ResultContractID ||
 		a.record.CompletionClass != target.CompletionClass {
-		return contract.GeneratorSafeFactsView{}, contract.ErrRecord
+		return generatedCreateTargetEvidence{}, contract.ErrRecord
 	}
 	result, err := contract.InspectGeneratedResultRecord(a.result)
 	if err != nil || result.SafeFacts.Disposition != contract.GeneratorDispositionCompleteCreate && result.SafeFacts.Disposition != contract.GeneratorDispositionOwnedUnusableCreate ||
-		!generatedResourceFactsMatch(result.SafeFacts.GeneratorSafeFacts, target.ResourceDigest) || !generatedResourceFactsMatch(result.SafeFacts.GeneratorSafeFacts, target.ResourceDigest) ||
+		!generatedResourceFactsMatch(result.SafeFacts.GeneratorSafeFacts, target.ResourceDigest) ||
 		result.SafeFacts.IntentDigest != a.expected.Template.IntentDigest {
-		return contract.GeneratorSafeFactsView{}, contract.ErrRecord
+		return generatedCreateTargetEvidence{}, contract.ErrRecord
 	}
 	if g.image.fragmentFacts != nil {
 		_, err = g.readSelectedSlice(ctx, contract.GeneratorContentIntent, result.SafeFacts.IntentDigest, contract.GeneratorIntentMaxLength)
@@ -271,9 +280,9 @@ func (g *generatedSelection) liveCreateTargetEvidence(ctx context.Context, targe
 		_, err = g.content.read(contract.GeneratorContentIntent, result.SafeFacts.IntentDigest, contract.GeneratorIntentMaxLength)
 	}
 	if err != nil {
-		return contract.GeneratorSafeFactsView{}, err
+		return generatedCreateTargetEvidence{}, err
 	}
-	return result.SafeFacts, nil
+	return generatedCreateTargetEvidence{result.SafeFacts, result.Disposition()}, nil
 }
 
 // The caller has validated this exact target through the shared fact readers.

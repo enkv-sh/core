@@ -895,8 +895,8 @@ func (a *generatedAdmission) candidateTerminalUncertain(c generatedCandidate) bo
 	}
 	required := make(map[contract.ID]bool)
 	for id, result := range results {
-		if result.SafeFacts.Disposition == contract.GeneratorDispositionOwnedUnusableCreate ||
-			result.SafeFacts.Disposition == contract.GeneratorDispositionCompleteCreate && !selected[id] && localReleases[id].AttemptID.IsZero() {
+		if result.Disposition() == contract.GeneratorDispositionOwnedUnusableCreate ||
+			result.Disposition() == contract.GeneratorDispositionCompleteCreate && !selected[id] && localReleases[id].AttemptID.IsZero() {
 			required[id] = true
 		}
 	}
@@ -1091,7 +1091,7 @@ func (a *generatedAdmission) candidateTerminalUncertain(c generatedCandidate) bo
 		}
 		source, err := contract.InspectGeneratedDeleteSource(row)
 		if err != nil || !a.terminalOriginalConsumerMatches(c, row, source.Consumers, templates[id]) || record.State == contract.GeneratedEffectSucceeded &&
-			(result.SafeFacts.Disposition != contract.GeneratorDispositionCompleteCreate || row.Kind != contract.GeneratedDutySupportKind ||
+			(result.Disposition() != contract.GeneratorDispositionCompleteCreate || row.Kind != contract.GeneratedDutySupportKind ||
 				source.Duty.Kind != contract.GeneratedDutyUnselectedCleanup || source.Duty.Status != contract.GeneratedEffectSucceeded) ||
 			record.State != contract.GeneratedEffectSucceeded && (row.Kind != contract.GeneratedHazardSupportKind || source.Hazard.Fenced != 1) {
 			return false
@@ -1124,7 +1124,7 @@ func (a *generatedAdmission) candidateTerminalUncertain(c generatedCandidate) bo
 		if frontier.AttemptID.IsZero() {
 			return false
 		}
-		fulfilled := results[frontier.AttemptID].SafeFacts.Disposition == contract.GeneratorDispositionCompleteCreate &&
+		fulfilled := results[frontier.AttemptID].Disposition() == contract.GeneratorDispositionCompleteCreate &&
 			(attempts[frontier.AttemptID].AttemptID.IsZero() || attempts[frontier.AttemptID].State == contract.GeneratedEffectSucceeded)
 		if !final.nonselecting {
 			selected := false

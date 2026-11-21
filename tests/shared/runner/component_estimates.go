@@ -8,6 +8,7 @@ package main
 // Omitted, failed, partial and unobserved roots keep prior or provisional weights.
 // Unlisted tests use the one-second fallback.
 var componentEstimates = map[string]float64{
+	"TestInstalledManagedCreateKeepsCleanupTargetAfterValueEncodingRefusal":               18,
 	"TestInstalledGeneratedCleanupRecordsProviderIdentityConflict":                        6,
 	"TestGeneratedOrdinaryCleanupAmbiguityRefusesInvalidFactsWithoutStateChange":          1,
 	"TestGeneratedCleanupIdentityConflictRetainsExactOwner":                               1,
@@ -33,7 +34,7 @@ var componentEstimates = map[string]float64{
 	"TestInstalledGeneratedListRechecksAdmissionAfterHazardQualification":                 12,
 	"TestInstalledGeneratedListCloseJoinsHazardQualification":                             4,
 	"TestInstalledNormalHandoffAddsRecipientAcrossPageBoundary":                           8,
-	"TestInstalledGeneratedCleanupLateCreateReflectionAllowsFollowingCleanup":             10,
+	"TestInstalledGeneratedCleanupLateCreateReflectionAllowsFollowingCleanup":             14,
 	"TestGCActiveLocalAndMixedGraphPublicReadersProtectAdmittedInboxes":                   5,
 	"TestApplyPreparationExcludesPublicationImmutableWrites":                              13,
 	"TestInstalledApplyPreparationRetainsActualImmutableEvidence":                         2,
@@ -1355,8 +1356,8 @@ var componentEstimates = map[string]float64{
 	"TestInstalledLocalGeneratorSharedDeleteReleaseRetainsOnlyActualIntents":            22,
 	"TestInstalledGeneratedAutomaticCryptoRejectsPostSelectionDrift":                    49,
 	"TestInstalledGeneratedRetirementAcknowledgesOnlyExactOldTarget":                    5,
-	"TestInstalledGeneratedRetirementRefusesChangedRetainedImplementation":              4,
-	"TestInstalledGeneratedCleanupRejectsUnauthenticatedFirstOriginalBeforeSigning":     4,
+	"TestInstalledGeneratedRetirementRefusesChangedRetainedImplementation":              5,
+	"TestInstalledGeneratedCleanupRejectsUnauthenticatedFirstOriginalBeforeSigning":     5,
 	"TestInstalledGeneratedCleanupUsesOneFencedDeleteTargetAndContinuationCannotExpand": 6,
 	"TestGeneratedPlanningUsesFixedObservationWithoutEffects":                           2,
 	"TestPlanningDisplaySelectorsRefuseBeforePrivateAcquisition":                        2,

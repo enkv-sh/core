@@ -21,7 +21,7 @@ func SealGeneratedValuePayload(expected contract.GeneratorResultExpectation, mat
 		return payload, nil, ErrPayload
 	}
 	result, err := contract.DecodeGeneratedResultRecord(plan.Result)
-	if err != nil || expected.Template.Action != contract.GeneratorActionCreate || result.SafeFacts.Disposition != contract.GeneratorDispositionCompleteCreate {
+	if err != nil || expected.Template.Action != contract.GeneratorActionCreate || result.Disposition() != contract.GeneratorDispositionCompleteCreate {
 		return payload, nil, ErrPayload
 	}
 	core, meta, template := plan.ValueCore, plan.Generated, expected.Template

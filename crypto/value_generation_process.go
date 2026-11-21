@@ -181,7 +181,7 @@ func invokeGeneratedProcessOwned(ctx context.Context, launcher generatorhost.Lau
 		Disposition: f.Disposition, Reason: f.Reason, RequestDigest: contract.ID(f.RequestDigest), IntentDigest: contract.ID(f.IntentDigest), ResourceContractID: contract.ID(f.ResourceContractID),
 		Target: bytes.Clone(f.Target), ResourceData: bytes.Clone(f.ResourceData), ProviderFacts: bytes.Clone(f.ProviderFacts)}
 	out.Secret = bytes.Clone(result.Value)
-	out.effect = generatedEffectFromFacts(command.Action, out.Facts)
+	out.effect = generatedEffectFromDisposition(out.Facts.Disposition)
 	out.executableCleanupFailed = completeWithCleanupFailure
 	clear(body)
 	return out, contract.CryptoSuccess

@@ -1189,7 +1189,7 @@ func cryptoGeneratedValueEntryPlanBinding(slot uint16, result []byte, core Value
 	}
 	if core.ValueSource != Generated || core.GeneratedBindingDigest != binding || core.ValueStateID != meta.GenerationID ||
 		core.DomainID != v.Core.DomainID || core.CompatibilityID != v.Transfer.Core.CompatibilityID ||
-		core.CryptoSupportID != v.Payload.CryptoSupportID || core.InputEncoding != v.Payload.InputEncoding || core.ContentLength != v.Payload.ContentLength || core.RetainedLength != v.Payload.RetainedLength || v.SafeFacts.Disposition != GeneratorDispositionCompleteCreate ||
+		core.CryptoSupportID != v.Payload.CryptoSupportID || core.InputEncoding != v.Payload.InputEncoding || core.ContentLength != v.Payload.ContentLength || core.RetainedLength != v.Payload.RetainedLength || v.Disposition() != GeneratorDispositionCompleteCreate ||
 		meta.ConfigContractID != v.Core.ConfigContractID || meta.IntentDigest != v.SafeFacts.IntentDigest ||
 		meta.ResourceIncarnationID != resource || meta.OriginOperationID != v.Core.OperationID || meta.OriginAttemptID != v.Core.AttemptID ||
 		meta.CreateResultID != v.Core.ResultID || meta.ResourceDigest != resourceDigest || meta.ResourceContractID != v.SafeFacts.ResourceContractID || meta.LifecycleMode != v.SafeFacts.LifecycleMode {

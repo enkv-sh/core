@@ -58,11 +58,8 @@ func resolveGeneratedImplementation(i ApplyInstallation, request GeneratedImplem
 		return row, contract.ErrRecord
 	}
 	row.CredentialRoute = slices.Clone(row.CredentialRoute)
-	if old := request.Retained; old != nil {
-		digest, err := contract.GeneratedResultContractID(row, old.Action, old.CompletionClass, old.MaxSecret, old.MaxFacts, old.InputEncoding)
-		if err != nil || row.DescriptorID != old.DescriptorID || row.ExecutorID != old.ExecutorID || row.CredentialRouteID != old.CredentialRouteID || digest != old.ResultContractID {
-			return row, contract.ErrRecord
-		}
+	if request.Retained != nil && !request.Retained.Matches(row) {
+		return row, contract.ErrRecord
 	}
 	return row, nil
 }
@@ -202,7 +199,7 @@ func (s *StateSession) installedGeneratedPlan(ctx context.Context, i ApplyInstal
 			lineage.LineageID = fixed(contract.GeneratorLineageID(s.root.Domain, operation, entry.Name, incarnation, meta.Epoch, plan.IntentDigest))
 			for branch := range int(lineage.TemplateCount) {
 				x := contract.GeneratorAttemptTemplate{Schema: contract.GeneratorAttemptTemplateSchema, Branch: uint8(branch), Action: contract.GeneratorActionCreate, LineageID: lineage.LineageID, ConfigContractID: meta.ConfigContractID, ResourceContractID: meta.ResourceContractID, ExecutorID: implementation.ExecutorID, CredentialRouteID: implementation.CredentialRouteID, DescriptorID: implementation.DescriptorID, IntentDigest: plan.IntentDigest, TargetKind: 1, TargetSourceID: plan.IntentDigest, CompletionClass: meta.CompletionClass, RequiredAuthoritySet: 1}
-				x.LifecycleMode, x.ResultReaderID = meta.LifecycleMode, contract.GeneratorResultReaderID()
+				x.LifecycleMode, x.ResultReaderID = meta.LifecycleMode, contract.GeneratorResultReaderFor(x.Action, x.CompletionClass, entry.InputEncoding)
 				if local {
 					x.TargetKind, x.TargetSourceID = 0, contract.ID{}
 				}
@@ -243,6 +240,7 @@ func (s *StateSession) installedGeneratedPlan(ctx context.Context, i ApplyInstal
 				cleanup.LineageID = fixed(contract.GeneratorObligationLineageID(s.root.Domain, operation, create.ResourceIncarnationID, 3))
 				x := create
 				x.Action, x.Branch, x.NoEffectBudget, x.ResidueBudget, x.TargetKind = 2, 0, 0, 0, 3
+				x.ResultReaderID = contract.GeneratorResultReaderID()
 				x.LineageID, x.TargetSourceID, x.PredecessorAttemptID = cleanup.LineageID, create.ResultID, contract.ID{}
 				x.AttemptID = fixed(contract.GeneratorAttemptID(cleanup.LineageID, 0))
 				x.ResultContractID = fixed(contract.GeneratedResultContractID(implementation, 2, x.CompletionClass, 0, 4096, contract.InputEncodingRaw))

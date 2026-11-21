@@ -3,6 +3,7 @@ package core
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -15,9 +16,11 @@ import (
 	"testing"
 	"time"
 
+	"enkv.sh/compositions/generatorhost"
 	"enkv.sh/core/contract"
 	"enkv.sh/core/format"
 	"enkv.sh/crypto/testsupport/custody"
+	protocol "enkv.sh/sdk/protocols/generator"
 )
 
 func installedGeneratedCleanupTestEngine(t testing.TB, env fixtureEnvironment, selected *StateSession, generated *GeneratedApplyInstallation) *InstalledApply {
@@ -310,7 +313,7 @@ func testGeneratedNativePreStartFailure(t *testing.T, earlierUnknown bool) {
 	}
 }
 
-func installedGeneratedNativeLateCreateFixture(t *testing.T, ctx context.Context, process *generatedProcessFixture) (fixtureEnvironment, *StateSession, generatedAttempt, []byte) {
+func installedGeneratedNativeLateCreateFixture(t *testing.T, ctx context.Context, process *generatedProcessFixture, encoding uint8) (fixtureEnvironment, *StateSession, generatedAttempt, []byte) {
 	t.Helper()
 	f := newInstalledApplyTestFixture(t, ctx, contract.GCP, true)
 	f.env.GeneratedProcess = process
@@ -321,7 +324,7 @@ func installedGeneratedNativeLateCreateFixture(t *testing.T, ctx context.Context
 	}
 	initial.Close()
 	before := f.open(t, ctx)
-	input := []ApplyEntryInput{plain, {Name: "late", InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ValueSource: contract.Generated, ConfidentialityClass: contract.Secret,
+	input := []ApplyEntryInput{plain, {Name: "late", InputEncoding: encoding, OutputEncoding: contract.OutputEncodingRaw, ValueSource: contract.Generated, ConfidentialityClass: contract.Secret,
 		Recipients: []contract.ID{before.admission.recipient}, Generated: &contract.GeneratorDeclaredGeneration{Schema: contract.GeneratorDeclaredGenerationSchema,
 			LifecycleMode: contract.GeneratorLifecycleManaged, RetirementMode: contract.GeneratedRetirementManual,
 			ConfigContractID: process.Implementation.ConfigContractID, ResourceContractID: hermeticCloudflareResourceContractID(),
@@ -444,13 +447,14 @@ func installedGeneratedLateCreateFixture(t *testing.T, ctx context.Context, choi
 // full_only: false
 func TestInstalledGeneratedCleanupLateCreateReflectionAllowsFollowingCleanup(t *testing.T) {
 	for _, test := range []struct {
-		name, state string
-		choice      uint8
-		closed      bool
+		name, state      string
+		choice, encoding uint8
+		closed           bool
 	}{
-		{"complete", "effect-terminal-failure", custody.StandardValue, false},
-		{"owned-unusable", "effect-terminal-failure", custody.GeneratedTerminalFailure, false},
-		{"no-effect", "success", custody.GeneratedConfirmedNoEffect, true},
+		{"complete", "effect-terminal-failure", custody.StandardValue, contract.InputEncodingRaw, false},
+		{"invalid-encoding", "effect-terminal-failure", custody.StandardValue, contract.InputEncodingBase64, false},
+		{"owned-unusable", "effect-terminal-failure", custody.GeneratedTerminalFailure, contract.InputEncodingRaw, false},
+		{"no-effect", "success", custody.GeneratedConfirmedNoEffect, contract.InputEncodingRaw, true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
@@ -467,7 +471,7 @@ func TestInstalledGeneratedCleanupLateCreateReflectionAllowsFollowingCleanup(t *
 			if process == nil {
 				env, before, original, packet = installedGeneratedLateCreateFixture(t, ctx, test.choice)
 			} else {
-				env, before, original, packet = installedGeneratedNativeLateCreateFixture(t, ctx, process)
+				env, before, original, packet = installedGeneratedNativeLateCreateFixture(t, ctx, process, test.encoding)
 			}
 			work := mustSelectedGeneratedWork(t, before)
 			hazardKey := generatedRecordKey{contract.GeneratedHazardSupportKind, original.expected.Template.HazardID}
@@ -526,6 +530,9 @@ func TestInstalledGeneratedCleanupLateCreateReflectionAllowsFollowingCleanup(t *
 				got.Generated.Effects[0].Record.OperationID != original.record.OperationID || got.Cleanup.Basis.OriginalResult == nil ||
 				got.Cleanup.Basis.OriginalResult.ResultBodyDigest != contract.Hash(packet) || got.Generated.ReceiptObservation {
 				t.Fatal("reflection replaced original effect identity or omitted exact packet evidence")
+			}
+			if test.encoding == contract.InputEncodingBase64 && got.Generated.Effects[0].Reason != GeneratedReasonValueEncoding {
+				t.Fatal("reflected result lost the host's encoding rejection", got.Generated.Effects[0].Reason)
 			}
 			cold := generatedLifecycleReopen(t, ctx, before, env.Store)
 			after := mustSelectedGeneratedWork(t, cold)
@@ -846,5 +853,151 @@ func TestInstalledGeneratedCleanupRecordsProviderIdentityConflict(t *testing.T) 
 	t.Logf("predecessor=%x recorded=%x independent_update=%x retained_hazard=%x creates=%d deletes=%d", before.head.Core.Revision, cold.head.Core.Revision, after.head.Core.Revision, selected.sourceKey().id, creates, len(deletes))
 	if creates != 2 || !slices.Equal(deletes, []string{"00000000000000000000000000000001", "00000000000000000000000000000001"}) {
 		t.Fatal("unexpected native requests", creates, deletes)
+	}
+}
+
+// full_only: false
+func TestInstalledManagedCreateKeepsCleanupTargetAfterValueEncodingRefusal(t *testing.T) {
+	t.Run("successful sibling stays unselected", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+		defer cancel()
+		process, counts := installedGeneratedRetirementProcess(t, "acknowledged")
+		f := newInstalledApplyTestFixture(t, ctx, contract.GCP, true)
+		f.env.GeneratedProcess = process
+		entries := installedGeneratedRetirementEntries(process, f.selected.admission.recipient, 0, "proposed sibling")
+		sibling := entries[0]
+		sibling.Name = "sibling"
+		entries[0].InputEncoding = contract.InputEncodingBase64
+		entries = append(entries, sibling)
+		callbacks := installedGeneratedRetirementCallbacks(t, f, process)
+		engine := installedGeneratedTestEngine(t, ctx, f, f.selected, entries, currentApplyRecipients(f.selected.registry()), callbacks)
+		got := engine.Apply(ctx, testID("mixed encoding results"), entries)
+		engine.Close()
+		cold := f.open(t, ctx)
+		creates, deletes := counts()
+		if creates != 2 || len(deletes) != 0 || got.Generated == nil || got.Generated.StateResult != "effect-terminal-failure" || len(got.Generated.Duties) != 1 || len(got.Generated.Hazards) != 1 ||
+			!cold.root.Generated.ActiveOwner.IsZero() || cold.root.Generated.GeneratedCurrent != 0 || !reflect.DeepEqual(cold.root.Names, f.selected.root.Names) {
+			t.Fatal("mixed result changed the predecessor or lost a cleanup obligation", got.Result, creates, deletes)
+		}
+		success, failure := got.Generated.Duties[0].Target, got.Generated.Hazards[0].Target
+		if success == nil || failure == nil || success.Name != sibling.Name || failure.Name != entries[0].Name || success.ResourceDigest == failure.ResourceDigest ||
+			got.Generated.Duties[0].Record.Kind != contract.GeneratedDutyUnselectedCleanup {
+			t.Fatal("mixed result lost the distinct cleanup targets")
+		}
+	})
+	for _, tc := range []struct {
+		name                                     string
+		encoding                                 uint8
+		pauseBeforeFinal, successor, validBase64 bool
+	}{
+		{name: "raw", encoding: contract.InputEncodingRaw},
+		{name: "valid-base64", encoding: contract.InputEncodingBase64, validBase64: true},
+		{name: "strict-base64", encoding: contract.InputEncodingBase64},
+		{name: "restart-before-final", encoding: contract.InputEncodingBase64, pauseBeforeFinal: true},
+		{name: "rejection-on-successor", encoding: contract.InputEncodingBase64, successor: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+			defer cancel()
+			mode, wantCreates := "acknowledged", 1
+			if tc.validBase64 {
+				mode = "valid-base64"
+			}
+			if tc.successor {
+				mode, wantCreates = "first-create-unknown", 2
+			}
+			token := fmt.Sprintf("%032x", wantCreates)
+			process, counts := installedGeneratedRetirementProcess(t, mode)
+			f := newInstalledApplyTestFixture(t, ctx, contract.GCP, true)
+			f.env.GeneratedProcess = process
+			entries := installedGeneratedRetirementEntries(process, f.selected.admission.recipient, 0, "healthy")
+			entries[0].InputEncoding = tc.encoding
+			callbacks := installedGeneratedRetirementCallbacks(t, f, process)
+			admitFinal := callbacks.AdmitFinal
+			if tc.pauseBeforeFinal {
+				callbacks.AdmitFinal = func(context.Context, contract.CryptoGeneratedCompareRequest, contract.ControlCore, contract.GeneratedFinalInput, time.Time) (*InstalledGeneratedCustody, error) {
+					return nil, contract.ErrRecord
+				}
+			}
+			engine := installedGeneratedTestEngine(t, ctx, f, f.selected, entries, currentApplyRecipients(f.selected.registry()), callbacks)
+			result := engine.Apply(ctx, testID("create with declared "+tc.name), entries)
+			engine.Close()
+			cold := f.open(t, ctx)
+			if tc.encoding == contract.InputEncodingRaw || tc.validBase64 {
+				creates, deletes := counts()
+				if result.Result.Outcome != ObservedCurrent || creates != 1 || len(deletes) != 0 || cold.root.Generated.GeneratedCurrent != 1 {
+					t.Fatalf("raw adoption: outcome=%v creates=%d deletes=%d current=%d", result.Result.Outcome, creates, len(deletes), cold.root.Generated.GeneratedCurrent)
+				}
+				_, entry := observeCurrentValueEntry(t, cold, "generated")
+				if generatedEntryProviderToken(t, cold, entry) != token {
+					t.Fatal("wrong adopted resource")
+				}
+				work := mustSelectedGeneratedWork(t, cold)
+				row := work.records[generatedRecordKey{contract.GeneratedCreateEvidenceSupportKind, entry.Generated.CreateResultID}]
+				evidence, err := contract.InspectGeneratedCreateEvidence(row.Body)
+				if err != nil {
+					t.Fatal(err)
+				}
+				facts, err := contract.DecodeGeneratorSafeFacts(evidence.SafeFacts)
+				if err != nil || facts.Disposition != contract.GeneratorDispositionCompleteCreate {
+					t.Fatal("missing original complete-create evidence")
+				}
+				_, body, err := callbacks.CheckRetirementCompatibility(ctx, process.Implementation, process.Intent, facts, contract.GeneratedCompletionAcknowledged)
+				if err != nil {
+					t.Fatal("original compatibility exchange", err)
+				}
+				checked, err := protocol.DecodeValidationResponse(body)
+				if err != nil || !checked.Accepted {
+					t.Fatal("original provider facts did not qualify for cleanup", err)
+				}
+				facts.Disposition, facts.Reason = contract.GeneratorDispositionOwnedUnusableCreate, contract.GeneratorReasonInvalidValue
+				_, _, err = callbacks.CheckRetirementCompatibility(ctx, process.Implementation, process.Intent, facts, contract.GeneratedCompletionAcknowledged)
+				if !errors.Is(err, generatorhost.ErrPassiveRefused) {
+					t.Fatal("expected a correlated native refusal for changed original facts", err)
+				}
+				return
+			}
+			afterApply, _ := counts()
+			if tc.pauseBeforeFinal {
+				work := mustSelectedGeneratedWork(t, cold)
+				if cold.root.Generated.ActiveOwner.IsZero() || len(work.attempts) != 1 || afterApply != 1 {
+					t.Fatal("expected a recorded rejection before Final")
+				}
+				for _, a := range work.attempts {
+					packet, err := contract.InspectGeneratedResultRecord(a.result)
+					if err != nil || a.record.State != contract.GeneratedEffectFailedTerminal || packet.Core.Schema != contract.GeneratedResultEncodingFailureSchema {
+						t.Fatal("cold checkpoint lost the original rejection", err)
+					}
+				}
+				callbacks.AdmitFinal = admitFinal
+			}
+			// The fixture bearer is valid for the provider and contains an underscore,
+			// which is outside the declared standard Base64 alphabet.
+			if !cold.root.Generated.ActiveOwner.IsZero() {
+				engine = installedGeneratedTestEngine(t, ctx, f, cold, entries, currentApplyRecipients(cold.registry()), callbacks)
+				result = engine.Continue(ctx, testID("continue the recorded create"), result.OperationID)
+				engine.Close()
+				cold = f.open(t, ctx)
+			}
+			selected, present, err := cold.readGeneratedCleanup(ctx)
+			creates, deletes := counts()
+			if err != nil || !present || selected.kind != generatedCleanupHazard || selected.target.ResourceDigest != hermeticCloudflareResourceDigest(token) ||
+				!cold.root.Generated.ActiveOwner.IsZero() || cold.root.Generated.GeneratedCurrent != 0 || creates != wantCreates || len(deletes) != 0 {
+				t.Fatalf("expected one created resource and its exact cleanup target after reopen: predecessor=%x selected=%x creates_after_apply=%d creates_total=%d deletes=%d active=%t hazards=%d target_available=%t cleanup_read_error=%t current=%d",
+					f.selected.head.Core.Revision, cold.head.Core.Revision, afterApply, creates, len(deletes), !cold.root.Generated.ActiveOwner.IsZero(), cold.root.Generated.Hazards, present, err != nil, cold.root.Generated.GeneratedCurrent)
+			}
+			if result.Generated == nil || result.Generated.StateResult != "effect-terminal-failure" || !slices.ContainsFunc(result.Generated.Effects, func(f GeneratedEffectFact) bool {
+				return f.Reason == GeneratedReasonValueEncoding && f.Record.AttemptID == selected.hazard.OriginalAttemptID && f.Record.State == contract.GeneratedEffectFailedTerminal
+			}) {
+				t.Fatal("encoding refusal did not preserve the original failed attempt")
+			}
+			cleaner := installedGeneratedRetirementEngine(t, ctx, f, cold, callbacks)
+			cleaned := cleaner.CleanupGenerated(ctx, testID("clean the unusable generated value"))
+			cleaner.Close()
+			creates, deletes = counts()
+			if cleaned.Generated == nil || cleaned.Generated.StateResult != "success" || creates != wantCreates || !slices.Equal(deletes, []string{token}) || int(f.open(t, ctx).root.Generated.Hazards) != wantCreates-1 {
+				t.Fatalf("cleanup did not complete for the exact created resource: creates=%d deletes=%d outcome=%v", creates, len(deletes), cleaned.Result.Outcome)
+			}
+		})
 	}
 }

@@ -927,8 +927,10 @@ func generatorGraphEntryPlansError(entryPlans []GeneratorValueEntryPlan, lineage
 			if lineage.Purpose != GeneratorLineageCreate || lineage.LineageID != entryPlan.LineageID {
 				continue
 			}
+			first := lineage.Templates[0]
 			if found || lineage.Name != entryPlan.Name || lineage.EntryIncarnationID != entryPlan.EntryIncarnationID || lineage.Epoch != entryPlan.Epoch ||
-				lineage.IntentDigest != entryPlan.IntentDigest || lineage.Templates[0].LifecycleMode != entryPlan.LifecycleMode || lineage.Templates[0].PlannedValueSlotID != entryPlan.PlannedValueSlotID {
+				lineage.IntentDigest != entryPlan.IntentDigest || first.LifecycleMode != entryPlan.LifecycleMode || first.PlannedValueSlotID != entryPlan.PlannedValueSlotID ||
+				first.SupportsValueEncodingFailure() && entryPlan.InputEncoding != InputEncodingBase64 {
 				return ErrRecord
 			}
 			found = true
@@ -985,9 +987,10 @@ func generatorGraphDeleteTargetsError(refs []generatorTemplateRef) error {
 			if p.Action != GeneratorActionCreate || p.ResultID != x.TargetSourceID {
 				continue
 			}
+			// Readers are action-specific. A managed Base64 CREATE can pair with a v4 DELETE.
 			if found || p.ResourceIncarnationID != x.ResourceIncarnationID || p.DutyID != x.DutyID ||
 				p.ResourceDigest != x.ResourceDigest || p.LifecycleMode != x.LifecycleMode || p.ResourceContractID != x.ResourceContractID ||
-				p.DescriptorID != x.DescriptorID || p.ExecutorID != x.ExecutorID || p.CredentialRouteID != x.CredentialRouteID || p.ResultReaderID != x.ResultReaderID ||
+				p.DescriptorID != x.DescriptorID || p.ExecutorID != x.ExecutorID || p.CredentialRouteID != x.CredentialRouteID ||
 				p.ConfigContractID != x.ConfigContractID || p.IntentDigest != x.IntentDigest ||
 				p.CompletionClass != x.CompletionClass || producer.lineage.Name != ref.lineage.Name || producer.lineage.EntryIncarnationID != ref.lineage.EntryIncarnationID ||
 				producer.lineage.Epoch != ref.lineage.Epoch {

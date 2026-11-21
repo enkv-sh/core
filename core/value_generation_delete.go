@@ -235,7 +235,7 @@ func (g *generatedSelection) validateDeleteTarget(ctx context.Context, bundle co
 		}
 		if lineage.Purpose == contract.GeneratorLineageRetirement {
 			duty, err := contract.GeneratorDutyID(a.DomainID, target.OriginalOperationID, target.OriginalAttemptID, contract.GeneratedDutyRetirement)
-			if err != nil || a.OwnerID != duty || facts.Disposition != contract.GeneratorDispositionCompleteCreate || x.TargetKind != contract.GeneratorTargetOwnedResource {
+			if err != nil || a.OwnerID != duty || facts.resultDisposition != contract.GeneratorDispositionCompleteCreate || x.TargetKind != contract.GeneratorTargetOwnedResource {
 				return contract.ErrRecord
 			}
 		}

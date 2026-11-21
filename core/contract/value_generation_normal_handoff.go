@@ -62,13 +62,21 @@ type GeneratedSupportRows struct {
 }
 
 func GeneratedResultContractID(row GeneratorImplementation, action, completion uint8, maxValue, maxFacts uint32, inputEncoding uint8) (ID, error) {
+	return GeneratedResultContractForReader(row, action, completion, maxValue, maxFacts, inputEncoding, GeneratorResultReaderFor(action, completion, inputEncoding))
+}
+
+// GeneratedResultContractForReader also qualifies retained work against its original reader.
+func GeneratedResultContractForReader(row GeneratorImplementation, action, completion uint8, maxValue, maxFacts uint32, inputEncoding uint8, reader ID) (ID, error) {
+	if reader != GeneratorResultReaderID() && reader != GeneratorResultReaderFor(action, completion, inputEncoding) {
+		return ID{}, ErrRecord
+	}
 	if (inputEncoding != InputEncodingRaw && inputEncoding != InputEncodingBase64) || action == GeneratorActionDelete && inputEncoding != InputEncodingRaw || row.Validate() != nil || action < GeneratorActionCreate || action > GeneratorActionDelete || maxValue > CryptoMaxRawValue || maxFacts == 0 || maxFacts > GeneratorSafeFactsEnvelopeLength || action == GeneratorActionDelete && (maxValue != 0 || !generatedCompletionValid(completion)) || action == GeneratorActionCreate && (maxValue == 0 || completion != 0 && !generatedCompletionValid(completion)) {
 		return ID{}, ErrRecord
 	}
 	var w cryptoWriter
 	w.id(row.DescriptorID)
 	w.id(row.ProtocolID)
-	w.id(GeneratorResultReaderID())
+	w.id(reader)
 	w.u8(action)
 	w.u8(completion)
 	w.u32(maxValue)

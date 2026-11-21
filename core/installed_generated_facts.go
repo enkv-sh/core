@@ -281,6 +281,15 @@ func generatedEffectFactForLineage(ctx context.Context, g *generatedSelection, i
 			return GeneratedEffectFact{}, contract.ErrRecord
 		}
 		out.Reason, out.EvidenceCeiling = facts.Reason, contract.ReceiptEvidenceProviderFacts
+		if x.SupportsValueEncodingFailure() && len(a.result) != 0 {
+			packet, err := contract.InspectGeneratedResultRecord(a.result)
+			if err != nil {
+				return GeneratedEffectFact{}, err
+			}
+			if packet.Core.Schema == contract.GeneratedResultEncodingFailureSchema {
+				out.Reason = GeneratedReasonValueEncoding
+			}
+		}
 		if x.Action == contract.GeneratorActionCreate && len(facts.Target) > 0 && len(facts.ResourceData) > 0 &&
 			(facts.Disposition == contract.GeneratorDispositionCompleteCreate || facts.Disposition == contract.GeneratorDispositionOwnedUnusableCreate) {
 			resourceDigest, err := contract.GeneratorResourceDigest(facts.GeneratorSafeFacts)

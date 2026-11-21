@@ -8,6 +8,10 @@ type GeneratedResultWarnings struct {
 	PossibleLiveResidue, LateEffect, InvalidationNotConfirmed bool
 }
 
+// GeneratedReasonValueEncoding identifies ENKV's rejection of returned bytes.
+// The independently recorded provider reason remains part of the original facts.
+const GeneratedReasonValueEncoding uint8 = 0x40
+
 // GeneratedEffectFact owns public facts from an authenticated Attempt. ResourceID
 // in Record is the planned identity; Target establishes an actual owned resource.
 // A zero GenerationID means that no canonical generation relation is available.

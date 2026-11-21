@@ -188,7 +188,7 @@ func (v GeneratedResultCore) ids() [14]ID {
 
 func (v GeneratedResultCore) valid() bool {
 	ids := v.ids()
-	return v.Schema == GeneratedResultCoreSchema && v.Profile == MaterialCryptoProfile && publicIDsValid(ids[:]...)
+	return (v.Schema == GeneratedResultCoreSchema || v.Schema == GeneratedResultEncodingFailureSchema) && v.Profile == MaterialCryptoProfile && publicIDsValid(ids[:]...)
 }
 
 func AppendGeneratedResultCore(dst []byte, v GeneratedResultCore) ([]byte, error) {
@@ -260,8 +260,30 @@ func (v GeneratedResultRecordView) MatchesLocalCreateAttempt(a GeneratedAttemptR
 		a.State == GeneratedEffectConfirmedNoEffect && v.SafeFacts.Disposition == GeneratorDispositionConfirmedNoEffect
 }
 
+// Disposition classifies work inside ENKV. The original plugin facts remain
+// available to the pinned executor for exact cleanup.
+func (v GeneratedResultCore) Disposition(providerDisposition uint8) uint8 {
+	if v.Schema == GeneratedResultEncodingFailureSchema {
+		return GeneratorDispositionOwnedUnusableCreate
+	}
+	return providerDisposition
+}
+
+func (v GeneratedResultCore) acceptsFacts(f GeneratorSafeFacts) bool {
+	return v.Schema != GeneratedResultEncodingFailureSchema || f.Action == GeneratorActionCreate &&
+		f.LifecycleMode == GeneratorLifecycleManaged && f.Disposition == GeneratorDispositionCompleteCreate
+}
+
+func (v GeneratedResultRecord) Disposition() uint8 {
+	return v.Core.Disposition(v.SafeFacts.Disposition)
+}
+func (v GeneratedResultRecordView) Disposition() uint8 {
+	return v.Core.Disposition(v.SafeFacts.Disposition)
+}
+
 func generatedResultContextValid(v GeneratedResultRecord) bool {
-	if v.Core.Schema != GeneratedResultCoreSchema || v.SafeFacts.Schema != GeneratorSafeFactsSchema {
+	if !v.Core.acceptsFacts(v.SafeFacts) || v.SafeFacts.Schema != GeneratorSafeFactsSchema ||
+		v.Core.Schema == GeneratedResultEncodingFailureSchema && v.Payload.InputEncoding != InputEncodingBase64 {
 		return false
 	}
 	digest, err := GeneratedResultCoreDigest(v.Core)
@@ -270,7 +292,7 @@ func generatedResultContextValid(v GeneratedResultRecord) bool {
 	t := v.Transfer.Core
 	return err == nil && factsErr == nil && keyErr == nil && facts == v.Core.SafeFactsDigest && v.SafeFacts.RequestDigest == v.Core.RequestDigest &&
 		v.Payload.DataKeyID == data && v.Payload.CommitmentKeyID == commitment && v.Payload.DataKeyEpoch == 1 && v.Payload.CommitmentKeyEpoch == 1 &&
-		v.SafeFacts.Disposition != GeneratorDispositionUnknown && (v.SafeFacts.Disposition == GeneratorDispositionCompleteCreate && v.Payload.ContentLength > 0 || v.SafeFacts.Disposition != GeneratorDispositionCompleteCreate && v.Payload.ContentLength == 0) &&
+		v.SafeFacts.Disposition != GeneratorDispositionUnknown && (v.Disposition() == GeneratorDispositionCompleteCreate) == (v.Payload.ContentLength > 0) &&
 		t.UseKind == resultTransferUse && t.Profile == v.Core.Profile && v.Payload.Profile == v.Core.Profile &&
 		v.Payload.CryptoSupportID == t.CryptoSupportID && t.DomainID == v.Core.DomainID && t.OperationID == v.Core.OperationID &&
 		t.OperationMaterialID == v.Core.MaterialID && t.UsePlanDigest == v.Core.UsePlanDigest &&

@@ -140,7 +140,7 @@ func administrativeSelectedEvidence(index format.AdministrativeIndex, pages []fo
 						if !ok {
 							return nil, contract.ErrRecord
 						}
-						bits, err = administrativeResultEvidence(result.SafeFacts.Disposition)
+						bits, err = administrativeResultEvidence(result.Disposition())
 					}
 				case contract.GeneratedCreateEvidenceSupportKind:
 					var evidence contract.GeneratedCreateEvidenceView
@@ -152,7 +152,11 @@ func administrativeSelectedEvidence(index format.AdministrativeIndex, pages []fo
 							if facts.Disposition == contract.GeneratorDispositionConfirmedNoEffect {
 								return nil, contract.ErrRecord
 							}
-							bits, err = administrativeResultEvidence(facts.Disposition)
+							core, errRead := contract.InspectGeneratedResultCore(evidence.ResultCore)
+							if errRead != nil {
+								return nil, errRead
+							}
+							bits, err = administrativeResultEvidence(core.Disposition(facts.Disposition))
 						}
 					}
 				case contract.PendingInboxReleaseSupportKind:

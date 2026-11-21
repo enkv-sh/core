@@ -59,8 +59,8 @@ const (
 	generatedEffectDeleteAck     generatedEffect = "delete_acknowledged"
 )
 
-func generatedEffectFromFacts(action uint8, facts contract.GeneratorSafeFacts) generatedEffect {
-	switch facts.Disposition {
+func generatedEffectFromDisposition(disposition uint8) generatedEffect {
+	switch disposition {
 	case contract.GeneratorDispositionCompleteCreate:
 		return generatedEffectComplete
 	case contract.GeneratorDispositionOwnedUnusableCreate:
@@ -261,11 +261,11 @@ func (a *generatedAdmission) admitProducer(input *generatedProducerAdmissionInpu
 		}
 		implementation := input.Process.Implementation()
 		if implementation.Validate() != nil || implementation.DescriptorID != x.DescriptorID ||
-			implementation.ExecutorID != x.ExecutorID || x.ResultReaderIdentity() != contract.GeneratorResultReaderID() ||
+			implementation.ExecutorID != x.ExecutorID ||
 			implementation.CredentialRouteID != x.CredentialRouteID {
 			return false
 		}
-		resultContract, err := contract.GeneratedResultContractID(implementation, x.Action, x.CompletionClass, input.Expected.Use.MaxSecret, input.Expected.Use.MaxFacts, input.Expected.InputEncoding)
+		resultContract, err := contract.GeneratedResultContractForReader(implementation, x.Action, x.CompletionClass, input.Expected.Use.MaxSecret, input.Expected.Use.MaxFacts, input.Expected.InputEncoding, x.ResultReaderID)
 		if err != nil || resultContract != x.ResultContractID {
 			return false
 		}
@@ -826,7 +826,7 @@ func (r *Runtime) invokeGeneratedProducerAdmission(ctx context.Context, id, loca
 		out.Facts = ownedFacts
 		out.code = contract.CryptoSuccess
 		out.stage, out.category = "", ""
-		out.effect = generatedEffectFromFacts(owner.command.Action, ownedFacts)
+		out.effect = generatedEffectFromDisposition(ownedFacts.Disposition)
 		return out
 	}
 	if owner.expired() {
@@ -849,6 +849,6 @@ func (r *Runtime) invokeGeneratedProducerAdmission(ctx context.Context, id, loca
 	out.Facts = ownedFacts
 	out.code = contract.CryptoSuccess
 	out.stage, out.category = "", ""
-	out.effect = generatedEffectFromFacts(owner.command.Action, ownedFacts)
+	out.effect = generatedEffectFromDisposition(record.Disposition())
 	return out
 }
