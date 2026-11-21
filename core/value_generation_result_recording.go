@@ -93,7 +93,7 @@ func (s *StateSession) generatedRecordRequest(ctx context.Context, attempt contr
 // generatedLocalFailureRequest derives public transition facts only. The original
 // joined receiver separately grants custody for this exact request.
 func (s *StateSession) generatedLocalFailureRequest(ctx context.Context, attempt contract.ID, reason uint8, admitted contract.ApplyContext) (*generatedRecordPlan, error) {
-	if s == nil || s.prepared || !s.generatedContextValid(admitted) || reason < contract.GeneratorFailureInvalid || reason > contract.GeneratorFailureProtocol {
+	if s == nil || s.prepared || !s.generatedContextValid(admitted) || !contract.GeneratorLocalFailureReasonValid(reason) {
 		return nil, contract.ErrRecord
 	}
 	if err := ctx.Err(); err != nil {

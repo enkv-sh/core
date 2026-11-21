@@ -38,6 +38,17 @@ func TestCryptoGeneratedLocalFailurePrepareIndependentBytes(t *testing.T) {
 	if err := ValidateCryptoGeneratedRequest(q); err != nil {
 		t.Fatal(err)
 	}
+	// Vary only the independent fixture's final byte across the entire wire field.
+	for i := range 256 {
+		probe := q
+		probe.Body = bytes.Clone(body)
+		probe.Body[451] = byte(i)
+		want := i >= 1 && i <= 5 || i >= 133 && i <= 138
+		decoded, err := InspectCryptoGeneratedPrepareRequest(probe)
+		if (err == nil) != want || want && decoded.LocalFailure.Reason != byte(i) {
+			t.Fatalf("failure Prepare reason %d: %v", i, err)
+		}
+	}
 	for _, name := range []string{"zero attempt", "zero reason", "foreign reason", "retired tag", "ordinary adopt", "truncated", "suffix"} {
 		t.Run(name, func(t *testing.T) {
 			bad := q

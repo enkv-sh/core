@@ -60,6 +60,30 @@ const (
 	GeneratorFailureProtocol
 )
 
+// The high bit in a local Attempt's FailureReason identifies a checked SDK
+// Unknown return. Untagged codes describe failures of the command itself.
+const generatorReturnedUnknownFlag uint8 = 0x80
+
+func GeneratorUnknownFailureReason(sdkReason uint8) uint8 {
+	if sdkReason < GeneratorReasonMalformed || sdkReason > GeneratorReasonIdentityConflict {
+		return 0
+	}
+	return generatorReturnedUnknownFlag | sdkReason
+}
+
+func GeneratorReturnedUnknownReason(failure uint8) (uint8, bool) {
+	reason := failure &^ generatorReturnedUnknownFlag
+	if failure&generatorReturnedUnknownFlag == 0 || GeneratorUnknownFailureReason(reason) != failure {
+		return 0, false
+	}
+	return reason, true
+}
+
+func GeneratorLocalFailureReasonValid(failure uint8) bool {
+	_, unknown := GeneratorReturnedUnknownReason(failure)
+	return unknown || failure >= GeneratorFailureInvalid && failure <= GeneratorFailureProtocol
+}
+
 func generatorValueEntryPlanEncodedLength(v GeneratorValueEntryPlan) int {
 	return 238 + len(v.Name) + int(boolU8(v.ValueSource == Generated))
 }

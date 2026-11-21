@@ -72,7 +72,7 @@ func (v CryptoGeneratedLocalFailureRequest) valid() error {
 	if err := cryptoGeneratedStageError(v.OperationRef, v.Context); err != nil {
 		return err
 	}
-	if v.AttemptID.IsZero() || v.Reason < 1 || v.Reason > 5 {
+	if v.AttemptID.IsZero() || !GeneratorLocalFailureReasonValid(v.Reason) {
 		return ErrCryptoMessage
 	}
 	return nil

@@ -64,9 +64,9 @@ func BuildInstalledCancelledLocalAuthor(t testing.TB, root string) GeneratedProc
 // BuildInstalledUnknownLocalAuthor returns valid unknown facts and no value
 // from the actual native callback. It reports neither an execution error nor
 // a managed-resource retirement promise.
-func BuildInstalledUnknownLocalAuthor(t testing.TB, root string) GeneratedProcessConfig {
+func BuildInstalledUnknownLocalAuthor(t testing.TB, root string, reason uint8) GeneratedProcessConfig {
 	t.Helper()
-	return buildInstalledLocalAuthor(t, root, "", "protocol.DispositionUnknown, protocol.ReasonTransport", false, false)
+	return buildInstalledLocalAuthor(t, root, "", "protocol.DispositionUnknown, "+strconv.Itoa(int(reason)), false, false)
 }
 
 // BuildInstalledNoEffectLocalAuthor returns confirmed no-effect from the native callback.

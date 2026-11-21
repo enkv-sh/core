@@ -577,7 +577,10 @@ func GeneratedAttemptRecordLength(v GeneratedAttemptRecord) (int, error) {
 	if v.LifecycleMode == GeneratorLifecycleNone && (v.State > GeneratedEffectUnknown || v.RetryUsed != 0 || v.Progress.Count != 0) {
 		return 0, ErrRecord
 	}
-	if v.FailureReason > GeneratorFailureProtocol || v.LifecycleMode == GeneratorLifecycleNone && (v.State == GeneratedEffectFailedTerminal) != (v.FailureReason != 0) || v.FailureReason != 0 && (v.LifecycleMode != GeneratorLifecycleNone || v.Stage != GeneratedStageTerminal || v.Facts.Count != 0) {
+	if v.LifecycleMode == GeneratorLifecycleNone && (v.State == GeneratedEffectFailedTerminal) != (v.FailureReason != 0) {
+		return 0, ErrRecord
+	}
+	if v.FailureReason != 0 && (!GeneratorLocalFailureReasonValid(v.FailureReason) || v.LifecycleMode != GeneratorLifecycleNone || v.Stage != GeneratedStageTerminal || v.Facts.Count != 0) {
 		return 0, ErrRecord
 	}
 	return GeneratedAttemptRecordFixedLength, nil

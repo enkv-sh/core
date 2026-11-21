@@ -176,9 +176,16 @@ func writeGeneratedQueryRowsHuman(w generatedFactWriter, v core.InspectionGenera
 
 func generatedQueryReason(p core.GeneratedEffectFact) string {
 	if p.Record.LifecycleMode == contract.GeneratorLifecycleNone {
+		if reason, ok := contract.GeneratorReturnedUnknownReason(p.Reason); ok {
+			return "unknown-" + generatedSafeFactsReason(reason)
+		}
 		return map[uint8]string{contract.GeneratorFailureInvalid: "invalid", contract.GeneratorFailureUnavailable: "unavailable", contract.GeneratorFailureCancelled: "cancelled", contract.GeneratorFailureExpired: "expired", contract.GeneratorFailureProtocol: "protocol"}[p.Reason]
 	}
-	return map[uint8]string{contract.GeneratorReasonMissingValue: "missing-value", contract.GeneratorReasonInvalidValue: "invalid-value", contract.GeneratorReasonControls: "controls", contract.GeneratorReasonInactive: "inactive", contract.GeneratorReasonMalformed: "malformed", contract.GeneratorReasonOverflow: "overflow", contract.GeneratorReasonRejected: "rejected", contract.GeneratorReasonTransport: "transport", contract.GeneratorReasonDeadline: "deadline", contract.GeneratorReasonIdentityConflict: "identity-conflict"}[p.Reason]
+	return generatedSafeFactsReason(p.Reason)
+}
+
+func generatedSafeFactsReason(reason uint8) string {
+	return map[uint8]string{contract.GeneratorReasonMissingValue: "missing-value", contract.GeneratorReasonInvalidValue: "invalid-value", contract.GeneratorReasonControls: "controls", contract.GeneratorReasonInactive: "inactive", contract.GeneratorReasonMalformed: "malformed", contract.GeneratorReasonOverflow: "overflow", contract.GeneratorReasonRejected: "rejected", contract.GeneratorReasonTransport: "transport", contract.GeneratorReasonDeadline: "deadline", contract.GeneratorReasonIdentityConflict: "identity-conflict"}[reason]
 }
 func writeGeneratedQueryTargetHuman(w generatedFactWriter, p *contract.GeneratorTarget, progress []contract.GeneratorProgress) {
 	if p == nil {

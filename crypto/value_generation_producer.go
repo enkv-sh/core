@@ -798,7 +798,8 @@ func (r *Runtime) invokeGeneratedProducerAdmission(ctx context.Context, id, loca
 	defer func() { finishCryptoCall(seal, out.code) }()
 	factsBody, err := contract.EncodeGeneratorSafeFacts(returned.Facts)
 	if err != nil || uint32(len(factsBody)) > owner.expected.Use.MaxFacts || returned.Facts.LifecycleMode != owner.command.LifecycleMode || returned.Facts.ResourceContractID != owner.command.ResourceContractID || returned.Facts.Action != owner.command.Action ||
-		returned.Facts.RequestDigest != owner.command.RequestDigest || returned.Facts.IntentDigest != owner.expected.Template.IntentDigest {
+		returned.Facts.RequestDigest != owner.command.RequestDigest || returned.Facts.IntentDigest != owner.expected.Template.IntentDigest ||
+		(returned.Facts.LifecycleMode == contract.GeneratorLifecycleNone && returned.Facts.Disposition == contract.GeneratorDispositionUnknown && len(returned.Secret) != 0) {
 		out.code = contract.CryptoCustodyUnavailable
 		out.stage, out.category = generatedFailureFacts, generatedFailureInvalid
 		return out

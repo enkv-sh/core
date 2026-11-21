@@ -330,8 +330,8 @@ func TestGeneratedLocalFailureKeepsOriginalCallerAuthority(t *testing.T) {
 
 // full_only: false
 func TestGeneratedLocalProducerUsesFreshGraphAndJoinedReturn(t *testing.T) {
-	for _, success := range []bool{false, true} {
-		t.Run(map[bool]string{false: "rejected return", true: "success"}[success], func(t *testing.T) {
+	for _, result := range []string{"rejected return", "Unknown with value", "success"} {
+		t.Run(result, func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
 				f, _, candidate := generatedProducerPlanFixture(t, generatedRuntimeLocalEffectFixture(t))
 				p := f.producer.Producer
@@ -350,9 +350,12 @@ func TestGeneratedLocalProducerUsesFreshGraphAndJoinedReturn(t *testing.T) {
 					close(entered)
 					<-release
 					facts := contract.GeneratorSafeFacts{}
-					if success {
+					if result != "rejected return" {
 						facts = contract.GeneratorSafeFacts{Schema: contract.GeneratorSafeFactsSchema, Action: contract.GeneratorActionCreate, LifecycleMode: contract.GeneratorLifecycleNone,
 							Disposition: contract.GeneratorDispositionCompleteCreate, RequestDigest: f.producer.Producer.Expected.RequestDigest, IntentDigest: f.producer.Producer.Expected.Template.IntentDigest}
+					}
+					if result == "Unknown with value" {
+						facts.Disposition, facts.Reason = contract.GeneratorDispositionUnknown, contract.GeneratorReasonTransport
 					}
 					return generatedProducerReturn{Facts: facts, Secret: allocation[:43]}
 				}
@@ -408,7 +411,7 @@ func TestGeneratedLocalProducerUsesFreshGraphAndJoinedReturn(t *testing.T) {
 				default:
 					t.Fatal("closed receiver did not join its original return owner")
 				}
-				if success {
+				if result == "success" {
 					if failureReason() != 0 {
 						t.Fatal("successful result export supplied failure eligibility")
 					}

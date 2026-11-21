@@ -583,7 +583,7 @@ func generatedLocalFailureAttempt(a generatedAttempt) bool {
 		x.Action == contract.GeneratorActionCreate && x.Branch == contract.GeneratorBranchInitial && x.PredecessorAttemptID.IsZero() &&
 		r.Schema == contract.GeneratedAttemptRecordSchema && r.SemanticLifecycleMode() == contract.GeneratorLifecycleNone && generatedAttemptMatches(r, x) &&
 		r.State == contract.GeneratedEffectFailedTerminal && r.Stage == contract.GeneratedStageTerminal && r.RetryUsed == 0 &&
-		r.FailureReason >= contract.GeneratorFailureInvalid && r.FailureReason <= contract.GeneratorFailureProtocol &&
+		contract.GeneratorLocalFailureReasonValid(r.FailureReason) &&
 		r.Facts == contract.EmptyGeneratorVector(contract.GeneratorVectorFacts) && r.Progress == contract.EmptyGeneratorVector(contract.GeneratorVectorProgress) && len(a.result) == 0
 }
 

@@ -54,17 +54,33 @@ func localResultList() core.PublicGeneratedListResult {
 
 // full_only: false
 func TestGeneratedLocalFailureHumanUsesLocalReasonDomain(t *testing.T) {
-	r := localResultList()
-	p := localResultEffect()
-	p.Record.State, p.Record.FailureReason, p.Reason = contract.GeneratedEffectFailedTerminal, contract.GeneratorFailureUnavailable, contract.GeneratorFailureUnavailable
-	p.GenerationID = contract.ID{}
-	r.View.Effects = []core.GeneratedEffectFact{p}
-	body, err := RenderGeneratedListHuman(r)
-	if err != nil {
-		t.Fatal("local failure fixture must be valid", err)
-	}
-	if !bytes.Contains(body, []byte("Reason: unavailable\n")) || bytes.Contains(body, []byte("Reason: invalid-value\n")) {
-		t.Fatal("local generator failure used the remote safe-facts reason domain", string(body))
+	for _, tc := range []struct {
+		code uint8
+		name string
+	}{
+		{2, "unavailable"}, {5, "protocol"}, {133, "unknown-malformed"},
+		{134, "unknown-overflow"}, {135, "unknown-rejected"}, {136, "unknown-transport"},
+		{137, "unknown-deadline"}, {138, "unknown-identity-conflict"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := localResultList()
+			p := localResultEffect()
+			p.Record.State, p.Record.FailureReason, p.Reason = contract.GeneratedEffectFailedTerminal, tc.code, tc.code
+			p.GenerationID = contract.ID{}
+			r.View.Effects = []core.GeneratedEffectFact{p}
+			human, err := RenderGeneratedListHuman(r)
+			if err != nil || !bytes.Contains(human, []byte("Reason: "+tc.name+"\n")) {
+				t.Fatal("local failure reason differs", err)
+			}
+			body, err := RenderGeneratedListJSON(r)
+			if err != nil || !bytes.Contains(body, []byte(fmt.Sprintf(`"reason": %d`, tc.code))) {
+				t.Fatal("JSON lost the stored reason", err)
+			}
+			r.View.Effects[0].EvidenceCeiling = contract.ReceiptEvidenceProviderFacts
+			if body, err := RenderGeneratedListJSON(r); err == nil || body != nil {
+				t.Fatal("resultless terminal failure claimed provider evidence")
+			}
+		})
 	}
 }
 

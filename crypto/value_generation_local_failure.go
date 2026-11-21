@@ -114,8 +114,13 @@ func (s *generatedLocalFailureOutcome) record(out generatedProducerOutput, settl
 		return
 	}
 	s.recorded = true
-	if settled && out.code != contract.CryptoSuccess && len(out.Record) == 0 {
+	if !settled || len(out.Record) != 0 {
+		return
+	}
+	if out.code != contract.CryptoSuccess {
 		s.reason = generatedLocalFailureReason(out.category)
+	} else if out.Facts.LifecycleMode == contract.GeneratorLifecycleNone && out.Facts.Action == contract.GeneratorActionCreate && out.Facts.Disposition == contract.GeneratorDispositionUnknown {
+		s.reason = contract.GeneratorUnknownFailureReason(out.Facts.Reason)
 	}
 }
 
@@ -173,7 +178,7 @@ func generatedLocalTerminalAttempt(v contract.GeneratedAttemptRecord) bool {
 	n, err := contract.GeneratedAttemptRecordLength(v)
 	return err == nil && n == contract.GeneratedAttemptRecordFixedLength && v.Schema == contract.GeneratedAttemptRecordSchema && v.LifecycleMode == contract.GeneratorLifecycleNone &&
 		v.State == contract.GeneratedEffectFailedTerminal && v.Stage == contract.GeneratedStageTerminal && v.RetryUsed == 0 && v.PredecessorAttemptID.IsZero() &&
-		v.FailureReason >= contract.GeneratorFailureInvalid && v.FailureReason <= contract.GeneratorFailureProtocol && v.Facts == contract.EmptyGeneratorVector(contract.GeneratorVectorFacts)
+		contract.GeneratorLocalFailureReasonValid(v.FailureReason) && v.Facts == contract.EmptyGeneratorVector(contract.GeneratorVectorFacts)
 }
 
 func (b generatedLocalFailureBinding) matches(q contract.CryptoGeneratedCompareRequest, input generatedAdoptionAdmissionInput, attempt contract.GeneratedAttemptRecord) bool {

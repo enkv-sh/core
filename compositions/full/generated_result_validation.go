@@ -40,6 +40,7 @@ func validGeneratedFactRows(domain contract.ID, effects []core.GeneratedEffectFa
 		if r.LifecycleMode == contract.GeneratorLifecycleNone {
 			if v.Action != contract.GeneratorActionCreate || !v.ResourceDigest.IsZero() || v.Target != nil || len(v.Progress) != 0 || !v.HazardID.IsZero() ||
 				v.Warnings != (core.GeneratedResultWarnings{}) || v.Reason != r.FailureReason ||
+				r.FailureReason != 0 && v.EvidenceCeiling != contract.ReceiptEvidenceCanonical ||
 				v.EvidenceCeiling != contract.ReceiptEvidenceCanonical && v.EvidenceCeiling != contract.ReceiptEvidenceProviderFacts ||
 				r.State != contract.GeneratedEffectSucceeded && !v.GenerationID.IsZero() {
 				return false
