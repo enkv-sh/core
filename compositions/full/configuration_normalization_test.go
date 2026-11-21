@@ -51,7 +51,7 @@ func TestConfigurationNormalizationKeepsSourceLocationsAndRawSettings(t *testing
 	generated := &contract.PublicGeneratedSettings{ConfigContractID: contract.PublicField[contract.ID]{State: contract.PublicUnavailable, SourceLocation: location}, ContentIntent: contract.PublicField[[]byte]{State: contract.PublicUnavailable, SourceLocation: location}}
 	destination := contract.OutputDestination{ConfigContractID: "private-config/v1", ServiceContractID: "private-service/v1", CanonicalSettings: []byte(`{}`)}
 	model := &configuration.Model{Entries: []configuration.Entry{{Name: "token", Generated: generator}}, Outputs: []configuration.OutputBinding{{DestinationID: "destination", Plugin: "private-output", Settings: []byte("{ }"), Binding: contract.NormalOutputBinding{DestinationID: "destination", Destination: destination}}}, Public: contract.PublicConfiguration{Entries: readerPresent([]contract.PublicEntry{{Name: "token", Generated: generated}}), OutputBindings: readerPresent([]contract.PublicOutputBinding{{DestinationID: "destination", Destination: contract.PublicField[contract.OutputDestination]{State: contract.PublicUnavailable, SourceLocation: location}}})}}
-	if err := configurationProjectNormalized(model); err != nil {
+	if err := configurationProjectNormalized(model, true); err != nil {
 		t.Fatal(err)
 	}
 	if generated.ConfigContractID.SourceLocation != location || generated.ContentIntent.SourceLocation != location || model.Public.OutputBindings.Value[0].Destination.SourceLocation != location {
@@ -120,7 +120,7 @@ func TestConfigurationNormalizedLifecycleRequiresExplicitRetirement(t *testing.T
 				intent = append(intent, resource...)
 				intent = append(intent, 0, 0, 0, 2, '{', '}')
 				generated.Intent = intent
-				err = configurationProjectNormalized(model)
+				err = configurationProjectNormalized(model, true)
 				if (err == nil) != tc.valid {
 					t.Fatal("normalized intent bypassed explicit lifecycle retirement rule", err)
 				}

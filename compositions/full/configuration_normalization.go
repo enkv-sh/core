@@ -188,7 +188,7 @@ func configurationNormalizePluginsWithOutputValidator(ctx context.Context, trust
 	if len(byDestination) == 0 {
 		interpret = nil
 	}
-	if err := configurationProjectNormalized(model); err != nil {
+	if err := configurationProjectNormalized(model, proposed); err != nil {
 		return nil, nil, err
 	}
 	validator := core.NewPublicConfigurationValidator(interpret)
@@ -231,7 +231,7 @@ func configurationInterpretOutput(ctx context.Context, validator *outputhost.Pub
 }
 
 // Update derived fields in place so captured source locations remain attached.
-func configurationProjectNormalized(model *configuration.Model) error {
+func configurationProjectNormalized(model *configuration.Model, proposed bool) error {
 	for _, entry := range model.Entries {
 		if entry.Generated == nil {
 			continue
@@ -270,8 +270,12 @@ func configurationProjectNormalized(model *configuration.Model) error {
 		if at < 0 {
 			return contract.ErrRecord
 		}
-		model.Public.OutputBindings.Value[at].Destination.State = contract.PublicPresent
-		model.Public.OutputBindings.Value[at].Destination.Value = source.Binding.Destination
+		field := &model.Public.OutputBindings.Value[at].Destination
+		if proposed && source.Plugin == "" && source.CanonicalSettingsEdited() {
+			*field = contract.PublicField[contract.OutputDestination]{State: contract.PublicUnavailable, SourceLocation: field.SourceLocation}
+			continue
+		}
+		field.State, field.Value = contract.PublicPresent, source.Binding.Destination
 	}
 	return nil
 }

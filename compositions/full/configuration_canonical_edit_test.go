@@ -23,6 +23,7 @@ import (
 	"enkv.sh/compositions/configuration"
 	"enkv.sh/compositions/full/plugininstallation"
 	"enkv.sh/compositions/outputhost"
+	"enkv.sh/core"
 	"enkv.sh/core/contract"
 	"enkv.sh/sdk/artifact"
 	artifactbuild "enkv.sh/sdk/artifact/build"
@@ -81,7 +82,8 @@ func TestRecoveredSettingsEditsUseInstalledCanonicalValidationAndTargets(t *test
 	if err := os.MkdirAll(filepath.Join(config, "enkv"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	assembly, err := configurationPluginAssembly("https://127.0.0.1:1/releases/", "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a", "3d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c", "", "")
+	configureLocalPluginTrust(t)
+	assembly, err := configurationPluginAssembly(installedPluginOrigin, installedPluginKeys, installedCLIVerificationKey, installedPluginRedirectHosts, installedPluginTLSRoots)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,6 +110,12 @@ func TestRecoveredSettingsEditsUseInstalledCanonicalValidationAndTargets(t *test
 	}
 	for _, format := range []configuration.Format{configuration.JSON, configuration.YAML} {
 		t.Run(configurationSourceFormat(format), func(t *testing.T) {
+			t.Run("unrouted-output", func(t *testing.T) {
+				checkUnroutedCanonicalSettings(t, ctx, format, config, builds, server.URL, oldDestination)
+				if requests.Load() != 0 {
+					t.Fatal("unrouted settings validation contacted the output service")
+				}
+			})
 			source := configurationApplyPair(t, "aws", format, func(editable, generated map[string]any) {
 				editable["entries"] = map[string]any{"API_TOKEN": map[string]any{"confidentiality": "secret", "recipients": []string{}, "source": map[string]any{"kind": "generated", "plugin": "private-local-token", "epoch": uint64(7), "retirement": "manual", "canonical": map[string]any{"settings": json.RawMessage(beforeSettings)}}}}
 				generated["secrets"] = map[string]any{}
@@ -273,6 +281,90 @@ func TestRecoveredSettingsEditsUseInstalledCanonicalValidationAndTargets(t *test
 						t.Fatal("passive canonical validation sent a service request")
 					}
 				})
+			}
+		})
+	}
+}
+
+func checkUnroutedCanonicalSettings(t *testing.T, ctx context.Context, format configuration.Format, config string, plugins []artifact.LocalPlugin, endpoint string, stored contract.OutputDestination) {
+	t.Helper()
+	backing, err := contract.EncodeNormalOutputBinding(contract.NormalOutputBinding{DestinationID: "archive", Destination: stored})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name, namespace          string
+		selected, sibling, opens bool
+	}{
+		{"edit-missing-with-sibling", "warm", false, true, false},
+		{"edit-missing-alone", "warm", false, false, false},
+		{"edit-accepted", "warm", true, true, true},
+		{"edit-refused", "", true, true, false},
+		{"unchanged-unselected", "dev", false, false, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var selection any
+			if tc.selected {
+				selection = "private-local-values"
+			}
+			settings := []byte(fmt.Sprintf(`{"endpoint":%q,"namespace":%q}`, endpoint, tc.namespace))
+			source := configurationApplyPair(t, "aws", format, func(editable, generated map[string]any) {
+				editable["entries"] = map[string]any{"message": map[string]any{"confidentiality": "plain", "recipients": []string{}, "source": map[string]any{"kind": "supplied", "value": "local"}}}
+				generated["secrets"] = map[string]any{}
+				destinations := map[string]any{"archive": map[string]any{"plugin": selection, "canonical": map[string]any{"settings": json.RawMessage(settings)}}}
+				routing := map[string]any{}
+				if tc.sibling {
+					destinations["active"] = map[string]any{"plugin": "private-local-values", "settings": map[string]any{"endpoint": endpoint, "namespace": "active"}}
+					routing["default"] = []string{"active"}
+				}
+				editable["outputs"] = map[string]any{"destinations": destinations, "routing": routing}
+				configurationCanonicalBacking(generated, "outputs", "archive", backing)
+			})
+			scope, err := filepath.EvalSymlinks(filepath.Dir(source.path))
+			if err != nil {
+				t.Fatal(err)
+			}
+			local, err := artifact.EncodeSettings(artifact.Settings{Schema: "enkv/plugin-settings/v1", Applications: []artifact.Application{{Directory: scope, Plugins: plugins}}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(config, "enkv", "plugins.json"), local, 0600); err != nil {
+				t.Fatal(err)
+			}
+			before := configurationApplySourceImage(t, scope)
+			opens := 0
+			result := applyConfiguration(ctx, contract.ID{1}, source.pair, func(_ context.Context, m *configuration.Model, _ core.ApplyInstallation, _ *configurationInstalledPlugins) (*core.InstalledApply, error) {
+				opens++
+				for _, output := range m.Outputs {
+					if output.DestinationID == "archive" {
+						want := stored
+						want.CanonicalSettings = settings
+						if len(output.Binding.Targets) != 0 || !reflect.DeepEqual(output.Binding.Destination, want) {
+							t.Fatal("archive acquired a route or changed canonical fields")
+						}
+						return nil, ErrCell
+					}
+				}
+				t.Fatal("archive missing from proposal")
+				return nil, ErrCell
+			})
+			configurationApplyAssertUnchanged(t, scope, before)
+			if tc.opens {
+				if opens != 1 {
+					t.Fatalf("valid proposal did not reach construction: %+v", result.PreAdmission)
+				}
+				configurationApplyAssertUnavailable(t, result)
+				return
+			}
+			if opens != 0 || !result.RequestIdentity.IsZero() || result.Result.CommitMayHaveOccurred || result.PreAdmission == nil {
+				t.Fatal("unverified destination reached construction or admission")
+			}
+			if tc.selected {
+				if result.Result.Outcome != core.AdmissionRefused || result.PreAdmission.Stage != "declaration" {
+					t.Fatal("canonical refusal lost its cause", result.PreAdmission)
+				}
+			} else if result.Result.Outcome != core.EvidenceUnavailable || result.PreAdmission.Code != string(contract.ReasonEvidenceUnavailable) {
+				t.Fatal("missing selection lost its dependency result", result.PreAdmission)
 			}
 		})
 	}

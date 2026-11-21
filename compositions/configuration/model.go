@@ -117,6 +117,9 @@ type OutputBinding struct {
 	Binding                            contract.NormalOutputBinding
 }
 
+// CanonicalSettingsEdited reports whether the source view differs from the saved record.
+func (b *OutputBinding) CanonicalSettingsEdited() bool { return b.settingsEdited }
+
 type Route struct {
 	Default      bool
 	EntryName    string

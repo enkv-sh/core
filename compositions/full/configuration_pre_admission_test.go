@@ -435,14 +435,7 @@ func TestConfigurationPluginFailureClassification(t *testing.T) {
 
 // full_only: false
 func TestConfigurationRequiredPluginFailurePrecedesAllOperationConstruction(t *testing.T) {
-	savedOrigin, savedKeys, savedCLIKey, savedRedirects, savedRoots := installedPluginOrigin, installedPluginKeys, installedCLIVerificationKey, installedPluginRedirectHosts, installedPluginTLSRoots
-	installedPluginOrigin = "https://127.0.0.1:1/releases/"
-	installedPluginKeys = "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"
-	installedCLIVerificationKey = "3d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c"
-	installedPluginRedirectHosts, installedPluginTLSRoots = "", ""
-	t.Cleanup(func() {
-		installedPluginOrigin, installedPluginKeys, installedCLIVerificationKey, installedPluginRedirectHosts, installedPluginTLSRoots = savedOrigin, savedKeys, savedCLIKey, savedRedirects, savedRoots
-	})
+	configureLocalPluginTrust(t)
 	for _, condition := range []string{"missing", "assembly-unavailable"} {
 		for _, operation := range []string{"apply", "apply-publication", "compare", "plan"} {
 			t.Run(condition+"/"+operation, func(t *testing.T) {
@@ -539,4 +532,16 @@ func TestConfigurationRequiredPluginFailurePrecedesAllOperationConstruction(t *t
 			})
 		}
 	}
+}
+
+func configureLocalPluginTrust(t *testing.T) {
+	t.Helper()
+	savedOrigin, savedKeys, savedCLIKey, savedRedirects, savedRoots := installedPluginOrigin, installedPluginKeys, installedCLIVerificationKey, installedPluginRedirectHosts, installedPluginTLSRoots
+	installedPluginOrigin = "https://127.0.0.1:1/releases/"
+	installedPluginKeys = "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"
+	installedCLIVerificationKey = "3d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c"
+	installedPluginRedirectHosts, installedPluginTLSRoots = "", ""
+	t.Cleanup(func() {
+		installedPluginOrigin, installedPluginKeys, installedCLIVerificationKey, installedPluginRedirectHosts, installedPluginTLSRoots = savedOrigin, savedKeys, savedCLIKey, savedRedirects, savedRoots
+	})
 }
