@@ -651,13 +651,12 @@ func (s *StateSession) generatedFailedFinalSupport(g *generatedSelection, plan *
 		if err != nil {
 			return nil, nil, nil, contract.GeneratorDescriptor{}, err
 		}
-		if result.SafeFacts.Disposition == contract.GeneratorDispositionCompleteCreate && selected.attempt.record.SemanticLifecycleMode() == contract.GeneratorLifecycleNone {
+		if selected.attempt.record.SemanticLifecycleMode() == contract.GeneratorLifecycleNone {
 			a := selected.attempt
 			row, ok := g.records[generatedRecordKey{contract.GeneratedDutySupportKind, a.record.OwnerID}]
 			duty, err := contract.InspectGeneratedDutyRecord(row.Body)
 			if !ok || err != nil || !generatedCreateDutyMatches(duty, a.record) || !generatedAttemptMatches(a.record, a.expected.Template) ||
-				a.record.State != contract.GeneratedEffectSucceeded || a.record.Stage != contract.GeneratedStageTerminal ||
-				a.record.RequestDigest != result.Core.RequestDigest {
+				!result.MatchesLocalCreateAttempt(a.record) {
 				return nil, nil, nil, contract.GeneratorDescriptor{}, contract.ErrRecord
 			}
 			phase, err := contract.GeneratorPhaseID(plan.phase)

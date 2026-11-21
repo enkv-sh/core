@@ -68,8 +68,8 @@ func TestInstalledGeneratedMixedCreateOutcomesPreserveCompletePredecessor(t *tes
 			authority := []contract.ID{f.selected.admission.recipient}
 			priorInput := []ApplyEntryInput{
 				suppliedSecret(t, f.env, "secret", "mixed failed membership predecessor", custody.StandardValue, authority...),
-				{Name: "plain", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, Recipients: authority, InputBytes: []byte("prior supplied value")},
-				{Name: "prior-only", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, Recipients: authority, InputBytes: []byte("prior entry that the proposal removes")},
+				{Name: "plain", InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, Recipients: authority, InputBytes: []byte("prior supplied value")},
+				{Name: "prior-only", InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, Recipients: authority, InputBytes: []byte("prior entry that the proposal removes")},
 			}
 			initial := f.engine(t, f.selected, priorInput, nil)
 			if got := initial.Apply(ctx, testID("mixed create predecessor"), priorInput); got.Result.Outcome != ObservedCurrent {
@@ -103,10 +103,10 @@ func TestInstalledGeneratedMixedCreateOutcomesPreserveCompletePredecessor(t *tes
 				ConfigContractID: process.Implementation.ConfigContractID, ResourceContractID: hermeticCloudflareResourceContractID(),
 				CompletionClass: contract.GeneratedCompletionAcknowledged, Intent: bytes.Clone(process.Intent)}
 			input := []ApplyEntryInput{
-				{Name: "alpha", ValueSource: contract.Generated, ConfidentialityClass: contract.Secret, Recipients: authority, Generated: &declaration},
-				{Name: "omega", ValueSource: contract.Generated, ConfidentialityClass: contract.Secret, Recipients: authority, Generated: &declaration},
-				{Name: "plain", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, Recipients: authority, InputBytes: []byte("proposed replacement supplied value")},
-				{Name: "secret", ValueSource: contract.Supplied, ConfidentialityClass: contract.Secret, Recipients: grant, Retained: &contract.RetainedSecretInput{Incarnation: oldSecret.Entry.Incarnation, Material: oldSecret.Entry.ValueState}},
+				{Name: "alpha", InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ValueSource: contract.Generated, ConfidentialityClass: contract.Secret, Recipients: authority, Generated: &declaration},
+				{Name: "omega", InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ValueSource: contract.Generated, ConfidentialityClass: contract.Secret, Recipients: authority, Generated: &declaration},
+				{Name: "plain", InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, Recipients: authority, InputBytes: []byte("proposed replacement supplied value")},
+				{Name: "secret", InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ValueSource: contract.Supplied, ConfidentialityClass: contract.Secret, Recipients: grant, Retained: &contract.RetainedSecretInput{Incarnation: oldSecret.Entry.Incarnation, Material: oldSecret.Entry.ValueState}},
 			}
 			type attemptObservation struct {
 				name     string

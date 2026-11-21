@@ -3,6 +3,7 @@ package core
 import (
 	"bytes"
 	"context"
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -512,5 +513,86 @@ func TestInstalledLocalGeneratorMixedFinalPreservesActualCFClosure(t *testing.T)
 				t.Fatal("mixed Final dropped the seed still required by actual CF work")
 			}
 		})
+	}
+}
+
+// full_only: false
+func TestInstalledLocalNoEffectFinalReleasesDomain(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+	defer cancel()
+	f := newInstalledApplyTestFixture(t, ctx, contract.GCP, false)
+	recipients := []contract.ID{f.selected.admission.recipient}
+	beforeInput := []ApplyEntryInput{{Name: "prior", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, Recipients: recipients, InputBytes: []byte("previous value"), InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw}}
+	initial := f.engine(t, f.selected, beforeInput, nil)
+	if got := initial.Apply(ctx, testID("before local no-effect"), beforeInput); got.Result.Outcome != ObservedCurrent {
+		t.Fatal("select predecessor", got.Result)
+	}
+	initial.Close()
+	before := f.open(t, ctx)
+	author := installedLocalAuthor{config: custody.BuildInstalledNoEffectLocalAuthor(t, installedLocalPublicRoot(t))}
+	declaration := &contract.GeneratorDeclaredGeneration{Schema: contract.GeneratorDeclaredGenerationSchema, LifecycleMode: contract.GeneratorLifecycleNone, ConfigContractID: author.config.Artifact.ConfigContractID, Intent: installedLocalCanonicalIntent()}
+	input := []ApplyEntryInput{{Name: "local", ValueSource: contract.Generated, ConfidentialityClass: contract.Secret, Recipients: recipients, Generated: declaration, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw}}
+	admissions := 0
+	var completions atomic.Int32
+	engine := installedLocalEngine(t, ctx, f, before, input, author, &admissions, func(bool) { completions.Add(1) })
+	got := engine.Apply(ctx, testID("local no-effect"), input)
+	engine.Close()
+	if admissions != 1 || completions.Load() != 1 {
+		t.Fatal("expected one native completion", admissions, completions.Load(), got.Result, got.Diagnostics)
+	}
+	receipt, err := contract.InspectCompactMutationReceipt(got.Receipt)
+	if err != nil || got.Result.Outcome != ObservedCurrent || receipt.OperationID != got.OperationID || receipt.RequestIdentityDigest != got.RequestIdentity ||
+		receipt.StateResult != contract.ReceiptStateEffectTerminalFailure || receipt.EffectSummary != contract.ReceiptEffectFailed || receipt.CanonicalOutcome != contract.ReceiptCanonicalNotSelected ||
+		receipt.SummaryCounts[contract.ReceiptEffectCount] != 1 || receipt.SummaryCounts[contract.ReceiptSummaryFailureCount] != 1 {
+		t.Fatal("no-effect Final did not return the terminal failure receipt", got.Result, err)
+	}
+	if got.Generated == nil || len(got.Generated.Effects) != 1 || len(got.Generated.Duties) != 0 || len(got.Generated.Hazards) != 0 {
+		t.Fatal("unexpected terminal effects or resource owners")
+	}
+	effect := got.Generated.Effects[0]
+	if effect.Record.State != contract.GeneratedEffectConfirmedNoEffect || effect.Record.Stage != contract.GeneratedStageTerminal || effect.Record.RetryUsed != 0 || effect.Reason != contract.GeneratorReasonRejected || effect.Target != nil {
+		t.Fatal("terminal effect differs from the native no-effect result", effect)
+	}
+	cold := f.open(t, ctx)
+	closure := cold.root.Generated
+	if !closure.ActiveOwner.IsZero() || !closure.ActivePhase.IsZero() || !closure.ActiveGraph.IsZero() ||
+		closure.GeneratedCurrent != 0 || closure.Retiring != 0 || closure.Hazards != 0 || !reflect.DeepEqual(before.root.Names, cold.root.Names) ||
+		!reflect.DeepEqual(before.valueEntry(before.root.Names[0].Slot), cold.valueEntry(before.root.Names[0].Slot)) {
+		t.Fatal("nonselecting Final changed the predecessor or kept the active slot")
+	}
+	work := mustSelectedGeneratedWork(t, cold)
+	released, ok := work.releases[effect.Record.AttemptID]
+	if !ok || len(work.attempts) != 0 || len(work.releases) != 1 || released.attempt.State != effect.Record.State || released.release.OriginalResultID != effect.Record.ResultID || released.release.State != contract.GeneratedReleasePending {
+		t.Fatal("cold closure lacks the no-effect result inbox release")
+	}
+	key, err := format.GeneratedResultKey(cold.admission.store.Prefix, f.env.Domain, released.release.InboxID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	physical := cold.storeRead(ctx, key, released.release.ObjectLength)
+	packet, err := contract.InspectGeneratedResultRecord(physical.Body)
+	if physical.Status != contract.ReadOK || uint32(len(physical.Body)) != released.release.ObjectLength || contract.Hash(physical.Body) != released.release.SelectedHandoffDigest ||
+		err != nil || packet.Core.AttemptID != effect.Record.AttemptID || packet.Core.ResultID != effect.Record.ResultID ||
+		packet.SafeFacts.Disposition != contract.GeneratorDispositionConfirmedNoEffect || packet.SafeFacts.Reason != contract.GeneratorReasonRejected || packet.Payload.ContentLength != 0 {
+		t.Fatal("release differs from the sealed no-effect result", physical.Status, err)
+	}
+	observer := installedLocalEngine(t, ctx, f, cold, input, author, &admissions)
+	observed := observer.Continue(ctx, testID("observe local no-effect"), got.OperationID)
+	observer.Close()
+	if observed.Result.Outcome != ObservedCurrent || !bytes.Equal(observed.Receipt, got.Receipt) {
+		t.Fatal("cold continuation lost the terminal receipt", observed.Result)
+	}
+	nextInput := installedApplyCurrentInput(cold)
+	nextInput = append(nextInput, ApplyEntryInput{Name: "next", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, Recipients: recipients, InputBytes: []byte("after"), InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw})
+	next := f.engine(t, cold, nextInput, nil)
+	progress := next.Apply(ctx, testID("after local no-effect"), nextInput)
+	next.Close()
+	if progress.Result.Outcome != ObservedCurrent || len(progress.Receipt) == 0 || admissions != 1 || completions.Load() != 1 {
+		t.Fatal("next mutation failed or repeated the original callback", progress.Result, admissions, completions.Load())
+	}
+	store := &generatedCleanupDeleteStore{Store: f.env.Store, memoryStore: requireAdmittedMemoryStore(t, f.env.Store)}
+	clean := selectActualGeneratedInboxRelease(t, ctx, f.env, f.open(t, ctx), store, effect.Record.AttemptID, false)
+	if len(mustSelectedGeneratedWork(t, clean).releases) != 0 {
+		t.Fatal("cold cleanup kept the completed handoff")
 	}
 }

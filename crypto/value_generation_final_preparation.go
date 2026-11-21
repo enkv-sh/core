@@ -46,17 +46,16 @@ func (a *generatedAdmission) finalLocalCheckpointAttempt(record contract.Generat
 			return false
 		}
 		if result.Core.ResultID == record.ResultID {
-			if returned || record.State != contract.GeneratedEffectSucceeded || result.Core.AttemptID != record.AttemptID ||
-				result.Core.RequestDigest != record.RequestDigest || result.SafeFacts.Disposition != contract.GeneratorDispositionCompleteCreate {
+			if returned || !result.MatchesLocalCreateAttempt(record) {
 				return false
 			}
 			returned = true
 		}
 	}
-	if record.State == contract.GeneratedEffectSucceeded {
-		return returned
+	if returned {
+		return true
 	}
-	if !generatedLocalTerminalAttempt(record) || returned || a.purpose.output == nil {
+	if !generatedLocalTerminalAttempt(record) || a.purpose.output == nil {
 		return false
 	}
 	for _, fact := range a.purpose.output.Rows.Facts {
@@ -152,7 +151,7 @@ func (a *generatedAdmission) admitFinalPreparation(input generatedFinalAdmission
 			duty, err := contract.InspectGeneratedDutyRecord(row.Body)
 			original, present := generatedFinalCheckpointAttempt(input.CheckpointSupport, duty.OriginalAttemptID)
 			if err != nil || row.RecordID != duty.DutyID || !present || !a.finalLocalCheckpointAttempt(original) ||
-				original.State != contract.GeneratedEffectSucceeded || !generatedLocalDutyMatches(duty, original) {
+				original.State == contract.GeneratedEffectFailedTerminal || !generatedLocalDutyMatches(duty, original) {
 				return false
 			}
 			localDuties++
@@ -166,6 +165,14 @@ func (a *generatedAdmission) admitFinalPreparation(input generatedFinalAdmission
 		row.Body = bytes.Clone(row.Body)
 		final.checkpointSupport = append(final.checkpointSupport, row)
 	}
+	if final.nonselecting {
+		for _, result := range final.results {
+			x := result.Expected.Template
+			if x.LifecycleMode == contract.GeneratorLifecycleNone && !seen[rowKey{contract.GeneratedAttemptSupportKind, x.AttemptID}] {
+				return false
+			}
+		}
+	}
 	for _, row := range final.checkpointSupport {
 		if row.Kind != contract.GeneratedAttemptSupportKind {
 			continue
@@ -174,7 +181,7 @@ func (a *generatedAdmission) admitFinalPreparation(input generatedFinalAdmission
 		if err != nil {
 			return false
 		}
-		if record.State == contract.GeneratedEffectSucceeded {
+		if record.State != contract.GeneratedEffectFailedTerminal {
 			duty, present := generatedFinalCheckpointDuty(final.checkpointSupport, record.OwnerID)
 			if !present || !generatedLocalDutyMatches(duty, record) {
 				return false

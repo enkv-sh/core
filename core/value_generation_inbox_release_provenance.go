@@ -153,7 +153,7 @@ func (b *generatedSelectionBuilder) resolveInboxReleases(rows []contract.Support
 		} else if a.SemanticLifecycleMode() == contract.GeneratorLifecycleNone {
 			if a.Schema != contract.GeneratedAttemptRecordSchema || x.Schema != contract.GeneratorAttemptTemplateSchema ||
 				x.Action != contract.GeneratorActionCreate || x.Branch != contract.GeneratorBranchInitial ||
-				!a.PredecessorAttemptID.IsZero() || a.State != contract.GeneratedEffectSucceeded || a.FailureReason != 0 ||
+				!a.PredecessorAttemptID.IsZero() || (a.State != contract.GeneratedEffectSucceeded && a.State != contract.GeneratedEffectConfirmedNoEffect) || a.FailureReason != 0 ||
 				a.Progress != contract.EmptyGeneratorVector(contract.GeneratorVectorProgress) || a.Facts != contract.EmptyGeneratorVector(contract.GeneratorVectorFacts) ||
 				a.History != contract.EmptyGeneratorVector(contract.GeneratorVectorHistory) {
 				return contract.ErrRecord

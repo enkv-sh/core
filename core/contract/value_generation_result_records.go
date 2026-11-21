@@ -247,6 +247,19 @@ type GeneratedResultRecordView struct {
 	Transfer  TransferEnvelopeView
 }
 
+// MatchesLocalCreateAttempt binds an inspected returned result to its terminal
+// resource-free CREATE. A resultless callback failure has no such handoff.
+func (v GeneratedResultRecordView) MatchesLocalCreateAttempt(a GeneratedAttemptRecord) bool {
+	if a.LifecycleMode != GeneratorLifecycleNone || a.Stage != GeneratedStageTerminal ||
+		v.SafeFacts.LifecycleMode != GeneratorLifecycleNone || v.SafeFacts.Action != GeneratorActionCreate ||
+		v.Core.DomainID != a.DomainID || v.Core.OperationID != a.OperationID || v.Core.AttemptID != a.AttemptID ||
+		v.Core.TransmissionID != a.TransmissionID || v.Core.ResultID != a.ResultID || v.Core.RequestDigest != a.RequestDigest {
+		return false
+	}
+	return a.State == GeneratedEffectSucceeded && v.SafeFacts.Disposition == GeneratorDispositionCompleteCreate ||
+		a.State == GeneratedEffectConfirmedNoEffect && v.SafeFacts.Disposition == GeneratorDispositionConfirmedNoEffect
+}
+
 func generatedResultContextValid(v GeneratedResultRecord) bool {
 	if v.Core.Schema != GeneratedResultCoreSchema || v.SafeFacts.Schema != GeneratorSafeFactsSchema {
 		return false

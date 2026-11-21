@@ -58,7 +58,7 @@ func generatedLocalFinalSibling(t *testing.T, g contract.GeneratorPlanBundle) co
 
 // The gate receives an already admitted graph and result set. This fixture
 // exercises its complete inherited-row relation; it does not grant a new send.
-func generatedLocalFinalGateFixture(t *testing.T, sibling bool) (*generatedAdmission, generatedFinalAdmissionInput, generatedCandidate, []byte) {
+func generatedLocalFinalGateFixture(t *testing.T, returnedDisposition uint8) (*generatedAdmission, generatedFinalAdmissionInput, generatedCandidate, []byte) {
 	t.Helper()
 	f, prepared, _ := generatedProducerPlanFixture(t, generatedRuntimeLocalEffectFixture(t))
 	g, err := contract.DecodeGeneratorPlanBundle(f.graph)
@@ -68,7 +68,7 @@ func generatedLocalFinalGateFixture(t *testing.T, sibling bool) (*generatedAdmis
 	original := f.producer.Producer.Attempt
 	original.State, original.Stage, original.FailureReason = contract.GeneratedEffectFailedTerminal, contract.GeneratedStageTerminal, contract.GeneratorFailureUnavailable
 	failure := original
-	if sibling {
+	if returnedDisposition != 0 {
 		lineage := generatedLocalFinalSibling(t, g)
 		g.Lineages = append(g.Lineages, lineage)
 		x := lineage.Templates[0]
@@ -104,7 +104,13 @@ func generatedLocalFinalGateFixture(t *testing.T, sibling bool) (*generatedAdmis
 	defer clear(seed)
 	expected := f.producer.Producer.Expected
 	facts := generatedProducerFacts(expected)
-	result, err := custody.SealGeneratedResult(expected, prepared.Material, facts, seed, []byte("AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8"))
+	value := []byte("AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8")
+	stateCode := uint8(contract.GeneratedEffectSucceeded)
+	if returnedDisposition == contract.GeneratorDispositionConfirmedNoEffect {
+		facts.Disposition, facts.Reason = returnedDisposition, contract.GeneratorReasonRejected
+		stateCode, value = contract.GeneratedEffectConfirmedNoEffect, nil
+	}
+	result, err := custody.SealGeneratedResult(expected, prepared.Material, facts, seed, value)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,9 +118,9 @@ func generatedLocalFinalGateFixture(t *testing.T, sibling bool) (*generatedAdmis
 	if err != nil {
 		t.Fatal(err)
 	}
-	if sibling {
+	if returnedDisposition != 0 {
 		success := f.producer.Producer.Attempt
-		success.State, success.Stage = contract.GeneratedEffectSucceeded, contract.GeneratedStageTerminal
+		success.State, success.Stage = stateCode, contract.GeneratedStageTerminal
 		binding, err := contract.EncodeGeneratorSupportBinding(contract.GeneratorSupportBinding{Schema: contract.GeneratorSupportBindingSchema, Role: 1,
 			ContractID: consumerID("local Final support contract"), ImplementationID: consumerID("local Final support implementation"), PublicBindingDigest: consumerID("local Final support binding")})
 		if err != nil {
@@ -138,7 +144,7 @@ func generatedLocalFinalGateFixture(t *testing.T, sibling bool) (*generatedAdmis
 			t.Fatal(err)
 		}
 		historyBody, err := contract.EncodeGeneratorHistory(contract.GeneratorHistory{Schema: 1,
-			PredecessorAttemptID: success.AttemptID, OwnerID: success.OwnerID, Outcome: contract.GeneratedEffectSucceeded,
+			PredecessorAttemptID: success.AttemptID, OwnerID: success.OwnerID, Outcome: success.State,
 			ResultID: success.ResultID, ResultDigest: contract.Hash(resultBody)})
 		if err != nil {
 			t.Fatal(err)
@@ -155,7 +161,7 @@ func generatedLocalFinalGateFixture(t *testing.T, sibling bool) (*generatedAdmis
 			t.Fatal(err)
 		}
 		duty := f.producer.Producer.Duty
-		duty.Status, duty.Support, duty.History = contract.GeneratedEffectSucceeded, success.Support, success.History
+		duty.Status, duty.Support, duty.History = success.State, success.Support, success.History
 		dutyBody, err := contract.EncodeGeneratedDutyRecord(duty)
 		if err != nil {
 			t.Fatal(err)
@@ -200,7 +206,7 @@ func generatedLocalFinalGateFixture(t *testing.T, sibling bool) (*generatedAdmis
 func TestGeneratedLocalFailedFinalRequiresPinnedTerminalBodies(t *testing.T) {
 	for _, damage := range []string{"exact", "missing", "duplicate", "foreign_id", "reason", "before_result", "admitted_result", "candidate_result", "candidate_release"} {
 		t.Run(damage, func(t *testing.T) {
-			a, input, candidate, resultBody := generatedLocalFinalGateFixture(t, false)
+			a, input, candidate, resultBody := generatedLocalFinalGateFixture(t, 0)
 			failed, err := contract.InspectGeneratedAttemptRecord(input.CheckpointSupport[0].Body)
 			if err != nil {
 				t.Fatal(err)
@@ -248,9 +254,44 @@ func TestGeneratedLocalFailedFinalRequiresPinnedTerminalBodies(t *testing.T) {
 
 // full_only: false
 func TestGeneratedLocalNonselectingFinalFreezesExactSuccessRelease(t *testing.T) {
-	for _, damage := range []string{"exact", "missing_duty", "duty_capacity", "missing_mapping", "missing_release", "capacity", "revision", "length", "digest", "foreign_row_id", "foreign_inbox", "mapping_support", "mapping_history", "missing_support"} {
+	checkGeneratedLocalFinalRelease(t, contract.GeneratorDispositionCompleteCreate)
+}
+
+// full_only: false
+func TestGeneratedLocalNonselectingFinalFreezesExactNoEffectRelease(t *testing.T) {
+	checkGeneratedLocalFinalRelease(t, contract.GeneratorDispositionConfirmedNoEffect)
+}
+
+func checkGeneratedLocalFinalRelease(t *testing.T, disposition uint8) {
+	t.Helper()
+	for _, damage := range []string{"exact", "missing_handoff", "wrong_state", "missing_body", "missing_duty", "duty_capacity", "missing_mapping", "missing_release", "capacity", "revision", "length", "digest", "foreign_row_id", "foreign_inbox", "mapping_support", "mapping_history", "missing_support"} {
 		t.Run(damage, func(t *testing.T) {
-			a, input, candidate, _ := generatedLocalFinalGateFixture(t, true)
+			a, input, candidate, _ := generatedLocalFinalGateFixture(t, disposition)
+			id := a.purpose.final.results[0].Expected.Template.AttemptID
+			if damage == "missing_handoff" {
+				input.CheckpointSupport = slices.DeleteFunc(input.CheckpointSupport, func(row contract.SupportRecord) bool {
+					return row.RecordID == id || row.Kind == contract.GeneratedDutySupportKind
+				})
+				candidate.SupportRecords = nil
+			}
+			if damage == "wrong_state" {
+				record, present := generatedFinalCheckpointAttempt(input.CheckpointSupport, id)
+				if !present {
+					t.Fatal("missing returned attempt")
+				}
+				if record.State == contract.GeneratedEffectSucceeded {
+					record.State = contract.GeneratedEffectConfirmedNoEffect
+				} else {
+					record.State = contract.GeneratedEffectSucceeded
+				}
+				if a.finalLocalCheckpointAttempt(record) {
+					t.Fatal("returned disposition authenticated a different terminal state")
+				}
+				return
+			}
+			if damage == "missing_body" {
+				a.purpose.final.resultBodies = nil
+			}
 			if damage == "missing_duty" {
 				input.CheckpointSupport = slices.DeleteFunc(input.CheckpointSupport, func(row contract.SupportRecord) bool { return row.Kind == contract.GeneratedDutySupportKind })
 			}
@@ -327,7 +368,7 @@ func TestGeneratedLocalNonselectingFinalFreezesExactSuccessRelease(t *testing.T)
 			})
 			accepted := a.admitFinalPreparation(input) && a.candidateTerminalUncertain(candidate)
 			if damage == "exact" && !accepted {
-				t.Fatal("settled local success could not become exact release-only mapping beside failed sibling")
+				t.Fatal("returned local result lost its exact release mapping beside a failed sibling")
 			}
 			if damage != "exact" && accepted {
 				t.Fatal("changed local release escaped the original selected Duty/Attempt/Result relation")
@@ -345,7 +386,7 @@ func TestGeneratedLocalNonselectingFinalKeepsCloudflareSiblingCustody(t *testing
 			if err != nil {
 				t.Fatal(err)
 			}
-			local, input, localCandidate, _ := generatedLocalFinalGateFixture(t, true)
+			local, input, localCandidate, _ := generatedLocalFinalGateFixture(t, contract.GeneratorDispositionCompleteCreate)
 			failed, err := contract.InspectGeneratedAttemptRecord(input.CheckpointSupport[0].Body)
 			if err != nil {
 				t.Fatal(err)

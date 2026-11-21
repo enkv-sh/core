@@ -24,41 +24,41 @@ func BuildInstalledLocalAuthor(t testing.TB, root string, rebuilt bool) Generate
 	if rebuilt {
 		replacement = "func(body []byte) (int, error) { return rand.Read(body) }(entropy[:])"
 	}
-	return buildInstalledLocalAuthor(t, root, replacement, false, false, false)
+	return buildInstalledLocalAuthor(t, root, replacement, "", false, false)
 }
 
 func BuildInstalledCleanupRefusedLocalAuthor(t testing.TB, root string) GeneratedProcessConfig {
 	t.Helper()
 	replacement := "func(body []byte) (int, error) { _ = rand.Read; for i := range body { body[i] = byte(i) }; return len(body), nil }(entropy[:])"
-	return buildInstalledLocalAuthor(t, root, replacement, false, true, false)
+	return buildInstalledLocalAuthor(t, root, replacement, "", true, false)
 }
 
 // BuildInstalledTrailingCleanupRefusedLocalAuthor retains the real SDK result
 // and status, then appends one invalid secret-stream byte before successful exit.
 func BuildInstalledTrailingCleanupRefusedLocalAuthor(t testing.TB, root string) GeneratedProcessConfig {
 	t.Helper()
-	return buildInstalledLocalAuthor(t, root, "", false, true, true)
+	return buildInstalledLocalAuthor(t, root, "", "", true, true)
 }
 
 // BuildInstalledUnavailableLocalAuthor uses an actual source revision whose
 // entropy reader returns an error. The public SDK owns its status/exit mapping.
 func BuildInstalledUnavailableLocalAuthor(t testing.TB, root string) GeneratedProcessConfig {
 	t.Helper()
-	return buildInstalledLocalAuthor(t, root, "func([]byte) (int, error) { _ = rand.Read; return 0, io.ErrUnexpectedEOF }(entropy[:])", false, false, false)
+	return buildInstalledLocalAuthor(t, root, "func([]byte) (int, error) { _ = rand.Read; return 0, io.ErrUnexpectedEOF }(entropy[:])", "", false, false)
 }
 
 // BuildInstalledInvalidLocalAuthor returns a protocol error from the actual
 // local callback; the public SDK owns its status/exit mapping.
 func BuildInstalledInvalidLocalAuthor(t testing.TB, root string) GeneratedProcessConfig {
 	t.Helper()
-	return buildInstalledLocalAuthor(t, root, "func([]byte) (int, error) { _ = rand.Read; return 0, protocol.ErrProtocol }(entropy[:])", false, false, false)
+	return buildInstalledLocalAuthor(t, root, "func([]byte) (int, error) { _ = rand.Read; return 0, protocol.ErrProtocol }(entropy[:])", "", false, false)
 }
 
 // BuildInstalledCancelledLocalAuthor returns cancellation from the actual
 // local callback while its caller remains live.
 func BuildInstalledCancelledLocalAuthor(t testing.TB, root string) GeneratedProcessConfig {
 	t.Helper()
-	return buildInstalledLocalAuthor(t, root, "func([]byte) (int, error) { _ = rand.Read; return 0, context.Canceled }(entropy[:])", false, false, false)
+	return buildInstalledLocalAuthor(t, root, "func([]byte) (int, error) { _ = rand.Read; return 0, context.Canceled }(entropy[:])", "", false, false)
 }
 
 // BuildInstalledUnknownLocalAuthor returns valid unknown facts and no value
@@ -66,14 +66,20 @@ func BuildInstalledCancelledLocalAuthor(t testing.TB, root string) GeneratedProc
 // a managed-resource retirement promise.
 func BuildInstalledUnknownLocalAuthor(t testing.TB, root string) GeneratedProcessConfig {
 	t.Helper()
-	return buildInstalledLocalAuthor(t, root, "", true, false, false)
+	return buildInstalledLocalAuthor(t, root, "", "protocol.DispositionUnknown, protocol.ReasonTransport", false, false)
 }
 
-func buildInstalledLocalAuthor(t testing.TB, root, replacement string, unknown, removalFailure, trailingResult bool) GeneratedProcessConfig {
+// BuildInstalledNoEffectLocalAuthor returns confirmed no-effect from the native callback.
+func BuildInstalledNoEffectLocalAuthor(t testing.TB, root string) GeneratedProcessConfig {
+	t.Helper()
+	return buildInstalledLocalAuthor(t, root, "", "protocol.DispositionConfirmedNoEffect, protocol.ReasonRejected", false, false)
+}
+
+func buildInstalledLocalAuthor(t testing.TB, root, replacement, returnedFacts string, removalFailure, trailingResult bool) GeneratedProcessConfig {
 	t.Helper()
 	directory, command := filepath.Join(root, "plugins/generators/local-random-secret"), "./cmd/enkv-generator-local-random-secret"
 	workspace := filepath.Join(root, "go.work")
-	if replacement != "" || unknown || removalFailure || trailingResult {
+	if replacement != "" || returnedFacts != "" || removalFailure || trailingResult {
 		// Rebuild the same public author module with a different source revision.
 		// Its request and entropy contract are unchanged.
 		staged, err := filepath.EvalSymlinks(t.TempDir())
@@ -98,12 +104,12 @@ func buildInstalledLocalAuthor(t testing.TB, root, replacement string, unknown, 
 				body = []byte(strings.Replace(string(body), "import (", "import (\n\t\"io\"", 1))
 			}
 		}
-		if unknown {
+		if returnedFacts != "" {
 			before := "return command.NewFacts(protocol.DispositionCompleteCreate, protocol.ReasonNone), value, nil"
 			if strings.Count(string(body), before) != 1 {
 				t.Fatal("public author result source changed")
 			}
-			body = []byte(strings.Replace(string(body), before, "clear(value); return command.NewFacts(protocol.DispositionUnknown, protocol.ReasonTransport), nil, nil", 1))
+			body = []byte(strings.Replace(string(body), before, "clear(value); return command.NewFacts("+returnedFacts+"), nil, nil", 1))
 		}
 		if removalFailure {
 			before := "return command.NewFacts(protocol.DispositionCompleteCreate, protocol.ReasonNone), value, nil"

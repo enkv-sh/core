@@ -380,8 +380,7 @@ func (s *StateSession) installedGeneratedFinalInput(ctx context.Context, g *gene
 				continue
 			}
 			result, err := contract.InspectGeneratedResultRecord(attempt.result)
-			if err != nil || attempt.record.State != contract.GeneratedEffectSucceeded || attempt.record.Stage != contract.GeneratedStageTerminal ||
-				result.SafeFacts.Disposition != contract.GeneratorDispositionCompleteCreate {
+			if err != nil || !result.MatchesLocalCreateAttempt(attempt.record) {
 				return out, contract.ErrRecord
 			}
 			localAttempts[id], localDuties[attempt.record.OwnerID] = true, true
