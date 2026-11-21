@@ -18,6 +18,11 @@ import (
 
 func generatedRuntimeEffectFixture(t *testing.T, recovery bool, createResultContract ...contract.ID) generatedRuntimeFixture {
 	t.Helper()
+	return generatedRuntimeEffectFixtureForEncoding(t, recovery, contract.InputEncodingRaw, createResultContract...)
+}
+
+func generatedRuntimeEffectFixtureForEncoding(t *testing.T, recovery bool, encoding uint8, createResultContract ...contract.ID) generatedRuntimeFixture {
+	t.Helper()
 	if len(createResultContract) > 1 {
 		t.Fatal("more than one create result contract")
 	}
@@ -40,7 +45,7 @@ func generatedRuntimeEffectFixture(t *testing.T, recovery bool, createResultCont
 	}
 	recipients := []contract.ID{f.base.control.AuthorityRecipientID}
 	declaration := contract.GeneratorDeclaration{Schema: 1, DomainID: g.Header.DomainID, OperationID: g.Header.OperationID,
-		Entries: []contract.GeneratorDeclarationEntry{{InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, Schema: contract.GeneratorDeclarationEntrySchema, Kind: contract.GeneratorDeclarationGenerated, Name: "token", Recipients: recipients, Payload: payload}}}
+		Entries: []contract.GeneratorDeclarationEntry{{InputEncoding: encoding, OutputEncoding: contract.OutputEncodingRaw, Schema: contract.GeneratorDeclarationEntrySchema, Kind: contract.GeneratorDeclarationGenerated, Name: "token", Recipients: recipients, Payload: payload}}}
 	f.declaration, err = contract.EncodeGeneratorDeclaration(declaration)
 	if err != nil {
 		t.Fatal(err)
@@ -59,7 +64,7 @@ func generatedRuntimeEffectFixture(t *testing.T, recovery bool, createResultCont
 		v := contract.GeneratorAttemptTemplate{Schema: contract.GeneratorAttemptTemplateSchema, Branch: uint8(i), Action: 1, LineageID: x.LineageID, DescriptorID: id("descriptor"),
 			ConfigContractID: meta.ConfigContractID, ExecutorID: id("executor"), CredentialRouteID: routeID,
 			ResourceContractID: meta.ResourceContractID, ResultContractID: id("create result contract"), IntentDigest: intentID,
-			LifecycleMode: meta.LifecycleMode, ResultReaderID: contract.GeneratorResultReaderID(), TargetKind: 1, TargetSourceID: intentID, CompletionClass: 1, RequiredAuthoritySet: 1}
+			LifecycleMode: meta.LifecycleMode, ResultReaderID: contract.GeneratorResultReaderFor(1, 1, encoding), TargetKind: 1, TargetSourceID: intentID, CompletionClass: 1, RequiredAuthoritySet: 1}
 		if len(createResultContract) == 1 {
 			v.ResultContractID = createResultContract[0]
 		}
@@ -126,6 +131,7 @@ func generatedRuntimeEffectFixture(t *testing.T, recovery bool, createResultCont
 			t.Fatal(err)
 		}
 		v := create
+		v.ResultReaderID = contract.GeneratorResultReaderFor(contract.GeneratorActionDelete, v.CompletionClass, contract.InputEncodingRaw)
 		v.Action, v.Branch, v.NoEffectBudget, v.ResidueBudget, v.TargetKind = 2, 0, 0, 0, 3
 		v.LineageID, v.TargetSourceID, v.PredecessorAttemptID, v.ResultContractID = cleanup.LineageID, create.ResultID, contract.ID{}, id("delete result contract")
 		v.AttemptID, err = contract.GeneratorAttemptID(v.LineageID, 0)
@@ -169,7 +175,7 @@ func generatedRuntimeEffectFixture(t *testing.T, recovery bool, createResultCont
 	if err != nil {
 		t.Fatal(err)
 	}
-	g.ValueEntryPlans = []contract.GeneratorValueEntryPlan{{InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, Schema: contract.GeneratorValueEntryPlanSchema, LifecycleMode: contract.GeneratorLifecycleManaged, Name: x.Name, ValueSource: contract.Generated, ConfidentialityClass: contract.Secret, EntryIncarnationID: x.EntryIncarnationID,
+	g.ValueEntryPlans = []contract.GeneratorValueEntryPlan{{InputEncoding: encoding, OutputEncoding: contract.OutputEncodingRaw, Schema: contract.GeneratorValueEntryPlanSchema, LifecycleMode: contract.GeneratorLifecycleManaged, Name: x.Name, ValueSource: contract.Generated, ConfidentialityClass: contract.Secret, EntryIncarnationID: x.EntryIncarnationID,
 		Epoch: 1, IntentDigest: intentID, PlannedValueSlotID: x.Templates[0].PlannedValueSlotID, IntendedMembership: membership, LineageID: x.LineageID, RetirementMode: 1, ChangeMask: 1}}
 	g.Header.ValueEntryPlanCount, g.Header.LineageCount, g.Header.TemplateCount = 1, 1, 10
 	g.Header.RequestCoreDigest, err = contract.GeneratorRequestCoreDigest(g.Request)
@@ -304,7 +310,12 @@ func generatedTestSeed(t *testing.T, f generatedRuntimeFixture, result contract.
 
 func generatedAdoptionFixture(t *testing.T, recovery bool) (generatedRuntimeFixture, contract.CryptoGeneratedFinishPlanResult, []byte) {
 	t.Helper()
-	f := generatedRuntimeEffectFixture(t, recovery)
+	return generatedAdoptionFixtureWithValue(t, recovery, contract.InputEncodingRaw, []byte("provider-secret"), false)
+}
+
+func generatedAdoptionFixtureWithValue(t *testing.T, recovery bool, encoding uint8, value []byte, fillFacts bool) (generatedRuntimeFixture, contract.CryptoGeneratedFinishPlanResult, []byte) {
+	t.Helper()
+	f := generatedRuntimeEffectFixtureForEncoding(t, recovery, encoding)
 	r := f.reservationRuntime(t)
 	op := generatedCompare(t, r, f)
 	generatedPlanParts(t, r, f, op)
@@ -319,7 +330,10 @@ func generatedAdoptionFixture(t *testing.T, recovery bool) (generatedRuntimeFixt
 	use := g.ResultUses[slices.IndexFunc(g.ResultUses, func(row contract.GeneratorResultUse) bool { return row.ResultID == template.ResultID })]
 	expected := contract.GeneratorResultExpectation{InputEncoding: g.ValueEntryPlans[0].InputEncoding, Plan: g.UsePlan, Template: template, Use: use, RequestDigest: consumerID("HTTP request")}
 	facts := generatedProducerFacts(expected)
-	result, err := custody.SealGeneratedResult(expected, prepared.Material, facts, seed, []byte("provider-secret"))
+	if fillFacts {
+		facts.ProviderFacts = make([]byte, 4096-115-len(facts.Target)-len(facts.ResourceData))
+	}
+	result, err := custody.SealGeneratedResult(expected, prepared.Material, facts, seed, value)
 	if err != nil {
 		t.Fatal(err)
 	}

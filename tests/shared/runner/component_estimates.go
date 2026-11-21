@@ -8,7 +8,8 @@ package main
 // Omitted, failed, partial and unobserved roots keep prior or provisional weights.
 // Unlisted tests use the one-second fallback.
 var componentEstimates = map[string]float64{
-	"TestInstalledGeneratedAutomaticTerminalPreservesEarlierCreateHazard": 13,
+	"TestInstalledMaximumGeneratedResultResumesAfterReopen":                               2,
+	"TestInstalledGeneratedAutomaticTerminalPreservesEarlierCreateHazard":                 13,
 	"TestInstalledManagedCreateRecoversAcrossStoreLoss":                                   20,
 	"TestInstalledManagedCreateKeepsCleanupTargetAfterValueEncodingRefusal":               19,
 	"TestInstalledGeneratedCleanupRecordsProviderIdentityConflict":                        6,

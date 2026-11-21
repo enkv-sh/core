@@ -27,7 +27,7 @@ func EncodeCryptoGeneratedVerifyRequest(v CryptoGeneratedVerifyRequest) ([]byte,
 	if err := cryptoGeneratedVerifyError(v); err != nil {
 		return nil, err
 	}
-	w := cryptoWriter{b: make([]byte, 0, cryptoGeneratedOperationContextLength+1+4+len(v.Result)+descriptorSize)}
+	w := cryptoWriter{b: make([]byte, 0, cryptoGeneratedResultRequestOverhead+len(v.Result))}
 	w.id(v.OperationRef)
 	w.context(v.Context)
 	w.u8(uint8(CryptoGeneratedPrepareVerifyOriginal))

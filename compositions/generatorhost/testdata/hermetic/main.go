@@ -4,6 +4,7 @@ package main
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
 	"net"
@@ -129,6 +130,13 @@ func main() {
 		facts.ProviderFacts = binary.BigEndian.AppendUint64(nil, command.DeadlineUnixMillis)
 	}
 	value := []byte("enkv_" + hex.EncodeToString(token[:24]))
+	if command.Action == protocol.ActionCreate {
+		declared, err := protocol.DecodeIntent(command.Intent)
+		if err == nil && bytes.Equal(declared.Settings, []byte(`{"maximum_result":true}`)) {
+			facts.ProviderFacts = make([]byte, 4096-115-len(facts.Target)-len(facts.ResourceData))
+			value = base64.StdEncoding.AppendEncode(nil, bytes.Repeat([]byte{0xfb}, 65_536))
+		}
+	}
 	if mode == "memory-measurement" {
 		runtime.GC()
 		var memory runtime.MemStats

@@ -43,7 +43,7 @@ func (s *privateSink) Accept(ctx context.Context, value []byte) error {
 	}
 	s.calls++
 	if s.capturePath != "" {
-		if s.fail || len(value) > contract.CryptoMaxRawValue {
+		if s.fail {
 			return errTestSink
 		}
 		if err := capturePrivateValue(s.capturePath, value); err != nil {
@@ -92,8 +92,9 @@ func (f *Fixture) CaptureGenerated(ctx context.Context, selected GeneratedCanoni
 	return f.consume(ctx, selected.Selection, 0, &selected, path)
 }
 
+// The oracle captures the retained representation before delivery conversion.
 func capturePrivateValue(path string, value []byte) error {
-	if !filepath.IsAbs(path) || filepath.Clean(path) != path || len(value) > contract.CryptoMaxRawValue {
+	if !filepath.IsAbs(path) || filepath.Clean(path) != path || len(value) > contract.CryptoMaxRetainedValue {
 		return errTestSink
 	}
 	parent := filepath.Dir(path)

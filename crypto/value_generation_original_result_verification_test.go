@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"slices"
 	"testing"
@@ -17,6 +18,11 @@ import (
 func generatedVerificationFixture(t *testing.T, recovery bool) (generatedRuntimeFixture, []byte) {
 	t.Helper()
 	f, _, packet := generatedAdoptionFixture(t, recovery)
+	return generatedVerificationForResult(t, f), packet
+}
+
+func generatedVerificationForResult(t *testing.T, f generatedRuntimeFixture) generatedRuntimeFixture {
+	t.Helper()
 	e := f.adoption.Result.Expected
 	x := e.Template
 	template, err := contract.GeneratorTemplateID(x)
@@ -85,7 +91,69 @@ func generatedVerificationFixture(t *testing.T, recovery bool) (generatedRuntime
 		t.Fatal("verification selected output witness", err)
 	}
 	f.declaration = nil
-	return f, packet
+	return f
+}
+
+// full_only: false
+func TestMaximumGeneratedResultAdoptionAndOriginalVerification(t *testing.T) {
+	value := base64.StdEncoding.AppendEncode(nil, make([]byte, 65_536))
+	for _, size := range []string{"maximum", "first excess"} {
+		f, _, packet := generatedAdoptionFixtureWithValue(t, false, contract.InputEncodingBase64, value, true)
+		// Four length prefixes, 452 core bytes, 4,096 facts, 215 payload
+		// overhead, 87,384 retained bytes and a 474-byte transfer.
+		if len(packet) != 92_637 {
+			t.Fatal("unexpected maximum encrypted result length", len(packet))
+		}
+		t.Run("adopt/"+size, func(t *testing.T) {
+			r := f.adoptionRuntime(t)
+			defer r.retireGenerated()
+			op, _ := generatedAdoptionCompare(t, r, f)
+			request := generatedAdoptBody(t, f, op, packet)
+			if len(request) != 93_104 {
+				t.Fatal("maximum adoption request length", len(request))
+			}
+			if size == "first excess" {
+				excess := append(request, 0)
+				if _, err := contract.InspectCryptoGeneratedAdoptRequest(excess); err != contract.ErrCryptoCapacity {
+					t.Fatal("first excess adoption byte", err)
+				}
+				if refused := applyCall(r, t.Context(), contract.CryptoPrepare, excess); refused.ResultCode != contract.CryptoInvalidInput || len(refused.Body) != 0 || len(refused.KeyUseRows) != 0 {
+					t.Fatal("oversized request produced an accepted result", refused.ResultCode)
+				}
+				return
+			}
+			response := applyCall(r, t.Context(), contract.CryptoPrepare, request)
+			got, err := contract.InspectCryptoGeneratedAdoptResult(response.Body)
+			if response.ResultCode != contract.CryptoSuccess || err != nil || !bytes.Equal(got.Result, packet) {
+				t.Fatal("maximum result adoption", response.ResultCode, err)
+			}
+		})
+		t.Run("verify original/"+size, func(t *testing.T) {
+			f := generatedVerificationForResult(t, f)
+			r := f.verificationRuntime(t)
+			defer r.retireGenerated()
+			op, _ := generatedAdoptionCompare(t, r, f)
+			request, err := contract.EncodeCryptoGeneratedVerifyRequest(contract.CryptoGeneratedVerifyRequest{OperationRef: op, Context: f.compare.Context, Result: packet, ExpectedResult: contract.GeneratorDescriptor{Digest: contract.Hash(packet), Length: uint64(len(packet)), Count: 1}})
+			if err != nil || len(request) != 93_104 {
+				t.Fatal("maximum verification request length", len(request), err)
+			}
+			if size == "first excess" {
+				excess := append(request, 0)
+				if _, err := contract.InspectCryptoGeneratedVerifyRequest(excess); err != contract.ErrCryptoCapacity {
+					t.Fatal("first excess verification byte", err)
+				}
+				if refused := applyCall(r, t.Context(), contract.CryptoPrepare, excess); refused.ResultCode != contract.CryptoInvalidInput || len(refused.Body) != 0 || len(refused.KeyUseRows) != 0 {
+					t.Fatal("oversized request produced an accepted result", refused.ResultCode)
+				}
+				return
+			}
+			response := applyCall(r, t.Context(), contract.CryptoPrepare, request)
+			ref, err := contract.InspectGeneratorResultReference(response.Body)
+			if response.ResultCode != contract.CryptoSuccess || err != nil || len(response.Body) != 70 || ref != f.compare.OriginalResult {
+				t.Fatal("maximum original result verification", response.ResultCode, err)
+			}
+		})
+	}
 }
 
 // full_only: false

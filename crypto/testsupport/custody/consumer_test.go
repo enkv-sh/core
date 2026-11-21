@@ -216,7 +216,8 @@ func TestPrivateCaptureSinkBoundsAndOwnership(t *testing.T) {
 		{name: "relative", path: "value.private", size: 1},
 		{name: "failed", path: filepath.Join(directory, "failed"), fail: true, size: 1},
 		{name: "cancelled", path: filepath.Join(directory, "cancelled"), cancel: true, size: 1},
-		{name: "oversized", path: filepath.Join(directory, "oversized"), size: contract.CryptoMaxRawValue + 1},
+		{name: "maximum retained", path: filepath.Join(directory, "maximum"), size: 87_384},
+		{name: "oversized", path: filepath.Join(directory, "oversized"), size: 87_385},
 	} {
 		t.Run(row.name, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
@@ -230,7 +231,7 @@ func TestPrivateCaptureSinkBoundsAndOwnership(t *testing.T) {
 				value[len(value)-1] = 255
 			}
 			err := sink.Accept(ctx, value)
-			success := row.name == "empty" || row.name == "binary"
+			success := row.name == "empty" || row.name == "binary" || row.name == "maximum retained"
 			if (err == nil) != success {
 				t.Fatal("capture disposition differs")
 			}

@@ -9,13 +9,14 @@ const (
 	CryptoGeneratedClass                       CryptoOperationClass = 4
 	CryptoGeneratedCompareLimit                                     = 8 << 10
 	CryptoGeneratedPartLimit                                        = 1<<20 + 1<<10
-	CryptoGeneratedAdoptLimit                                       = 80 << 10
+	CryptoGeneratedAdoptLimit                                       = cryptoGeneratedResultRequestOverhead + GeneratedResultRecordMaxLength
 	CryptoGeneratedMaterialLimit                                    = 2 << 20
 	CryptoGeneratedResponseLimit                                    = 4 << 20
 	GeneratorMaximumChildCommandDurationMillis                      = 90_000
 	cryptoGeneratedAdmissionLength                                  = 1 + 4 + cryptoGeneratedParentRowLength + 3*descriptorSize + 2*32
 	cryptoGeneratedVerificationMaximumLength                        = 1 + 1 + 4 + SupportRecordOverhead + GeneratedAttemptRecordBodyLength + 2*descriptorSize + 3*32 + GeneratorResultReferenceLength
 	cryptoGeneratedOperationContextLength                           = 32 + cryptoContextBlobLength
+	cryptoGeneratedResultRequestOverhead                            = cryptoGeneratedOperationContextLength + 1 + 4 + descriptorSize
 	cryptoGeneratedParentRowLength                                  = SupportRecordOverhead + GeneratedParentRecordBodyLength
 	CryptoGeneratedFrozenLength                                     = cryptoGeneratedOperationContextLength + 4*32 + 5*descriptorSize
 )
@@ -826,7 +827,7 @@ func EncodeCryptoGeneratedAdoptRequest(v CryptoGeneratedAdoptRequest) ([]byte, e
 	if err := cryptoGeneratedAdoptError(v); err != nil {
 		return nil, err
 	}
-	w := cryptoWriter{b: make([]byte, 0, cryptoGeneratedOperationContextLength+49+len(v.Result))}
+	w := cryptoWriter{b: make([]byte, 0, cryptoGeneratedResultRequestOverhead+len(v.Result))}
 	w.id(v.OperationRef)
 	w.context(v.Context)
 	w.u8(uint8(CryptoGeneratedPrepareAdopt))

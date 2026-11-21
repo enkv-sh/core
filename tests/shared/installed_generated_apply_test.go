@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"testing"
@@ -15,6 +17,7 @@ import (
 	"enkv.sh/core/contract"
 	"enkv.sh/core/format"
 	"enkv.sh/crypto/testsupport/custody"
+	protocol "enkv.sh/sdk/protocols/generator"
 )
 
 // full_only: false
@@ -640,4 +643,128 @@ func TestInstalledGeneratedPlanRequiresFreshReadinessBeforeRequestBinding(t *tes
 	if creates != 0 || deletes != 0 {
 		t.Fatal("fresh planning entered provider effects", creates, deletes)
 	}
+}
+
+// full_only: false
+func TestInstalledMaximumGeneratedResultResumesAfterReopen(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+	defer cancel()
+	t.Setenv("ENKV_GENERATOR_TEST_TOKEN", "fixture-only")
+	config := custody.BuildInstalledHostTestGenerator(t, installedLocalPublicRoot(t))
+	resource := sha256.Sum256([]byte{22})
+	settings := []byte(`{"maximum_result":true}`)
+	intent, err := protocol.EncodeIntent(protocol.Intent{Schema: 1, LifecycleMode: protocol.LifecycleManaged, ConfigContractID: protocol.ID(config.Artifact.ConfigContractID), ResourceContractID: resource, Settings: settings})
+	if err != nil {
+		t.Fatal(err)
+	}
+	process := &generatedProcessFixture{Artifact: config.ArtifactPath, Implementation: config.Artifact, Intent: intent, RequestDigest: contract.Hash(intent),
+		Configure: func(testing.TB, string, contract.GeneratorResultExpectation) custody.GeneratedProcessConfig {
+			return config
+		}}
+	f := newInstalledApplyTestFixture(t, ctx, contract.GCP, false)
+	f.env.GeneratedProcess = process
+	meta := &contract.GeneratorDeclaredGeneration{Schema: contract.GeneratorDeclaredGenerationSchema, LifecycleMode: contract.GeneratorLifecycleManaged, RetirementMode: contract.GeneratedRetirementManual, CompletionClass: contract.GeneratedCompletionAcknowledged, ConfigContractID: config.Artifact.ConfigContractID, ResourceContractID: resource, Intent: intent}
+	input := []ApplyEntryInput{{Name: "maximum", Recipients: []contract.ID{f.selected.admission.recipient}, ValueSource: contract.Generated, ConfidentialityClass: contract.Secret, Generated: meta, InputEncoding: contract.InputEncodingBase64, OutputEncoding: contract.OutputEncodingRaw}}
+	callbacks := installedGeneratedTestCallbacks(t, f, process)
+	callbacks.ResolveImplementation = func(q GeneratedImplementationRequest) (contract.GeneratorImplementation, error) {
+		if q.ConfigContractID != config.Artifact.ConfigContractID || q.ResourceContractID != resource || q.LifecycleMode != contract.GeneratorLifecycleManaged {
+			return contract.GeneratorImplementation{}, contract.ErrRecord
+		}
+		return config.Artifact, nil
+	}
+	callbacks.CheckCreateReadiness = func(ctx context.Context, _ string, row contract.GeneratorImplementation, actual []byte) error {
+		if !reflect.DeepEqual(row, config.Artifact) || !bytes.Equal(actual, intent) {
+			return contract.ErrRecord
+		}
+		err := installedGeneratorCreateReadiness(ctx, config, actual)
+		if err != nil {
+			t.Log("native create readiness", err)
+		}
+		return err
+	}
+	var creates int
+	admit := callbacks.AdmitProducer
+	callbacks.AdmitProducer = func(ctx context.Context, q contract.CryptoGeneratedCompareRequest, control contract.ControlCore, in contract.GeneratedProducerInput, row contract.GeneratorImplementation, deadline time.Time) (*InstalledGeneratedProducerCustody, error) {
+		producer, err := admit(ctx, q, control, in, row, deadline)
+		if err != nil {
+			t.Log("native producer admission", err)
+		}
+		if err != nil {
+			return nil, err
+		}
+		invoke := producer.InvokeProducer
+		producer.InvokeProducer = func(ctx context.Context, locator, authority contract.ID) contract.GeneratedProducerResult {
+			creates++
+			return invoke(ctx, locator, authority)
+		}
+		return producer, nil
+	}
+	run := func(s *StateSession, c GeneratedApplyInstallation) *InstalledApply {
+		return installedGeneratedTestEngine(t, ctx, f, s, input, currentApplyRecipients(s.registry()), &c)
+	}
+	beforeAdoption := *callbacks
+	beforeAdoption.AdmitAdoption = func(context.Context, contract.CryptoGeneratedCompareRequest, contract.ControlCore, contract.GeneratedAdoptionInput, time.Time) (*InstalledGeneratedCustody, error) {
+		return nil, contract.ErrRecord
+	}
+	engine := run(f.selected, beforeAdoption)
+	started := engine.Apply(ctx, testID("maximum create"), input)
+	if started.OperationID.IsZero() {
+		deadline, _ := ctx.Deadline()
+		_, planErr := f.selected.installedGeneratedPlan(ctx, engine.installation, input, nil, deadline)
+		t.Log("native maximum plan", planErr)
+	}
+	engine.Close()
+	cold := f.open(t, ctx)
+	if started.OperationID.IsZero() || cold.root.Generated.ActiveOwner != started.OperationID || creates != 1 {
+		t.Fatal("result was not saved before adoption", started.Result, creates)
+	}
+	work := mustSelectedGeneratedWork(t, cold)
+	attempt := work.phase.FrontierAttemptID
+	inbox, found, read := cold.readGeneratedResult(ctx, attempt)
+	if !found || len(inbox) != 92_637 {
+		t.Fatal("cold result inbox", read, found, len(inbox))
+	}
+	beforeFinal := *callbacks
+	beforeFinal.AdmitFinal = func(context.Context, contract.CryptoGeneratedCompareRequest, contract.ControlCore, contract.GeneratedFinalInput, time.Time) (*InstalledGeneratedCustody, error) {
+		return nil, contract.ErrRecord
+	}
+	engine = run(cold, beforeFinal)
+	recorded := engine.Continue(ctx, testID("maximum record"), started.OperationID)
+	engine.Close()
+	cold = f.open(t, ctx)
+	selected := mustSelectedGeneratedWork(t, cold)
+	a := selected.attempts[attempt]
+	if cold.root.Generated.ActiveOwner != started.OperationID || !bytes.Equal(a.result, inbox) || creates != 1 {
+		t.Fatal("reopened support did not contain the original result", recorded.Result, len(a.result), creates)
+	}
+	engine = run(cold, *callbacks)
+	finished := engine.Continue(ctx, testID("maximum final"), started.OperationID)
+	engine.Close()
+	cold = f.open(t, ctx)
+	if finished.Result.Outcome != ObservedCurrent || !cold.root.Generated.ActiveOwner.IsZero() || cold.root.Generated.GeneratedCurrent != 1 || creates != 1 {
+		t.Fatal("maximum result did not finish exactly once", finished.Result, creates)
+	}
+	t.Logf("predecessor=%x selected=%x result_bytes=%d creates=%d", f.selected.head.Core.Revision, cold.head.Core.Revision, len(inbox), creates)
+	_, entry := observeCurrentValueEntry(t, cold, "maximum")
+	if entry.Generated.CreateResultID != a.record.ResultID || entry.ContentLength != 65_536 || entry.RetainedLength != 87_384 || entry.InputEncoding != contract.InputEncodingBase64 {
+		t.Fatal("selected value differs from the original result", entry.ContentLength, entry.RetainedLength)
+	}
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, "maximum.private")
+	capture := f.keys.CaptureSelected(ctx, sessionConsumerSelection(t, cold, cold.admission.recipient, "maximum"), path)
+	if capture.Code != contract.CryptoSuccess || capture.Delivery != 1 || !capture.ValueMatched || capture.SinkCalls != 1 {
+		t.Fatal("maximum selected secret delivery", capture.Code, capture.SinkCalls)
+	}
+	got, err := os.ReadFile(path)
+	defer clear(got)
+	if err != nil || !bytes.Equal(got, base64.StdEncoding.AppendEncode(nil, bytes.Repeat([]byte{0xfb}, 65_536))) {
+		t.Fatal("maximum selected secret differs from the original retained bytes", len(got), err)
+	}
+
 }

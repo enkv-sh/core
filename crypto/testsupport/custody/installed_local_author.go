@@ -192,11 +192,33 @@ func buildInstalledLocalAuthor(t testing.TB, root, replacement, returnedFacts st
 			t.Fatal(err)
 		}
 	}
+	return buildInstalledAuthor(t, root, directory, workspace, command, "cmd/enkv-generator-local-random-secret/plugin.json")
+}
+
+// BuildInstalledHostTestGenerator installs the native managed generator used by host tests.
+func BuildInstalledHostTestGenerator(t testing.TB, root string) GeneratedProcessConfig {
+	t.Helper()
+	config := buildInstalledAuthor(t, root, filepath.Join(filepath.Dir(root), "enkv-core/compositions/generatorhost"), filepath.Join(root, "go.work"), "./testdata/hermetic", "testdata/hermetic/plugin.json")
+	// This fixture checks the installed filename and its separation from the
+	// private launch copy before accepting either public or effect commands.
+	executable, err := os.ReadFile(config.ArtifactPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	config.ArtifactPath = filepath.Join(t.TempDir(), "generator")
+	if err := os.WriteFile(config.ArtifactPath, executable, 0700); err != nil {
+		t.Fatal(err)
+	}
+	return config
+}
+
+func buildInstalledAuthor(t testing.TB, root, directory, workspace, command, descriptor string) GeneratedProcessConfig {
+	t.Helper()
 	t.Setenv("GOFLAGS", "")
 	output := t.TempDir()
 	buildctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
 	defer cancel()
-	builder := exec.CommandContext(buildctx, "go", "run", "-mod=readonly", "enkv.sh/sdk/artifact/cmd/enkv-plugin-build", "-directory", directory, "-descriptor", "cmd/enkv-generator-local-random-secret/plugin.json", "-command", command, "-output", output, "-workspace", workspace)
+	builder := exec.CommandContext(buildctx, "go", "run", "-mod=readonly", "enkv.sh/sdk/artifact/cmd/enkv-plugin-build", "-directory", directory, "-descriptor", descriptor, "-command", command, "-output", output, "-workspace", workspace)
 	builder.WaitDelay = 5 * time.Second
 	builder.Dir = root
 	for _, entry := range os.Environ() {
