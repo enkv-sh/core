@@ -245,8 +245,11 @@ func (plan *publicationPlan) preparePublicationReservation(ctx context.Context, 
 		if !ok || pin != p.exclusive || p.uncertain == nil {
 			return nil, nil, refused(AdmissionInvalid)
 		}
+		if !publicationDeletionWitnessMatches(coordinate, p.retained) {
+			return nil, nil, refused(DifferentSelection)
+		}
 		retained, ok := selected.markers[p.uncertain.AttemptID]
-		if !ok || retained != *p.uncertain || retained.State != contract.PublicationMayHaveEntered && retained.State != contract.PublicationUnknown {
+		if !ok || retained != *p.uncertain || !publicationReservedSlotEligible(coordinate, retained) {
 			return nil, nil, refused(InvalidRelation)
 		}
 		uncertain = &retained

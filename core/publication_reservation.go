@@ -111,6 +111,14 @@ func (s *StateSession) publicationReservationRows(rows []contract.SupportRecord,
 			}
 			continue
 		}
+		if marker.Projection.Action == contract.PublicationDeleteReservedSlot {
+			projection := marker.Projection
+			create := loaded[generatedRecordKey{contract.PublicationMarkerSupportKind, projection.UncertainCreateAttemptID}].marker
+			if create == nil || !publicationReservedSlotEligible(old, *create) || projection.BindingIncarnationID != old.LastBindingIncarnationID ||
+				projection.EntryIncarnationID != old.LastEntryIncarnationID || projection.TargetRowDigest != old.DeletionTargetRowDigest {
+				return contract.ErrRecord
+			}
+		}
 		var incarnation contract.ID
 		if old.LastAdmissionOrdinal == math.MaxUint64 {
 			incarnation = coordinate.CurrentPublicationIncarnationID

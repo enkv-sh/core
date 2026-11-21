@@ -538,16 +538,22 @@ func (h *applyPublicationHandoff) checkTarget(s *StateSession, configuration con
 	return refused(DifferentSelection)
 }
 
+func publicationDeletionWitnessMatches(c, pin contract.PublicationCoordinate) bool {
+	return c.BindingState == contract.PublicationBindingRetired && c.LastBindingIncarnationID == pin.LastBindingIncarnationID && c.LastEntryIncarnationID == pin.LastEntryIncarnationID &&
+		c.OwnerState == pin.OwnerState && c.OwnedBirthAttemptID == pin.OwnedBirthAttemptID && c.OwnedInstanceDigest == pin.OwnedInstanceDigest &&
+		c.LastDeleteAckAttemptID == pin.LastDeleteAckAttemptID && c.LastDeleteAckIncarnationID == pin.LastDeleteAckIncarnationID && c.LastDeleteAckOrdinal == pin.LastDeleteAckOrdinal &&
+		c.DeletionTargetRowDigest == pin.DeletionTargetRowDigest && c.DeletionDestinationID == pin.DeletionDestinationID && c.DeletionConsumerLocator == pin.DeletionConsumerLocator &&
+		c.DeletionTargetContractID == pin.DeletionTargetContractID && c.DeletionConfigContractID == pin.DeletionConfigContractID && c.DeletionCredentialRouteContractID == pin.DeletionCredentialRouteContractID &&
+		c.LocatorRequiresCreation == pin.LocatorRequiresCreation && c.DeletionPayloadEncoding == pin.DeletionPayloadEncoding && bytes.Equal(c.DeletionTargetData, pin.DeletionTargetData)
+}
+
 func (h *applyPublicationHandoff) checkDeletion(s *StateSession, pin applyPublicationDeletion) Result {
 	selected, err := selectedPublicationRelation(s.selectedImage())
 	if err != nil {
 		return refused(InvalidRelation)
 	}
 	c, present := selected.coordinates[pin.coordinate.CoordinateID]
-	p := pin.coordinate
-	if !present || c.BindingState != contract.PublicationBindingRetired || c.LastBindingIncarnationID != p.LastBindingIncarnationID || c.LastEntryIncarnationID != p.LastEntryIncarnationID ||
-		c.DeletionTargetRowDigest != p.DeletionTargetRowDigest || c.OwnedBirthAttemptID != p.OwnedBirthAttemptID || c.OwnedInstanceDigest != p.OwnedInstanceDigest || c.OwnerState != p.OwnerState ||
-		c.LastDeleteAckAttemptID != p.LastDeleteAckAttemptID || c.LastDeleteAckIncarnationID != p.LastDeleteAckIncarnationID || c.LastDeleteAckOrdinal != p.LastDeleteAckOrdinal {
+	if !present || !publicationDeletionWitnessMatches(c, pin.coordinate) {
 		return refused(DifferentSelection)
 	}
 	marker, present := selected.markers[pin.marker.AttemptID]

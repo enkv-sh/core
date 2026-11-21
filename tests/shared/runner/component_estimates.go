@@ -86,7 +86,7 @@ var componentEstimates = map[string]float64{
 	"TestApplyPublicationGeneratedCompletionAndIncompleteOriginal":                       19,
 	"TestApplyPublicationIndependentActiveOwnerAfterCaptureStartsNoAction":               3,
 	"TestApplyPublicationLateRelevantConflictPreservesEarlierAcknowledgement":            42,
-	"TestApplyPublicationLateRetainedDeletionConflictKeepsWholeVector":                   13,
+	"TestApplyPublicationLateRetainedDeletionConflictKeepsWholeVector":                   14,
 	"TestApplyPublicationNativeChangedAndUnchangedConfirmedSelection":                    12,
 	"TestApplyPublicationOriginalDeadlineExpiresBeforeArmAfterSendAndDuringClose":        31,
 	"TestApplyPublicationOriginalDeadlineExpiresDuringApplyAndBetweenStages":             21,

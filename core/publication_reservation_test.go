@@ -2,8 +2,10 @@ package core
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"math"
+	"reflect"
 	"slices"
 	"testing"
 	"time"
@@ -321,5 +323,126 @@ func TestPublicationReservationCannotReplaceFrozenHistory(t *testing.T) {
 	}
 	if len(candidate.objects) != 0 {
 		t.Fatal("history rewrite emitted objects")
+	}
+}
+
+// full_only: false
+func TestReservedSlotReservationRequiresSelectedCreateWitness(t *testing.T) {
+	for _, field := range []string{"unchanged", "attempt", "binding", "entry", "target"} {
+		t.Run(field, func(t *testing.T) {
+			state, rows := publicationReservationFixture(t, false)
+			last := &rows[len(rows)-1]
+			row, err := contract.InspectPublicationMarker(last.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			other := publicationRelationID(127)
+			switch field {
+			case "attempt":
+				row.Projection.UncertainCreateAttemptID = other
+			case "binding":
+				row.Projection.BindingIncarnationID = other
+			case "entry":
+				row.Projection.EntryIncarnationID = other
+			case "target":
+				row.Projection.TargetRowDigest = other
+			}
+			row.ProjectionCommitment, err = contract.PublicationProjectionCommitment(row.Projection)
+			if err != nil {
+				t.Fatal(err)
+			}
+			last.Body, err = contract.EncodePublicationMarker(row)
+			if err != nil {
+				t.Fatal(err)
+			}
+			plan, err := state.planPublicationRewrite(t.Context(), state.adminIndex)
+			if err != nil {
+				t.Fatal(err)
+			}
+			err = state.publicationReservationRows(rows, plan)
+			if field == "unchanged" && err != nil || field != "unchanged" && !errors.Is(err, contract.ErrRecord) {
+				t.Fatal("reservation witness", field, err)
+			}
+		})
+	}
+}
+
+// full_only: false
+func TestReservedSlotDeleteRechecksRetiredOwner(t *testing.T) {
+	state, rows := publicationReservationFixture(t, false)
+	original, err := selectedPublicationRelation(state.selectedImage())
+	if err != nil {
+		t.Fatal(err)
+	}
+	proposal, err := contract.InspectPublicationMarker(rows[2].Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	create := original.markers[proposal.Projection.UncertainCreateAttemptID]
+	pin := original.coordinates[create.CoordinateID]
+	if !publicationReservedSlotEligible(pin, create) || !publicationDeletionWitnessMatches(pin, pin) {
+		t.Fatal("unchanged retired owner lost its cleanup witness")
+	}
+	// This boundary has no private owner, signing or provider implementation.
+	target := publicationDeletionTarget(pin)
+	premise := proposal.Projection.ExclusiveNamespaceDigest
+	state.admission.publicationNamespaces = []publicationNamespace{{domain: pin.DomainID, service: pin.ServiceContractID, physical: pin.CanonicalTarget, premise: premise}}
+	plan := publicationPlan{input: publicationInput{deadline: time.Now().Add(5 * time.Second)}}
+	pinned := publicationTargetPlan{coordinate: pin.CoordinateID, retained: pin, target: target, exclusive: premise, blockers: []contract.ID{create.AttemptID}, uncertain: &create}
+	checked := false
+	stop := publicationPrivate{Check: func(_ context.Context, input publicationActionCheckInput) (publicationActionCheckFacts, error) {
+		checked = input.UncertainCreate != nil && *input.UncertainCreate == create && input.Birth == nil
+		return publicationActionCheckFacts{}, contract.ErrRecord
+	}}
+	candidate, prepared, result := plan.preparePublicationReservation(t.Context(), state, pinned, contract.PublicationDeleteReservedSlot, stop)
+	if !checked || candidate != nil || prepared != nil || result.Reason != InvalidIntent {
+		t.Fatal("unchanged witness did not reach private admission", result)
+	}
+	birth := create
+	birth.AttemptID, birth.OperationID = publicationRelationID(128), publicationRelationID(129)
+	birth.AdmissionOrdinal++
+	birth.State, birth.Evidence.Class = contract.PublicationAcknowledged, contract.PublicationRequestAcknowledged
+	birth.Evidence.NormalizedStatus, birth.Evidence.SafeResourceID, birth.Evidence.ConsumerLocator = 201, "current-resource", pin.DeletionConsumerLocator
+	current := pin
+	current.OwnerState, current.OwnedBirthAttemptID, current.LastAdmissionOrdinal = contract.PublicationOwnerQualified, birth.AttemptID, birth.AdmissionOrdinal
+	current.OwnedInstanceDigest, err = contract.PublicationOwnedInstanceDigest(current.DomainID, current.CoordinateID, current.LastBindingIncarnationID, current.LastEntryIncarnationID, current.DeletionTargetRowDigest, birth.AttemptID, birth.Evidence.SafeResourceID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	selectedRows := publicationRelationRows(t, current, birth)
+	selectedRows = append(selectedRows, rows[1])
+	publicationBoundsInstallRows(t, state, selectedRows)
+	selected, err := selectedPublicationRelation(state.selectedImage())
+	if err != nil || selected.markers[create.AttemptID] != create || !publicationQualifiedBirthValid(state.root.Domain, selected.coordinates[current.CoordinateID], selected.markers[birth.AttemptID]) {
+		t.Fatal("selected owner and retained uncertainty", err)
+	}
+	if publicationReservedSlotEligible(current, create) || publicationDeletionWitnessMatches(current, pin) {
+		t.Fatal("earlier uncertainty authorized cleanup for a qualified owner")
+	}
+
+	before := publicationBoundsCaptureRefusalFacts(t, state)
+	head := state.head.Core
+	check := publicationPrivate{Check: func(context.Context, publicationActionCheckInput) (publicationActionCheckFacts, error) {
+		t.Fatal("stale owner reached private admission")
+		return publicationActionCheckFacts{}, contract.ErrRecord
+	}}
+	candidate, prepared, result = plan.preparePublicationReservation(t.Context(), state, pinned, contract.PublicationDeleteReservedSlot, check)
+	if candidate != nil || prepared != nil || result.Reason != DifferentSelection {
+		t.Fatal("fresh reservation did not refuse the stale owner", result)
+	}
+	proposal.AdmissionOrdinal = current.LastAdmissionOrdinal + 1
+	next := current
+	next.LastAdmissionOrdinal, next.LatestUnresolvedAttemptID = proposal.AdmissionOrdinal, proposal.AttemptID
+	projected := publicationRelationRows(t, next, proposal)
+	projected = append(projected, selectedRows[1:]...)
+	rewrite, err := state.planPublicationRewrite(t.Context(), state.adminIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := state.publicationReservationRows(projected, rewrite); !errors.Is(err, contract.ErrRecord) {
+		t.Fatal("row admission accepted obsolete cleanup", err)
+	}
+	if !reflect.DeepEqual(before, publicationBoundsCaptureRefusalFacts(t, state)) || !reflect.DeepEqual(head, state.head.Core) {
+		t.Fatal("refusal changed the selected HEAD or support records")
 	}
 }

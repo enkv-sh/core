@@ -23,7 +23,7 @@ func TestApplyPublicationLateRetainedDeletionConflictKeepsWholeVector(t *testing
 	// The independent coordinate hash helper fixes the live write before the
 	// retained delete. Completion order cannot change the requested vector order.
 	slot := publicationScenarioOrderedSlot(t, env.Domain, "plain-target-live-", []string{"plain-target"}, false)
-	entries := []ApplyEntryInput{{Name: "live", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, Recipients: []contract.ID{f.session.admission.recipient}, InputBytes: []byte("private data")}}
+	entries := []ApplyEntryInput{{Name: "live", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, Recipients: []contract.ID{f.session.admission.recipient}, InputBytes: []byte("private data")}}
 	output := nativePublicationOutput(entries, []uint64{1, 9})
 	hermeticRetargetOutput(&output.bindings[0].targets[0].target, slot, slot)
 	f.session = selectAdmittedOutputConfiguration(t, ctx, f.session, env, env.Custody, entries, output)

@@ -407,7 +407,7 @@ func (s *StateSession) preparePublicationPlan(ctx context.Context, input publica
 			p.exclusive = premise
 			for _, id := range p.blockers {
 				marker := selected.markers[id]
-				if (marker.Projection.Action == contract.PublicationCreateEmpty || marker.Projection.Action == contract.PublicationCreateWithValue) && marker.Projection.BindingIncarnationID == coordinate.LastBindingIncarnationID && marker.Projection.EntryIncarnationID == coordinate.LastEntryIncarnationID && marker.Projection.TargetRowDigest == coordinate.DeletionTargetRowDigest && marker.BirthServiceContractID == coordinate.ServiceContractID && marker.BirthTargetContractID == coordinate.DeletionTargetContractID {
+				if publicationReservedSlotEligible(coordinate, marker) {
 					m := marker
 					p.uncertain = &m
 					break
@@ -571,6 +571,17 @@ func publicationFactsMatch(p publicationTargetPlan, action uint8, f publicationA
 		f.ProtocolID == p.facts.ProtocolID && f.DescriptorID == p.facts.DescriptorID && f.ConfigContractDigest == p.facts.ConfigContractDigest &&
 		f.ArtifactContractID == p.facts.ArtifactContractID && f.ExecutorID == p.facts.ExecutorID && f.CredentialRouteID == p.facts.CredentialRouteID && f.CredentialRouteContractID == p.facts.CredentialRouteContractID
 }
+
+// A reserved-slot delete is authorized by an unresolved create for this
+// exact retired destination. A later qualified owner requires its own proof.
+func publicationReservedSlotEligible(c contract.PublicationCoordinate, create contract.PublicationMarker) bool {
+	return c.BindingState == contract.PublicationBindingRetired && c.OwnerState == contract.PublicationOwnerUncertainCreate &&
+		create.CoordinateID == c.CoordinateID && (create.State == contract.PublicationMayHaveEntered || create.State == contract.PublicationUnknown) &&
+		(create.Projection.Action == contract.PublicationCreateEmpty || create.Projection.Action == contract.PublicationCreateWithValue) &&
+		create.Projection.BindingIncarnationID == c.LastBindingIncarnationID && create.Projection.EntryIncarnationID == c.LastEntryIncarnationID &&
+		create.Projection.TargetRowDigest == c.DeletionTargetRowDigest && create.BirthServiceContractID == c.ServiceContractID && create.BirthTargetContractID == c.DeletionTargetContractID
+}
+
 func publicationDeletionTarget(coordinate contract.PublicationCoordinate) contract.OutputTarget {
 	locator := coordinate.DeletionConsumerLocator
 	if coordinate.LocatorRequiresCreation {

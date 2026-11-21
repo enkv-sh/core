@@ -465,7 +465,7 @@ func (e *ReaderEngine) projectPublicationPreview(ctx context.Context, selected *
 			qualified := false
 			for _, id := range row.BlockerIDs {
 				marker := facts.markers[id]
-				if (marker.Projection.Action == contract.PublicationCreateEmpty || marker.Projection.Action == contract.PublicationCreateWithValue) && marker.Projection.BindingIncarnationID == coordinate.LastBindingIncarnationID && marker.Projection.EntryIncarnationID == coordinate.LastEntryIncarnationID && marker.Projection.TargetRowDigest == coordinate.DeletionTargetRowDigest && marker.BirthServiceContractID == coordinate.ServiceContractID && marker.BirthTargetContractID == coordinate.DeletionTargetContractID {
+				if publicationReservedSlotEligible(coordinate, marker) {
 					qualified = true
 				}
 			}
