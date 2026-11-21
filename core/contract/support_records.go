@@ -67,7 +67,7 @@ func supportBodyLengthError(kind SupportRecordKind, n uint64) error {
 	case GeneratedFinalPreparationSupportKind:
 		minimum, maximum = GeneratedFinalPreparationRecordLength, GeneratedFinalPreparationRecordLength
 	case RetainedCanonicalSupportKind:
-		minimum, maximum = retainedCanonicalRecordMinLength, retainedCanonicalRecordMaxLength
+		minimum, maximum = retainedCanonicalRecordMinLength, RetainedCanonicalRecordMaxLength
 	case MutationReceiptSupportKind:
 		minimum, maximum = CompactMutationReceiptLength, CompactMutationReceiptLength
 	case GeneratedLineageSupportKind:

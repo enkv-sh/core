@@ -380,10 +380,10 @@ func TestContinuationCapacityBoundsRealGCFirstExit(t *testing.T) {
 func TestContinuationCapacitySelectingFinalAndSelectedPreparation(t *testing.T) {
 	s, plan := observationFinalFixture(t, "generated")
 	shape := continuationTestFinalShape(t, s)
-	// One generated secret:144fixed+9name+32membership+210ciphertext
+	// One generated secret:154fixed+9name+32membership+215ciphertext
 	// framing+65536allowed raw+1024metadata. The image adds one102-byte
 	// access header, one489-byte reader and the preparation codec envelopes.
-	if shape.values != (contract.GeneratorCapacityGroup{MaxCount: 1, MaxFramedBytes: 66955, MaxPages: 1}) || shape.names != 15 || shape.preparationBytes != 70547 {
+	if shape.values != (contract.GeneratorCapacityGroup{MaxCount: 1, MaxFramedBytes: 66970, MaxPages: 1}) || shape.names != 15 || shape.preparationBytes != 70562 {
 		t.Fatal("possible selecting Final lost its independent image charge", shape)
 	}
 	bound := continuationTestBound(t, s)
@@ -478,11 +478,11 @@ func TestContinuationCapacityFinalUsesEachLineageMaximum(t *testing.T) {
 		t.Fatal("distinct generated result bounds", err)
 	}
 	shape := continuationTestFinalShape(t, reservation.state)
-	// Each secret has 144 fixed bytes, a 5-byte name, one 32-byte reader,
-	// 210 ciphertext framing bytes and 1024 metadata bytes. The latent
+	// Each secret has 154 fixed bytes, a 5-byte name, one 32-byte reader,
+	// 215 ciphertext framing bytes and 1024 metadata bytes. The latent
 	// branch-1 maxima are 257 for alpha and 17 for omega; the entered and
 	// last create branches permit only 11 and 7 respectively.
-	const values = 2*(144+5+32+210+1024) + 257 + 17
+	const values = 2*(154+5+32+215+1024) + 257 + 17
 	if shape.values != (contract.GeneratorCapacityGroup{MaxCount: 2, MaxFramedBytes: values, MaxPages: 1}) || shape.names != 22 {
 		t.Fatal("Final capacity mixed lineage maxima or omitted a latent branch", shape)
 	}
@@ -515,7 +515,7 @@ func TestContinuationCapacityUsesExactHistoricalReaderUnion(t *testing.T) {
 	// Current64 and retained64 share only Authority:127readers. The fresh
 	// generated secret has one reader. Thus2headers+128wraps=62796bytes;
 	// the unused registry entry contributes no wrap to this Final image.
-	const values = (144 + 5 + 32 + 4 + 210) + (144 + 9 + 32 + 65536 + 210 + 1024)
+	const values = (154 + 5 + 32 + 4 + 215) + (154 + 9 + 32 + 65536 + 215 + 1024)
 	const access = 2*102 + 128*489
 	const preparation = values + access + (512 + 256 + 1024 + 128) + 2*(256+64) + 138 + 37 + 318 + (37 + 120 + 111)
 	if len(s.registry()) != 128 || shape.values.MaxFramedBytes != values || shape.preparationBytes != preparation || shape.accessGrowthBytes != 0 {
@@ -859,7 +859,7 @@ func TestContinuationCapacityUsablePreparationLastStepAndPendingFinal(t *testing
 	if g := mustSelectedGeneratedWork(t, reservation.state); g.phase.Stage == contract.GeneratedStageTerminal {
 		t.Fatal("fixture must still permit a future create result")
 	}
-	if shape := continuationTestFinalShape(t, reservation.state); shape.values.MaxCount != 1 || shape.preparationBytes != 70547 {
+	if shape := continuationTestFinalShape(t, reservation.state); shape.values.MaxCount != 1 || shape.preparationBytes != 70562 {
 		t.Fatal("preterminal parent lost a possible future selecting Final", shape)
 	}
 }
@@ -1070,10 +1070,10 @@ func TestContinuationCapacityIncompatiblePreparationNeedsFreshPair(t *testing.T)
 			if !possible {
 				return
 			}
-			// One two-reader generated secret has66987maximum value bytes.
+			// One two-reader generated secret has67002maximum value bytes.
 			// Its image adds102+2*489access bytes,1920create-result overhead,
 			//320entry framing and761fixed record/carrier/header bytes.
-			if shape.values.MaxFramedBytes != 66987 || shape.preparationBytes != 66987+(102+2*489)+1920+320+761 {
+			if shape.values.MaxFramedBytes != 67002 || shape.preparationBytes != 67002+(102+2*489)+1920+320+761 {
 				t.Fatal("replacement image omitted its independent future-width envelope", shape)
 			}
 			bound := continuationTestBound(t, s)
@@ -1245,7 +1245,7 @@ func TestContinuationCapacityUsesMergedFinalRecipientRows(t *testing.T) {
 			var encoded uint64
 			for i, object := range candidate.objects {
 				ref := object.ref
-				if ref.Kind != contract.RecipientKind || ref.Format != 10 || ref.Domain != image.root.Domain || ref.Index != uint16(i) ||
+				if ref.Kind != contract.RecipientKind || ref.Format != 11 || ref.Domain != image.root.Domain || ref.Index != uint16(i) ||
 					ref.Length != uint32(len(object.body)) || ref.Digest != contract.ID(sha256.Sum256(object.body)) ||
 					next.root.Recipients[i] == nil || *next.root.Recipients[i] != ref {
 					t.Fatal("Final candidate object does not match its exact Root reference", i)
@@ -1272,7 +1272,7 @@ func TestContinuationCapacityUsesMergedFinalRecipientRows(t *testing.T) {
 					t.Fatal("Final candidate has incorrect physical page bytes", i)
 				}
 				projection = append(projection, byte(ref.Kind))
-				projection = binary.BigEndian.AppendUint16(projection, 10)
+				projection = binary.BigEndian.AppendUint16(projection, 11)
 				projection = append(projection, ref.Domain[:]...)
 				projection = append(projection, ref.Object[:]...)
 				projection = append(projection, ref.Digest[:]...)

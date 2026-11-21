@@ -338,6 +338,14 @@ func generatedCleanCapacity(v generatedCapacityShape) ([contract.GeneratorCapaci
 	return groups, nil
 }
 
+// Nonempty whole groups pack greedily within one class and partition. Every
+// nonfinal page either holds at least payload-maxWidth+1 bytes, or, counting
+// groups instead, holds at least floor(payload/maxWidth) groups.
+func supportGroupPages(count, framed, maxWidth uint64) uint64 {
+	const payload = uint64(contract.MaxRequiredSupportPageLength - contract.RequiredSupportPageHeaderLength)
+	return min(capacityCeiling(framed, payload-maxWidth+1), capacityCeiling(count, payload/maxWidth))
+}
+
 func generatedCapacityWithBacklog(v generatedCapacityShape, selected *generatedSelection) ([contract.GeneratorCapacityGroupCount]contract.GeneratorCapacityGroup, error) {
 	return generatedCapacityWithProjectedBacklog(v, selected, nil)
 }
@@ -536,10 +544,11 @@ func generatedCapacityWithProjectedBacklog(v generatedCapacityShape, selected *g
 		default:
 			return empty, contract.ErrRecord
 		}
-		if tag == contract.GeneratorCapacityOldValues || tag == contract.GeneratorCapacityOwners || tag == contract.GeneratorCapacityMaterial || group.Class == format.GCPlanSupport {
+		if group.Class == format.OldValueSupport || group.Class == format.CandidateValueSupport || group.Class == format.ResultSupport ||
+			group.Class == format.OwnerSupport || group.Class == format.MaterialSupport || group.Class == format.GCPlanSupport {
 			width := uint64(0)
 			for _, row := range group.Records {
-				if group.Class == format.GCPlanSupport && row.Body == nil {
+				if row.Body == nil {
 					return empty, contract.ErrRecord
 				}
 				width += uint64(contract.SupportRecordOverhead + len(row.Body))
@@ -568,13 +577,29 @@ func generatedCapacityWithProjectedBacklog(v generatedCapacityShape, selected *g
 			uint64(projection.fragments)*(contract.SupportRecordOverhead+contract.GeneratedFragmentHeaderLength)
 		partition[format.IntentFragmentSupport] |= 1
 	}
-	for _, tag := range []int{contract.GeneratorCapacityOldValues, contract.GeneratorCapacityOwners, contract.GeneratorCapacityMaterial, contract.GeneratorCapacityAuxiliary} {
+	// Sealed result rows have exact widths. Missing CREATE results, including
+	// new lineages, are disposable rows and still need their full envelope.
+	maxResult := uint64(format.RequiredSupportGroupLimit(format.ResultSupport))
+	pending := groups[contract.GeneratorCapacityCreateResults].MaxCount
+	for _, attempt := range selected.attempts {
+		if attempt.expected.Template.Action == contract.GeneratorActionCreate && !results[attempt.record.ResultID] {
+			pending++
+		}
+	}
+	if pending != 0 {
+		part := &exact[contract.GeneratorCapacityCreateResults][0]
+		part.count += pending
+		part.bytes += pending * maxResult
+		part.maxWidth = maxResult
+	}
+	groups[contract.GeneratorCapacityCreateResults] = contract.GeneratorCapacityGroup{}
+	for _, tag := range []int{contract.GeneratorCapacityOldValues, contract.GeneratorCapacityCandidateValues, contract.GeneratorCapacityCreateResults, contract.GeneratorCapacityOwners, contract.GeneratorCapacityMaterial, contract.GeneratorCapacityAuxiliary} {
 		for _, part := range exact[tag] {
 			if part.count == 0 {
 				continue
 			}
 			group := &groups[tag]
-			pages := 1 + (part.bytes-1)/(supportPayload-part.maxWidth+1)
+			pages := supportGroupPages(part.count, part.bytes, part.maxWidth)
 			if group.MaxCount > contract.MaxChildPages*(supportPayload/contract.SupportRecordMinLength)-part.count ||
 				pages > contract.MaxChildPages || uint64(group.MaxPages)+pages > contract.MaxChildPages {
 				return empty, contract.ErrRecordCapacity
@@ -582,16 +607,6 @@ func generatedCapacityWithProjectedBacklog(v generatedCapacityShape, selected *g
 			group.MaxCount += part.count
 			group.MaxFramedBytes += part.bytes
 			group.MaxPages += uint32(pages)
-		}
-	}
-	// An absent create inbox still owns a separate encrypted result. A delete
-	// result fits its continuation group. Released inboxes are not in attempts
-	// and cannot regain a private result reader.
-	for _, attempt := range selected.attempts {
-		if attempt.expected.Template.Action == contract.GeneratorActionCreate && !results[attempt.record.ResultID] {
-			if err := addRows(contract.GeneratorCapacityCreateResults, 1, uint64(format.RequiredSupportGroupLimit(format.ResultSupport)), supportPayload); err != nil {
-				return empty, err
-			}
 		}
 	}
 	recovery := uint64(boolInt(v.Recovery))

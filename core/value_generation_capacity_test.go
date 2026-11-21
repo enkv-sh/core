@@ -253,7 +253,7 @@ func TestGeneratedCleanCapacityReservesReachableContinuations(t *testing.T) {
 	}
 	// The clean charge includes the 32 MiB declaration. Selected old intent
 	// blobs and mandatory/optional packing boundaries are charged separately.
-	want := [...]uint32{32, 32, 2, 1, 3, 0, 24, 14, 1, 1, 13, 17, 1, 2, 17, 4, 32}
+	want := [...]uint32{32, 32, 2, 1, 3, 0, 24, 18, 1, 1, 13, 17, 1, 2, 17, 4, 33}
 	pages := uint32(0)
 	for i, group := range groups {
 		if group.MaxPages != want[i] {
@@ -261,12 +261,12 @@ func TestGeneratedCleanCapacityReservesReachableContinuations(t *testing.T) {
 		}
 		pages += group.MaxPages
 	}
-	if pages != 196 || groups[contract.GeneratorCapacityCreates].MaxCount != 384 || groups[contract.GeneratorCapacityDeletes].MaxCount != 512 ||
+	if pages != 201 || groups[contract.GeneratorCapacityCreates].MaxCount != 384 || groups[contract.GeneratorCapacityDeletes].MaxCount != 512 ||
 		groups[contract.GeneratorCapacitySeedAccess].MaxCount != 896 || groups[contract.GeneratorCapacityOwners].MaxCount != 1024 {
 		t.Fatal("latent templates were charged as entered or a continuation was omitted", groups)
 	}
 	if groups[contract.GeneratorCapacityGraph].MaxFramedBytes != 5_406_976+6*123+6913*268 ||
-		groups[contract.GeneratorCapacityAuxiliary].MaxFramedBytes != 65_815_801+63*123 {
+		groups[contract.GeneratorCapacityAuxiliary].MaxFramedBytes != 6_066_176+62_554_873+66*123 {
 		t.Fatal("graph or auxiliary framing is missing")
 	}
 	v := contract.GeneratorCapacityEvidence{Schema: 1, BeforeRootDigest: generatedVectorID(1), PlanGraphID: generatedVectorID(2),
@@ -275,7 +275,7 @@ func TestGeneratedCleanCapacityReservesReachableContinuations(t *testing.T) {
 		t.Fatal("complete clean capacity evidence refused", err)
 	}
 	backlog, _, _ := capacityWithIndependentOldIntentsFixture(t, shape, groups)
-	wantBacklog := [...]uint32{32, 32, 2, 1, 3, 0, 24, 14, 1, 1, 13, 17, 1, 2, 82, 5, 34}
+	wantBacklog := [...]uint32{32, 32, 2, 1, 3, 0, 24, 18, 1, 1, 13, 17, 1, 2, 82, 5, 35}
 	var backlogPages uint32
 	for i, group := range backlog {
 		if group.MaxPages != wantBacklog[i] {
@@ -283,7 +283,7 @@ func TestGeneratedCleanCapacityReservesReachableContinuations(t *testing.T) {
 		}
 		backlogPages += group.MaxPages
 	}
-	if backlogPages != 264 {
+	if backlogPages != 269 {
 		t.Fatal("full sealed-source scalar backlog charge", backlogPages)
 	}
 }
@@ -595,13 +595,13 @@ func TestGeneratedCleanCapacityChargesOldCurrentRetainedBytes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// New optional retained supplied entries share one old root: 8 MiB raw,
+	// New optional retained supplied entries share one old root: 11,186,176 retained bytes,
 	// 4,096 recipient memberships, 384 names and fixed record framing.
 	// The 128 current generated evidence rows are mandatory, and their
 	// complete generic create-evidence rows fit the 4,705-byte framed charge.
 	// Encoded profile cases above pin the actual maxima.
 	old := groups[contract.GeneratorCapacityOldValues]
-	if old.MaxCount != 512 || old.MaxFramedBytes != 9_373_440 || old.MaxPages != 6 {
+	if old.MaxCount != 512 || old.MaxFramedBytes != 384*(37+8+154+215+256)+4096*32+11_186_176+128*4705 || old.MaxPages != 7 {
 		t.Fatal("old retained/current evidence charge lost selected-root correlation", old)
 	}
 	shape.RetainedSources = 0
@@ -647,9 +647,9 @@ func TestGeneratedCleanCapacityChargesCurrentAndHistoricalReaders(t *testing.T) 
 		want    contract.GeneratorCapacityGroup
 	}{
 		{name: "fresh_replacement", creates: 128,
-			want: contract.GeneratorCapacityGroup{MaxCount: 16, MaxFramedBytes: 16_706_729, MaxPages: 8}},
+			want: contract.GeneratorCapacityGroup{MaxCount: 19, MaxFramedBytes: 19_510_009 + 19*123, MaxPages: 10}},
 		{name: "mixed_retained_readers", creates: 1,
-			want: contract.GeneratorCapacityGroup{MaxCount: 30, MaxFramedBytes: 30_542_307, MaxPages: 15}},
+			want: contract.GeneratorCapacityGroup{MaxCount: 32, MaxFramedBytes: 33_343_865 + 32*123, MaxPages: 16}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			v := shape

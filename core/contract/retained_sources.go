@@ -3,7 +3,7 @@ package contract
 const (
 	retainedCanonicalHeaderLength    = 2 + 2 + 4
 	retainedCanonicalRecordMinLength = retainedCanonicalHeaderLength + ValueEntryFixedLength + 32 + CanonicalPayloadOverhead
-	retainedCanonicalRecordMaxLength = retainedCanonicalHeaderLength + CryptoMaxValueEntryLength
+	RetainedCanonicalRecordMaxLength = retainedCanonicalHeaderLength + CryptoMaxValueEntryLength
 	retainedEntryAdmissionPrefix     = cryptoPurposePrefix + "retained-member-admission-v1\x00"
 )
 
@@ -103,7 +103,7 @@ func ParseRetainedCanonicalRecord(b []byte) (RetainedCanonicalRecordView, int, e
 }
 
 func InspectRetainedCanonicalRecord(b []byte) (RetainedCanonicalRecordView, error) {
-	if len(b) > retainedCanonicalRecordMaxLength {
+	if len(b) > RetainedCanonicalRecordMaxLength {
 		return RetainedCanonicalRecordView{}, ErrRecordCapacity
 	}
 	r := newRecordReader(b)

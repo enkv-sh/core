@@ -483,12 +483,10 @@ func (s *StateSession) generatedNormalGroups(ctx context.Context, c *Comparison,
 			if err := add(tag, uint64(len(group.Records)), width, uint32((uint64(len(group.Records))+generatedFragmentsPerPage-1)/generatedFragmentsPerPage)); err != nil {
 				return groups, err
 			}
-		} else if group.Class == format.GraphIndexSupport || group.Class == format.AuxiliaryIndexSupport {
-			if err := chargeRows(pageStream{tag, group.Class, group.Mandatory}, 1, width, supportPayload); err != nil {
-				return groups, err
-			}
-		} else if group.Class == format.OwnerSupport || group.Class == format.MaterialSupport || group.Class == format.GCPlanSupport {
-			// These selected optional groups have exact authenticated widths.
+		} else if group.Class == format.GraphIndexSupport || group.Class == format.AuxiliaryIndexSupport ||
+			group.Class == format.OwnerSupport || group.Class == format.MaterialSupport || group.Class == format.GCPlanSupport ||
+			group.Class == format.OldValueSupport || group.Class == format.CandidateValueSupport || group.Class == format.ResultSupport {
+			// These selected groups have exact authenticated widths.
 			// Replacing them with the generic class ceilings can
 			// refuse a legal normal successor before its actual packing.
 			if err := chargeRows(pageStream{tag, group.Class, group.Mandatory}, 1, width, supportPayload); err != nil {
@@ -501,7 +499,7 @@ func (s *StateSession) generatedNormalGroups(ctx context.Context, c *Comparison,
 	}
 	for _, attempt := range g.attempts {
 		if attempt.expected.Template.Action == contract.GeneratorActionCreate && !results[attempt.record.ResultID] {
-			if err := rows(contract.GeneratorCapacityCreateResults, 1, uint64(format.RequiredSupportGroupLimit(format.ResultSupport)), supportPayload); err != nil {
+			if err := chargeRows(pageStream{tag: contract.GeneratorCapacityCreateResults, class: format.ResultSupport}, 1, uint64(format.RequiredSupportGroupLimit(format.ResultSupport)), supportPayload); err != nil {
 				return groups, err
 			}
 		}
@@ -572,6 +570,9 @@ func (s *StateSession) generatedNormalGroups(ctx context.Context, c *Comparison,
 	// their separate page charge. This also permits a full128 handoff census.
 	for stream, used := range streams {
 		pages := uint64(1) + (used.bytes-1)/(used.payload-used.width+1)
+		if stream.class == format.ResultSupport || stream.class == format.OldValueSupport || stream.class == format.CandidateValueSupport {
+			pages = supportGroupPages(used.count, used.bytes, used.width)
+		}
 		if stream.tag == contract.GeneratorCapacityOldAccess || stream.tag == contract.GeneratorCapacitySeedAccess {
 			pages = max(pages, (used.count+contract.AccessPageRecordLimit-1)/contract.AccessPageRecordLimit)
 		}

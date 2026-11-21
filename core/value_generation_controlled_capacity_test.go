@@ -29,16 +29,16 @@ func TestGeneratedControlledRetirementMaximumCapacity(t *testing.T) {
 	// graph=512*1024+128*1024+1536*3311+16384;
 	// Auxiliary retains 1024 material handoffs and the separately selected
 	// encrypted Final preparation while current values and obligations remain.
-	// Its independent image charge is 59,749,625 bytes; the prior auxiliary
-	// terms total 6,197,248 bytes. Fragment framing adds 63*123 bytes.
+	// Its independent image charge is 62,554,873 bytes; the prior auxiliary
+	// terms total 6,197,248 bytes. Fragment framing adds 66*123 bytes.
 	graph := uint64(5_757_440)
-	const preparationImage = 59_749_625
+	const preparationImage = 62_554_873
 	if g[contract.GeneratorCapacityDeletes].MaxCount != 640 || g[contract.GeneratorCapacityDeletes].MaxPages != 21 ||
 		g[contract.GeneratorCapacitySeedAccess].MaxCount != 1024 || g[contract.GeneratorCapacitySeedAccess].MaxFramedBytes != 1_105_920 ||
 		g[contract.GeneratorCapacityMaterial].MaxPages != 1 || g[contract.GeneratorCapacityOwners].MaxCount != 1280 || g[contract.GeneratorCapacityOwners].MaxPages != 1 ||
 		g[contract.GeneratorCapacityGraph].MaxFramedBytes != graph+6*123+7425*268 ||
-		g[contract.GeneratorCapacityAuxiliary].MaxFramedBytes != 6_197_248+preparationImage+63*123 ||
-		g[contract.GeneratorCapacityAuxiliary].MaxCount != 63 || g[contract.GeneratorCapacityAuxiliary].MaxPages != 32 || pages != 205 ||
+		g[contract.GeneratorCapacityAuxiliary].MaxFramedBytes != 6_197_248+preparationImage+66*123 ||
+		g[contract.GeneratorCapacityAuxiliary].MaxCount != 66 || g[contract.GeneratorCapacityAuxiliary].MaxPages != 33 || pages != 211 ||
 		g[contract.GeneratorCapacityDeletes].MaxFramedBytes != 41_943_040 || g[contract.GeneratorCapacityMaterial].MaxFramedBytes != 280_181 || g[contract.GeneratorCapacityOwners].MaxFramedBytes != 1_809_920 {
 		t.Fatal("two-step maximum undercharged", pages, g)
 	}
@@ -46,7 +46,7 @@ func TestGeneratedControlledRetirementMaximumCapacity(t *testing.T) {
 		t.Fatal("graph or original auxiliary allowance plus retained preparation exceeded")
 	}
 	backlog, _, _ := capacityWithIndependentOldIntentsFixture(t, v, g)
-	wantBacklog := [...]uint32{32, 32, 2, 6, 3, 0, 24, 14, 1, 1, 13, 21, 1, 2, 82, 5, 34}
+	wantBacklog := [...]uint32{32, 32, 2, 7, 3, 0, 24, 18, 1, 1, 13, 21, 1, 2, 82, 5, 35}
 	var backlogPages uint32
 	for i, group := range backlog {
 		if group.MaxPages != wantBacklog[i] {
@@ -56,7 +56,7 @@ func TestGeneratedControlledRetirementMaximumCapacity(t *testing.T) {
 	}
 	// This scalar population exceeds admission once its authenticated index
 	// is included; it is not the separately signed maximum lifecycle witness.
-	if backlogPages != 273 {
+	if backlogPages != 279 {
 		t.Fatal("controlled full scalar backlog charge", backlogPages)
 	}
 }

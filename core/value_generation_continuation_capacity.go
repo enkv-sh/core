@@ -294,6 +294,9 @@ func continuationGroupTotals(population continuationPopulation, growth continuat
 				return groups, 0, contract.ErrRecord
 			}
 			pages = 1 + (part.framed-1)/(payload-part.width+1)
+			if key.class == format.ResultSupport || (key.class == format.OldValueSupport || key.class == format.CandidateValueSupport) && growth.parts[key].framed == 0 {
+				pages = supportGroupPages(part.count, part.framed, part.width)
+			}
 		}
 		if pages > math.MaxUint32-uint64(groups[tag].MaxPages) {
 			return groups, 0, contract.ErrRecordCapacity
@@ -410,7 +413,10 @@ func continuationTemplateCharge(population, projected continuationPopulation, re
 		projected.atLeast(continuationGroupKey{class: class, owner: x.AttemptID}, width/contract.SupportRecordMinLength, width)
 	}
 	if x.Action == contract.GeneratorActionCreate && reach.result {
-		projected.atLeast(continuationGroupKey{class: format.ResultSupport, owner: x.ResultID}, 1, uint64(contract.SupportRecordOverhead+contract.GeneratedResultRecordMaxLength))
+		key := continuationGroupKey{class: format.ResultSupport, owner: x.ResultID}
+		if population[key].count == 0 && population[continuationGroupKey{class: format.ResultSupport, owner: x.ResultID, mandatory: true}].count == 0 {
+			projected.atLeast(key, 1, uint64(format.RequiredSupportGroupLimit(key.class)))
+		}
 	}
 	if reach.canonical {
 		projected.atLeast(continuationGroupKey{class: format.OldValueSupport, owner: x.ResultID, mandatory: true}, 1, generatedCurrentEvidenceCharge)

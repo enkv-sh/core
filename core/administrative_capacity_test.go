@@ -38,11 +38,11 @@ func TestGeneratedAdministrativeControlledEnvelopeFitsReservedShards(t *testing.
 	}
 	// Index positions are the closed SupportRecord kind set (1 through 18).
 	// A new writer category must revise the row envelope and this test.
-	// The image charge is 13,681,913 + (384*256-4096)*489 = 59,749,625.
+	// The image charge is 16,487,161 + (384*256-4096)*489 = 62,554,873.
 	// With 6,197,248 prior Auxiliary bytes, 1,048,320-byte fragments
-	// require 63 rows; marker four adds 384*32 material-association bytes.
-	wantRows := generatedAdministrativeRowCounts{0, 1024, 1, 104, 640, 1, 384, 512, 384, 640, 1280, 0, 640, 512, 8711, 0, 0, 0, 1}
-	if err != nil || rows != wantRows || total != 14834 || direct != 1280 || owners != 1281 {
+	// require 66 rows; marker four adds 384*32 material-association bytes.
+	wantRows := generatedAdministrativeRowCounts{0, 1024, 1, 107, 640, 1, 384, 512, 384, 640, 1280, 0, 640, 512, 8711, 0, 0, 0, 1}
+	if err != nil || rows != wantRows || total != 14837 || direct != 1280 || owners != 1281 {
 		t.Fatalf("closed support-row tally: %v want %v; total %d direct %d groups %d: %v", rows, wantRows, total, direct, owners, err)
 	}
 	domain := generatedVectorID(1)
@@ -82,7 +82,7 @@ func TestGeneratedAdministrativeControlledEnvelopeFitsReservedShards(t *testing.
 	for _, group := range groups {
 		physical += group.MaxPages
 	}
-	if physical != 208 || reservedIndexBytes != 37_074_011 || shards != 18 || physical+shards > ordinaryChildPageLimit {
+	if physical != 214 || reservedIndexBytes != 37_081_829 || shards != 18 || physical+shards > ordinaryChildPageLimit {
 		t.Fatalf("clean continuation lost four-slot exit margin: %d physical + %d index (%d bytes)", physical, shards, reservedIndexBytes)
 	}
 	exitShards, err := s.generatedAdministrativeFirstExitShardReserve(shape)
@@ -125,9 +125,9 @@ func TestGeneratedAdministrativeControlledEnvelopeFitsReservedShards(t *testing.
 		t.Fatal("independent old blob shards", err)
 	}
 	fullExitShards, err := s.generatedAdministrativeFirstExitShardReserve(shape)
-	if err != nil || fullPhysical != 273 || fullIndexBytes != 37_414_939 || fullShards != 18 || fullExitShards != 18 ||
-		fullPhysical+fullShards != 291 || fullPhysical+fullShards <= ordinaryChildPageLimit ||
-		fullPhysical+2+fullExitShards != 293 || fullPhysical+2+fullExitShards <= contract.MaxChildPages {
+	if err != nil || fullPhysical != 279 || fullIndexBytes != 37_422_757 || fullShards != 18 || fullExitShards != 18 ||
+		fullPhysical+fullShards != 297 || fullPhysical+fullShards <= ordinaryChildPageLimit ||
+		fullPhysical+2+fullExitShards != 299 || fullPhysical+2+fullExitShards <= contract.MaxChildPages {
 		t.Fatalf("full independent old-blob shape must remain refused: physical=%d index=%d bytes=%d first-exit-index=%d: %v", fullPhysical, fullShards, fullIndexBytes, fullExitShards, err)
 	}
 	t.Logf("independent old-blob reserved shape exceeds admission: %d children > %d; first exit %d > %d; signed maximum reachability is not established",

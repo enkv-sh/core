@@ -40,8 +40,13 @@ type RequiredSupportGroup struct {
 // Reservation accounting and actual packing use this same format boundary.
 func RequiredSupportGroupLimit(class SupportStorageGroup) int {
 	switch class {
-	case OldValueSupport, CandidateValueSupport, ResultSupport:
-		return 72 << 10
+	case OldValueSupport:
+		// A retained entry and its create evidence can share an owner.
+		return 2*contract.SupportRecordOverhead + contract.RetainedCanonicalRecordMaxLength + contract.GeneratedCreateEvidenceMaxLength
+	case CandidateValueSupport:
+		return contract.SupportRecordOverhead + contract.RetainedCanonicalRecordMaxLength
+	case ResultSupport:
+		return contract.SupportRecordOverhead + contract.GeneratedResultRecordMaxLength
 	case MaterialSupport, ReceiptSupport:
 		return 4 << 10
 	case CreateContinuationSupport, DeleteContinuationSupport:
