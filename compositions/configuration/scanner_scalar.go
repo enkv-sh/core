@@ -213,8 +213,9 @@ func (s plainBase64Number) complete() bool {
 	return s == 2 || s == 3 || s == 6 || s == 8 || s == 10 || s == 12
 }
 
-func (p *parser) base64(limit int) []byte {
-	var out []byte
+func (p *parser) base64(limit int) []byte { return p.base64Into(nil, limit) }
+
+func (p *parser) base64Into(out []byte, limit int) []byte {
 	var group [4]byte
 	var prefix [32]byte
 	n, encoded := 0, 0

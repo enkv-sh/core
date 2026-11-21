@@ -887,26 +887,35 @@ func emitFlowSection(ctx context.Context, out io.Writer, image *Image, span Span
 		}
 		if kind != '{' && kind != '[' {
 			start := p.off
-			large := !settings && strings.HasSuffix(p.field, ".bytes")
+			binary := strings.HasPrefix(p.field, "entries.") && strings.HasSuffix(p.field, ".source.bytes")
 			var decoded []byte
-			p.scalarValue(func(b byte) {
-				if large {
-					return
-				}
-				var ok bool
-				decoded, ok = boundedAppend(decoded, b, maxGeneratorSettings)
-				if !ok {
-					p.fail("scalar-limit")
-				}
-			}, false, true, false)
+			if binary {
+				// One logical value fits the existing copy buffer even when its
+				// Base64 source crosses the scanner window.
+				decoded = p.base64Into(buffer[:0], contract.CryptoMaxRawValue)
+			} else {
+				p.scalarValue(func(b byte) {
+					var ok bool
+					decoded, ok = boundedAppend(decoded, b, maxGeneratorSettings)
+					if !ok {
+						p.fail("scalar-limit")
+					}
+				}, false, true, false)
+			}
 			if p.err != nil {
 				return
 			}
 			w.raw(" ")
-			if p.scalarMultiline {
-				w.yamlString(string(decoded), maxGeneratorSettings, false, false)
-			} else if w.err == nil {
+			if w.err != nil {
+				return
+			}
+			switch {
+			case !p.scalarMultiline:
 				w.err = copyEditRange(ctx, writerAdapter{w}, image, span.Offset+start, p.end-start, buffer)
+			case binary:
+				w.yamlBlob(decoded, contract.CryptoMaxRawValue)
+			default:
+				w.yamlString(string(decoded), maxGeneratorSettings, false, false)
 			}
 			return
 		}
