@@ -33,6 +33,10 @@ func (b *generatedSelectionBuilder) validateCreateHistories() error {
 			if err != nil {
 				return err
 			}
+			if a.record.State == contract.GeneratedEffectFailedTerminal && h.Fenced == 1 &&
+				h.Eligibility == 0 && !g.cleanupConflicts[h.HazardID] {
+				return contract.ErrRecord
+			}
 			hasCleanup := false
 			for _, entered := range g.attempts {
 				if entered.expected.Template.Action == contract.GeneratorActionDelete && entered.record.OwnerID == h.OwnerID {

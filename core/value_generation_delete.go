@@ -450,5 +450,9 @@ func (g *generatedSelection) validateDeleteFacts(a generatedAttempt) (contradict
 		unknown.RequestDigest != a.record.RequestDigest || unknown.IntentDigest != a.expected.Template.IntentDigest {
 		return false, contract.ErrRecord
 	}
-	return unknown.Reason == contract.GeneratorReasonIdentityConflict || !generatedResourceFactsMatch(unknown.GeneratorSafeFacts, a.expected.TargetResourceDigest), nil
+	sameTarget := generatedResourceFactsMatch(unknown.GeneratorSafeFacts, a.expected.TargetResourceDigest)
+	if a.expected.Template.TargetKind == contract.GeneratorTargetResultResourceSlot && !sameTarget {
+		return false, contract.ErrRecord
+	}
+	return unknown.Reason == contract.GeneratorReasonIdentityConflict || !sameTarget, nil
 }

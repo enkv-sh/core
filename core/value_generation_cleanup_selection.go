@@ -124,6 +124,9 @@ func (g *generatedSelection) selectGeneratedCleanup(ctx context.Context, returne
 		if len(body) == 0 {
 			continue
 		}
+		if g.cleanupConflicts[original.sourceKey().id] {
+			return generatedCleanupSelection{}, false, selectedReadFailure(failure(IntegrityFailure, InvalidRelation))
+		}
 		result, err := contract.DecodeGeneratedResultRecord(body)
 		if err != nil || contract.ValidateGeneratedResult(a.expected, a.material, result) != nil {
 			return generatedCleanupSelection{}, false, contract.ErrRecord
@@ -175,8 +178,10 @@ func (g *generatedSelection) selectGeneratedCleanup(ctx context.Context, returne
 	if err != nil {
 		return generatedCleanupSelection{}, false, err
 	}
-	if len(duties) != 0 {
-		d := duties[0]
+	for _, d := range duties {
+		if g.cleanupConflicts[d.DutyID] {
+			continue
+		}
 		if err := g.generatedOrdinaryCleanupClass(contract.GeneratedDutySupportKind, d.DutyID, d.CompletionClass); err != nil {
 			return generatedCleanupSelection{}, false, err
 		}
@@ -209,6 +214,9 @@ func (g *generatedSelection) selectGeneratedCleanup(ctx context.Context, returne
 			return generatedCleanupSelection{kind: generatedCleanupHazard, hazard: h, target: target}, true, nil
 		}
 		return generatedCleanupSelection{kind: generatedCleanupHazard, attempt: a, hazard: h, target: target}, true, nil
+	}
+	if len(g.cleanupConflicts) != 0 {
+		return generatedCleanupSelection{}, false, selectedReadFailure(failure(IntegrityFailure, InvalidRelation))
 	}
 	return generatedCleanupSelection{}, false, nil
 }

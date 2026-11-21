@@ -41,14 +41,14 @@ func installedGeneratedRetirementProcess(t testing.TB, mode string) (*generatedP
 		case http.MethodDelete:
 			token := path.Base(request.URL.Path)
 			deletes = append(deletes, token)
-			if mode == "unknown" || mode == "create-hazard-unknown" || mode == "repeated-unknown" || mode == "earlier-identity-conflict" && len(deletes) > 1 {
+			if mode == "cleanup-identity-conflict" && len(deletes) == 1 || mode == "unknown" || mode == "create-hazard-unknown" || mode == "repeated-unknown" || mode == "earlier-identity-conflict" && len(deletes) > 1 {
 				_, err := w.Write([]byte(`{"success":true,"errors":[],"messages":[],"result":{}}`))
 				if err != nil {
 					t.Error("controlled ambiguous retirement response failed")
 				}
 				return
 			}
-			if mode == "identity-conflict" || mode == "earlier-identity-conflict" {
+			if mode == "identity-conflict" || mode == "earlier-identity-conflict" || mode == "cleanup-identity-conflict" {
 				token = "ffffffffffffffffffffffffffffffff"
 			}
 			if _, err := fmt.Fprintf(w, `{"success":true,"errors":[],"messages":[],"result":{"id":"%s"}}`, token); err != nil {
@@ -91,20 +91,23 @@ func installedGeneratedRetirementCallbacks(t testing.TB, f installedApplyTestFix
 	return callbacks
 }
 
+func installedGeneratedRetirementEntries(process *generatedProcessFixture, recipient contract.ID, epoch uint64, healthy string) []ApplyEntryInput {
+	meta := contract.GeneratorDeclaredGeneration{Schema: contract.GeneratorDeclaredGenerationSchema, LifecycleMode: contract.GeneratorLifecycleManaged, Epoch: epoch, RetirementMode: contract.GeneratedRetirementManual,
+		ConfigContractID: process.Implementation.ConfigContractID, ResourceContractID: hermeticCloudflareResourceContractID(), CompletionClass: contract.GeneratedCompletionAcknowledged, Intent: bytes.Clone(process.Intent)}
+	return []ApplyEntryInput{{Name: "generated", InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ValueSource: contract.Generated, ConfidentialityClass: contract.Secret,
+		Recipients: []contract.ID{recipient}, Generated: &meta},
+		{Name: "healthy", InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain,
+			Recipients: []contract.ID{recipient}, InputBytes: []byte(healthy)}}
+}
+
 func installedGeneratedRetirementFixture(t testing.TB, ctx context.Context, mode string) (installedApplyTestFixture, *StateSession, contract.ValueEntry, func() (int, []string)) {
 	t.Helper()
 	process, effects := installedGeneratedRetirementProcess(t, mode)
 	f := newInstalledApplyTestFixture(t, ctx, contract.GCP, true)
 	f.env.GeneratedProcess = process
-	meta := contract.GeneratorDeclaredGeneration{Schema: contract.GeneratorDeclaredGenerationSchema, LifecycleMode: contract.GeneratorLifecycleManaged, Epoch: 0, RetirementMode: contract.GeneratedRetirementManual,
-		ConfigContractID: process.Implementation.ConfigContractID, ResourceContractID: hermeticCloudflareResourceContractID(), CompletionClass: contract.GeneratedCompletionAcknowledged, Intent: bytes.Clone(process.Intent)}
-	input := []ApplyEntryInput{{Name: "generated", ValueSource: contract.Generated, ConfidentialityClass: contract.Secret,
-		Recipients: []contract.ID{f.selected.admission.recipient}, Generated: &meta},
-		{Name: "healthy", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain,
-			Recipients: []contract.ID{f.selected.admission.recipient}, InputBytes: []byte("retained healthy sibling")}}
 	selected := f.selected
 	for epoch := uint64(0); epoch < 2; epoch++ {
-		meta.Epoch = epoch
+		input := installedGeneratedRetirementEntries(process, selected.admission.recipient, epoch, "retained healthy sibling")
 		engine := installedGeneratedTestEngine(t, ctx, f, selected, input, currentApplyRecipients(selected.registry()), installedGeneratedRetirementCallbacks(t, f, process))
 		result := engine.Apply(ctx, testID(fmt.Sprintf("installed retirement generation %d", epoch)), input)
 		engine.Close()
@@ -124,7 +127,7 @@ func installedGeneratedRetirementFixture(t testing.TB, ctx context.Context, mode
 func installedGeneratedRetirementEngine(t testing.TB, ctx context.Context, f installedApplyTestFixture, selected *StateSession, callbacks *GeneratedApplyInstallation) *InstalledApply {
 	t.Helper()
 	// This unrelated local proposal must never replace accepted retirement work.
-	input := []ApplyEntryInput{{Name: "local-edit", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain,
+	input := []ApplyEntryInput{{Name: "local-edit", InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain,
 		Recipients: []contract.ID{selected.admission.recipient}, InputBytes: []byte("unapplied local edit")}}
 	return installedGeneratedTestEngine(t, ctx, f, selected, input, currentApplyRecipients(selected.registry()), callbacks)
 }

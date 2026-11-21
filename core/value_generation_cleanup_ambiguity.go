@@ -63,7 +63,7 @@ func (g *generatedSelection) generatedOrdinaryCleanupAmbiguity(ctx context.Conte
 		return out, contract.ErrRecord
 	}
 	facts, err := contract.InspectGeneratorSafeFacts(ambiguity)
-	if err != nil || facts.Disposition != contract.GeneratorDispositionUnknown || facts.Reason == contract.GeneratorReasonIdentityConflict || !generatedFactsMatchTemplate(facts.GeneratorSafeFacts, a.expected.Template) ||
+	if err != nil || facts.Disposition != contract.GeneratorDispositionUnknown || !generatedFactsMatchTemplate(facts.GeneratorSafeFacts, a.expected.Template) ||
 		facts.RequestDigest != a.record.RequestDigest || facts.IntentDigest != a.expected.Template.IntentDigest ||
 		!generatedResourceFactsMatch(facts.GeneratorSafeFacts, target.ResourceDigest) || uint32(len(ambiguity)) > a.expected.Use.MaxFacts {
 		return out, contract.ErrRecord
@@ -150,6 +150,9 @@ func (g *generatedSelection) generatedOrdinaryCleanupAmbiguity(ctx context.Conte
 		source.Record.Body, err = contract.EncodeGeneratedDutyRecord(source.Duty)
 	} else {
 		source.Hazard.History = source.History
+		if facts.Reason == contract.GeneratorReasonIdentityConflict {
+			source.Hazard.Eligibility = 0
+		}
 		source.Record.Body, err = contract.EncodeGeneratedHazardRecord(source.Hazard)
 	}
 	if err != nil {
@@ -409,7 +412,7 @@ func (s *selectedGeneratedProof) validateGeneratedOrdinaryCleanupAmbiguitySelect
 		return contract.ErrRecord
 	}
 	source, err := contract.InspectGeneratedDeleteSource(row)
-	if err != nil || source.SourceID != subject.OwnerID || !generatedOrdinaryCleanupSourceEligible(source) ||
+	if err != nil || source.SourceID != subject.OwnerID ||
 		source.CapacityReservation != subject.CapacityReservation {
 		return contract.ErrRecord
 	}
@@ -441,9 +444,17 @@ func (s *selectedGeneratedProof) validateGeneratedOrdinaryCleanupAmbiguitySelect
 		return contract.ErrRecord
 	}
 	facts, err := contract.InspectGeneratorSafeFacts(fact.Facts)
-	if err != nil || facts.Disposition != contract.GeneratorDispositionUnknown || facts.Reason == contract.GeneratorReasonIdentityConflict || !generatedFactsMatchTemplate(facts.GeneratorSafeFacts, a.expected.Template) ||
+	if err != nil || facts.Disposition != contract.GeneratorDispositionUnknown || !generatedFactsMatchTemplate(facts.GeneratorSafeFacts, a.expected.Template) ||
 		facts.RequestDigest != a.record.RequestDigest || facts.IntentDigest != a.expected.Template.IntentDigest ||
 		!generatedResourceFactsMatch(facts.GeneratorSafeFacts, target.ResourceDigest) {
+		return contract.ErrRecord
+	}
+	conflict := facts.Reason == contract.GeneratorReasonIdentityConflict
+	if conflict && source.Record.Kind == contract.GeneratedHazardSupportKind {
+		if source.Hazard.Fenced != 1 || source.Hazard.Eligibility != 0 {
+			return contract.ErrRecord
+		}
+	} else if !generatedOrdinaryCleanupSourceEligible(source) {
 		return contract.ErrRecord
 	}
 	history, err := g.vectors.resolve(source.Record.Kind, source.SourceID, contract.GeneratorVectorHistory, source.History)
@@ -467,7 +478,8 @@ func (s *selectedGeneratedProof) validateGeneratedOrdinaryCleanupAmbiguitySelect
 			return contract.ErrRecord
 		}
 		contradiction, err := g.validateDeleteFacts(attempt)
-		if err != nil || contradiction {
+		last := i == len(history)-1
+		if err != nil || last && h.PredecessorAttemptID != subject.AttemptID || contradiction != (last && conflict) {
 			return contract.ErrRecord
 		}
 	}

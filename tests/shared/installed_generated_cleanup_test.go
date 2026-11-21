@@ -321,7 +321,7 @@ func installedGeneratedNativeLateCreateFixture(t *testing.T, ctx context.Context
 	}
 	initial.Close()
 	before := f.open(t, ctx)
-	input := []ApplyEntryInput{plain, {Name: "late", ValueSource: contract.Generated, ConfidentialityClass: contract.Secret,
+	input := []ApplyEntryInput{plain, {Name: "late", InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ValueSource: contract.Generated, ConfidentialityClass: contract.Secret,
 		Recipients: []contract.ID{before.admission.recipient}, Generated: &contract.GeneratorDeclaredGeneration{Schema: contract.GeneratorDeclaredGenerationSchema,
 			LifecycleMode: contract.GeneratorLifecycleManaged, RetirementMode: contract.GeneratedRetirementManual,
 			ConfigContractID: process.Implementation.ConfigContractID, ResourceContractID: hermeticCloudflareResourceContractID(),
@@ -739,5 +739,112 @@ func TestInstalledGeneratedCleanupUsesOneFencedDeleteTargetAndContinuationCannot
 	}
 	if continued.Payload != nil {
 		t.Error("exact cleanup continuation emitted TransitionPayload")
+	}
+}
+
+// full_only: false
+func TestInstalledGeneratedCleanupRecordsProviderIdentityConflict(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+	defer cancel()
+	f, cold, current, effects := installedGeneratedRetirementFixture(t, ctx, "cleanup-identity-conflict")
+	callbacks := installedGeneratedRetirementCallbacks(t, f, f.env.GeneratedProcess)
+	engine := installedGeneratedRetirementEngine(t, ctx, f, cold, callbacks)
+	parked := engine.RetireGenerated(ctx, testID("first uncertain retirement"), GeneratedRetirementRequest{DutyID: current.Generated.RetiringDutyID})
+	engine.Close()
+	if parked.Generated == nil || len(parked.Generated.Effects) != 1 {
+		t.Fatal("missing retirement attempt", parked.Result)
+	}
+	engine = installedGeneratedRetirementEngine(t, ctx, f, f.open(t, ctx), nil)
+	accepted := engine.AcceptGeneratedRetirementRisk(ctx, testID("transfer exact retirement"), GeneratedRetirementRiskRequest{DutyID: current.Generated.RetiringDutyID, AttemptID: parked.Generated.Effects[0].Record.AttemptID})
+	engine.Close()
+	if accepted.Result.Outcome != ObservedCurrent {
+		t.Fatal("transfer exact retirement", accepted.Result)
+	}
+	before := f.open(t, ctx)
+	_, beforeHealthy := observeCurrentValueEntry(t, before, "healthy")
+	selected, present, err := before.readGeneratedCleanup(ctx)
+	if err != nil || !present || selected.kind != generatedCleanupHazard {
+		t.Fatal("missing eligible owner", err)
+	}
+	var returnedFacts []byte
+	admit := callbacks.AdmitProducer
+	callbacks.AdmitProducer = func(ctx context.Context, q contract.CryptoGeneratedCompareRequest, control contract.ControlCore, input contract.GeneratedProducerInput, impl contract.GeneratorImplementation, deadline time.Time) (*InstalledGeneratedProducerCustody, error) {
+		owner, err := admit(ctx, q, control, input, impl, deadline)
+		if err != nil {
+			return nil, err
+		}
+		invoke := owner.InvokeProducer
+		owner.InvokeProducer = func(ctx context.Context, locator, authority contract.ID) contract.GeneratedProducerResult {
+			result := invoke(ctx, locator, authority)
+			if len(returnedFacts) != 0 || len(result.Facts.ProviderFacts) == 0 || len(result.Record) != 0 {
+				t.Fatal("expected one native provider reply with safe facts only")
+			}
+			returnedFacts, err = contract.EncodeGeneratorSafeFacts(result.Facts)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return result
+		}
+		return owner, nil
+	}
+	engine = installedGeneratedRetirementEngine(t, ctx, f, before, callbacks)
+	got := engine.CleanupGenerated(ctx, testID("record native cleanup conflict"))
+	engine.Close()
+	if got.Result.Outcome != ObservedCurrent || got.Generated == nil || len(got.Generated.Effects) != 1 ||
+		got.Generated.Effects[0].Reason != contract.GeneratorReasonIdentityConflict || got.Cleanup == nil ||
+		got.Generated.StateResult != "effect-unknown" || len(got.Receipt) != 0 {
+		t.Fatal("selected cleanup did not report the provider conflict", got.Result.Outcome, got.Result.Reason)
+	}
+	original := got.Generated.Effects[0]
+	cold = f.open(t, ctx)
+	work := mustSelectedGeneratedWork(t, cold)
+	if work.parent != nil || work.phase != nil || !work.hasRecord(selected.sourceKey()) || original.Target == nil || *original.Target != selected.target {
+		t.Fatal("cold selection lost conflict owner or retained active cleanup")
+	}
+	if _, present, result := cold.ReadGeneratedResult(ctx, original.Record.AttemptID); present || result.Outcome != 0 {
+		t.Fatal("unexpected protected result", result)
+	}
+	rows, err := work.vectors.resolve(contract.GeneratedAttemptSupportKind, original.Record.AttemptID, contract.GeneratorVectorFacts, original.Record.Facts)
+	if err != nil || len(rows) != 1 {
+		t.Fatal("missing selected provider reply", err)
+	}
+	fact, err := contract.InspectGeneratorFactsRow(rows[0])
+	if err != nil || fact.ResultID != original.Record.ResultID || !bytes.Equal(fact.Facts, returnedFacts) {
+		t.Fatal("the reopened reply differs from the native provider facts", err)
+	}
+	checkGeneratedReceiptRowsUnchanged(t, before, cold)
+	engine = installedGeneratedRetirementEngine(t, ctx, f, cold, callbacks)
+	observed := engine.ContinueGeneratedCleanup(ctx, testID("observe conflict"), GeneratedCleanupContinuationRequest{OperationID: got.OperationID})
+	engine.Close()
+	if observed.Generated == nil || len(observed.Generated.Effects) != 1 || observed.Generated.Effects[0].Reason != contract.GeneratorReasonIdentityConflict ||
+		observed.Generated.Effects[0].Record.AttemptID != original.Record.AttemptID || observed.Generated.StateResult != "effect-unknown" {
+		t.Fatal("continuation lost the recorded reason", observed.Result)
+	}
+	engine = installedGeneratedRetirementEngine(t, ctx, f, cold, callbacks)
+	fresh := engine.CleanupGenerated(ctx, testID("fresh cleanup after conflict"))
+	engine.Close()
+	if fresh.Result.Outcome != IntegrityFailure || fresh.Result.Reason != InvalidRelation || !bytes.Equal(f.open(t, ctx).body, cold.body) {
+		t.Fatal("fresh cleanup changed state", fresh.Result)
+	}
+	input := installedGeneratedRetirementEntries(f.env.GeneratedProcess, cold.admission.recipient, 1, "updated healthy sibling")
+	engine = installedGeneratedTestEngine(t, ctx, f, cold, input, currentApplyRecipients(cold.registry()), callbacks)
+	changed := engine.Apply(ctx, testID("edit healthy sibling after cleanup conflict"), input)
+	engine.Close()
+	if changed.Result.Outcome != ObservedCurrent {
+		t.Fatal("unrelated supplied update remained blocked", changed.Result)
+	}
+	after := f.open(t, ctx)
+	surviving := mustSelectedGeneratedWork(t, after)
+	_, afterHealthy := observeCurrentValueEntry(t, after, "healthy")
+	if reflect.DeepEqual(beforeHealthy, afterHealthy) || cold.head.Core.Revision == after.head.Core.Revision {
+		t.Fatal("unrelated change did not select a new healthy entry")
+	}
+	if !bytes.Equal(work.records[selected.sourceKey()].Body, surviving.records[selected.sourceKey()].Body) || surviving.attempts[original.Record.AttemptID].record != original.Record {
+		t.Fatal("unrelated update lost the hazard")
+	}
+	creates, deletes := effects()
+	t.Logf("predecessor=%x recorded=%x independent_update=%x retained_hazard=%x creates=%d deletes=%d", before.head.Core.Revision, cold.head.Core.Revision, after.head.Core.Revision, selected.sourceKey().id, creates, len(deletes))
+	if creates != 2 || !slices.Equal(deletes, []string{"00000000000000000000000000000001", "00000000000000000000000000000001"}) {
+		t.Fatal("unexpected native requests", creates, deletes)
 	}
 }

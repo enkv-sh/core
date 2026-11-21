@@ -421,8 +421,8 @@ func TestGeneratedOrdinaryCleanupAmbiguityIsReceiptFreeAndAllowsFreshInvocation(
 }
 
 // full_only: false
-func TestGeneratedOrdinaryCleanupAmbiguityRefusesContradictionWithoutStateChange(t *testing.T) {
-	for _, damage := range []string{"alive", "unequal", "reason10"} {
+func TestGeneratedOrdinaryCleanupAmbiguityRefusesInvalidFactsWithoutStateChange(t *testing.T) {
+	for _, damage := range []string{"alive", "unequal", "foreign-request", "truncated"} {
 		t.Run(damage, func(t *testing.T) {
 			s, source := generatedOrdinaryCleanupSourceState(t, contract.GeneratedCompletionAcknowledged, false)
 			reserved, err := s.deriveGeneratedReservation(context.Background(), generatedOrdinaryCleanupReservationInput(t, s, source, generatedVectorID(190)))
@@ -437,6 +437,7 @@ func TestGeneratedOrdinaryCleanupAmbiguityRefusesContradictionWithoutStateChange
 			}
 			a := g.attempts[g.phase.FrontierAttemptID]
 			facts := generatedRetirementFactsFixture(t, active, a, contract.GeneratorDispositionUnknown)
+			facts.Reason = contract.GeneratorReasonIdentityConflict
 			switch damage {
 			case "alive":
 				facts = generatedRetirementFactsFixture(t, active, a, contract.GeneratorDispositionRetirementAcknowledged)
@@ -445,16 +446,19 @@ func TestGeneratedOrdinaryCleanupAmbiguityRefusesContradictionWithoutStateChange
 				facts.ObservedResourceID, facts.ObservedResourceDigest, facts.ObservedScopeID = a.record.ResourceID, a.expected.TargetResourceDigest, generatedVectorID(194)
 			case "unequal":
 				facts.Target, facts.ResourceData = []byte("fixture-target"), bytes.Repeat([]byte{199}, 32)
-			case "reason10":
-				facts.Reason = 10
+			case "foreign-request":
+				facts.RequestDigest = generatedVectorID(192)
 			}
 			body, err := contract.EncodeGeneratorSafeFacts(facts)
 			if err != nil {
 				t.Fatal(err)
 			}
+			if damage == "truncated" {
+				body = body[:len(body)-1]
+			}
 			before := slices.Clone(active.supportRecords())
 			if plan, err := active.generatedOrdinaryCleanupAmbiguityPlan(t.Context(), a.record.AttemptID, body, ctx); err == nil || plan != nil {
-				t.Fatal("contradictory ordinary cleanup ambiguity admitted")
+				t.Fatal("invalid ordinary cleanup facts admitted")
 			}
 			if !reflect.DeepEqual(before, active.supportRecords()) || g.parent == nil || g.phase == nil ||
 				g.attempts[a.record.AttemptID].record.State != contract.GeneratedEffectTransmitted {
@@ -502,5 +506,79 @@ func TestGeneratedOrdinaryCleanupAmbiguityPlanBindsSourceTargetAndFacts(t *testi
 				t.Fatal("changed ordinary-cleanup ambiguity plan was accepted")
 			}
 		})
+	}
+}
+
+// full_only: false
+func TestGeneratedCleanupIdentityConflictRetainsExactOwner(t *testing.T) {
+	for _, class := range []uint8{contract.GeneratedCompletionAcknowledged, contract.GeneratedCompletionConfirmed} {
+		for _, hazard := range []bool{false, true} {
+			t.Run(fmt.Sprintf("class=%d/hazard=%t", class, hazard), func(t *testing.T) {
+				ctx := t.Context()
+				s, source := generatedOrdinaryCleanupSourceState(t, class, hazard)
+				reservation, err := s.deriveGeneratedReservation(ctx, generatedOrdinaryCleanupReservationInput(t, s, source, generatedVectorID(180)))
+				if err != nil {
+					t.Fatal(err)
+				}
+				active := reservation.state
+				admitted := generatedLifecycleFixture(t, active)
+				g := mustSelectedGeneratedWork(t, active)
+				a := g.attempts[g.phase.FrontierAttemptID]
+				facts := generatedRetirementFactsFixture(t, active, a, contract.GeneratorDispositionUnknown)
+				facts.Reason = contract.GeneratorReasonIdentityConflict
+				encoded, err := contract.EncodeGeneratorSafeFacts(facts)
+				if err != nil {
+					t.Fatal(err)
+				}
+				plan, err := active.generatedOrdinaryCleanupAmbiguityPlan(ctx, a.record.AttemptID, encoded, admitted)
+				if err != nil {
+					t.Fatal("record the exact provider identity conflict", err)
+				}
+				parked, err := active.deriveGeneratedOrdinaryCleanupAmbiguity(ctx, plan)
+				if err != nil {
+					t.Fatal("select the conflict and release cleanup", err)
+				}
+				closed := parked.state
+				if err := closed.validateGeneratedSelection(ctx, nil); err != nil {
+					t.Fatal(err)
+				}
+				work := mustSelectedGeneratedWork(t, closed)
+				current := work.attempts[a.record.AttemptID]
+				owner, err := contract.InspectGeneratedDeleteSource(work.records[generatedRecordKey{source.Record.Kind, source.SourceID}])
+				if err != nil || owner.OwnerID != source.OwnerID || owner.Target != source.Target || owner.CompletionClass != class ||
+					hazard && owner.Hazard.Eligibility != 0 ||
+					owner.History.Count != source.History.Count+1 || owner.Consumers.Count != source.Consumers.Count+1 ||
+					!closed.root.Generated.ActiveOwner.IsZero() || !closed.root.Generated.ActiveGraph.IsZero() || !closed.root.Generated.ActivePhase.IsZero() ||
+					current.record.State != contract.GeneratedEffectUnknown || current.record.Stage != contract.GeneratedStageTerminal || len(current.result) != 0 ||
+					!reflect.DeepEqual(generatedReceiptRows(active), generatedReceiptRows(closed)) {
+					t.Fatal("lost exact obligation or claimed closure", err)
+				}
+				list, err := projectGeneratedList(ctx, work)
+				if err != nil {
+					t.Fatal("list retained cleanup conflict", err)
+				}
+				for _, next := range list.NextActions {
+					if next.Command == "generated cleanup" {
+						t.Fatal("listed a destructive action for the conflicted owner")
+					}
+				}
+				rows, err := work.vectors.resolve(contract.GeneratedAttemptSupportKind, a.record.AttemptID, contract.GeneratorVectorFacts, current.record.Facts)
+				if err != nil || len(rows) != 1 {
+					t.Fatal("missing selected conflict facts", err)
+				}
+				row, err := contract.InspectGeneratorFactsRow(rows[0])
+				if err != nil || row.ResultID != a.record.ResultID || !bytes.Equal(row.Facts, encoded) {
+					t.Fatal("changed provider evidence", err)
+				}
+				generatedLifecycleFixture(t, closed)
+				if again, err := closed.deriveGeneratedReservation(ctx, generatedOrdinaryCleanupReservationInput(t, closed, owner, generatedVectorID(181))); err == nil || again != nil {
+					t.Fatal("conflict allowed fresh reservation")
+				}
+				ack := generatedRetirementResultFixture(t, closed, current, contract.GeneratorDispositionRetirementAcknowledged)
+				if reflection, err := closed.generatedReflectionPlan(ctx, current.record.ResultID, ack, generatedLifecycleFixture(t, closed)); err == nil || reflection != nil {
+					t.Fatal("later acknowledgement overrode the conflict")
+				}
+			})
+		}
 	}
 }

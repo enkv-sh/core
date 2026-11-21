@@ -231,7 +231,7 @@ func projectGeneratedList(ctx context.Context, g *generatedSelection) (Generated
 		if !attempt.IsZero() {
 			out.NextActions = append(out.NextActions, GeneratedNextAction{Command: "generated accept-retirement-risk", DutyID: duty.DutyID, AttemptID: attempt})
 		}
-		cleanup = cleanup || duty.Kind == contract.GeneratedDutyUnselectedCleanup
+		cleanup = cleanup || duty.Kind == contract.GeneratedDutyUnselectedCleanup && !g.cleanupConflicts[duty.DutyID]
 	}
 	for _, fact := range out.Hazards {
 		cleanup = cleanup || fact.Record.Fenced == 1 && fact.Record.Eligibility != 0

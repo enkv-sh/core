@@ -70,8 +70,7 @@ func (s *StateSession) generatedDeleteReservationSelection(ctx context.Context, 
 		}
 	} else {
 		purpose = contract.GeneratorAuthorityCleanupReserve
-		if row.Kind == contract.GeneratedDutySupportKind && (duty.Kind != contract.GeneratedDutyUnselectedCleanup || duty.Status != contract.GeneratedEffectSucceeded) ||
-			row.Kind == contract.GeneratedHazardSupportKind && (source.Hazard.Fenced != 1 || source.Hazard.Eligibility == 0 || source.Hazard.Eligibility != source.Hazard.Exposure) {
+		if !generatedOrdinaryCleanupSourceEligible(source) || selected.cleanupConflicts[source.SourceID] {
 			return out, false, nil
 		}
 	}

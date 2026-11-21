@@ -67,7 +67,7 @@ func (b *generatedSelectionBuilder) resolveHazards(rows []contract.SupportRecord
 		case contract.GeneratedEffectFailedTerminal:
 			result, err := contract.InspectGeneratedResultRecord(selected.result)
 			if err != nil || result.SafeFacts.Disposition != contract.GeneratorDispositionOwnedUnusableCreate ||
-				h.Fenced == 1 && (g.parent != nil && g.parent.OperationID == h.OriginalOperationID || h.Exposure != contract.GeneratedExposureLateEffect || h.Eligibility != contract.GeneratedExposureLateEffect) {
+				h.Fenced == 1 && (g.parent != nil && g.parent.OperationID == h.OriginalOperationID || h.Exposure != contract.GeneratedExposureLateEffect) {
 				return contract.ErrRecord
 			}
 		default:

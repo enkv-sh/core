@@ -185,3 +185,41 @@ func (b *generatedSelectionBuilder) resolveOrdinaryCleanupAttempts(rows []contra
 	}
 	return nil
 }
+
+// An ordinary cleanup identity conflict is terminal for sends on its exact
+// owner. Rebuild this index from selected evidence on every new image.
+func (b *generatedSelectionBuilder) indexCleanupIdentityConflicts() error {
+	g := b.facts
+	for _, a := range g.attempts {
+		if a.expected.Template.Action != contract.GeneratorActionDelete || a.expected.Template.TargetKind != contract.GeneratorTargetResultResourceSlot ||
+			a.record.State != contract.GeneratedEffectUnknown {
+			continue
+		}
+		conflict, err := g.validateDeleteFacts(a)
+		if err != nil {
+			return err
+		}
+		if !conflict {
+			continue
+		}
+		source, err := g.generatedDeleteSource(a.record.OwnerID)
+		if err != nil || source.Record.Kind == contract.GeneratedHazardSupportKind && source.Hazard.Eligibility != 0 {
+			return contract.ErrRecord
+		}
+		// No subsequent invocation may extend the owner's history after this fact.
+		rows, err := g.vectors.resolve(source.Record.Kind, source.SourceID, contract.GeneratorVectorHistory, source.History)
+		if err != nil || len(rows) == 0 {
+			return contract.ErrRecord
+		}
+		last, err := contract.InspectGeneratorHistory(rows[len(rows)-1])
+		if err != nil || last.PredecessorAttemptID != a.record.AttemptID || last.Outcome != contract.GeneratedEffectUnknown ||
+			last.Edge != 0 || !last.NextAttemptID.IsZero() {
+			return contract.ErrRecord
+		}
+		if g.cleanupConflicts == nil {
+			g.cleanupConflicts = make(map[contract.ID]bool)
+		}
+		g.cleanupConflicts[source.SourceID] = true
+	}
+	return nil
+}

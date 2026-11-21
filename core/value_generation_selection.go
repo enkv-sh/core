@@ -30,6 +30,7 @@ type generatedSelection struct {
 	bundles            []contract.GeneratorPlanBundle
 	attempts           map[contract.ID]generatedAttempt
 	deleteHazards      map[contract.ID]contract.ID
+	cleanupConflicts   map[contract.ID]bool // selected cleanup owners with a terminal provider identity conflict
 	releases           map[contract.ID]generatedReleasedAttempt
 	consumers          map[materialIdentity][]contract.GeneratorConsumer
 	sources            map[contract.ID][]contract.GeneratorSourceUse
@@ -275,6 +276,9 @@ func selectedGeneratedWorkFromImageWithReader(ctx context.Context, image *select
 	}
 	if err := builder.validateActiveVectors(); err != nil {
 		return nil, fmt.Errorf("validate generated vectors: %w", err)
+	}
+	if err := builder.indexCleanupIdentityConflicts(); err != nil {
+		return nil, err
 	}
 	if err := builder.validateCreateHistories(); err != nil {
 		return nil, err
