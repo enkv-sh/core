@@ -3,6 +3,7 @@ package nativeprocess
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"debug/buildinfo"
 	"encoding/hex"
 	"encoding/json"
@@ -70,7 +71,7 @@ type nativeGeneratedServer struct {
 	resources       map[string]string
 	unknownDelete   string
 	afterDelete     func()
-	afterCreate     func()
+	afterCreate     func(*http.Request)
 	malformedCreate bool
 	violations      []string
 	serial          uint64
@@ -158,8 +159,9 @@ func (s *nativeGeneratedServer) serve(w http.ResponseWriter, r *http.Request) {
 		}
 		s.requests = append(s.requests, nativeGeneratedRequest{r.Method, account, target})
 		if s.afterCreate != nil {
-			s.afterCreate()
+			after := s.afterCreate
 			s.afterCreate = nil
+			after(r)
 		}
 		if s.malformedCreate {
 			s.malformedCreate = false
@@ -614,6 +616,7 @@ type nativeGeneratedFact struct {
 		DutyID            string `json:"duty_id"`
 		ResourceID        string `json:"resource_incarnation_id"`
 		HazardID          string `json:"hazard_id"`
+		Exposure          string `json:"exposure"`
 		AttemptID         string `json:"attempt_id"`
 		OriginalAttemptID string `json:"original_attempt_id"`
 		ExecutorID        string `json:"executor_id"`
@@ -875,6 +878,64 @@ func nativeGeneratedProviderID(t *testing.T, encoded string) string {
 		t.Fatal("generated provider identity unavailable")
 	}
 	return string(body)
+}
+
+// full_only: false
+func TestPublicNativeGeneratedLostCreateMarker(t *testing.T) {
+	cloudflare := newNativeGeneratedServer(t)
+	binaries := buildNativeGeneratedExecutables(t, cloudflare.server.URL+"/client/v4")
+	var attempts, agents []string
+	for _, loseReply := range []bool{false, true} {
+		store := newWorkflowServer(t, "aws", false)
+		source := nativeGeneratedInitialize(t, store, binaries.cli, false)
+		nativeGeneratedDeclaration(t, source, nativeGeneratedAccountA, "manual", 0, true)
+		cloudflare.mu.Lock()
+		cloudflare.afterCreate = func(r *http.Request) {
+			agents = append(agents, r.UserAgent())
+			if loseReply {
+				panic(http.ErrAbortHandler) // The fake provider already committed the token.
+			}
+		}
+		cloudflare.mu.Unlock()
+		result := nativeGeneratedRun(t, store, binaries, source, nativeGeneratedBearerA, "apply", false)
+		if !loseReply {
+			created := nativeGeneratedOutcome(t, result, "success", 0)
+			if len(created.Effects) != 1 {
+				t.Fatal("expected one acknowledged CREATE")
+			}
+			attempts = append(attempts, created.Effects[0].Facts.AttemptID)
+			continue
+		}
+		unknown := nativeGeneratedOutcome(t, result, "effect-unknown", 3)
+		reader := nativeGeneratedRun(t, store, binaries, source, "", "generated list", false)
+		list := nativeGeneratedOutcome(t, reader, "success", 0)
+		if len(unknown.Hazards) != 1 || len(list.Hazards) != 1 || len(list.Current) != 0 ||
+			list.Hazards[0].Facts.OriginalAttemptID != unknown.Hazards[0].Facts.OriginalAttemptID ||
+			list.Hazards[0].Facts.Exposure != "possible-live" || list.Hazards[0].Target.ResourceDigest != "" {
+			t.Fatal("the fresh reader lost the unresolved CREATE or selected an unknown value")
+		}
+		head, _ := workflowHead(t, store)
+		if !workflowRoot(t, store, head).Generated.ActiveOwner.IsZero() {
+			t.Fatal("the lost CREATE kept the domain occupied")
+		}
+		attempts = append(attempts, list.Hazards[0].Facts.OriginalAttemptID)
+	}
+	requests, live := cloudflare.snapshot()
+	cloudflare.mu.Lock()
+	defer cloudflare.mu.Unlock()
+	if len(requests) != 2 || live != 2 || len(agents) != 2 || attempts[0] == attempts[1] {
+		t.Fatal("expected two distinct attempts and exactly two same-name CREATEs")
+	}
+	for i, attempt := range attempts {
+		raw, err := hex.DecodeString(attempt)
+		if err != nil || len(raw) != 32 {
+			t.Fatal("public CREATE Attempt ID has invalid encoding")
+		}
+		marker := sha256.Sum256(append([]byte("ENKV/Cloudflare/audit-marker/v1\x00"), raw...))
+		if requests[i].Method != http.MethodPost || agents[i] != fmt.Sprintf("enkv-generator-cloudflare/0.1.0 audit/%x", marker) {
+			t.Fatalf("request %d did not carry the marker reconstructed from its public Attempt ID", i+1)
+		}
+	}
 }
 
 // full_only: false
@@ -1485,7 +1546,7 @@ func TestPublicNativeGeneratedCustodyLedgerKeepsActualResultsAndLostOutput(t *te
 				cloudflare.malformedCreate = true
 			}
 			if condition == "post-result-persistence-refused" {
-				cloudflare.afterCreate = func() {
+				cloudflare.afterCreate = func(*http.Request) {
 					if err := os.Rename(ledgerPath, ledgerPath+".retained"); err != nil {
 						t.Error("post-result persistence fault setup failed", err)
 					}
