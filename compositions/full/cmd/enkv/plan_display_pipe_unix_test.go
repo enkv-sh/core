@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	compositionfull "enkv.sh/compositions/full"
 	"enkv.sh/core/contract"
 	"golang.org/x/sys/unix"
 )
@@ -46,7 +47,11 @@ func TestPlanTerminalCancellationJoinsBlockedNativeWrite(t *testing.T) {
 	defer cancel()
 	var diagnostic bytes.Buffer
 	done := make(chan int, 1)
-	go func() { done <- writePlanningOutcome(ctx, result, true, true, writer, &diagnostic) }()
+	go func() {
+		done <- writePlanningOutcomeWithOutput(ctx, result, true, true, func(ctx context.Context, body []byte) error {
+			return compositionfull.WritePlanningResult(ctx, writer, body)
+		}, &diagnostic)
+	}()
 	prefix := make([]byte, 1)
 	if _, err := reader.Read(prefix); err != nil {
 		cancel()

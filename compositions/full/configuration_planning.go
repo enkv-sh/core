@@ -109,7 +109,11 @@ func planConfigurationWithIdentity(ctx context.Context, requestID contract.ID, t
 	}
 	installed.Sources = contract.PlanningSources{Trusted: configurationPlanningSource(trusted, baseline), Proposed: configurationPlanningSource(proposedPair, desired)}
 	installed.FileIdentity, installed.InputDigest = desired.FileID, inputDigest
-	installed.DisplayFactory = factory
+	var display *sourceBoundPlanningDisplay
+	if factory != nil {
+		display = &sourceBoundPlanningDisplay{PlanningDisplayFactory: factory, trusted: trusted, candidate: candidate}
+		installed.DisplayFactory = display
+	}
 	q.Stage = "construction"
 	planner, err := open(ctx, installed)
 	if err != nil || planner == nil {
@@ -124,6 +128,9 @@ func planConfigurationWithIdentity(ctx context.Context, requestID contract.ID, t
 	releaseConfigurationSource(baseline)
 	q.Stage = "compare"
 	result := ConfigurationPlanningResult{PlanningResult: planner.Plan(ctx, requestID, input, inputs, options)}
+	if display != nil && result.DisplayDelivery == contract.PlanningDeliveryComplete {
+		result.displayFile = display.nativeFile
+	}
 	addConfigurationRecipientNames(&result.ComparisonPayload, beforeNames, afterNames)
 	return result
 }
@@ -286,6 +293,7 @@ func configurationPlanningCleanup(ctx context.Context, requestID contract.ID, ou
 	failure := configurationPlanningResult(configurationComparisonUnavailable(ctx, requestID, out.Context.ExpectedDomain, "local-image"))
 	cleanupDiagnostics, cleanupComplete := failure.Diagnostics, failure.DiagnosticsComplete
 	failure.PlanningPayload = out.PlanningPayload
+	failure.displayFile = out.displayFile
 	failure.InstallationRequirements = out.InstallationRequirements
 	failure.SourceFailure = out.SourceFailure
 	failure.Verdict = contract.ComparisonUnable

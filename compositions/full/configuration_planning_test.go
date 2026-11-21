@@ -122,7 +122,7 @@ func TestConfigurationPlanningPreservesSourcesAndTrustedConstruction(t *testing.
 			calls := 0
 			open := func(_ context.Context, c PlanningConfig) (*core.InstalledPlanning, error) {
 				calls++
-				if c.DisplayFactory != factory {
+				if c.DisplayFactory == nil || c.DisplayFactory.Identity() != factory.Identity() {
 					t.Fatal("explicit display factory did not reach construction")
 				}
 				return nil, errors.New("controlled unavailable construction")

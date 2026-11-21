@@ -4,12 +4,12 @@ package compositionfull
 
 import (
 	"context"
+	privatecrypto "enkv.sh/crypto"
 	"errors"
 	"os"
 	"sync"
 	"syscall"
 
-	privatecrypto "enkv.sh/crypto"
 	"golang.org/x/sys/unix"
 )
 
@@ -21,7 +21,13 @@ func NewPlanningDisplayFile(out *os.File, structured bool) (privatecrypto.Planni
 	if out == nil {
 		return nil, errPlanningDisplay
 	}
-	return newPlanningDisplayWriter(func(ctx context.Context) (planningDisplayOutput, error) { return openPlanningDisplayFile(ctx, out) }, structured)
+	info, err := out.Stat()
+	if err != nil {
+		return nil, errPlanningDisplay
+	}
+	return newPlanningDisplayWriter(func(ctx context.Context) (planningDisplayOutput, error) {
+		return openPlanningDisplayFile(ctx, out, info)
+	}, structured)
 }
 
 type planningFileOutput struct {
@@ -33,17 +39,13 @@ type planningFileOutput struct {
 	closeErr error
 }
 
-func openPlanningDisplayFile(ctx context.Context, original *os.File) (output planningDisplayOutput, err error) {
+func openPlanningDisplayFile(ctx context.Context, original *os.File, expected os.FileInfo) (output planningDisplayOutput, err error) {
 	if ctx == nil {
 		return nil, errPlanningDisplay
 	}
 	deadline, finite := ctx.Deadline()
 	if !finite || ctx.Err() != nil {
 		return nil, errPlanningDisplay
-	}
-	info, err := original.Stat()
-	if err != nil {
-		return nil, err
 	}
 	raw, err := original.SyscallConn()
 	if err != nil {
@@ -57,10 +59,7 @@ func openPlanningDisplayFile(ctx context.Context, original *os.File) (output pla
 			return
 		}
 		duplicate, setupErr = unix.FcntlInt(fd, unix.F_DUPFD_CLOEXEC, 0)
-		if setupErr != nil {
-			return
-		}
-		if !info.Mode().IsRegular() {
+		if setupErr == nil && !expected.Mode().IsRegular() {
 			setupErr = unix.SetNonblock(duplicate, true)
 		}
 	})
@@ -71,7 +70,7 @@ func openPlanningDisplayFile(ctx context.Context, original *os.File) (output pla
 	if file == nil {
 		return nil, errors.Join(unix.Close(duplicate), err, setupErr)
 	}
-	owned := &planningFileOutput{file: file, original: raw, flags: flags, restore: !info.Mode().IsRegular()}
+	owned := &planningFileOutput{file: file, original: raw, flags: flags, restore: !expected.Mode().IsRegular()}
 	defer func() {
 		if err != nil {
 			err = errors.Join(err, owned.Close())
@@ -80,6 +79,10 @@ func openPlanningDisplayFile(ctx context.Context, original *os.File) (output pla
 	if err = errors.Join(err, setupErr); err != nil {
 		return nil, err
 	}
+	info, err := file.Stat()
+	if err != nil || !os.SameFile(info, expected) {
+		return nil, errPlanningDisplay
+	}
 	if !info.Mode().IsRegular() {
 		if err = file.SetWriteDeadline(deadline); err != nil {
 			return nil, err
@@ -87,6 +90,8 @@ func openPlanningDisplayFile(ctx context.Context, original *os.File) (output pla
 	}
 	return owned, nil
 }
+func (o *planningFileOutput) Stat() (os.FileInfo, error) { return o.file.Stat() }
+
 func (o *planningFileOutput) WriteContext(ctx context.Context, body []byte) (n int, err error) {
 	if ctx == nil || ctx.Err() != nil {
 		return 0, errPlanningDisplay
@@ -128,7 +133,15 @@ func WritePlanningResult(ctx context.Context, out *os.File, body []byte) error {
 	if out == nil {
 		return errPlanningDisplay
 	}
-	owner, err := openPlanningDisplayFile(ctx, out)
+	info, err := out.Stat()
+	if err != nil {
+		return errPlanningDisplay
+	}
+	return writePlanningResult(ctx, out, body, info)
+}
+
+func writePlanningResult(ctx context.Context, out *os.File, body []byte, expected os.FileInfo) error {
+	owner, err := openPlanningDisplayFile(ctx, out, expected)
 	if err != nil {
 		return errPlanningDisplay
 	}

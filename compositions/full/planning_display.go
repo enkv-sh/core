@@ -5,10 +5,12 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
+	"os"
 	"strconv"
 	"sync"
 	"unicode/utf8"
 
+	"enkv.sh/compositions/configuration"
 	"enkv.sh/core/contract"
 	privatecrypto "enkv.sh/crypto"
 )
@@ -20,6 +22,38 @@ var errPlanningDisplay = errors.New("planning display failed")
 type planningDisplayOutput interface {
 	WriteContext(context.Context, []byte) (int, error)
 	Close() error
+}
+
+type sourceBoundPlanningDisplay struct {
+	privatecrypto.PlanningDisplayFactory
+	trusted, candidate *configuration.Pair
+	nativeFile         os.FileInfo
+}
+
+func (f *sourceBoundPlanningDisplay) Acquire(ctx context.Context) (privatecrypto.PlanningDisplaySink, error) {
+	sink, err := f.PlanningDisplayFactory.Acquire(ctx)
+	if err != nil {
+		return sink, err
+	}
+	if own, ok := sink.(*planningDisplaySink); ok {
+		if file, ok := own.output.(interface{ Stat() (os.FileInfo, error) }); ok {
+			info, err := file.Stat()
+			if err != nil || !f.trusted.AllowsOutputFile(info) || f.candidate != nil && !f.candidate.AllowsOutputFile(info) {
+				return nil, errors.Join(errPlanningDisplay, sink.Close())
+			}
+			f.nativeFile = info
+		}
+	}
+	return sink, nil
+}
+
+// WriteDisplayResult delivers a completed file display's safe terminal record
+// to the same native destination. The caller keeps its descriptor open.
+func (r ConfigurationPlanningResult) WriteDisplayResult(ctx context.Context, out *os.File, body []byte) error {
+	if r.DisplayDelivery != contract.PlanningDeliveryComplete || r.displayFile == nil || out == nil {
+		return errPlanningDisplay
+	}
+	return writePlanningResult(ctx, out, body, r.displayFile)
 }
 
 type planningDisplayWriter struct {

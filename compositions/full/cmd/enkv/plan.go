@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"flag"
 	"io"
 	"os"
@@ -21,7 +22,7 @@ func runPlan(args []string, out, diagnostic io.Writer) int {
 	return runPlanContext(ctx, args, out, diagnostic)
 }
 
-func runPlanContext(ctx context.Context, args []string, out, diagnostic io.Writer) int {
+func runPlanContext(ctx context.Context, args []string, out, diagnostic io.Writer) (code int) {
 	if out == nil || diagnostic == nil {
 		return 2
 	}
@@ -58,7 +59,38 @@ func runPlanContext(ctx context.Context, args []string, out, diagnostic io.Write
 		code := refuse()
 		return commandDiagnosticExit(diagnostic, "plan requires valid source selections; trusted source defaults to enkv.yaml; use --trusted-format or --candidate-format yaml|json for an explicit path without a recognized suffix", code)
 	}
-	if flags.Parse(args) != nil || len(flags.Args()) != 0 {
+	parseErr := flags.Parse(args)
+	badArguments := parseErr != nil || len(flags.Args()) != 0
+	paths, captured := captureCommandPaths()
+	selectedTrusted, selectedFormat, trustedOK := paths.source(commandFlagValue(flags, "trusted"), commandFlagValue(flags, "trusted-format"))
+	selectedCandidate, selectedCandidateFormat, candidateOK := paths.candidate(candidate, candidateFormat)
+	var sources planDisplaySources
+	if len(selectedNames) != 0 || parseErr != nil && mayRequestPlanDisplay(args, flags.Args()) {
+		stdout, stderr := holdPlanStream(out), holdPlanStream(diagnostic)
+		defer func() {
+			if err := errors.Join(sources.close(), stderr.close(), stdout.close()); err != nil {
+				code = 2
+			}
+		}()
+		complete := false
+		if (stdout.regular() || stderr.regular()) && !badArguments && captured && trustedOK && candidateOK {
+			complete = sources.capture(ctx, selectedTrusted, selectedFormat, selectedCandidate, selectedCandidateFormat)
+		}
+		stdoutOK := stdout.allowed(sources.trusted, sources.candidate, complete)
+		stderrOK := stderr.allowed(sources.trusted, sources.candidate, complete)
+		out, diagnostic = stdout.writer, stderr.writer
+		if !stdoutOK || !stderrOK {
+			if stdoutOK {
+				diagnostic = io.Discard
+				return refuse()
+			}
+			if stderrOK {
+				return commandDiagnosticExit(diagnostic, "plan output could not be separated from its configuration files", 2)
+			}
+			return 2
+		}
+	}
+	if badArguments {
 		return badInput()
 	}
 	if len(selectedNames) != 0 && !*checkSecrets {
@@ -74,16 +106,10 @@ func runPlanContext(ctx context.Context, args []string, out, diagnostic io.Write
 	if len(selectedNames) > contract.CryptoMaxValueEntries {
 		return badInput()
 	}
-	paths, captured := captureCommandPaths()
-	selectedTrusted, selectedFormat, ok := paths.source(commandFlagValue(flags, "trusted"), commandFlagValue(flags, "trusted-format"))
 	if !captured {
 		return commandDiagnosticExit(diagnostic, commandDirectoryUnavailable, refuse())
 	}
-	if !ok {
-		return badInput()
-	}
-	selectedCandidate, selectedCandidateFormat, ok := paths.candidate(candidate, candidateFormat)
-	if !ok {
+	if !trustedOK || !candidateOK {
 		return badInput()
 	}
 	var terminal commandTerminal
@@ -92,7 +118,7 @@ func runPlanContext(ctx context.Context, args []string, out, diagnostic io.Write
 	telemetryOptions.differenceIsSuccess = true
 	return withCommandTelemetry(ctx, telemetryOptions, diagnostic, refuse, func(ctx context.Context, diagnostic io.Writer) int {
 		if *checkSecrets {
-			return executePrivatePlan(ctx, selectedTrusted, selectedFormat, selectedCandidate, selectedCandidateFormat, *structured, selectedNames, out, diagnostic, &terminal, *publish)
+			return executePrivatePlan(ctx, selectedTrusted, selectedFormat, selectedCandidate, selectedCandidateFormat, *structured, selectedNames, sources, out, diagnostic, &terminal, *publish)
 		}
 		return executePlan(ctx, selectedTrusted, selectedFormat, selectedCandidate, selectedCandidateFormat, *structured, out, diagnostic, &terminal, *publish)
 	})
@@ -159,7 +185,7 @@ type planSecretNames []string
 func (n *planSecretNames) String() string         { return "" }
 func (n *planSecretNames) Set(value string) error { *n = append(*n, value); return nil }
 
-func executePrivatePlan(ctx context.Context, trusted string, format configuration.Format, candidate string, candidateFormat configuration.Format, structured bool, names []string, out, diagnostic io.Writer, terminal *commandTerminal, publish ...bool) int {
+func executePrivatePlan(ctx context.Context, trusted string, format configuration.Format, candidate string, candidateFormat configuration.Format, structured bool, names []string, sources planDisplaySources, out, diagnostic io.Writer, terminal *commandTerminal, publish ...bool) int {
 	var requestID contract.ID
 	if _, err := rand.Read(requestID[:]); err != nil || requestID.IsZero() {
 		return commandDiagnosticExit(diagnostic, "plan request identity is unavailable", 2)
@@ -174,7 +200,12 @@ func executePrivatePlan(ctx context.Context, trusted string, format configuratio
 		if err != nil {
 			return commandDiagnosticExit(diagnostic, "plan display is unavailable", 2)
 		}
-		result = compositionfull.DisplayConfigurationFiles(ctx, requestID, trusted, format, candidate, candidateFormat, names, factory, contract.ComparisonOptions{Publish: len(publish) == 1 && publish[0]})
+		preview := contract.ComparisonOptions{Publish: len(publish) == 1 && publish[0]}
+		if sources.trusted != nil {
+			result = compositionfull.DisplayConfiguration(ctx, requestID, sources.trusted, sources.candidate, names, factory, preview)
+		} else {
+			result = compositionfull.DisplayConfigurationFiles(ctx, requestID, trusted, format, candidate, candidateFormat, names, factory, preview)
+		}
 	} else {
 		result = compositionfull.PlanConfigurationFiles(ctx, requestID, trusted, format, candidate, candidateFormat, contract.PlanningOptions{Purpose: contract.PlanningEquality, Publish: len(publish) == 1 && publish[0]})
 	}
@@ -188,6 +219,9 @@ func writePlanningOutcome(ctx context.Context, result compositionfull.Configurat
 		native, ok := out.(*os.File)
 		if !ok {
 			return io.ErrClosedPipe
+		}
+		if display {
+			return result.WriteDisplayResult(ctx, native, body)
 		}
 		return compositionfull.WritePlanningResult(ctx, native, body)
 	}, diagnostic)

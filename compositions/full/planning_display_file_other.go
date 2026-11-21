@@ -13,3 +13,7 @@ func NewPlanningDisplayFile(*os.File, bool) (privatecrypto.PlanningDisplayFactor
 }
 
 func WritePlanningResult(context.Context, *os.File, []byte) error { return errPlanningDisplay }
+
+func writePlanningResult(context.Context, *os.File, []byte, os.FileInfo) error {
+	return errPlanningDisplay
+}

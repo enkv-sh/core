@@ -5,6 +5,10 @@ package compositionfull
 import (
 	"bytes"
 	"context"
+	"errors"
+	"path/filepath"
+
+	"enkv.sh/compositions/configuration"
 	"os"
 	"testing"
 	"time"
@@ -161,5 +165,98 @@ func TestPlanningDisplayRegularFileStaysOpenForSafeResult(t *testing.T) {
 	body, err := os.ReadFile(file.Name())
 	if err != nil || !bytes.HasSuffix(body, []byte("safe-result\n")) {
 		t.Fatal("safe result not delivered after finalization")
+	}
+}
+
+// full_only: false
+func TestPlanningDisplayAcquisitionExcludesCapturedFiles(t *testing.T) {
+	trusted := configurationReaderPair(t, "aws", configuration.JSON, configurationReaderWithoutOutputs)
+	candidate := configurationReaderPair(t, "aws", configuration.JSON, configurationReaderWithoutOutputs)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
+	defer cancel()
+	for _, pair := range []configurationReaderSource{trusted, candidate} {
+		for _, path := range []string{pair.path, pair.generated} {
+			if err := os.Chmod(path, 0600); err != nil {
+				t.Fatal(err)
+			}
+			before, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			alias := filepath.Join(t.TempDir(), "alias")
+			if err := os.Link(path, alias); err != nil {
+				t.Fatal(err)
+			}
+			for _, target := range []string{path, alias} {
+				for _, mode := range []int{os.O_WRONLY, os.O_WRONLY | os.O_APPEND} {
+					file, err := os.OpenFile(target, mode, 0)
+					if err != nil {
+						t.Fatal(err)
+					}
+					f, err := NewPlanningDisplayFile(file, true)
+					if err != nil {
+						t.Fatal(err)
+					}
+					guard := sourceBoundPlanningDisplay{PlanningDisplayFactory: f, trusted: trusted.pair, candidate: candidate.pair}
+					sink, err := guard.Acquire(ctx)
+					if sink != nil {
+						t.Error("source accepted for native display")
+						if err := sink.Close(); err != nil {
+							t.Error(err)
+						}
+					}
+					if !errors.Is(err, errPlanningDisplay) {
+						t.Fatal("missing source separation failure", err)
+					}
+					if err := file.Close(); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+			after, err := os.ReadFile(path)
+			if err != nil || !bytes.Equal(before, after) {
+				t.Fatal("acquisition changed a source member", err)
+			}
+		}
+	}
+}
+
+// full_only: false
+func TestPlanningDisplayFinalRecordRequiresTheAdmittedFile(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
+	defer cancel()
+	open := func() *os.File {
+		f, err := os.CreateTemp(t.TempDir(), "output")
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			if err := f.Close(); err != nil {
+				t.Error(err)
+			}
+		})
+		return f
+	}
+	admitted, other := open(), open()
+	info, err := admitted.Stat()
+	if err != nil {
+		t.Fatal(err)
+	}
+	record := []byte("terminal\n")
+	if err := writePlanningResult(ctx, other, record, info); !errors.Is(err, errPlanningDisplay) {
+		t.Fatal("terminal output changed its destination", err)
+	}
+	if got, err := os.ReadFile(other.Name()); err != nil || len(got) != 0 {
+		t.Fatal("changed destination received output", err)
+	}
+	empty := ConfigurationPlanningResult{}
+	if err := empty.WriteDisplayResult(ctx, other, record); !errors.Is(err, errPlanningDisplay) {
+		t.Fatal("unadmitted result wrote a terminal record", err)
+	}
+	if err := writePlanningResult(ctx, admitted, record, info); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := os.ReadFile(admitted.Name()); err != nil || !bytes.Equal(got, record) {
+		t.Fatal("admitted terminal write changed", err)
 	}
 }

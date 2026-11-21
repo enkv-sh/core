@@ -69,6 +69,20 @@ type Pair struct {
 	aliasDirectory      os.FileInfo
 }
 
+// AllowsOutputFile checks an open output against the original input files of
+// this capture. Captured images themselves reside in temporary files.
+func (p *Pair) AllowsOutputFile(output os.FileInfo) bool {
+	if output == nil || p.validateCaptured() != nil {
+		return false
+	}
+	for _, image := range []*Image{p.Editable, p.Generated} {
+		if image != nil && (image.sourceInfo == nil || os.SameFile(output, image.sourceInfo)) {
+			return false
+		}
+	}
+	return true
+}
+
 type capturedSourceError struct {
 	cause error
 	path  string

@@ -41,7 +41,7 @@ and `contract` is `enkv.sh/core/contract`.
 | Continued cleanup | `ContinueConfigurationGeneratedCleanupFile` | Same generated mutation result and helpers |
 | Public `plan` | `CompareConfigurationFiles` | `ConfigurationComparisonResult`; `RenderComparisonJSON/Human`, `ComparisonExitCode` |
 | Private `plan` | `PlanConfigurationFiles` | `ConfigurationPlanningResult`; `RenderPlanningJSON/Human`, `RenderPlanningCommandJSON`, `PlanningExitCode` |
-| Selected private display | `DisplayConfigurationFiles` | Same planning result; `NewPlanningDisplayFile`, `WritePlanningResult` |
+| Selected private display | `DisplayConfigurationFiles` | Same planning result with `WriteDisplayResult` for a completed native display |
 | `inspect` | `InspectConfigurationFile` | `core.PublicDomainInspectionResult`; `WriteInspectionJSON/Human`, `PublicQueryExitCode` on `PublicQueryResult` |
 | Recipient inspection | `InspectConfigurationRecipientFile` | `core.PublicRecipientInspectionResult`; `WriteRecipientInspectionJSON/Human`, same query exit helper |
 | Capacity inspection | `InspectConfigurationCapacityFile` | `core.PublicCapacityInspectionResult`; `WriteCapacityInspectionJSON/Human`, same query exit helper |
@@ -264,9 +264,10 @@ Display completion grants no apply or replay permission.
 On supported Unix platforms, `NewPlanningDisplayFile(*os.File, structured)`
 supplies this contract. It leaves the supplied descriptor open. Its sink owns a
 duplicate and temporarily owns nonblocking status for the shared open file
-description. Make no other use of that description during display. The call
-joins writes and restores status before final result output; use
-`WritePlanningResult` for that final safe write. Preserve an incomplete display
+description. Keep the descriptor open through final output. The acquired file must be distinct
+from every captured editable file and generated companion. After display writes
+have joined and descriptor status has been restored, use the completed result’s
+`WriteDisplayResult` method for the final safe record. Preserve an incomplete display
 result even when the private comparison itself completed.
 
 The external-package [calling examples](library_example_test.go) show preparation

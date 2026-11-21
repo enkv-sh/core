@@ -55,6 +55,9 @@ func ExampleDisplayConfigurationFiles() {
 			"/absolute/candidate.yaml", configuration.YAML,
 			[]string{"API_TOKEN"}, factory)
 		code := compositionfull.PlanningExitCode(result)
+		if result.DisplayDelivery != contract.PlanningDeliveryComplete {
+			return code, errors.New("display incomplete")
+		}
 		body, renderErr := compositionfull.RenderPlanningCommandJSON(result)
 		if renderErr != nil {
 			if code != 3 {
@@ -62,7 +65,7 @@ func ExampleDisplayConfigurationFiles() {
 			}
 			return code, renderErr
 		}
-		if err := compositionfull.WritePlanningResult(ctx, output, body); err != nil {
+		if err := result.WriteDisplayResult(ctx, output, body); err != nil {
 			if code != 3 {
 				code = 2
 			}

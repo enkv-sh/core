@@ -1,6 +1,7 @@
 package compositionfull
 
 import (
+	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -21,6 +22,7 @@ type ConfigurationComparisonResult struct {
 
 type ConfigurationPlanningResult struct {
 	core.PlanningResult
+	displayFile              os.FileInfo
 	SourceFailure            *ConfigurationSourceFailure
 	InstallationRequirements InstallationRequirementComparison
 }

@@ -81,7 +81,9 @@ func TestPlanDisplayTerminalFollowsFinalization(t *testing.T) {
 	result.SelectedRecords = 1
 	result.CompletedRecords = 1
 	result.PrivateEntries = []contract.PlanningRelation{{Name: "", Form: contract.PlanningRetained, Relation: contract.PlanningEqual, Code: contract.CryptoSuccess}}
-	if code := writePlanningOutcome(ctx, result, true, true, out, &diagnostic); code != 0 {
+	if code := writePlanningOutcomeWithOutput(ctx, result, true, true, func(ctx context.Context, body []byte) error {
+		return compositionfull.WritePlanningResult(ctx, out, body)
+	}, &diagnostic); code != 0 {
 		t.Fatal("complete stream failed", code)
 	}
 	if _, err := out.Seek(0, io.SeekStart); err != nil {
@@ -133,4 +135,117 @@ func TestPlanDisplayAndTerminalFailuresNeverReportSuccess(t *testing.T) {
 			t.Fatal("failed sink received terminal or lost safe exit", code)
 		}
 	}
+}
+
+// full_only: false
+func TestPlanDisplayProtectsBothStreamsBeforeSetup(t *testing.T) {
+	trusted, _, _, _ := setCommandPreparedSource(t)
+	candidate, _, _, _ := setCommandPreparedSource(t)
+	files := []string{trusted, filepath.Join(filepath.Dir(trusted), ".enkv", "prod.generated.json"), candidate, filepath.Join(filepath.Dir(candidate), ".enkv", "prod.generated.json")}
+	args := []string{"--json", "--trusted", trusted, "--candidate", candidate, "--show-secret=public-fixture", "--check-secrets", "--log-level", "unrecognised"}
+	for i, path := range files {
+		t.Run(filepath.Base(filepath.Dir(path))+"-"+filepath.Base(path), func(t *testing.T) {
+			before, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			source, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() {
+				if err := source.Close(); err != nil {
+					t.Error(err)
+				}
+			}()
+			var safe bytes.Buffer
+			if code := runPlan(args, source, &safe); code != 2 || !strings.Contains(safe.String(), "plan output could not be separated") {
+				t.Fatalf("stdout member %d was not refused before setup: code=%d, diagnostic=%q", i, code, safe.String())
+			}
+			safe.Reset()
+			if code := runPlan(args, &safe, source); code != 2 || !json.Valid(safe.Bytes()) {
+				t.Fatal("unsafe diagnostic destination lost the safe refusal")
+			}
+			if code := runPlan(args, source, source); code != 2 {
+				t.Fatal("two unsafe streams reported success")
+			}
+			after, err := os.ReadFile(path)
+			if err != nil || !bytes.Equal(before, after) {
+				t.Fatal("source bytes changed", err)
+			}
+		})
+	}
+	safe, err := os.CreateTemp(t.TempDir(), "report")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := safe.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	var diagnostic bytes.Buffer
+	if code := runPlan(args, safe, &diagnostic); code != 2 || !strings.Contains(diagnostic.String(), "telemetry configuration refused") {
+		t.Fatal("independent regular output was refused", code, diagnostic.String())
+	}
+	body, err := os.ReadFile(safe.Name())
+	if err != nil || !json.Valid(body) {
+		t.Fatal("independent output lost its structured refusal", err)
+	}
+
+	for _, args := range [][]string{
+		{"--unknown", "--show-secret", "example"},
+		{"--show-secret"},
+		{"--show-secret=", "--check-secrets", "--trusted", ""},
+		{"--show-secret=one", "--show-secret=one"},
+		{"--check-secrets", "--show-secret=example", "--trusted", filepath.Join(t.TempDir(), "missing.json")},
+	} {
+		if code := runPlan(args, safe, safe); code != 2 {
+			t.Fatal("uncertain source selections reported success")
+		}
+		got, err := os.ReadFile(safe.Name())
+		if err != nil || !bytes.Equal(got, body) {
+			t.Fatal("uncertain output received a refusal", err)
+		}
+	}
+	missingCompanion, _, _, _ := setCommandPreparedSource(t)
+	if err := os.Rename(filepath.Join(filepath.Dir(missingCompanion), ".enkv", "prod.generated.json"), filepath.Join(filepath.Dir(missingCompanion), "saved")); err != nil {
+		t.Fatal(err)
+	}
+	survivor, err := os.OpenFile(missingCompanion, os.O_APPEND|os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := survivor.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	original, err := os.ReadFile(missingCompanion)
+	if err != nil {
+		t.Fatal(err)
+	}
+	diagnostic.Reset()
+	if code := runPlan([]string{"--trusted", missingCompanion, "--show-secret=fixture", "--check-secrets"}, survivor, &diagnostic); code != 2 || !strings.Contains(diagnostic.String(), "could not be separated") {
+		t.Fatal("unproved file received a missing-companion refusal")
+	}
+	if got, err := os.ReadFile(missingCompanion); err != nil || !bytes.Equal(original, got) {
+		t.Fatal("changed surviving editable file", err)
+	}
+	closed, err := os.Open(safe.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := closed.Close(); err != nil {
+		t.Fatal(err)
+	}
+	diagnostic.Reset()
+	if code := runPlan(args, closed, &diagnostic); code != 2 || diagnostic.Len() == 0 {
+		t.Fatal("unavailable stdout lost the safe diagnostic")
+	}
+	diagnostic.Reset()
+	if code := runPlan(args, &diagnostic, closed); code != 2 || !json.Valid(diagnostic.Bytes()) {
+		t.Fatal("unavailable stderr lost the safe result")
+	}
+
 }
