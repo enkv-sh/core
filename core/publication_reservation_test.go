@@ -446,3 +446,80 @@ func TestReservedSlotDeleteRechecksRetiredOwner(t *testing.T) {
 		t.Fatal("refusal changed the selected HEAD or support records")
 	}
 }
+
+// full_only: false
+func TestOwnedDeleteReservationKeepsPlannedBirth(t *testing.T) {
+	state, _ := publicationReservationFixture(t, false)
+	domain, coordinate, original, _ := publicationRelationFixtureForDomain(t, state.root.Domain)
+	coordinate.BindingState, coordinate.ActiveBindingIncarnationID = contract.PublicationBindingRetired, contract.ID{}
+	coordinate.OwnerState, coordinate.LatestUnresolvedAttemptID = contract.PublicationOwnerQualified, contract.ID{}
+	original.State, original.Evidence.Class, original.Evidence.NormalizedStatus = contract.PublicationAcknowledged, contract.PublicationRequestAcknowledged, 201
+	original.Evidence.SafeResourceID, original.Evidence.ConsumerLocator = "first-instance", coordinate.DeletionConsumerLocator
+	current := original
+	current.AttemptID, current.OperationID, current.AdmissionOrdinal = publicationRelationID(130), publicationRelationID(131), original.AdmissionOrdinal+1
+	current.Evidence.SafeResourceID = "second-instance"
+
+	selectedOwner := func(marker contract.PublicationMarker) contract.PublicationCoordinate {
+		t.Helper()
+		c := coordinate
+		c.LastAdmissionOrdinal, c.OwnedBirthAttemptID = marker.AdmissionOrdinal, marker.AttemptID
+		var err error
+		c.OwnedInstanceDigest, err = contract.PublicationOwnedInstanceDigest(domain, c.CoordinateID, c.LastBindingIncarnationID, c.LastEntryIncarnationID, c.DeletionTargetRowDigest, marker.AttemptID, marker.Evidence.SafeResourceID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return c
+	}
+	old, fresh := selectedOwner(original), selectedOwner(current)
+	oldRows := publicationRelationRows(t, old, original)
+	selectedRows := append(publicationRelationRows(t, fresh, current), oldRows[1])
+	publicationBoundsInstallRows(t, state, selectedRows)
+	selected, err := selectedPublicationRelation(state.selectedImage())
+	if err != nil || !publicationQualifiedBirthValid(domain, fresh, selected.markers[current.AttemptID]) || selected.markers[original.AttemptID] != original {
+		t.Fatal("selected and historical births", err)
+	}
+
+	plan := publicationPlan{input: publicationInput{deadline: time.Now().Add(5 * time.Second)}}
+	before := publicationBoundsCaptureRefusalFacts(t, state)
+	head := state.head.Core
+	deletion := current
+	deletion.AttemptID, deletion.OperationID, deletion.AdmissionOrdinal = publicationRelationID(132), publicationRelationID(133), fresh.LastAdmissionOrdinal+1
+	deletion.Projection.Action, deletion.Projection.PolicyDigest = contract.PublicationDeleteOwned, contract.ID{}
+	deletion.BirthServiceContractID, deletion.BirthTargetContractID = "", ""
+	deletion.State = contract.PublicationMayHaveEntered
+	deletion.Evidence = contract.PublicationEvidence{Schema: 3, Entry: contract.PublicationMayHaveEnteredEntry, Class: contract.PublicationUnproved, ResponseContractDigest: publicationRelationID(125)}
+	next := fresh
+	next.LastAdmissionOrdinal, next.LatestUnresolvedAttemptID = deletion.AdmissionOrdinal, deletion.AttemptID
+	rewrite, err := state.planPublicationRewrite(t.Context(), state.adminIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, planned := range []contract.PublicationMarker{current, original} {
+		pinned := publicationTargetPlan{coordinate: fresh.CoordinateID, retained: selectedOwner(planned), birth: &planned}
+		calls := 0
+		private := publicationPrivate{Check: func(_ context.Context, in publicationActionCheckInput) (publicationActionCheckFacts, error) {
+			calls++
+			if in.Birth == nil || *in.Birth != planned {
+				t.Fatal("private admission received a different birth")
+			}
+			return publicationActionCheckFacts{}, contract.ErrRecord
+		}}
+		candidate, prepared, result := plan.preparePublicationReservation(t.Context(), state, pinned, contract.PublicationDeleteOwned, private)
+		if candidate != nil || prepared != nil || planned == current && (calls != 1 || result.Reason != InvalidIntent) || planned == original && (calls != 0 || result.Reason != DifferentSelection) {
+			t.Fatal("owned delete admission", planned.Evidence.SafeResourceID, calls, result)
+		}
+		deletion.Projection.OwnedBirthAttemptID = planned.AttemptID
+		deletion.ProjectionCommitment, err = contract.PublicationProjectionCommitment(deletion.Projection)
+		if err != nil {
+			t.Fatal(err)
+		}
+		proposal := append(publicationRelationRows(t, next, deletion), selectedRows[1:]...)
+		err = state.publicationReservationRows(proposal, rewrite)
+		if planned == current && err != nil || planned == original && !errors.Is(err, contract.ErrRecord) {
+			t.Errorf("owned reservation for %s: %v", planned.Evidence.SafeResourceID, err)
+		}
+	}
+	if !reflect.DeepEqual(before, publicationBoundsCaptureRefusalFacts(t, state)) || !reflect.DeepEqual(head, state.head.Core) {
+		t.Fatal("read-only admission changed HEAD or selected ownership")
+	}
+}

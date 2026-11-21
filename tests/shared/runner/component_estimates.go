@@ -369,6 +369,7 @@ var componentEstimates = map[string]float64{
 	"TestOutputConfigurationCancellationPreservesSelectedState":          7,
 	"TestPublicationDisposalAccumulatedHistory":                          2202,
 	"TestPublicationNativeLateExit":                                      32,
+	"TestPublicationLateBirthRetainsColdCleanup":                         2,
 	"TestPublicationLossFreshNormalAdmission":                            1,
 	"TestOutputConfigurationGeneratedMaximumTransitionMemory":            4965,
 	"TestOutputConfigurationMaximumPolicyTransitionMemory":               995,

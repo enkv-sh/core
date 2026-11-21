@@ -239,14 +239,14 @@ func (plan *publicationPlan) preparePublicationReservation(ctx context.Context, 
 			return nil, nil, refused(AdmissionInvalid)
 		}
 	}
+	if (action == contract.PublicationDeleteOwned || action == contract.PublicationDeleteReservedSlot) && !publicationDeletionWitnessMatches(coordinate, p.retained) {
+		return nil, nil, refused(DifferentSelection)
+	}
 	var uncertain *contract.PublicationMarker
 	if action == contract.PublicationDeleteReservedSlot {
 		pin, ok := s.publicationNamespaceFor(p.target)
 		if !ok || pin != p.exclusive || p.uncertain == nil {
 			return nil, nil, refused(AdmissionInvalid)
-		}
-		if !publicationDeletionWitnessMatches(coordinate, p.retained) {
-			return nil, nil, refused(DifferentSelection)
 		}
 		retained, ok := selected.markers[p.uncertain.AttemptID]
 		if !ok || retained != *p.uncertain || !publicationReservedSlotEligible(coordinate, retained) {
@@ -263,6 +263,9 @@ func (plan *publicationPlan) preparePublicationReservation(ctx context.Context, 
 		}
 		if !ok || err != nil || !available {
 			return nil, nil, refused(InvalidRelation)
+		}
+		if action == contract.PublicationDeleteOwned && (p.birth == nil || b != *p.birth) {
+			return nil, nil, refused(DifferentSelection)
 		}
 		birth = &b
 	}

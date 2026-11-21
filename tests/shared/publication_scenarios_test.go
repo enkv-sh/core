@@ -399,12 +399,19 @@ func publicationLateBirthColdCleanup(t *testing.T, rollover bool) {
 	deletionInput.republish = nil
 	deleteSecondPlan := planFor(deletionInput)
 	deleteSecond := reserve(deleteSecondPlan)
-	if deleteSecond.original.marker.Projection.Action != contract.PublicationDeleteOwned || deleteSecond.original.marker.Projection.OwnedBirthAttemptID != second.original.marker.AttemptID {
-		t.Fatal("fresh reservation did not retain the late exact birth")
+	wantBirth := second.original.marker.AttemptID
+	planned := deleteSecondPlan.vector.Entries[0].Actions[0]
+	marker := deleteSecond.original.marker
+	if marker.Projection.Action != contract.PublicationDeleteOwned || planned.ProjectionCommitment != marker.ProjectionCommitment ||
+		marker.Projection.OwnedBirthAttemptID != wantBirth || deleteSecond.original.reserve.OwnedBirthAttemptID != wantBirth ||
+		deleteSecond.original.dispatch.Projection != marker.Projection {
+		t.Fatal("planned delete, reservation and dispatch did not retain the same birth")
 	}
 	acknowledge(deleteSecondPlan, deleteSecond)
 	selected = reopen()
-	if selected.coordinates[coordinateID].LastDeleteAckAttemptID != deleteSecond.original.marker.AttemptID || f.session.root.WarningBits != warnings || len(selected.markers) != 4 {
+	closed := selected.markers[marker.AttemptID]
+	if selected.coordinates[coordinateID].LastDeleteAckAttemptID != marker.AttemptID || closed.State != contract.PublicationAcknowledged ||
+		closed.Projection != marker.Projection || f.session.root.WarningBits != warnings || len(selected.markers) != 4 {
 		t.Fatal("exact second deletion changed history or warnings")
 	}
 	handoff, err = captureApplyPublicationSelection(ctx, f.session)

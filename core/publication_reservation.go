@@ -111,11 +111,29 @@ func (s *StateSession) publicationReservationRows(rows []contract.SupportRecord,
 			}
 			continue
 		}
-		if marker.Projection.Action == contract.PublicationDeleteReservedSlot {
-			projection := marker.Projection
+		projection := marker.Projection
+		if projection.Action == contract.PublicationDeleteOwned || projection.Action == contract.PublicationDeleteReservedSlot {
+			if projection.BindingIncarnationID != old.LastBindingIncarnationID || projection.EntryIncarnationID != old.LastEntryIncarnationID || projection.TargetRowDigest != old.DeletionTargetRowDigest {
+				return contract.ErrRecord
+			}
+		}
+		switch projection.Action {
+		case contract.PublicationDeleteReservedSlot:
 			create := loaded[generatedRecordKey{contract.PublicationMarkerSupportKind, projection.UncertainCreateAttemptID}].marker
-			if create == nil || !publicationReservedSlotEligible(old, *create) || projection.BindingIncarnationID != old.LastBindingIncarnationID ||
-				projection.EntryIncarnationID != old.LastEntryIncarnationID || projection.TargetRowDigest != old.DeletionTargetRowDigest {
+			if create == nil || !publicationReservedSlotEligible(old, *create) {
+				return contract.ErrRecord
+			}
+		case contract.PublicationDeleteOwned:
+			birth := loaded[generatedRecordKey{contract.PublicationMarkerSupportKind, projection.OwnedBirthAttemptID}].marker
+			if old.BindingState != contract.PublicationBindingRetired || old.OwnerState != contract.PublicationOwnerQualified || birth == nil {
+				return contract.ErrRecord
+			}
+			lastDelete := loaded[generatedRecordKey{contract.PublicationMarkerSupportKind, old.LastDeleteAckAttemptID}].marker
+			available, err := publicationBirthAvailable(old, *birth, lastDelete, s.adminIndex.PublicationOrder)
+			if err != nil {
+				return err
+			}
+			if !available {
 				return contract.ErrRecord
 			}
 		}

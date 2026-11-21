@@ -24,6 +24,14 @@ type selectedPublicationRowProof struct {
 }
 
 func publicationBirthAfterDelete(coordinate contract.PublicationCoordinate, birth contract.PublicationMarker, selected selectedPublication, orders []format.PublicationCoordinateOrder) (bool, error) {
+	var lastDelete *contract.PublicationMarker
+	if marker, ok := selected.markers[coordinate.LastDeleteAckAttemptID]; ok {
+		lastDelete = &marker
+	}
+	return publicationBirthAvailable(coordinate, birth, lastDelete, orders)
+}
+
+func publicationBirthAvailable(coordinate contract.PublicationCoordinate, birth contract.PublicationMarker, deleted *contract.PublicationMarker, orders []format.PublicationCoordinateOrder) (bool, error) {
 	if birth.DomainID != coordinate.DomainID || !publicationQualifiedBirthValid(coordinate.DomainID, coordinate, birth) {
 		return false, contract.ErrRecord
 	}
@@ -40,8 +48,7 @@ func publicationBirthAfterDelete(coordinate contract.PublicationCoordinate, birt
 	if coordinate.LastDeleteAckAttemptID.IsZero() || publicationStampAfter(order, birth.PublicationIncarnationID, birth.AdmissionOrdinal, coordinate.LastDeleteAckIncarnationID, coordinate.LastDeleteAckOrdinal) {
 		return true, nil
 	}
-	deleted, present := selected.markers[coordinate.LastDeleteAckAttemptID]
-	if !present {
+	if deleted == nil {
 		return false, selectedReadFailure(failure(EvidenceUnavailable, ReadUnavailable))
 	}
 	if deleted.DomainID != coordinate.DomainID || deleted.CoordinateID != coordinate.CoordinateID || deleted.AttemptID != coordinate.LastDeleteAckAttemptID ||
