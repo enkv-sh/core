@@ -282,7 +282,7 @@ var componentEstimates = map[string]float64{
 	"TestReaderManifestMaximumPlainBase64":                    6,
 	"TestReaderManifestMaximumRequestedDestinations":          2,
 
-	"TestReaderAuthenticatesIndependentSuccessorSigningBasis": 3,
+	"TestReaderAuthenticatesIndependentSuccessorSigningBasis": 2,
 
 	"TestGeneratedWriterBatchReconstructionAndPreservation":                    27,
 	"TestGeneratedWriterReconstructionRefusesMissingOrCorruptReferencedIntent": 9,
@@ -1326,7 +1326,6 @@ var componentEstimates = map[string]float64{
 	"TestReaderPublicBasisClosedGrammarAndBounds":                                 1,
 	"TestReaderRejectsLateAuthenticatedPublicRelation":                            1,
 	"TestReaderRejectsStaleBasisWrongAuthorizerAndControl":                        1,
-	"TestReaderSavedSuccessorBasisPermitsLaterAccessAdvance":                      1,
 	"TestReaderTelemetryExcludesActualInputAndProfileErrors":                      1,
 	"TestReaderTelemetryUsesExistingLocalMetricsSetup":                            1,
 	"TestReceiptFreeAuthoritySuccessionKeepsDetailAndCandidateOwner":              1,

@@ -84,7 +84,7 @@ func successionWireFixture(t testing.TB) ([]byte, HeadCore, contract.SuccessionS
 	if _, err := contract.DecodePublicSigningBinding(successionAuthorizerBytes(a)); err != nil {
 		t.Fatal("independent authorizer:", err)
 	}
-	b := successionBlob([]byte{'E', 'N', 'K', 'V', 4, 0, 11}, core)
+	b := successionBlob([]byte{'E', 'N', 'K', 'V', 4, 0, 12}, core)
 	b = successionBlob(b, sig)
 	b = successionBlob(b, nil)
 	b = append(b, 2)

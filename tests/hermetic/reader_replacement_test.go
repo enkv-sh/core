@@ -79,6 +79,10 @@ func TestReaderAuthenticatesIndependentSuccessorSigningBasis(t *testing.T) {
 					observed.basis.anchor.head.Core.Revision != selected.head.Core.Revision {
 					t.Fatal("independent successor basis did not authenticate its complete selection", result)
 				}
+				prior := f.session.token
+				if prior.Family != family || selected.head.Core.PreviousToken != prior || observed.basis.anchor.head.Core.PreviousToken != prior {
+					t.Fatal("successor did not preserve the exact provider token from its predecessor")
+				}
 				if len(selected.head.Succession.Acceptances) != 1 {
 					t.Fatal("fixture lacks the exact successor acceptance")
 				}
