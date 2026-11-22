@@ -12,6 +12,9 @@ type GeneratedResultWarnings struct {
 // The independently recorded provider reason remains part of the original facts.
 const GeneratedReasonValueEncoding uint8 = 0x40
 
+// GeneratedReasonRetirementResourceMismatch records a host-rejected resource binding.
+const GeneratedReasonRetirementResourceMismatch uint8 = 0x41
+
 // GeneratedEffectFact owns public facts from an authenticated Attempt. ResourceID
 // in Record is the planned identity; Target establishes an actual owned resource.
 // A zero GenerationID means that no canonical generation relation is available.

@@ -450,7 +450,7 @@ func (v GeneratorFactsRow) validate() error {
 	if v.Schema != GeneratorRecordSchema || v.ResultID.IsZero() {
 		return ErrRecord
 	}
-	_, err := InspectGeneratorSafeFacts(v.Facts)
+	_, err := InspectGeneratorAttemptFacts(v.Facts)
 	return err
 }
 

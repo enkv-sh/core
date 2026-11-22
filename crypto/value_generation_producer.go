@@ -30,6 +30,8 @@ type generatedProducerAdmissionInput struct {
 }
 
 type generatedProducerReturn struct {
+	rejectedFactsLength     int
+	rejectedRetirement      []byte
 	Facts                   contract.GeneratorSafeFacts
 	Secret                  []byte
 	stage                   generatedFailureStage
@@ -40,6 +42,7 @@ type generatedProducerReturn struct {
 }
 
 type generatedProducerOutput struct {
+	rejectedRetirement       []byte
 	retirementAmbiguity      []byte
 	resultDeadlineUnixMillis uint64
 	Record                   []byte
@@ -787,6 +790,9 @@ func (r *Runtime) invokeGeneratedProducerAdmission(ctx context.Context, id, loca
 			out.code = code
 			out.stage, out.category = returned.stage, returned.category
 			out.effect = returned.effect
+			if !owner.expired() && code == contract.CryptoCustodyUnavailable && returned.stage == generatedFailureBinding && uint32(returned.rejectedFactsLength) <= owner.expected.Use.MaxFacts {
+				out.rejectedRetirement = returned.rejectedRetirement
+			}
 			if owner.command.LifecycleMode == contract.GeneratorLifecycleNone {
 				if owner.expired() {
 					out.code, out.category = contract.CryptoExpired, generatedFailureExpired
@@ -801,6 +807,10 @@ func (r *Runtime) invokeGeneratedProducerAdmission(ctx context.Context, id, loca
 	} else {
 		returned = owner.returnValue(owner.ctx, owner.command, owner.intent)
 	}
+	return owner.settleReturn(ctx, returned, out)
+}
+
+func (owner *generatedProducerReturnOwner) settleReturn(ctx context.Context, returned generatedProducerReturn, out generatedProducerOutput) generatedProducerOutput {
 	if owner.expired() {
 		out.code = contract.CryptoExpired
 		out.stage, out.category = generatedFailureReturn, generatedFailureExpired
@@ -838,6 +848,23 @@ func (r *Runtime) invokeGeneratedProducerAdmission(ctx context.Context, id, loca
 		out.code = contract.CryptoExpired
 		out.stage, out.category = generatedFailureReturn, generatedFailureExpired
 		return out
+	}
+	if owner.command.Action == contract.GeneratorActionDelete {
+		digest, err := contract.GeneratorResourceDigest(ownedFacts)
+		if err != nil || owner.expected.TargetResourceDigest.IsZero() || len(returned.Secret) != 0 {
+			out.code, out.stage, out.category = contract.CryptoCustodyUnavailable, generatedFailureFacts, generatedFailureInvalid
+			return out
+		}
+		if digest != owner.expected.TargetResourceDigest {
+			out.code, out.stage, out.category = contract.CryptoCustodyUnavailable, generatedFailureBinding, generatedFailureInvalid
+			if ownedFacts.Disposition == contract.GeneratorDispositionUnknown || ownedFacts.Disposition == contract.GeneratorDispositionRetirementAcknowledged {
+				body, err := contract.EncodeRejectedRetirement(ownedFacts)
+				if err == nil && !owner.expired() {
+					out.rejectedRetirement = body
+				}
+			}
+			return out
+		}
 	}
 	if ownedFacts.Disposition == contract.GeneratorDispositionUnknown {
 		if owner.retirementProof != nil {

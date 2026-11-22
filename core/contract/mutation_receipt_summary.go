@@ -25,7 +25,10 @@ func CompactMutationReceiptSummaryValid(operation, state, evidence uint16, canon
 			return operation == OperationApplyDeclaration || operation == OperationRotateValueEntryValue
 		}
 	case ReceiptCanonicalNotSelected:
-		return evidence != ReceiptEvidenceCanonical && (state == ReceiptStateEffectUnknown || state == ReceiptStateEffectTerminalFailure)
+		if evidence == ReceiptEvidenceCanonical {
+			return operation == OperationRetireGeneratedGeneration && state == ReceiptStateEffectUnknown
+		}
+		return state == ReceiptStateEffectUnknown || state == ReceiptStateEffectTerminalFailure
 	}
 	return false
 }

@@ -130,6 +130,9 @@ func administrativeRetirementFactsState(t *testing.T, conflict string) (*StateSe
 		facts.Target, facts.ResourceData = []byte("another exact target"), bytes.Repeat([]byte{96}, 32)
 	}
 	body, err := contract.EncodeGeneratorSafeFacts(facts)
+	if conflict == "resource" {
+		body, err = contract.EncodeRejectedRetirement(facts)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}

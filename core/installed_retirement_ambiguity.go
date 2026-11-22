@@ -28,8 +28,8 @@ func (g *generatedSelection) retirementAmbiguityFacts(a generatedAttempt, body [
 	if err != nil || !v.Verify(graph.Request.CallerNonce, a.record.DomainID, a.record.OperationID, a.record.AttemptID, a.record.InboxID, a.expected.Plan.PlanGraphID) {
 		return nil, contract.ErrRecord
 	}
-	facts, err := contract.InspectGeneratorSafeFacts(v.Facts)
-	if err != nil || !generatedFactsMatchTemplate(facts.GeneratorSafeFacts, a.expected.Template) || facts.RequestDigest != a.record.RequestDigest || uint32(len(v.Facts)) > a.expected.Use.MaxFacts {
+	facts, err := inspectRetirementAttemptFacts(v.Facts, a)
+	if err != nil || facts.RetirementRejected {
 		return nil, contract.ErrRecord
 	}
 	return v.Facts, nil

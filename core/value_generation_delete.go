@@ -445,14 +445,9 @@ func (g *generatedSelection) validateDeleteFacts(a generatedAttempt) (contradict
 		}
 		return result.SafeFacts.Disposition == contract.GeneratorDispositionContinuedUsability || result.SafeFacts.Disposition == contract.GeneratorDispositionConflictingBinding, nil
 	}
-	unknown, err := contract.InspectGeneratorSafeFacts(fact.Facts)
-	if err != nil || unknown.Disposition != contract.GeneratorDispositionUnknown || !generatedFactsMatchTemplate(unknown.GeneratorSafeFacts, a.expected.Template) ||
-		unknown.RequestDigest != a.record.RequestDigest || unknown.IntentDigest != a.expected.Template.IntentDigest {
-		return false, contract.ErrRecord
+	f, err := inspectRetirementAttemptFacts(fact.Facts, a)
+	if err != nil {
+		return false, err
 	}
-	sameTarget := generatedResourceFactsMatch(unknown.GeneratorSafeFacts, a.expected.TargetResourceDigest)
-	if a.expected.Template.TargetKind == contract.GeneratorTargetResultResourceSlot && !sameTarget {
-		return false, contract.ErrRecord
-	}
-	return unknown.Reason == contract.GeneratorReasonIdentityConflict || !sameTarget, nil
+	return f.RetirementRejected || f.Reason == contract.GeneratorReasonIdentityConflict, nil
 }

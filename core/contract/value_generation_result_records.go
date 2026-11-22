@@ -127,6 +127,10 @@ func (v GeneratorSafeFactsView) Own() (GeneratorSafeFacts, error) {
 	return out, nil
 }
 func InspectGeneratorSafeFacts(body []byte) (GeneratorSafeFactsView, error) {
+	return inspectGeneratorFacts(body, GeneratorSafeFactsSchema)
+}
+
+func inspectGeneratorFacts(body []byte, schema uint16) (GeneratorSafeFactsView, error) {
 	if len(body) > max(GeneratorSafeFactsMaxLength, GeneratorSafeFactsEnvelopeLength) {
 		return GeneratorSafeFactsView{}, ErrRecordCapacity
 	}
@@ -148,9 +152,10 @@ func InspectGeneratorSafeFacts(body []byte) (GeneratorSafeFactsView, error) {
 	if err := r.end(); err != nil {
 		return GeneratorSafeFactsView{}, err
 	}
-	if (present == 1) != (v.Disposition >= GeneratorDispositionScopedUnusability) {
+	if v.Schema != schema || (present == 1) != (v.Disposition >= GeneratorDispositionScopedUnusability) {
 		return GeneratorSafeFactsView{}, ErrRecord
 	}
+	v.Schema = GeneratorSafeFactsSchema
 	if _, err := GeneratorSafeFactsLength(v); err != nil {
 		return GeneratorSafeFactsView{}, err
 	}

@@ -48,7 +48,12 @@ func (s *StateSession) generatedAmbiguityReceiptSupport(ctx context.Context, g *
 			duties = append(duties, row)
 		}
 	}
+	observation, err := inspectRetirementAttemptFacts(plan.result, g.attempts[change.attempt.record.AttemptID])
+	if err != nil {
+		return nil, zero, zero, zero, err
+	}
 	delta, retained, err := s.generatedTerminalMutation(ctx, generatedMutationTerminalInput{Parent: *g.parent, OperationKind: contract.OperationRetireGeneratedGeneration,
+		RetirementResourceRejected:    observation.RetirementRejected,
 		OriginalPredecessorRevisionID: g.bundles[0].Request.PredecessorRevisionID, RequestedRevisionID: revision, ObservedRevisionID: s.head.Core.Revision,
 		ChangedSubjects: changed, ChangedAccess: access, Effects: effects, Duties: duties,
 		EffectClasses:  map[contract.ID]int{change.attempt.record.AttemptID: contract.ReceiptSummaryUnknownCount},

@@ -794,3 +794,148 @@ func TestInstalledGeneratedRetirementRefusesFreshDeleteAfterIdentityConflict(t *
 		}
 	}
 }
+
+// The native intake tests establish which returns can produce this host record.
+// Exercise its installed custody handoff using the original local DELETE count.
+// full_only: false
+func TestInstalledRetirementParksHostRejectedResource(t *testing.T) {
+	for _, operation := range []string{"retire", "cleanup"} {
+		t.Run(operation, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+			defer cancel()
+			f, selected, current, effects := installedGeneratedRetirementFixture(t, ctx, "unknown")
+			callbacks := installedGeneratedRetirementCallbacks(t, f, f.env.GeneratedProcess)
+			run := func(s *StateSession) *InstalledApply {
+				return installedGeneratedRetirementEngine(t, ctx, f, s, callbacks)
+			}
+			duty := current.Generated.RetiringDutyID
+			if operation == "cleanup" {
+				engine := run(selected)
+				first := engine.RetireGenerated(ctx, testID("initial qualified Unknown"), GeneratedRetirementRequest{DutyID: duty})
+				engine.Close()
+				if first.Generated == nil || len(first.Generated.Effects) != 1 {
+					t.Fatal("no retirement to transfer", first.Result)
+				}
+				engine = run(f.open(t, ctx))
+				accepted := engine.AcceptGeneratedRetirementRisk(ctx, testID("transfer for cleanup"), GeneratedRetirementRiskRequest{DutyID: duty, AttemptID: first.Generated.Effects[0].Record.AttemptID})
+				engine.Close()
+				if accepted.Result.Outcome != ObservedCurrent {
+					t.Fatal("risk transfer", accepted.Result)
+				}
+				selected = f.open(t, ctx)
+			}
+			_, previous := effects()
+			var requested, claimed contract.GeneratorSafeFacts
+			var id contract.ID
+			admit := callbacks.AdmitProducer
+			callbacks.AdmitProducer = func(c context.Context, q contract.CryptoGeneratedCompareRequest, control contract.ControlCore, input contract.GeneratedProducerInput, row contract.GeneratorImplementation, deadline time.Time) (*InstalledGeneratedProducerCustody, error) {
+				owner, err := admit(c, q, control, input, row, deadline)
+				if err != nil {
+					return nil, err
+				}
+				invoke := owner.InvokeProducer
+				owner.InvokeProducer = func(c context.Context, locator, authority contract.ID) contract.GeneratedProducerResult {
+					r := invoke(c, locator, authority)
+					if r.Code != contract.CryptoSuccess || r.Facts.Disposition != contract.GeneratorDispositionUnknown {
+						t.Fatal("missing original DELETE")
+					}
+					id = input.Expected.Template.AttemptID
+					requested, err = contract.DecodeGeneratorSafeFacts(input.OriginalFacts)
+					if err != nil {
+						t.Fatal(err)
+					}
+					claimed = r.Facts
+					if operation == "cleanup" {
+						claimed.Target = []byte("other public account")
+					} else {
+						claimed.ResourceData = []byte("other public token")
+						claimed.Disposition, claimed.Reason = contract.GeneratorDispositionRetirementAcknowledged, contract.GeneratorReasonNone
+					}
+					b, err := contract.EncodeRejectedRetirement(claimed)
+					if err != nil {
+						t.Fatal(err)
+					}
+					return contract.GeneratedProducerResult{Code: contract.CryptoCustodyUnavailable, RejectedRetirement: b}
+				}
+				return owner, nil
+			}
+			engine := run(selected)
+			var parked PublicApplyResult
+			if operation == "retire" {
+				parked = engine.RetireGenerated(ctx, testID("park host rejection"), GeneratedRetirementRequest{DutyID: duty})
+			} else {
+				parked = engine.CleanupGenerated(ctx, testID("park rejected cleanup"))
+			}
+			engine.Close()
+			cold := f.open(t, ctx)
+			work := mustSelectedGeneratedWork(t, cold)
+			if work.parent != nil || !cold.root.Generated.ActiveOwner.IsZero() || parked.Generated == nil || parked.Generated.StateResult != "effect-unknown" {
+				t.Fatal("rejection did not park", parked.Result.Outcome, parked.Result.Reason, parked.Diagnostics, cold.root.Generated.ActiveOwner)
+			}
+			if operation == "retire" {
+				receipt, err := contract.InspectCompactMutationReceipt(parked.Receipt)
+				if err != nil || receipt.EvidenceCeiling != contract.ReceiptEvidenceCanonical || receipt.UnknownCount != 1 || receipt.AcknowledgedCount != 0 {
+					t.Fatal("rejected reply inflated the receipt ceiling", err)
+				}
+				windows, err := cold.receiptWindows(ctx)
+				if err != nil || !slices.Contains(windows.Failures, receipt) {
+					t.Fatal("cold receipt lost host rejection ceiling", err)
+				}
+			}
+			a := work.attempts[id]
+			digest, err := contract.GeneratorResourceDigest(requested)
+			if err != nil || a.expected.TargetResourceDigest != digest || a.record.State != contract.GeneratedEffectUnknown || len(a.result) != 0 {
+				t.Fatal("lost original resource or selected terminal result")
+			}
+			rows, err := work.vectors.resolve(contract.GeneratedAttemptSupportKind, id, contract.GeneratorVectorFacts, a.record.Facts)
+			if err != nil || len(rows) != 1 {
+				t.Fatal("selected rejection absent", err)
+			}
+			row, err := contract.InspectGeneratorFactsRow(rows[0])
+			if err != nil {
+				t.Fatal(err)
+			}
+			rejection, err := inspectRetirementAttemptFacts(row.Facts, a)
+			if err != nil || !rejection.RetirementRejected || rejection.Disposition != claimed.Disposition || !bytes.Equal(rejection.Target, claimed.Target) || !bytes.Equal(rejection.ResourceData, claimed.ResourceData) {
+				t.Fatal("cold rejection lost reported resource", err)
+			}
+			if len(parked.Generated.Effects) != 1 || parked.Generated.Effects[0].Reason != GeneratedReasonRetirementResourceMismatch || parked.Generated.Effects[0].Warnings.InvalidationNotConfirmed {
+				t.Fatal("host rejection reported as a provider result")
+			}
+			if _, ok, res := cold.ReadGeneratedResult(ctx, id); ok || res.Outcome != 0 {
+				t.Fatal("rejection occupied terminal inbox", res)
+			}
+			engine = run(cold)
+			if operation == "retire" {
+				r := engine.AcceptGeneratedRetirementRisk(ctx, testID("risk after rejected reply"), GeneratedRetirementRiskRequest{DutyID: duty, AttemptID: id})
+				engine.Close()
+				if r.Result.Outcome != AdmissionRefused {
+					t.Fatal("accepted risk for host rejection", r.Result)
+				}
+				engine = run(cold)
+				r = engine.RetireGenerated(ctx, testID("blocked repeated retirement"), GeneratedRetirementRequest{DutyID: duty})
+				if r.Result.Outcome != AdmissionRefused {
+					t.Fatal("opened another retirement", r.Result)
+				}
+			} else {
+				r := engine.CleanupGenerated(ctx, testID("blocked repeated cleanup"))
+				if r.Result.Outcome != IntegrityFailure {
+					t.Fatal("opened another cleanup", r.Result)
+				}
+			}
+			engine.Close()
+			if !bytes.Equal(cold.body, f.open(t, ctx).body) {
+				t.Fatal("rejection changed on retry")
+			}
+			callbacks.AdmitProducer = admit
+			input := installedGeneratedRetirementEntries(f.env.GeneratedProcess, cold.admission.recipient, 1, "update healthy sibling")
+			engine = installedGeneratedTestEngine(t, ctx, f, cold, input, currentApplyRecipients(cold.registry()), callbacks)
+			changed := engine.Apply(ctx, testID("unrelated edit after rejection"), input)
+			engine.Close()
+			_, deletes := effects()
+			if changed.Result.Outcome != ObservedCurrent || len(deletes) != len(previous)+1 {
+				t.Fatal("domain did not resume independently", changed.Result, len(deletes))
+			}
+		})
+	}
+}

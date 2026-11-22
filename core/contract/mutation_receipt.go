@@ -183,7 +183,8 @@ func compactMutationReceiptFieldsValid(v CompactMutationReceipt) bool {
 	}
 	ceiling := ReceiptEvidenceProviderFacts
 	switch {
-	case effects == 0:
+	case effects == 0 || v.OperationKind == OperationRetireGeneratedGeneration && effects == 1 && v.UnknownCount == 1 &&
+		v.StateResult == ReceiptStateEffectUnknown && v.CanonicalOutcome == ReceiptCanonicalNotSelected && v.EvidenceCeiling == ReceiptEvidenceCanonical:
 		ceiling = ReceiptEvidenceCanonical
 	case v.AcknowledgedCount != 0 && v.ConfirmedCount != 0:
 		ceiling = ReceiptEvidenceMixedCompletion

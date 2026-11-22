@@ -251,11 +251,11 @@ func administrativeAttemptFactsEvidence(attempt contract.GeneratedAttemptRecord,
 	if err != nil || row.ResultID != attempt.ResultID {
 		return 0, contract.ErrRecord
 	}
-	facts, err := contract.InspectGeneratorSafeFacts(row.Facts)
+	facts, err := contract.InspectGeneratorAttemptFacts(row.Facts)
 	if err != nil || facts.RequestDigest != attempt.RequestDigest || facts.LifecycleMode != attempt.LifecycleMode || facts.ResourceContractID != attempt.ResourceContractID {
 		return 0, contract.ErrRecord
 	}
-	if facts.Action != contract.GeneratorActionDelete || facts.Disposition != contract.GeneratorDispositionUnknown {
+	if facts.Action != contract.GeneratorActionDelete || !facts.RetirementRejected && facts.Disposition != contract.GeneratorDispositionUnknown {
 		return 0, nil
 	}
 	var source contract.GeneratedDeleteSource
@@ -279,6 +279,9 @@ func administrativeAttemptFactsEvidence(attempt contract.GeneratedAttemptRecord,
 		}
 	}
 	if !found {
+		if facts.RetirementRejected {
+			return 0, contract.ErrRecord
+		}
 		var release contract.PendingInboxReleaseRecord
 		for _, page := range pages {
 			for _, record := range page.Records {
@@ -382,7 +385,14 @@ func administrativeAttemptFactsEvidence(attempt contract.GeneratedAttemptRecord,
 	if !found {
 		return 0, contract.ErrRecord
 	}
-	if facts.Reason == contract.GeneratorReasonIdentityConflict || !generatedResourceFactsMatch(facts.GeneratorSafeFacts, target.ResourceDigest) {
+	same := generatedResourceFactsMatch(facts.GeneratorSafeFacts, target.ResourceDigest)
+	if facts.RetirementRejected {
+		if same || attempt.State != contract.GeneratedEffectUnknown || attempt.Stage != contract.GeneratedStageTerminal {
+			return 0, contract.ErrRecord
+		}
+		return contract.AdministrativeEvidenceContradiction, nil
+	}
+	if facts.Reason == contract.GeneratorReasonIdentityConflict || !same {
 		return contract.AdministrativeEvidenceQualifiedUnknown | contract.AdministrativeEvidenceContradiction, nil
 	}
 	return contract.AdministrativeEvidenceQualifiedUnknown, nil

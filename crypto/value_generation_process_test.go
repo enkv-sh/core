@@ -236,7 +236,7 @@ func TestGeneratedProcessTelemetryRetainsObservedProviderOutcome(t *testing.T) {
 				if enabled {
 					ctx = telemetry.WithCapability(ctx, telemetry.NewCapability(nil, recorder))
 				}
-				out, code := invokeGeneratedProcess(os.Pipe, ctx, launcher, command, []byte("Private_intent_sentinel"))
+				out, code := invokeGeneratedProcess(os.Pipe, ctx, launcher, command, command.Intent)
 				if code != contract.CryptoSuccess || out.Facts.Disposition != test.disposition || out.Facts.Reason != test.reason ||
 					!bytes.Equal(out.Facts.ProviderFacts, facts.ProviderFacts) || !bytes.Equal(out.Secret, result.Value) {
 					t.Fatal("telemetry changed the returned provider observation")

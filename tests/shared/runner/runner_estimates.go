@@ -48,7 +48,7 @@ var runnerEstimates = map[string]float64{
 	"enkv.sh/core/internal/testmain\x00TestPublicOutputEvidenceHandoffBindsOriginalOutputProof":           2,
 	"enkv.sh/core/internal/testmain\x00TestSelectedTrustCompositionsCompileOnlyTheirProvider":             16,
 	"enkv.sh/core/internal/testmain\x00TestSelectedCLIAssembliesKeepExactProductionFamilies":              11,
-	"enkv.sh/core/internal/testmain\x00TestCLIAssembliesBuildAndExposeSelectedManifest":                   25,
+	"enkv.sh/core/internal/testmain\x00TestCLIAssembliesBuildAndExposeSelectedManifest":                   24,
 
 	"enkv.sh/core/internal/testrecords\x00TestGeneratorFixtureLedgerCrossProcessRestartAndContention":   4,
 	"enkv.sh/core/internal/testmain\x00TestSavedFuzzAndLiveWorkflowsMatchCanonical":                     2,

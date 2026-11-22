@@ -57,10 +57,8 @@ func (g *generatedSelection) generatedRetirementAmbiguity(ctx context.Context, d
 	}
 	var ambiguityRows []contract.SupportRecord
 	if active {
-		facts, err := contract.InspectGeneratorSafeFacts(ambiguity)
-		if err != nil || facts.Disposition != contract.GeneratorDispositionUnknown || !generatedFactsMatchTemplate(facts.GeneratorSafeFacts, a.expected.Template) ||
-			facts.RequestDigest != a.record.RequestDigest || facts.IntentDigest != a.expected.Template.IntentDigest ||
-			residue && (facts.Reason == contract.GeneratorReasonIdentityConflict || !generatedResourceFactsMatch(facts.GeneratorSafeFacts, a.expected.TargetResourceDigest)) || uint32(len(ambiguity)) > a.expected.Use.MaxFacts {
+		facts, err := inspectRetirementAttemptFacts(ambiguity, a)
+		if err != nil || residue && (facts.RetirementRejected || facts.Reason == contract.GeneratorReasonIdentityConflict) {
 			return generatedResidueClosure{}, contract.ErrRecord
 		}
 		body, err := contract.EncodeGeneratorFactsRow(contract.GeneratorFactsRow{Schema: 1, ResultID: a.record.ResultID, Facts: ambiguity})

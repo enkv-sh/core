@@ -23,6 +23,13 @@ func (p *generatedPreparation) bindInstalledDelete(owner *InstalledGeneratedProd
 		if returned.ExecutableCleanupFailed {
 			out.AddCleanupDiagnostic()
 		}
+		if returned.Code == contract.CryptoCustodyUnavailable && len(returned.RejectedRetirement) != 0 && len(returned.Record) == 0 && len(returned.RetirementAmbiguity) == 0 {
+			facts, err := contract.InspectGeneratorAttemptFacts(returned.RejectedRetirement)
+			if err != nil || !facts.RetirementRejected {
+				return contract.CryptoInvalidInput
+			}
+			handoff.ambiguity = bytes.Clone(returned.RejectedRetirement)
+		}
 		if returned.Code == contract.CryptoSuccess && len(returned.Record) == 0 && returned.Facts.Disposition == contract.GeneratorDispositionUnknown {
 			var err error
 			handoff.ambiguity, err = contract.EncodeGeneratorSafeFacts(returned.Facts)

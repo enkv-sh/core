@@ -62,6 +62,19 @@ func (s *StateSession) inspectGeneratedWork(ctx context.Context) (generatedInspe
 			return generatedInspection{}, err
 		}
 		ceiling := contract.ReceiptEvidenceProviderFacts
+		if len(facts) == 1 && len(a.result) == 0 && a.expected.Template.Action == contract.GeneratorActionDelete {
+			row, err := contract.InspectGeneratorFactsRow(facts[0])
+			if err != nil {
+				return generatedInspection{}, err
+			}
+			observation, err := inspectRetirementAttemptFacts(row.Facts, a)
+			if err != nil {
+				return generatedInspection{}, err
+			}
+			if observation.RetirementRejected {
+				ceiling = contract.ReceiptEvidenceCanonical
+			}
+		}
 		if a.expected.Template.Action == contract.GeneratorActionDelete && len(a.result) != 0 {
 			r, err := contract.InspectGeneratedResultRecord(a.result)
 			if err != nil {

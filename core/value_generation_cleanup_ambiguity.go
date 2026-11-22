@@ -62,10 +62,8 @@ func (g *generatedSelection) generatedOrdinaryCleanupAmbiguity(ctx context.Conte
 	if g.phase.Attempts.Count != 1 || g.phase.Duties.Count != wantDuties || g.phase.Hazards.Count != wantHazards {
 		return out, contract.ErrRecord
 	}
-	facts, err := contract.InspectGeneratorSafeFacts(ambiguity)
-	if err != nil || facts.Disposition != contract.GeneratorDispositionUnknown || !generatedFactsMatchTemplate(facts.GeneratorSafeFacts, a.expected.Template) ||
-		facts.RequestDigest != a.record.RequestDigest || facts.IntentDigest != a.expected.Template.IntentDigest ||
-		!generatedResourceFactsMatch(facts.GeneratorSafeFacts, target.ResourceDigest) || uint32(len(ambiguity)) > a.expected.Use.MaxFacts {
+	facts, err := inspectRetirementAttemptFacts(ambiguity, a)
+	if err != nil || a.expected.TargetResourceDigest != target.ResourceDigest {
 		return out, contract.ErrRecord
 	}
 	historyBodies, err := g.vectors.resolve(source.Record.Kind, source.SourceID, contract.GeneratorVectorHistory, source.History)
@@ -150,7 +148,7 @@ func (g *generatedSelection) generatedOrdinaryCleanupAmbiguity(ctx context.Conte
 		source.Record.Body, err = contract.EncodeGeneratedDutyRecord(source.Duty)
 	} else {
 		source.Hazard.History = source.History
-		if facts.Reason == contract.GeneratorReasonIdentityConflict {
+		if facts.RetirementRejected || facts.Reason == contract.GeneratorReasonIdentityConflict {
 			source.Hazard.Eligibility = 0
 		}
 		source.Record.Body, err = contract.EncodeGeneratedHazardRecord(source.Hazard)
@@ -443,13 +441,11 @@ func (s *selectedGeneratedProof) validateGeneratedOrdinaryCleanupAmbiguitySelect
 	if err != nil || fact.ResultID != a.record.ResultID || contract.Hash(fact.Facts) != subject.ResultDigest {
 		return contract.ErrRecord
 	}
-	facts, err := contract.InspectGeneratorSafeFacts(fact.Facts)
-	if err != nil || facts.Disposition != contract.GeneratorDispositionUnknown || !generatedFactsMatchTemplate(facts.GeneratorSafeFacts, a.expected.Template) ||
-		facts.RequestDigest != a.record.RequestDigest || facts.IntentDigest != a.expected.Template.IntentDigest ||
-		!generatedResourceFactsMatch(facts.GeneratorSafeFacts, target.ResourceDigest) {
+	facts, err := inspectRetirementAttemptFacts(fact.Facts, a)
+	if err != nil || a.expected.TargetResourceDigest != target.ResourceDigest {
 		return contract.ErrRecord
 	}
-	conflict := facts.Reason == contract.GeneratorReasonIdentityConflict
+	conflict := facts.RetirementRejected || facts.Reason == contract.GeneratorReasonIdentityConflict
 	if conflict && source.Record.Kind == contract.GeneratedHazardSupportKind {
 		if source.Hazard.Fenced != 1 || source.Hazard.Eligibility != 0 {
 			return contract.ErrRecord

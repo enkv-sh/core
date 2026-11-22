@@ -60,7 +60,7 @@ func TestCLIAssembliesBuildAndExposeSelectedManifest(t *testing.T) {
 				t.Fatal(err)
 			}
 			identity := sha256.Sum256([]byte("enkv/composition/" + row.name + "/v1"))
-			want := selectedManifestFacts{Identity: hex.EncodeToString(identity[:]), Versions: []string{"v0.0.0", "state-session/v9", "canonical-state/v16", "store-trust-crypto/v9", "supplied-secret/v4", "rsa3072-oaep-sha256-aes256gcm-hmacsha256/v2"}, Fresh: true}
+			want := selectedManifestFacts{Identity: hex.EncodeToString(identity[:]), Versions: []string{"v0.0.0", "state-session/v9", "canonical-state/v17", "store-trust-crypto/v9", "supplied-secret/v4", "rsa3072-oaep-sha256-aes256gcm-hmacsha256/v2"}, Fresh: true}
 			for _, family := range row.families {
 				provider, store, trust, verifier := "aws", "aws-s3-regional-v2", "aws-kms-p256-v1", "aws-kms-p256-spki-v1"
 				if family == 2 {

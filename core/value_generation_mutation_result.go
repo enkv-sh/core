@@ -18,6 +18,7 @@ type generatedMutationTerminalInput struct {
 	CompletionClasses                                                      map[contract.ID]uint8
 	RelatedDutyIDs                                                         map[contract.ID]bool
 	RelatedHazardIDs                                                       map[contract.ID]bool
+	RetirementResourceRejected                                             bool
 	Selected                                                               bool
 }
 
@@ -115,7 +116,7 @@ func (s *StateSession) generatedTerminalMutation(ctx context.Context, input gene
 		CanonicalOutcome: contract.ReceiptCanonicalSelected, ChangedSubjects: input.ChangedSubjects, SummaryCounts: counts,
 		AcknowledgedCount: acknowledged, ConfirmedCount: confirmed,
 		UnknownCount: counts[contract.ReceiptSummaryUnknownCount] + counts[contract.ReceiptPreservedResidueCount]}
-	if effects.Count == 0 {
+	if effects.Count == 0 || input.RetirementResourceRejected {
 		row.EvidenceCeiling = contract.ReceiptEvidenceCanonical
 	}
 	switch {

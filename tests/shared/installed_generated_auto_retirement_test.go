@@ -14,8 +14,15 @@ import (
 
 // full_only: false
 func TestInstalledGeneratedAutomaticUnknownParksAndAdvances(t *testing.T) {
-	for _, count := range []int{1, 2} {
-		t.Run(fmt.Sprintf("deletes-%d", count), func(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		count    int
+		rejected bool
+	}{
+		{"deletes-1", 1, false}, {"deletes-2", 2, false}, {"one host rejection", 2, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			count := tc.count
 			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
 			defer cancel()
 			process, effects := installedGeneratedRetirementProcess(t, "unknown")
@@ -49,7 +56,33 @@ func TestInstalledGeneratedAutomaticUnknownParksAndAdvances(t *testing.T) {
 				expectedDeletes = append(expectedDeletes, generatedEntryProviderToken(t, before, entry))
 				input[at].Generated.Epoch, input[at].Generated.RetirementMode = 1, contract.GeneratedRetirementAuto
 			}
-			engine := installedGeneratedTestEngine(t, ctx, f, before, input, currentApplyRecipients(before.registry()), installedGeneratedRetirementCallbacks(t, f, process))
+			callbacks := installedGeneratedRetirementCallbacks(t, f, process)
+			var rejected contract.ID
+			if tc.rejected {
+				admit := callbacks.AdmitProducer
+				callbacks.AdmitProducer = func(c context.Context, q contract.CryptoGeneratedCompareRequest, ctrl contract.ControlCore, in contract.GeneratedProducerInput, impl contract.GeneratorImplementation, until time.Time) (*InstalledGeneratedProducerCustody, error) {
+					owner, err := admit(c, q, ctrl, in, impl, until)
+					if err != nil || in.Expected.Template.Action != contract.GeneratorActionDelete || !rejected.IsZero() {
+						return owner, err
+					}
+					invoke := owner.InvokeProducer
+					owner.InvokeProducer = func(c context.Context, locator, authority contract.ID) contract.GeneratedProducerResult {
+						actual := invoke(c, locator, authority)
+						if actual.Code != contract.CryptoSuccess || actual.Facts.Disposition != contract.GeneratorDispositionUnknown {
+							t.Fatal("missing automatic DELETE return")
+						}
+						rejected = in.Expected.Template.AttemptID
+						actual.Facts.ResourceData = []byte("different public resource")
+						body, err := contract.EncodeRejectedRetirement(actual.Facts)
+						if err != nil {
+							t.Fatal(err)
+						}
+						return contract.GeneratedProducerResult{Code: contract.CryptoCustodyUnavailable, RejectedRetirement: body}
+					}
+					return owner, nil
+				}
+			}
+			engine := installedGeneratedTestEngine(t, ctx, f, before, input, currentApplyRecipients(before.registry()), callbacks)
 			result := engine.Apply(ctx, testID(fmt.Sprintf("automatic unknown rotation %d", count)), input)
 			engine.Close()
 			creates, deletes := effects()
@@ -105,6 +138,17 @@ func TestInstalledGeneratedAutomaticUnknownParksAndAdvances(t *testing.T) {
 					t.Fatal("parked automatic delete lost its exact old target")
 				}
 				unknown++
+			}
+			if tc.rejected {
+				receipt, err := contract.InspectCompactMutationReceipt(result.Receipt)
+				if err != nil || rejected.IsZero() || receipt.EvidenceCeiling != contract.ReceiptEvidenceProviderFacts || receipt.UnknownCount != uint32(count) {
+					t.Fatal("mixed automatic receipt lost qualified provider evidence", err)
+				}
+				if !slices.ContainsFunc(result.Generated.Effects, func(f GeneratedEffectFact) bool {
+					return f.Record.AttemptID == rejected && f.Reason == GeneratedReasonRetirementResourceMismatch && f.EvidenceCeiling == contract.ReceiptEvidenceCanonical
+				}) {
+					t.Fatal("missing exact rejected automatic attempt")
+				}
 			}
 			if unknown != count {
 				t.Fatal("automatic ambiguity omitted a requested delete")

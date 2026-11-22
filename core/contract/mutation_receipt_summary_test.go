@@ -18,6 +18,8 @@ func TestRetainedReceiptSummaryKeepsOperationStateWarningAndEvidenceMeanings(t *
 		{OperationEndSelectedWork, ReceiptStateSuccess, ReceiptEvidenceCanonical, ReceiptCanonicalSelected, 0, false},
 		{OperationApplyDeclaration, ReceiptStateWorkEnded, ReceiptEvidenceCanonical, ReceiptCanonicalSelected, 0, false},
 		{OperationApplyDeclaration, ReceiptStateEffectUnknown, ReceiptEvidenceCanonical, ReceiptCanonicalNotSelected, 0, false},
+		{OperationRetireGeneratedGeneration, ReceiptStateEffectUnknown, ReceiptEvidenceCanonical, ReceiptCanonicalNotSelected, 0, true},
+		{OperationRetireGeneratedGeneration, ReceiptStateEffectTerminalFailure, ReceiptEvidenceCanonical, ReceiptCanonicalNotSelected, 0, false},
 		{OperationApplyDeclaration, ReceiptStateEffectUnknown, ReceiptEvidenceProviderFacts, ReceiptCanonicalSelected, 0, false},
 		{OperationApplyDeclaration, ReceiptStateSuccess, ReceiptEvidenceAcknowledged, ReceiptCanonicalSelected, 0, false},
 		{OperationApplyDeclaration, ReceiptStateSuccess, ReceiptEvidenceConfirmed, ReceiptCanonicalSelected, ReceiptWarningInvalidationNotConfirmed, false},

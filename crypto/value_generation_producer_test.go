@@ -1513,3 +1513,24 @@ func TestGeneratedProducerReturnRequiresOwningInputClass(t *testing.T) {
 		}
 	}
 }
+
+// full_only: false
+func TestDirectRetirementReturnRejectsAnotherResource(t *testing.T) {
+	f := generatedSelectDeleteProducer(t, generatedDeleteProducerFixture(t, false), contract.GeneratedDutyRetirement)
+	p := f.producer.Producer
+	owner := generatedProducerReturnOwner{ctx: t.Context(), expected: p.Expected,
+		command: contract.GeneratedProducerCommand{GeneratedProducerPreparation: p.Preparation, OriginalFacts: p.OriginalFacts, DeadlineUnixMillis: uint64(time.Now().Add(time.Minute).UnixMilli())}}
+	facts, err := contract.DecodeGeneratorSafeFacts(owner.command.OriginalFacts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	facts.Action, facts.Disposition, facts.Reason = contract.GeneratorActionDelete, contract.GeneratorDispositionUnknown, contract.GeneratorReasonTransport
+	facts.RequestDigest, facts.ResourceData = owner.command.RequestDigest, []byte("another public resource")
+	out := owner.settleReturn(t.Context(), generatedProducerReturn{Facts: facts}, generatedProducerOutput{effect: generatedEffectUnknown})
+	rejected, err := contract.InspectGeneratorAttemptFacts(out.rejectedRetirement)
+	if err != nil || !rejected.RetirementRejected || !bytes.Equal(rejected.ResourceData, facts.ResourceData) ||
+		out.code != contract.CryptoCustodyUnavailable || out.stage != generatedFailureBinding || out.effect != generatedEffectUnknown ||
+		len(out.Record) != 0 || len(out.retirementAmbiguity) != 0 || out.Facts.Disposition != 0 {
+		t.Fatal("direct retirement return lost its exact host rejection", err, out.code, out.stage)
+	}
+}

@@ -64,6 +64,8 @@ type GeneratedProducerInput struct {
 // facts. ExecutableCleanupFailed reports the host-qualified local removal
 // failure separately; it grants no effect or replay authority.
 type GeneratedProducerResult struct {
+	// RejectedRetirement contains only the bounded host observation of a binding failure.
+	RejectedRetirement []byte
 	// RetirementAmbiguity is a signed Unknown for one standalone retirement.
 	RetirementAmbiguity []byte
 	// ResultDeadlineUnixMillis is the original issued command deadline for a sealed or signed

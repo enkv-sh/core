@@ -397,6 +397,7 @@ func (a *generatedAdmission) controlledSelectedSource(input *contract.GeneratedC
 					if err != nil || v.Facts.Count != 1 || row.ResultID != v.ResultID {
 						return contract.ErrRecord
 					}
+					// A retained host rejection cannot authorize a controlled cleanup.
 					f, err := contract.InspectGeneratorSafeFacts(row.Facts)
 					facts = f.GeneratorSafeFacts
 					return err

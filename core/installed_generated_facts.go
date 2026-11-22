@@ -276,7 +276,7 @@ func generatedEffectFactForLineage(ctx context.Context, g *generatedSelection, i
 		if err != nil {
 			return GeneratedEffectFact{}, err
 		}
-		facts, err := contract.InspectGeneratorSafeFacts(row.Facts)
+		facts, err := contract.InspectGeneratorAttemptFacts(row.Facts)
 		if err != nil || row.ResultID != out.Record.ResultID {
 			return GeneratedEffectFact{}, contract.ErrRecord
 		}
@@ -300,7 +300,9 @@ func generatedEffectFactForLineage(ctx context.Context, g *generatedSelection, i
 				ResourceID: out.Record.ResourceID, ResourceDigest: resourceDigest, ConfigContractID: x.ConfigContractID, ResourceContractID: x.ResourceContractID,
 				OriginalOperationID: out.Record.OperationID, OriginalAttemptID: id, ResultContractID: x.ResultContractID, CompletionClass: x.CompletionClass}
 		}
-		if x.Action == contract.GeneratorActionDelete && facts.Disposition == contract.GeneratorDispositionRetirementAcknowledged {
+		if facts.RetirementRejected {
+			out.Reason, out.EvidenceCeiling = GeneratedReasonRetirementResourceMismatch, contract.ReceiptEvidenceCanonical
+		} else if x.Action == contract.GeneratorActionDelete && facts.Disposition == contract.GeneratorDispositionRetirementAcknowledged {
 			out.EvidenceCeiling, out.Warnings.InvalidationNotConfirmed = contract.ReceiptEvidenceAcknowledged, true
 		}
 		if facts.Disposition == contract.GeneratorDispositionScopedUnusability {

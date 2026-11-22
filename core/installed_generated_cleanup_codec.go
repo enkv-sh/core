@@ -399,7 +399,12 @@ func validateGeneratedCleanup(r PublicApplyResult) error {
 	var classes [contract.ReceiptSummaryCount]uint32
 	for _, f := range g.Effects {
 		targetFree := cleanupTargetFreeCreateReflection(r, f)
-		if f.Reason > contract.GeneratorReasonIdentityConflict {
+		if f.Reason == GeneratedReasonRetirementResourceMismatch {
+			if f.Action != contract.GeneratorActionDelete || f.Record.LifecycleMode != contract.GeneratorLifecycleManaged || f.Record.State != contract.GeneratedEffectUnknown ||
+				f.Record.Stage != contract.GeneratedStageTerminal || f.EvidenceCeiling != contract.ReceiptEvidenceCanonical || f.Warnings.InvalidationNotConfirmed {
+				return contract.ErrRecord
+			}
+		} else if f.Reason > contract.GeneratorReasonIdentityConflict {
 			lateCreate := b.Kind == GeneratedCleanupReflection && b.OriginalResult != nil && f.Record.State == contract.GeneratedEffectClosedWithResidue
 			if f.Reason != GeneratedReasonValueEncoding || f.Action != contract.GeneratorActionCreate || f.Record.LifecycleMode != contract.GeneratorLifecycleManaged ||
 				(f.Record.State != contract.GeneratedEffectFailedTerminal && !lateCreate) || f.Target == nil || f.EvidenceCeiling != contract.ReceiptEvidenceProviderFacts {

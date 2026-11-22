@@ -176,10 +176,11 @@ func invokeGeneratedProcessOwned(openPipe generatedResultPipe, ctx context.Conte
 		}
 		return out, contract.CryptoCustodyUnavailable
 	}
-	f := result.SafeFacts
-	if result.AttemptID != processCommand.AttemptID || result.ResultID != processCommand.ResultID || result.ResultContractID != processCommand.ResultContractID || result.ExecutorID != processCommand.ExecutorID ||
-		f.Action != processCommand.Action || f.LifecycleMode != processCommand.LifecycleMode || f.ResourceContractID != processCommand.ResourceContractID ||
-		f.RequestDigest != processCommand.RequestDigest || f.IntentDigest != processCommand.IntentDigest {
+	if err := wire.ValidateResult(processCommand, result); err != nil {
+		if processCommand.Action == wire.ActionRetire {
+			out.rejectedRetirement = rejectedRetirementClaim(processCommand, result)
+			out.rejectedFactsLength = wire.SafeFactsFixedLength + len(result.SafeFacts.Target) + len(result.SafeFacts.ResourceData) + len(result.SafeFacts.ProviderFacts)
+		}
 		clear(body)
 		out.stage, out.category = generatedFailureBinding, generatedFailureInvalid
 		if local {
@@ -187,14 +188,43 @@ func invokeGeneratedProcessOwned(openPipe generatedResultPipe, ctx context.Conte
 		}
 		return out, contract.CryptoCustodyUnavailable
 	}
-	out.Facts = contract.GeneratorSafeFacts{Schema: contract.GeneratorSafeFactsSchema, Action: f.Action, LifecycleMode: contract.GeneratorLifecycleMode(f.LifecycleMode),
-		Disposition: f.Disposition, Reason: f.Reason, RequestDigest: contract.ID(f.RequestDigest), IntentDigest: contract.ID(f.IntentDigest), ResourceContractID: contract.ID(f.ResourceContractID),
-		Target: bytes.Clone(f.Target), ResourceData: bytes.Clone(f.ResourceData), ProviderFacts: bytes.Clone(f.ProviderFacts)}
+	f := result.SafeFacts
+	out.Facts = nativeGeneratorFacts(f)
 	out.Secret = bytes.Clone(result.Value)
 	out.effect = generatedEffectFromDisposition(out.Facts.Disposition)
 	out.executableCleanupFailed = completeWithCleanupFailure
 	clear(body)
 	return out, contract.CryptoSuccess
+}
+
+func nativeGeneratorFacts(f wire.SafeFacts) contract.GeneratorSafeFacts {
+	return contract.GeneratorSafeFacts{Schema: contract.GeneratorSafeFactsSchema, Action: f.Action, LifecycleMode: contract.GeneratorLifecycleMode(f.LifecycleMode),
+		Disposition: f.Disposition, Reason: f.Reason, RequestDigest: contract.ID(f.RequestDigest), IntentDigest: contract.ID(f.IntentDigest), ResourceContractID: contract.ID(f.ResourceContractID),
+		Target: bytes.Clone(f.Target), ResourceData: bytes.Clone(f.ResourceData), ProviderFacts: bytes.Clone(f.ProviderFacts)}
+}
+
+// Only differing resource fields can explain a retained rejection. Validate
+// every other binding with those two fields restored to the admitted identity.
+func rejectedRetirementClaim(command wire.Command, result wire.Result) []byte {
+	original, err := wire.DecodeSafeFacts(command.OriginalFacts)
+	if err != nil {
+		return nil
+	}
+	claim := result.SafeFacts
+	if bytes.Equal(claim.Target, original.Target) && bytes.Equal(claim.ResourceData, original.ResourceData) {
+		return nil
+	}
+	result.SafeFacts.Target, result.SafeFacts.ResourceData = original.Target, original.ResourceData
+	result.SafeFacts.ProviderFacts = nil
+	if wire.ValidateResult(command, result) != nil {
+		return nil
+	}
+	claim.ProviderFacts = nil
+	body, err := contract.EncodeRejectedRetirement(nativeGeneratorFacts(claim))
+	if err != nil {
+		return nil
+	}
+	return body
 }
 
 func localEnvironmentRefusal(status wire.Status, readErr error, code contract.CryptoResultCode) generatedProducerReturn {
