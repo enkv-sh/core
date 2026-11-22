@@ -136,6 +136,18 @@ func runGeneratedGrantHistory(t *testing.T, cloud *nativeGeneratedServer, binari
 		args = append(args, "--json")
 		policy := observer.Policy{MaxStoreWrites: 256, MaxStoreWriteBytes: 32 << 20, Fault: fault, FaultOrdinal: 1}
 		t.Setenv("CLOUDFLARE_API_TOKEN", "")
+		if family == "gcp" {
+			_, original := workflowHead(t, s)
+			requests := s.summary("apply")
+			env := append(nativeGeneratedEnvironment(t, binaries, source),
+				"GOOGLE_APPLICATION_CREDENTIALS="+filepath.Join(t.TempDir(), "missing.json"))
+			refused := workflowRunEnvironment(t, s, binaries.cli, "apply", observer.Policy{}, nil, env, args...)
+			_, current := workflowHead(t, s)
+			if refused.code != 2 && refused.code != 3 || requests != s.summary("apply") ||
+				!bytes.Equal(original.body, current.body) || original.etag != current.etag {
+				t.Fatal("unavailable ADC changed the checkpoint or reached a service", refused.code)
+			}
+		}
 		resources := nativeGeneratedSelectedResources(t, s)
 		child := workflowRunEnvironment(t, s, binaries.cli, "apply", policy, nil, nativeGeneratedEnvironment(t, binaries, source), args...)
 		maps.Copy(resources, nativeGeneratedSelectedResources(t, s))
