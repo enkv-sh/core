@@ -1,10 +1,31 @@
 package core
 
 import (
+	"context"
 	"testing"
 
 	"enkv.sh/core/contract"
 )
+
+func gcOrdinaryAdmission(t *testing.T, ctx context.Context, s *StateSession) error {
+	t.Helper()
+	deadline, _ := ctx.Deadline()
+	inputEntries := []ApplyEntryInput{{InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, Name: "plain", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, Recipients: []contract.ID{s.admission.recipient}, InputBytes: []byte("ordinary-after-gc")}}
+	unchecked, result := s.compareEntryInputs(inputEntries)
+	if unchecked == nil {
+		t.Fatal("ordinary intent fixture", result)
+	}
+	support, err := s.generatedSupportTransition(ctx, unchecked, nil)
+	if err != nil || support == nil {
+		t.Fatal("ordinary retained-work handoff", err)
+	}
+	comparison, result := s.compare(ctx, inputEntries, &AdmittedParentComparison{session: s, deadline: deadline, support: support})
+	if comparison == nil || result.Outcome != ObservedCurrent {
+		t.Fatal("GC blocked read-only ordinary comparison", result)
+	}
+	_, err = planTransition(ctx, comparison)
+	return err
+}
 
 // full_only: false
 func TestGCActiveSlotBlocksOrdinaryAndGeneratedAdmission(t *testing.T) {
@@ -12,23 +33,9 @@ func TestGCActiveSlotBlocksOrdinaryAndGeneratedAdmission(t *testing.T) {
 		t.Run(map[bool]string{false: "active", true: "pending"}[pending], func(t *testing.T) {
 			s, _ := gcStateFixture(t, pending)
 			ctx := installedAdministrativeTestContext(t)
-			deadline, _ := ctx.Deadline()
 			store := s.store.(*observationSelectionStore)
 			beforeSends, beforeObjects := store.sends, len(store.objects)
-			inputEntries := []ApplyEntryInput{{InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, Name: "plain", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, Recipients: []contract.ID{s.admission.recipient}, InputBytes: []byte("ordinary-after-gc")}}
-			unchecked, result := s.compareEntryInputs(inputEntries)
-			if unchecked == nil {
-				t.Fatal("ordinary intent fixture", result)
-			}
-			support, err := s.generatedSupportTransition(ctx, unchecked, nil)
-			if err != nil || support == nil {
-				t.Fatal("ordinary retained-work handoff", err)
-			}
-			comparison, result := s.compare(ctx, inputEntries, &AdmittedParentComparison{session: s, deadline: deadline, support: support})
-			if comparison == nil || result.Outcome != ObservedCurrent {
-				t.Fatal("GC blocked read-only ordinary comparison", result)
-			}
-			_, err = planTransition(ctx, comparison)
+			err := gcOrdinaryAdmission(t, ctx, s)
 			if (err == nil) != pending {
 				t.Fatal("ordinary admission did not follow active GC slot", pending, err)
 			}

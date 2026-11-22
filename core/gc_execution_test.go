@@ -600,37 +600,85 @@ func TestGCConcurrentResumeCannotShareReservedPermission(t *testing.T) {
 
 // full_only: false
 func TestGCClosePreservesSelectedProgressAndFailures(t *testing.T) {
-	for _, failed := range []contract.GCPhase{contract.GCReserve, contract.GCRecordProgress, contract.GCClose} {
-		t.Run(fmt.Sprint(failed), func(t *testing.T) {
-			state, store, input, _, encoded := gcExecutionFixture(t)
+	notSent := contract.WriteResult{Status: contract.WriteUnknown, Reason: contract.ReasonTransport, NotSent: true}
+	denied := contract.WriteResult{Status: contract.WriteRefused, Reason: contract.ReasonAccess}
+	unknown := contract.WriteResult{Status: contract.WriteUnknown, Reason: contract.ReasonAccess}
+	for _, test := range []struct {
+		name        string
+		phase       contract.GCPhase
+		write       contract.WriteResult
+		closeDenied bool
+	}{
+		{"reserve not sent", contract.GCReserve, notSent, false},
+		{"progress not sent", contract.GCRecordProgress, notSent, false},
+		{"close not sent", contract.GCClose, notSent, false},
+		{"reserve refused", contract.GCReserve, denied, false},
+		{"progress refused", contract.GCRecordProgress, denied, false},
+		{"close refused", contract.GCClose, denied, false},
+		{"progress unknown", contract.GCRecordProgress, unknown, false},
+		{"progress and close refused", contract.GCRecordProgress, denied, true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			state, store, input, plan, encoded := gcExecutionFixture(t)
 			store.onCAS = func(phase contract.GCPhase, _ []byte) *contract.WriteResult {
-				if phase == failed {
-					return &contract.WriteResult{Status: contract.WriteUnknown, Reason: contract.ReasonTransport, NotSent: true}
+				if phase == test.phase {
+					return &test.write
+				}
+				if test.closeDenied && phase == contract.GCClose {
+					return &denied
 				}
 				return nil
 			}
+			ctx := gcReadContext(t)
 			engine, _ := gcExecutionEngine(t, state, store, input)
-			out := engine.ApplyPlan(gcReadContext(t), GCApplyPlanRequest{RequestNonce: gcTestID(fmt.Sprintf("close-failure-%d", failed)), EncodedPlan: encoded})
-			if out.Payload == nil || len(out.Payload.Failures) != 1 || out.Payload.Failures[0].Phase != failed || out.Payload.Failures[0].Write != (contract.WriteResult{Status: contract.WriteUnknown, Reason: contract.ReasonTransport, NotSent: true}) {
-				t.Fatal("later close lost earlier failure", out)
-			}
-			if failed == contract.GCClose {
-				if out.Payload.Closed || out.StateResult == "success" || out.StateResult == "gc-partial-garbage" || out.EffectSummary != contract.ReceiptEffectComplete {
-					t.Fatal("unselected close became completion", out)
-				}
-			} else {
-				if !out.Payload.Closed || out.StateResult != "gc-partial-garbage" || out.Payload.RemainingCount != 1 {
-					t.Fatal("known no-send phase did not close retained exact work", out)
-				}
-			}
-			if failed == contract.GCRecordProgress && (out.Payload.Targets[0].Selected.Disposition != contract.GCTargetPending || out.Payload.Targets[0].Observed != contract.GCTargetAbsent || out.Payload.Targets[0].ObservedEvidence.IsZero()) {
-				t.Fatal("volatile absence replaced selected progress", out)
-			}
-			if len(store.phases) > 4 {
-				t.Fatal("close path expanded physical CAS budget", store.phases)
-			}
+			out := engine.ApplyPlan(ctx, GCApplyPlanRequest{RequestNonce: gcTestID(test.name), EncodedPlan: encoded})
 			if err := out.Validate(); err != nil {
-				t.Fatal(err, out)
+				t.Fatal(err, out.Result)
+			}
+			failures := 1
+			if test.closeDenied {
+				failures++
+			}
+			if out.Payload == nil || len(out.Payload.Failures) != failures || out.Payload.Failures[0].Phase != test.phase ||
+				out.Payload.Failures[0].Write != test.write || out.Payload.Failures[0].Result.CommitMayHaveOccurred != (test.write == unknown) {
+				t.Fatal("lost original phase outcome", out.Payload)
+			}
+			if test.closeDenied && (out.Payload.Failures[1].Phase != contract.GCClose || out.Payload.Failures[1].Write != denied) {
+				t.Fatal("lost second refusal", out.Payload.Failures)
+			}
+			phases := []contract.GCPhase{contract.GCSelect, contract.GCReserve}
+			var consumed uint8
+			if test.phase != contract.GCReserve {
+				phases = append(phases, contract.GCRecordProgress)
+				consumed = 1
+			}
+			if test.write != unknown {
+				phases = append(phases, contract.GCClose)
+			}
+			if !reflect.DeepEqual(store.phases, phases) || len(store.deletes) != int(consumed) {
+				t.Fatal("unexpected selection or delete", store.phases, len(store.deletes))
+			}
+			closed := test.phase != contract.GCClose && test.write != unknown && !test.closeDenied
+			if out.Payload.Closed != closed || (out.StateResult == "gc-partial-garbage") != closed || out.StateResult == "success" {
+				t.Fatal("GC result does not reflect confirmed close", out.StateResult, out.Payload.Closed)
+			}
+			if closed && out.Payload.RemainingCount != 1 || test.phase == contract.GCClose && out.EffectSummary != contract.ReceiptEffectComplete {
+				t.Fatal("lost remaining work or complete effect", out.Payload.RemainingCount, out.EffectSummary)
+			}
+			if test.phase == contract.GCRecordProgress && (out.Payload.Targets[0].Selected.Disposition != contract.GCTargetPending ||
+				out.Payload.Targets[0].Observed != contract.GCTargetAbsent || out.Payload.Targets[0].ObservedEvidence.IsZero()) {
+				t.Fatal("volatile absence replaced selected progress", out.Payload.Targets[0])
+			}
+			cold, result := open(ctx, OpenContext{admission: &state.admission}, store)
+			if cold == nil || result.Outcome != ObservedCurrent || cold.root.ActiveGC.IsZero() != closed {
+				t.Fatal("cold open disagrees on active GC", result)
+			}
+			_, progress, err := cold.selectedGCPlan(plan.OperationID)
+			if err != nil || len(progress.Targets) != 1 || progress.Targets[0] != out.Payload.Targets[0].Selected || progress.Targets[0].Consumed != consumed {
+				t.Fatal("cold open lost selected allowance or progress", err, progress)
+			}
+			if err := gcOrdinaryAdmission(t, ctx, cold); (err == nil) != closed {
+				t.Fatal("ordinary admission disagrees with confirmed close", err, closed)
 			}
 		})
 	}

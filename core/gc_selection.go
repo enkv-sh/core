@@ -313,7 +313,9 @@ func (s *StateSession) selectGCCandidate(ctx context.Context, c *Candidate) gcPh
 		return out
 	}
 	if w.NotSent || w.Status == contract.WriteRefused {
-		out.notSelected = w.NotSent
+		// A qualified refusal proves this candidate was not selected even
+		// when the request reached the Store. Keep the transmission fact in write.
+		out.notSelected = true
 		out.result = refusedStoreWrite(w)
 		out.result.RequestedRevision = c.head.Core.Revision
 		return out
