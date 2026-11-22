@@ -807,10 +807,16 @@ func TestInstalledGeneratedRetirementRefusesChangedRetainedImplementation(t *tes
 	if absent.Result.Outcome != AdmissionRefused || absent.Payload != nil || len(absent.Receipt) != 0 {
 		t.Fatal("an unstarted retirement acquired qualified ambiguity", absent)
 	}
-	for _, field := range []string{"config-contract", "protocol", "artifact-contract", "executor", "credential-route", "descriptor", "dependency"} {
+	for _, field := range []string{"missing", "config-contract", "protocol", "artifact-contract", "executor", "credential-route", "descriptor", "dependency"} {
 		t.Run(field, func(t *testing.T) {
 			callbacks := installedGeneratedRetirementCallbacks(t, f, f.env.GeneratedProcess)
-			callbacks.ResolveImplementation = func(GeneratedImplementationRequest) (contract.GeneratorImplementation, error) {
+			callbacks.ResolveImplementation = func(request GeneratedImplementationRequest) (contract.GeneratorImplementation, error) {
+				if request.Retained == nil || request.Retained.ExecutorID != duty.ExecutorID || request.Retained.CredentialRouteID != duty.CredentialRouteID {
+					t.Fatal("retirement did not request its accepted installation")
+				}
+				if field == "missing" {
+					return contract.GeneratorImplementation{}, contract.ErrRecord
+				}
 				row := f.env.GeneratedProcess.Implementation
 				changed := testID("changed retained " + field)
 				switch field {
@@ -846,6 +852,21 @@ func TestInstalledGeneratedRetirementRefusesChangedRetainedImplementation(t *tes
 				t.Fatal("changed retained implementation sent a provider request", creates, deletes)
 			}
 		})
+	}
+	cold := f.open(t, ctx)
+	retained := mustSelectedGeneratedWork(t, cold)
+	record, err := contract.InspectGeneratedDutyRecord(retained.records[generatedRecordKey{contract.GeneratedDutySupportKind, duty.DutyID}].Body)
+	if err != nil || record != duty || !bytes.Equal(cold.body, selected.body) || cold.token != selected.token {
+		t.Fatal("unavailable or changed installation altered the accepted retirement", err)
+	}
+	engine := installedGeneratedRetirementEngine(t, ctx, f, cold, installedGeneratedRetirementCallbacks(t, f, f.env.GeneratedProcess))
+	resumed := engine.RetireGenerated(ctx, testID("exact retirement installation restored"), GeneratedRetirementRequest{DutyID: duty.DutyID})
+	engine.Close()
+	closed := f.open(t, ctx)
+	creates, deletes := effects()
+	if resumed.Result.Outcome != ObservedCurrent || len(resumed.Receipt) == 0 || closed.root.Generated.Retiring != 0 ||
+		closed.root.Generated.Duties != 0 || creates != 2 || !reflect.DeepEqual(deletes, []string{"00000000000000000000000000000001"}) {
+		t.Fatal("restoring the accepted installation did not close the original retirement", resumed.Result, creates, deletes)
 	}
 }
 
