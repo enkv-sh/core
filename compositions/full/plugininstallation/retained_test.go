@@ -132,6 +132,36 @@ func TestRetainedOfficialLookupUsesExactProofWithoutLocalFallback(t *testing.T) 
 	if _, err := c.RestoreRetainedOfficial(t.Context(), one.identity, proof, check); err != nil {
 		t.Fatal(err)
 	}
+	t.Run("short-cached-member", func(t *testing.T) {
+		// A stopped copy can leave only a prefix in its final location.
+		// Keep the signed original in the independent fixture catalog.
+		partial := catalog.coordinator(t)
+		member, err := partial.RestoreRetainedOfficial(t.Context(), one.identity, proof, check)
+		if err != nil {
+			t.Fatal(err)
+		}
+		writeTestFile(t, member.Executable(), one.members["plugin"][:1])
+		if got, err := partial.RestoreRetainedOfficial(t.Context(), one.identity, proof, check); err == nil || got != nil {
+			t.Fatal("short present member passed retained verification")
+		}
+		fresh := catalog.coordinator(t)
+		exact, err := fresh.RestoreRetainedOfficial(t.Context(), one.identity, proof, check)
+		if err != nil || exact.Source() != "official" || exact.Identity() != one.identity || exact.proof == nil || *exact.proof != proof {
+			t.Fatal("fresh signed package did not restore the accepted identity", err)
+		}
+		reopened, err := newCoordinator(filepath.Dir(fresh.configDirectory), catalog.assembly())
+		if err != nil {
+			t.Fatal(err)
+		}
+		retained, err := reopened.ResolveRetained(t.Context(), family.ExecutorID, check)
+		if err != nil {
+			t.Fatal("cold retained lookup", err)
+		}
+		body, err := os.ReadFile(retained.Executable())
+		if err != nil || artifact.Hash(body) != one.metadata.Executable.SHA256 || uint64(len(body)) != one.metadata.Executable.Length {
+			t.Fatal("cold retained lookup lost full executable identity", err)
+		}
+	})
 	writeTestFile(t, filepath.Join(c.proofDirectory(artifact.Selection{Artifact: one.identity, Proof: proof}), "archive.sig"), make([]byte, 64))
 	if _, err := c.ResolveRetained(t.Context(), family.ExecutorID, check); err == nil {
 		t.Fatal("damaged official proof fell back")
