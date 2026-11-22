@@ -161,7 +161,7 @@ func (s *StateSession) generatedRetirementAmbiguityPlan(ctx context.Context, dut
 }
 
 func (s *StateSession) generatedLifecyclePlanValid(ctx context.Context, plan *generatedLifecyclePlan, supportPages, accessPages int) error {
-	if s == nil || plan == nil || plan.predecessorDigest != contract.Hash(s.body) || plan.predecessorRevision != s.head.Core.Revision ||
+	if s == nil || !s.root.ActiveGC.IsZero() || plan == nil || plan.predecessorDigest != contract.Hash(s.body) || plan.predecessorRevision != s.head.Core.Revision ||
 		plan.predecessorToken != s.token || !s.generatedContextValid(plan.context) || plan.context.Expiry == 0 ||
 		plan.owner.IsZero() || plan.evidence.IsZero() || plan.requestIdentity.IsZero() ||
 		plan.identity.operation.IsZero() || plan.identity.transition.IsZero() || plan.identity.snapshot.IsZero() || plan.identity.revision.IsZero() ||

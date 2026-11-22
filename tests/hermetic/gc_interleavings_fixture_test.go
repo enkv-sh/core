@@ -198,3 +198,27 @@ func gcInterleavingEngine(t *testing.T, selected *StateSession, store contract.S
 	})
 	return engine
 }
+
+func gcSelectPlanAndReopen(t *testing.T, ctx context.Context, source *StateSession, store *gcInterleavingStore, trust contract.Trust, plan contract.GCPlan) *StateSession {
+	t.Helper()
+	progress, err := gcInitialProgress(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	candidate, result := source.prepareGCPhase(ctx, plan, fixtureID(plan.OperationID, "GC admission"), contract.GCSelect, &progress)
+	if candidate == nil {
+		t.Fatal("prepare GC", result)
+	}
+	candidate, result = source.persistCandidate(ctx, candidate, trust)
+	if candidate == nil {
+		t.Fatal("sign GC", result)
+	}
+	if outcome := source.selectGCCandidate(ctx, candidate); !outcome.confirmed {
+		t.Fatal("select GC", outcome.result)
+	}
+	active := retainedReaderColdOpen(t, source, store)
+	if active.root.ActiveGC != plan.OperationID {
+		t.Fatal("cold open lost the selected GC operation")
+	}
+	return active
+}

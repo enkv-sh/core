@@ -22,25 +22,7 @@ func TestGCAdministrativeEndingPreservesInstalledCurrentCreationProof(t *testing
 	if len(plan.Targets) != 1 || plan.Targets[0].Object.ObjectID != obsolete.Object {
 		t.Fatal("GC plan did not select the previous root")
 	}
-	progress, err := gcInitialProgress(plan)
-	if err != nil {
-		t.Fatal(err)
-	}
-	candidate, result := source.prepareGCPhase(ctx, plan, testID("current proof GC admission"), contract.GCSelect, &progress)
-	if candidate == nil {
-		t.Fatal("prepare GC", result)
-	}
-	candidate, result = source.persistCandidate(ctx, candidate, f.env.Trust)
-	if candidate == nil {
-		t.Fatal("sign GC", result)
-	}
-	if outcome := source.selectGCCandidate(ctx, candidate); !outcome.confirmed {
-		t.Fatal("select GC", outcome.result)
-	}
-	active := retainedReaderColdOpen(t, source, store)
-	if active.root.ActiveGC != plan.OperationID {
-		t.Fatal("cold open lost the selected GC operation")
-	}
+	active := gcSelectPlanAndReopen(t, ctx, source, store, f.env.Trust, plan)
 	proof := generatedRecordKey{contract.GeneratedCreateEvidenceSupportKind, current.Generated.CreateResultID}
 	indexed, err := active.priorAdministrativeRows()
 	if err != nil {

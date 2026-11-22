@@ -52,6 +52,36 @@ func TestGCActiveSlotBlocksOrdinaryAndGeneratedAdmission(t *testing.T) {
 }
 
 // full_only: false
+func TestGeneratedLifecycleAdmissionRespectsTheActiveGCSlot(t *testing.T) {
+	for _, pending := range []bool{false, true} {
+		t.Run(map[bool]string{false: "active", true: "pending"}[pending], func(t *testing.T) {
+			s, _ := gcStateFixture(t, pending)
+			ctx := installedAdministrativeTestContext(t)
+			deadline, _ := ctx.Deadline()
+			admitted, err := installedGeneratedContext(s, deadline)
+			if err != nil {
+				t.Fatal(err)
+			}
+			ids, request, err := s.freshGeneratedLifecyclePlan(ctx, 0, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			plan := generatedLifecyclePlan{
+				context: admitted, identity: ids, requestIdentity: request,
+				predecessorDigest: contract.Hash(s.body), predecessorRevision: s.head.Core.Revision, predecessorToken: s.token,
+				owner: gcTestID("lifecycle owner"), target: gcTestID("lifecycle target"), evidence: gcTestID("lifecycle evidence"),
+			}
+			for _, kind := range []generatedLifecycleKind{generatedLifecycleRetirementResidue, generatedLifecycleReflection} {
+				plan.kind = kind
+				if err := s.generatedLifecyclePlanValid(ctx, &plan, 0, 0); (err == nil) != pending {
+					t.Errorf("lifecycle %d readiness for this GC slot: %v", kind, err)
+				}
+			}
+		})
+	}
+}
+
+// full_only: false
 func TestGCActiveSlotBlocksPublicationSelectionOwners(t *testing.T) {
 	for _, pending := range []bool{false, true} {
 		t.Run(map[bool]string{false: "active", true: "pending"}[pending], func(t *testing.T) {
