@@ -65,6 +65,9 @@ func resolveGeneratedImplementation(i ApplyInstallation, request GeneratedImplem
 }
 
 func (s *StateSession) installedGeneratedPlan(ctx context.Context, i ApplyInstallation, input []ApplyEntryInput, output *outputApplyInput, deadline time.Time) (*generatedPlan, error) {
+	if err := s.checkGeneratedGrantCapacity(input); err != nil {
+		return nil, err
+	}
 	if i.Generated == nil || i.Generated.RequestDigest == nil {
 		return nil, contract.ErrRecord
 	}

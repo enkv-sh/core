@@ -13,12 +13,24 @@ type TokenView struct {
 	Value  []byte
 }
 
+// TokenValueLimit is the largest accepted wire token for a future selection.
+func TokenValueLimit(family Family) int {
+	switch family {
+	case AWS:
+		return maxTokenValue
+	case GCP:
+		return 19
+	default:
+		return 0
+	}
+}
+
 func tokenValid[S ~string | ~[]byte](family Family, value S) bool {
-	if !family.Valid() || len(value) == 0 || len(value) > maxTokenValue {
+	if len(value) == 0 || len(value) > TokenValueLimit(family) {
 		return false
 	}
 	if family == GCP {
-		if len(value) > 19 || value[0] == '0' {
+		if value[0] == '0' {
 			return false
 		}
 		var n uint64

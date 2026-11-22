@@ -46,7 +46,7 @@ func TestGeneratedFinalPreparationReservesLastTwoPhaseSteps(t *testing.T) {
 				}
 				g = mustSelectedGeneratedWork(t, s)
 				rows := []contract.CryptoGeneratedValueEntryResult{generatedPreparedValueEntryFixture(t, s, plan.entryPlans[0])}
-				checkpoint, err := s.deriveGeneratedFinalPreparation(t.Context(), g, plan, rows, nil)
+				checkpoint, err := s.deriveGeneratedFinalPreparation(t.Context(), g, plan, rows, nil, nil)
 				if err != nil {
 					t.Fatal("public checkpoint construction at last pair", err)
 				}

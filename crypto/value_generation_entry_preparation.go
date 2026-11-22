@@ -139,10 +139,25 @@ func (a *generatedAdmission) prepareEntries(v contract.CryptoGeneratedValueEntri
 		}
 		row.access = contract.DigestLength{Digest: contract.Hash(access), Length: uint64(len(access))}
 		row.prepared = true
+		added, err := a.checkpointGrantReaders(preparedEntry.Slot, preparedEntry.Entry.Name, preparedEntry.Access.MaterialID)
+		if err != nil {
+			return contract.CryptoInvalidAdmission
+		}
+		for j, w := range preparedEntry.Access.Wraps {
+			if w.SubjectKind == contract.OrdinaryWrapSubject && slices.Contains(added, w.SubjectID) {
+				if err := a.protectCheckpointGrant(preparedEntry.Slot, j, preparedEntry.Access.MaterialID, preparedEntry.Access.MaterialContextDigest, w); err != nil {
+					return contract.CryptoCustodyUnavailable
+				}
+			}
+		}
 		result.Rows = append(result.Rows, preparedEntry)
 	}
+	if v.Final == 1 {
+		slices.SortFunc(final.grantSeals, contract.CompareGeneratedGrantSeals)
+		result.GrantSeals = final.grantSeals
+	}
 	out.Body, err = contract.EncodeCryptoGeneratedValueEntriesResult(result)
-	if err != nil || len(out.Body) != bound+10 {
+	if err != nil || len(out.Body) != bound+10+len(result.GrantSeals)*contract.GeneratedGrantSealLength {
 		return contract.CryptoCustodyUnavailable
 	}
 	final.entryNext += count

@@ -388,7 +388,7 @@ func TestContinuationCapacitySelectingFinalAndSelectedPreparation(t *testing.T) 
 	}
 	bound := continuationTestBound(t, s)
 	rows := []contract.CryptoGeneratedValueEntryResult{generatedPreparedValueEntryFixture(t, s, plan.entryPlans[0])}
-	checkpoint, err := s.deriveGeneratedFinalPreparation(t.Context(), mustSelectedGeneratedWork(t, s), plan, rows, nil)
+	checkpoint, err := s.deriveGeneratedFinalPreparation(t.Context(), mustSelectedGeneratedWork(t, s), plan, rows, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -832,7 +832,7 @@ func continuationTestCheckpointAt(t *testing.T, phase uint32) *StateSession {
 		t.Fatal(err)
 	}
 	rows := []contract.CryptoGeneratedValueEntryResult{generatedPreparedValueEntryFixture(t, s, plan.entryPlans[0])}
-	checkpoint, err := s.deriveGeneratedFinalPreparation(t.Context(), mustSelectedGeneratedWork(t, s), plan, rows, nil)
+	checkpoint, err := s.deriveGeneratedFinalPreparation(t.Context(), mustSelectedGeneratedWork(t, s), plan, rows, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1079,7 +1079,7 @@ func TestContinuationCapacityIncompatiblePreparationNeedsFreshPair(t *testing.T)
 			bound := continuationTestBound(t, s)
 			unchanged := continuationTestSelectedDigest(t, s)
 			rows := []contract.CryptoGeneratedValueEntryResult{generatedPreparedValueEntryFixture(t, s, plan.entryPlans[0])}
-			replacement, err := s.deriveGeneratedFinalPreparation(t.Context(), g, plan, rows, nil)
+			replacement, err := s.deriveGeneratedFinalPreparation(t.Context(), g, plan, rows, nil, nil)
 			if err != nil || continuationTestSelectedDigest(t, s) != unchanged {
 				t.Fatal("actual replacement checkpoint or immutable predecessor", err)
 			}

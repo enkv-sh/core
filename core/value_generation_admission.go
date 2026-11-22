@@ -401,6 +401,13 @@ func (s *StateSession) generatedAdmissionShapeWithRegistry(ctx context.Context, 
 		if m.ConfidentialityClass == contract.Secret {
 			shape.Secrets++
 			shape.SecretMemberships += uint64(len(ids))
+			if slot, ok := before[m.Name]; ok {
+				grantCount, err := generatedDeclarationGrantCount(s.valueEntry(slot), m, entry, ids, selected)
+				if err != nil {
+					return generatedCapacityShape{}, err
+				}
+				shape.finalImageGrants += grantCount
+			}
 		}
 		// Fresh generated outputs are charged by CurrentAccess and the create
 		// image rows. Every other planned secret may preserve old material.
@@ -627,6 +634,9 @@ func (s *StateSession) generatedAdmissionShapeWithRegistry(ctx context.Context, 
 		if err != nil {
 			return generatedCapacityShape{}, err
 		}
+	}
+	if err := s.checkGeneratedGrantCount(int(shape.finalImageGrants)); err != nil {
+		return generatedCapacityShape{}, err
 	}
 	return shape, nil
 }

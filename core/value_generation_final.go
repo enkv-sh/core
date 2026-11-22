@@ -258,6 +258,7 @@ func (s *StateSession) prepareGeneratedFinal(ctx context.Context, permit *admitt
 	var retainedImage contract.GeneratedFinalPreparationImage
 	var prepared []contract.CryptoGeneratedValueEntryResult
 	var supplied []contract.CryptoPreparedSecret
+	var grantSeals []contract.GeneratedGrantSeal
 	if permit.plan.materialization != nil || permit.plan.qualifyLegacy {
 		retainedImage, err = s.generatedFinalPreparationImage(ctx, selectedWork)
 		if result, ok := selectedReadResult(err); ok {
@@ -334,6 +335,13 @@ func (s *StateSession) prepareGeneratedFinal(ctx context.Context, permit *admitt
 	compared, err := contract.InspectCryptoGeneratedCompareResult(reply.Body)
 	if err != nil {
 		return nil, refused(AdmissionInvalid)
+	}
+	if permit.plan.materialization != nil {
+		if err := retainedImage.RestoreOpenedGrants(compared.OpenedGrants); err != nil {
+			return nil, refused(InvalidRelation)
+		}
+	} else if len(compared.OpenedGrants) != 0 {
+		return nil, refused(InvalidRelation)
 	}
 	p.operation.operationRef, p.operation.sourceCount = compared.OperationRef, 0
 	if permit.plan.materialization == nil {
@@ -525,6 +533,7 @@ func (s *StateSession) prepareGeneratedFinal(ctx context.Context, permit *admitt
 				return nil, refused(AdmissionInvalid)
 			}
 			prepared = append(prepared, entryResults.Rows...)
+			grantSeals = entryResults.GrantSeals
 			if final == 1 {
 				break
 			}
@@ -536,7 +545,7 @@ func (s *StateSession) prepareGeneratedFinal(ctx context.Context, permit *admitt
 		change = &changeObservation{}
 	}
 	if permit.plan.selecting && len(prepared) != 0 && permit.plan.materialization == nil {
-		p.reservation, err = s.deriveGeneratedFinalPreparation(ctx, selectedWork, permit.plan, prepared, supplied)
+		p.reservation, err = s.deriveGeneratedFinalPreparation(ctx, selectedWork, permit.plan, prepared, supplied, grantSeals)
 	} else {
 		p.reservation, err = s.deriveGeneratedFinalWithObservation(ctx, permit.plan, prepared, change, supplied)
 	}
@@ -657,8 +666,18 @@ func (s *StateSession) deriveGeneratedFinalWithObservation(ctx context.Context, 
 		if err := next.installGeneratedRegistry(s, g, phaseID, candidate); err != nil {
 			return nil, err
 		}
-		if err := next.installGeneratedFinalEntries(g, plan, bySlot, suppliedBySlot, rows, phaseID, candidate); err != nil {
+		grants, expected, err := s.selectedImage().generatedGrantRows(&contract.GeneratedFinalPreparationImage{Generated: prepared, Supplied: preparedSupplied})
+		if err != nil {
+			return nil, err
+		}
+		if err := next.installGeneratedFinalEntries(g, plan, bySlot, suppliedBySlot, rows, phaseID, candidate, grants); err != nil {
 			return nil, fmt.Errorf("generated final value entries: %w", err)
+		}
+		if len(expected) != 0 && !format.GrantHeadFits(len(expected), len(s.token.Value), len(s.head.K1), len(s.head.K3), true) {
+			return nil, contract.ErrRecordCapacity
+		}
+		if len(candidate.head.GrantWraps) != len(expected)*format.GrantWrapLength {
+			return nil, contract.ErrRecord
 		}
 		outputEntries, entryErr := generatedDeclarationOutputEntries(validated.declaration)
 		if entryErr != nil {
@@ -705,7 +724,7 @@ func (s *StateSession) deriveGeneratedFinalWithObservation(ctx context.Context, 
 				access = append(access, row)
 			}
 		}
-		if err := next.packGeneratedFinalAccess(access, phaseID, candidate); err != nil {
+		if err := next.packGeneratedFinalAccess(access, phaseID, candidate, nil); err != nil {
 			return nil, err
 		}
 	}
@@ -817,11 +836,14 @@ func (s *StateSession) deriveGeneratedFinalWithObservation(ctx context.Context, 
 	candidate.objects = append(candidate.objects, objectImage{ref: rootRef, body: rootBody})
 	head := s.successorCore(transitionPlan{revision: revision})
 	head.Root = rootRef
+	if len(candidate.head.GrantWraps) != 0 {
+		head.GrantDigest = contract.Hash(candidate.head.GrantWraps)
+	}
 	subject, err := s.generatedFinalSubject(ctx, &next, g, plan, head, phaseID, revision)
 	if err != nil {
 		return nil, fmt.Errorf("generated final subject: %w", err)
 	}
-	candidate.head = format.Head{Core: head, AuthKind: format.GeneratorAuth, Generator: &subject,
+	candidate.head = format.Head{Core: head, GrantWraps: candidate.head.GrantWraps, AuthKind: format.GeneratorAuth, Generator: &subject,
 		K1: bytes.Clone(s.head.K1), K3: bytes.Clone(s.head.K3)}
 	next.head = candidate.head
 	if err := next.validateGeneratedSelection(ctx, nil); err != nil {

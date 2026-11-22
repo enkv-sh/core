@@ -146,14 +146,14 @@ type GeneratedCandidateRegistryInput struct {
 }
 
 type GeneratedCandidateInput struct {
-	ActiveOwner, ActivePhase, ActiveGraph    ID
-	Subject                                  GeneratorAuthoritySubject
-	PublicState                              PublicState
-	CurrentAccess                            CurrentAccessCore
-	AccessRecords                            []AccessRecord
-	SupportRecords                           []SupportRecord
-	Entries                                  []GeneratedCandidateEntry
-	HeadCore, Conditional, SourceProtections []byte
-	LiveSourceUses                           []GeneratorSourceUse
-	Registry                                 *GeneratedCandidateRegistryInput
+	ActiveOwner, ActivePhase, ActiveGraph                ID
+	Subject                                              GeneratorAuthoritySubject
+	PublicState                                          PublicState
+	CurrentAccess                                        CurrentAccessCore
+	AccessRecords                                        []AccessRecord
+	SupportRecords                                       []SupportRecord
+	Entries                                              []GeneratedCandidateEntry
+	HeadCore, Conditional, GrantWraps, SourceProtections []byte
+	LiveSourceUses                                       []GeneratorSourceUse
+	Registry                                             *GeneratedCandidateRegistryInput
 }

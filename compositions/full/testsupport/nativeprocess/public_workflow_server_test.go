@@ -77,6 +77,7 @@ type workflowServer struct {
 	childBytesLimit                     uint64
 	childTimeout                        time.Duration
 	rejectNextHeadUpdate                bool
+	rejectHeadBody                      func([]byte) bool
 	cancelGate                          *workflowCancelGate
 	gcListPrefix                        string
 	gcListKeys                          []string
@@ -362,7 +363,7 @@ func (s *workflowServer) s3(w http.ResponseWriter, r *http.Request, phase string
 			s.fail(w, "s3-exact-condition")
 			return
 		}
-		if head && exists && s.rejectNextHeadUpdate {
+		if head && exists && (s.rejectNextHeadUpdate || s.rejectHeadBody != nil && s.rejectHeadBody(body)) {
 			s.rejectNextHeadUpdate = false
 			c.conditions++
 			s.awsError(w, 412, "PreconditionFailed")

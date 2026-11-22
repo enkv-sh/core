@@ -273,6 +273,11 @@ func (s *workflowServer) gcs(w http.ResponseWriter, r *http.Request, phase strin
 		s.gcpError(w, 412, "conditionNotMet")
 		return
 	}
+	if head && exists && s.rejectHeadBody != nil && s.rejectHeadBody(payload) {
+		c.conditions++
+		s.gcpError(w, 412, "conditionNotMet")
+		return
+	}
 	if !exists && len(s.objects) >= s.objectLimit {
 		s.fail(w, "gcs-object-bound")
 		return

@@ -11,7 +11,7 @@ import (
 
 func (next *StateSession) installGeneratedFinalEntries(g *generatedSelection, plan *generatedFinalPlan,
 	prepared map[uint16]contract.CryptoGeneratedValueEntryResult, supplied map[uint16]generatedFinalSuppliedEntry,
-	support []contract.SupportRecord, phase contract.ID, candidate *Candidate) error {
+	support []contract.SupportRecord, phase contract.ID, candidate *Candidate, grants map[contract.ID][]contract.ID) error {
 	before := g.session
 	next.pages = [contract.MaxValueEntryPages]*format.ValueEntryPage{}
 	next.root.ValueEntryPages = [contract.MaxValueEntryPages]*format.Ref{}
@@ -170,7 +170,7 @@ func (next *StateSession) installGeneratedFinalEntries(g *generatedSelection, pl
 			return contract.ErrRecord
 		}
 	}
-	return next.packGeneratedFinalAccess(access, phase, candidate)
+	return next.packGeneratedFinalAccess(access, phase, candidate, grants)
 }
 
 func generatedFinalActiveHazards(g *generatedSelection) (map[contract.ID]bool, map[contract.ID]bool, error) {
@@ -194,7 +194,7 @@ func generatedFinalActiveHazards(g *generatedSelection) (map[contract.ID]bool, m
 	return attempts, hazards, nil
 }
 
-func (s *StateSession) packGeneratedFinalAccess(rows []contract.AccessRecord, phase contract.ID, candidate *Candidate) error {
+func (s *StateSession) packGeneratedFinalAccess(rows []contract.AccessRecord, phase contract.ID, candidate *Candidate, grants map[contract.ID][]contract.ID) error {
 	slices.SortFunc(rows, func(a, b contract.AccessRecord) int {
 		if a.MaterialKind != b.MaterialKind {
 			return int(a.MaterialKind) - int(b.MaterialKind)
@@ -256,6 +256,24 @@ func (s *StateSession) packGeneratedFinalAccess(rows []contract.AccessRecord, ph
 		}
 		s.access[i] = page
 		s.root.CurrentAccess.Core.AccessPageRefs = append(s.root.CurrentAccess.Core.AccessPageRefs, ref)
+		if len(grants) != 0 {
+			base, rows, err := format.SplitGrantPage(*page, grants)
+			if err != nil {
+				return err
+			}
+			if len(rows) != 0 {
+				body, err = format.EncodeAccessPage(base)
+				if err != nil {
+					return err
+				}
+				ref, err = format.Reference(format.AccessKind, base.Domain, base.Object, base.Index, body)
+				if err != nil {
+					return err
+				}
+				s.root.GrantPages = append(s.root.GrantPages, ref)
+				candidate.head.GrantWraps = append(candidate.head.GrantWraps, rows...)
+			}
+		}
 		candidate.objects = append(candidate.objects, objectImage{ref: ref, body: body})
 	}
 	s.root.AccessRecordCount = uint32(len(rows))

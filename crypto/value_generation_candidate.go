@@ -26,7 +26,7 @@ type generatedCandidate struct {
 	AccessRecords                         []contract.AccessRecord
 	SupportRecords                        []contract.SupportRecord
 	Entries                               []generatedCandidateEntry
-	HeadCore                              []byte
+	HeadCore, GrantWraps                  []byte
 	Conditional                           []byte
 	SourceProtections                     []byte
 	LiveSourceUses                        []contract.GeneratorSourceUse

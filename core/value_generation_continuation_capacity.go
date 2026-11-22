@@ -947,7 +947,7 @@ func selectedContinuationFinalShape(ctx context.Context, image *selectedImage, g
 		current[named.Name] = image.valueEntry(named.Slot)
 	}
 	var pages [contract.MaxValueEntryPages]bool
-	var raw, memberships, secrets, preparedReaders uint64
+	var raw, memberships, secrets, preparedReaders, grants uint64
 	recovery := uint64(boolInt(image.root.CurrentAccess.Core.Recovery != nil))
 	for _, plan := range bundle.ValueEntryPlans {
 		if err := ctx.Err(); err != nil {
@@ -1016,6 +1016,11 @@ func selectedContinuationFinalShape(ctx context.Context, image *selectedImage, g
 		width := uint64(contract.ValueEntryFixedLength+len(plan.Name)) + 32*uint64(len(ids)) + retainedLength
 		if plan.ConfidentialityClass == contract.Secret {
 			secrets++
+			additions, err := generatedDeclarationGrantCount(current[plan.Name], plan, entry, ids, generated)
+			if err != nil {
+				return shape, err
+			}
+			grants += additions
 			width += contract.CanonicalPayloadOverhead
 			readers := uint64(len(ids))
 			freshGenerated := plan.ValueSource == contract.Generated && plan.ChangeMask&contract.GeneratorValueChangeContent != 0
@@ -1086,7 +1091,7 @@ func selectedContinuationFinalShape(ctx context.Context, image *selectedImage, g
 		}
 	}
 	if creates != 0 && !materialized {
-		shape.preparationBytes = generatedFinalImageCapacity(shape.values.MaxFramedBytes, secrets*contract.AccessRecordFixedLength+preparedReaders*contract.WrapRowWireLength, 0, creates, shape.values.MaxCount)
+		shape.preparationBytes = generatedFinalImageCapacity(shape.values.MaxFramedBytes, secrets*contract.AccessRecordFixedLength+preparedReaders*contract.WrapRowWireLength, 0, creates, shape.values.MaxCount, grants)
 	}
 	return shape, nil
 }

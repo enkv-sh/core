@@ -497,7 +497,12 @@ func (r *Runtime) generatedExchangeOwned(ctx context.Context, q contract.CryptoR
 			return reply
 		}
 		var err error
-		reply.Body, err = contract.EncodeCryptoGeneratedCompareResult(contract.CryptoGeneratedCompareResult{OperationRef: a.operation})
+		compared := contract.CryptoGeneratedCompareResult{OperationRef: a.operation}
+		if f := a.purpose.final; f != nil {
+			compared.OpenedGrants = f.openedGrants
+		}
+		reply.Body, err = contract.EncodeCryptoGeneratedCompareResult(compared)
+		clear(compared.OpenedGrants)
 		if err != nil {
 			reply.ResultCode = contract.CryptoCustodyUnavailable
 			return reply

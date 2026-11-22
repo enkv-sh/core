@@ -19,14 +19,14 @@ func generatedReceiptWindowsEqual(left, right contract.MutationReceiptWindows) b
 
 func (a *generatedAdmission) candidateRegistryMatches(c generatedCandidate, head format.HeadCore) bool {
 	if a.registry == nil {
-		return c.Registry == nil
+		return c.Registry == nil && a.candidateGrantsMatch(c, head, nil)
 	}
 	v := c.Registry
 	if v == nil || !bytes.Equal(v.Image, a.registry.image) {
 		return false
 	}
 	root, err := format.DecodeRoot(v.Root)
-	if err != nil || format.CheckReference(head.Root, v.Root) != nil || root.Domain != c.PublicState.Domain || root.Snapshot != head.Root.Object || root.RecipientCount != uint16(len(v.Recipients)) {
+	if err != nil || format.CheckReference(head.Root, v.Root) != nil || !a.candidateGrantsMatch(c, head, &root) || root.Domain != c.PublicState.Domain || root.Snapshot != head.Root.Object || root.RecipientCount != uint16(len(v.Recipients)) {
 		return false
 	}
 	rootCore, err := contract.EncodeCurrentAccessCore(root.CurrentAccess.Core)

@@ -476,7 +476,7 @@ func (s *StateSession) installedGeneratedCandidate(ctx context.Context, reservat
 	if err != nil || next.head.Generator == nil {
 		return out, contract.ErrRecord
 	}
-	out = contract.GeneratedCandidateInput{ActiveOwner: next.root.Generated.ActiveOwner, ActivePhase: next.root.Generated.ActivePhase, ActiveGraph: next.root.Generated.ActiveGraph, Subject: *next.head.Generator, CurrentAccess: next.root.CurrentAccess.Core, AccessRecords: next.accessRecords()}
+	out = contract.GeneratedCandidateInput{ActiveOwner: next.root.Generated.ActiveOwner, ActivePhase: next.root.Generated.ActivePhase, ActiveGraph: next.root.Generated.ActiveGraph, Subject: *next.head.Generator, CurrentAccess: next.root.CurrentAccess.Core, AccessRecords: next.accessRecords(), GrantWraps: next.head.GrantWraps}
 	out.PublicState, err = next.publicProjection()
 	if err != nil {
 		return out, err

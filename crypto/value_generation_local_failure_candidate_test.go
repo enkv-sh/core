@@ -449,7 +449,7 @@ func generatedLocalFailureRefreshCandidate(t *testing.T, c *generatedCandidate) 
 func generatedLocalFailurePublicCandidate(c generatedCandidate) contract.GeneratedCandidateInput {
 	out := contract.GeneratedCandidateInput{ActiveOwner: c.ActiveOwner, ActivePhase: c.ActivePhase, ActiveGraph: c.ActiveGraph,
 		Subject: c.Subject, PublicState: c.PublicState, CurrentAccess: c.CurrentAccess, AccessRecords: c.AccessRecords, SupportRecords: c.SupportRecords,
-		HeadCore: c.HeadCore, Conditional: c.Conditional, SourceProtections: c.SourceProtections, LiveSourceUses: c.LiveSourceUses, Registry: c.Registry}
+		HeadCore: c.HeadCore, GrantWraps: c.GrantWraps, Conditional: c.Conditional, SourceProtections: c.SourceProtections, LiveSourceUses: c.LiveSourceUses, Registry: c.Registry}
 	for _, row := range c.Entries {
 		out.Entries = append(out.Entries, contract.GeneratedCandidateEntry(row))
 	}

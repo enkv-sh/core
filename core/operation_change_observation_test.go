@@ -194,7 +194,7 @@ func TestGeneratedFinalOwnerKeepsCompleteCandidateDetail(t *testing.T) {
 				for i, entry := range plan.entryPlans {
 					prepared[i] = generatedPreparedValueEntryFixture(t, s, entry)
 				}
-				checkpoint, err := s.deriveGeneratedFinalPreparation(t.Context(), mustSelectedGeneratedWork(t, s), plan, prepared, nil)
+				checkpoint, err := s.deriveGeneratedFinalPreparation(t.Context(), mustSelectedGeneratedWork(t, s), plan, prepared, nil, nil)
 				if err != nil || checkpoint.candidate.head.Generator.Purpose != contract.GeneratorAuthorityFinalPreparation {
 					t.Fatal("observed Final selected checkpoint fixture", err)
 				}

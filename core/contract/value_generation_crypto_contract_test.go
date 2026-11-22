@@ -1268,7 +1268,7 @@ func TestCryptoGeneratedCapacityAndCanonicalChunkBoundaries(t *testing.T) {
 		RequestID: generatedRecordID(1), CustodyInstanceID: generatedRecordID(2), Body: make([]byte, CryptoRequestLimit-cryptoRequestHeader+1)}); err != ErrCryptoCapacity {
 		t.Fatal("prepare union allocation bound", err)
 	}
-	if _, err := InspectCryptoGeneratedValueEntriesResult(make([]byte, CryptoGeneratedMaterialLimit+11)); err != ErrCryptoCapacity {
+	if _, err := InspectCryptoGeneratedValueEntriesResult(make([]byte, CryptoGeneratedMaterialLimit+MaxSelectedGrantRows*GeneratedGrantSealLength+11)); err != ErrCryptoCapacity {
 		t.Fatal("member result allocation bound", err)
 	}
 	if _, err := InspectCryptoGeneratedResponse(CryptoRequest{}, make([]byte, CryptoGeneratedResponseLimit+1)); err != ErrCryptoCapacity {

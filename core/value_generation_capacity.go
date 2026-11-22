@@ -62,14 +62,15 @@ type generatedCapacityShape struct {
 	// declaration and selected current/canonical reader sets. A generic shape
 	// without that proof keeps the full registry-product bound.
 	finalImageReaders *uint64
+	finalImageGrants  uint64
 }
 
 type generatedOutputSupportCapacity struct {
 	configuration, coordinates contract.GeneratorCapacityGroup
 }
 
-func generatedFinalImageCapacity(values, access, historicalReaders, creates, entries uint64) uint64 {
-	return values + access + historicalReaders*contract.WrapRowWireLength +
+func generatedFinalImageCapacity(values, access, historicalReaders, creates, entries, grants uint64) uint64 {
+	return values + access + historicalReaders*contract.WrapRowWireLength + grants*contract.GeneratedGrantSealLength +
 		creates*(512+contract.CryptoMaxName+generatedEntryMetadataCharge+128) + entries*(contract.CryptoMaxName+64) +
 		138 + contract.SupportRecordOverhead + contract.GeneratedFinalPreparationRecordLength + generatedSliceCarrierCharge
 }
@@ -304,14 +305,19 @@ func generatedCleanCapacity(v generatedCapacityShape) ([contract.GeneratorCapaci
 		// live old-access pages remain a separate obligation above.
 		// Fresh generated outputs cannot also be unchanged image rows.
 		retainedImageReaders := (v.ValueEntryPlanCount - min(v.ValueEntryPlanCount, v.Creates)) * v.Recipients
+		grantRows := min(v.SecretMemberships, uint64(contract.MaxSelectedGrantRows))
 		if v.finalImageReaders != nil {
+			if v.finalImageGrants > grantRows {
+				return groups, contract.ErrRecordCapacity
+			}
+			grantRows = v.finalImageGrants
 			if *v.finalImageReaders > retainedImageReaders {
 				return groups, contract.ErrRecordCapacity
 			}
 			retainedImageReaders = *v.finalImageReaders
 		}
 		auxiliary += generatedFinalImageCapacity(groups[contract.GeneratorCapacityCurrentValueEntries].MaxFramedBytes,
-			groups[contract.GeneratorCapacityCurrentAccess].MaxFramedBytes, retainedImageReaders, v.Creates, v.ValueEntryPlanCount)
+			groups[contract.GeneratorCapacityCurrentAccess].MaxFramedBytes, retainedImageReaders, v.Creates, v.ValueEntryPlanCount, grantRows)
 	}
 	fragmentGroup(contract.GeneratorCapacityAuxiliary, auxiliary, fragments(auxiliary))
 	for _, size := range []uint64{v.RegistryBytes, v.DesiredOutputBytes} {

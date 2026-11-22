@@ -156,3 +156,82 @@ func TestGeneratedFinalPreparationImageOwnsCompleteRowsAndClearsPartialDecode(t 
 		t.Fatal("empty materialization accepted")
 	}
 }
+
+// full_only: false
+func TestGeneratedGrantImageChecksExactSealDirectory(t *testing.T) {
+	_, _, row := generatedCryptoValueEntryFixture(t)
+	seal := GeneratedGrantSeal{Slot: row.Slot, Wrap: 0, EnvelopeID: generatedRecordID(19), Nonce: [12]byte{7}, Tag: [16]byte{9}}
+	v := GeneratedFinalPreparationImage{Schema: 2, DomainID: generatedRecordID(1), OperationID: generatedRecordID(2), MaterializationPhaseID: generatedRecordID(3), ControlBindingDigest: generatedRecordID(4), Generated: []CryptoGeneratedValueEntryResult{row}, GrantSeals: []GeneratedGrantSeal{seal}}
+	b, err := EncodeGeneratedFinalPreparationImage(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	directory := binary.BigEndian.AppendUint16(nil, row.Slot)
+	directory = append(directory, 0, 0)
+	directory = append(directory, seal.EnvelopeID[:]...)
+	directory = append(directory, seal.Nonce[:]...)
+	directory = append(directory, seal.Tag[:]...)
+	if len(directory) != 64 || !bytes.HasSuffix(b, directory) {
+		t.Fatal("wrong seal framing")
+	}
+	for _, bad := range [][]byte{b[:len(b)-1], b[:len(b)-64], append(bytes.Clone(b), directory...), append(bytes.Clone(b[:len(b)-64]), make([]byte, 64)...)} {
+		if image, err := DecodeGeneratedFinalPreparationImage(bad); err == nil || len(image.Generated) != 0 {
+			t.Fatal("invalid directory retained owned image")
+		}
+	}
+	image, err := DecodeGeneratedFinalPreparationImage(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer image.Clear()
+	opened := bytes.Repeat([]byte{33}, 384)
+	if image.RestoreOpenedGrants(opened[:383]) == nil {
+		t.Fatal("truncated restore accepted")
+	}
+	if err := image.RestoreOpenedGrants(opened); err != nil || !bytes.Equal(image.Generated[0].Access.Wraps[0].RSACiphertext, opened) {
+		t.Fatal("exact restore failed", err)
+	}
+	if !bytes.HasSuffix(b, directory) || bytes.Equal(v.Generated[0].Access.Wraps[0].RSACiphertext, opened) {
+		t.Fatal("restoration changed borrowed image")
+	}
+}
+
+// full_only: false
+func TestGeneratedGrantResultOwnChecksDirectoryBeforeCopy(t *testing.T) {
+	_, _, row := generatedCryptoValueEntryFixture(t)
+	wire, err := EncodeCryptoGeneratedValueEntriesResult(CryptoGeneratedValueEntriesResult{Final: 1, Rows: []CryptoGeneratedValueEntryResult{row}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	view, err := InspectCryptoGeneratedValueEntriesResult(wire)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seal := GeneratedGrantSeal{EnvelopeID: generatedRecordID(4)}
+	for _, bad := range [][]GeneratedGrantSeal{make([]GeneratedGrantSeal, 133), {seal, seal}, {{}}, {{EnvelopeID: seal.EnvelopeID, Slot: 512}}, {{EnvelopeID: seal.EnvelopeID, Wrap: 256}}} {
+		view.GrantSeals = bad
+		if got, err := view.Own(); err == nil || got.GrantSeals != nil {
+			t.Fatal("invalid directory copied", len(bad))
+		}
+	}
+	view.GrantSeals = []GeneratedGrantSeal{seal}
+	view.Final = 0
+	if _, err := view.Own(); err == nil {
+		t.Fatal("ordinary batch accepted a grant directory")
+	}
+	view.Final = 1
+	view.GrantSeals = nil
+	for i := range 132 {
+		row := seal
+		row.Slot = uint16(i)
+		view.GrantSeals = append(view.GrantSeals, row)
+	}
+	result, err := view.Own()
+	if err != nil || len(result.GrantSeals) != 132 {
+		t.Fatal("maximum directory refused", err)
+	}
+	view.GrantSeals[0].Slot = 1
+	if result.GrantSeals[0].Slot != 0 {
+		t.Fatal("owned directory aliases view")
+	}
+}

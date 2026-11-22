@@ -210,6 +210,11 @@ func (a *generatedAdmission) prepareSupplied(ctx context.Context, route KeyAcces
 		preparation.prepared = true
 		preparedBatch = append(preparedBatch, preparation)
 	}
+	if len(final.entryPreparations) != 0 {
+		if err := a.protectSuppliedGrants(result.Rows); err != nil {
+			return contract.CryptoCustodyUnavailable
+		}
+	}
 	out.Body, err = contract.EncodeCryptoGeneratedSuppliedResult(result)
 	if err != nil {
 		return contract.CryptoCustodyUnavailable

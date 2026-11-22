@@ -87,8 +87,9 @@ func TestGeneratedAdmissionFinalImageDoesNotChargeUnusedRegistryReaders(t *testi
 		t.Fatal("fixture lost one retained image row and one fresh create")
 	}
 	// The current/retained sets share the Authority: 64+64-1=127, not the
-	// 128-row registry. This expectation uses no production union calculation.
-	want := fallback[contract.GeneratorCapacityAuxiliary].MaxFramedBytes - 489
+	// 128-row registry. The generic shape also reserves a 64-byte grant seal
+	// for each of its 65 memberships. Neither image row adds a reader.
+	want := fallback[contract.GeneratorCapacityAuxiliary].MaxFramedBytes - 489 - 65*64
 	if charged[contract.GeneratorCapacityAuxiliary].MaxFramedBytes != want {
 		t.Fatal("Final image charged an unused registry recipient", charged[contract.GeneratorCapacityAuxiliary], fallback[contract.GeneratorCapacityAuxiliary])
 	}
@@ -178,12 +179,14 @@ func TestGeneratedFinalImageCapacityProofSharesAdministrativeReservation(t *test
 	}
 	old, new := generic[contract.GeneratorCapacityAuxiliary], qualified[contract.GeneratorCapacityAuxiliary]
 	// Independent scalar framing: fixed auxiliary2275328 + current entries
-	// 3309924 + current access29550 + remaining image framing18681.
-	// Generic adds49*256*489; qualified adds49*489. Fragment payload1048320
-	// gives12 vs6 fragments; each fragment adds37+86=123 framing bytes.
-	if old != (contract.GeneratorCapacityGroup{MaxCount: 12, MaxFramedBytes: 11768975, MaxPages: 6}) ||
-		new != (contract.GeneratorCapacityGroup{MaxCount: 6, MaxFramedBytes: 5658182, MaxPages: 3}) ||
-		old.MaxFramedBytes-new.MaxFramedBytes != 49*255*489+123*6 ||
+	// 4403074 (50 entries with 87384 retained bytes) + current access29550
+	// + remaining image framing18681.
+	// Generic adds 49*256*489 and 50*64 for possible grants. Qualified
+	// adds 49*489 and has no new grant. Fragment payload 1048320
+	// gives 13 vs 7 fragments; each fragment adds37+86=123 framing bytes.
+	if old != (contract.GeneratorCapacityGroup{MaxCount: 13, MaxFramedBytes: 12865448, MaxPages: 7}) ||
+		new != (contract.GeneratorCapacityGroup{MaxCount: 7, MaxFramedBytes: 6751455, MaxPages: 4}) ||
+		old.MaxFramedBytes-new.MaxFramedBytes != 49*255*489+50*64+123*6 ||
 		genericRows[contract.GeneratedFragmentSupportKind]-qualifiedRows[contract.GeneratedFragmentSupportKind] != 6 {
 		t.Fatal("index did not use the same prospective fragment reserve", old, new)
 	}

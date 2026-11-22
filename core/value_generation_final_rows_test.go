@@ -43,7 +43,7 @@ func TestGeneratedFinalCheckpointChecksCompletePreparedRelation(t *testing.T) {
 				t.Fatal("semantic challenge did not round trip", err)
 			}
 			defer decoded.Clear()
-			prepared, err := s.deriveGeneratedFinalPreparation(t.Context(), g, plan, decoded.Generated, nil)
+			prepared, err := s.deriveGeneratedFinalPreparation(t.Context(), g, plan, decoded.Generated, nil, decoded.GrantSeals)
 			if condition == "exact" {
 				if err != nil || prepared == nil {
 					t.Fatal("complete public relation refused", err)

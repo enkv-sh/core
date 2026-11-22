@@ -783,7 +783,12 @@ func (a *generatedAdmission) checkpointCandidatePhase(c generatedCandidate, snap
 		return zero, false
 	}
 	defer image.Clear()
-	if !a.checkpointImageMatches(image) || !a.checkpointSupportMatches(c.SupportRecords, preparation, oldPreparation) {
+	if !slices.Equal(image.GrantSeals, a.purpose.final.grantSeals) {
+		return zero, false
+	}
+	opened, openErr := a.openCheckpointGrants(&image)
+	clear(opened)
+	if openErr != nil || !a.checkpointImageMatches(image) || !a.checkpointSupportMatches(c.SupportRecords, preparation, oldPreparation) {
 		return zero, false
 	}
 	return checkpoint, true

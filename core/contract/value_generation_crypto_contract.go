@@ -3,6 +3,7 @@ package contract
 import (
 	"bytes"
 	"math"
+	"slices"
 )
 
 const (
@@ -1447,12 +1448,14 @@ type CryptoGeneratedValueEntriesResult struct {
 	BatchIndex uint32
 	Final      uint8
 	Rows       []CryptoGeneratedValueEntryResult
+	GrantSeals []GeneratedGrantSeal
 }
 
 type CryptoGeneratedValueEntriesResultView struct {
 	BatchIndex uint32
 	Final      uint8
 	Rows       []byte
+	GrantSeals []GeneratedGrantSeal
 }
 
 type cryptoGeneratedValueEntryResultTraversal struct {
@@ -1762,10 +1765,19 @@ func EncodeCryptoGeneratedValueEntriesResult(v CryptoGeneratedValueEntriesResult
 		w.u32(uint32(length))
 		writeCryptoGeneratedValueEntryResult(&w, row)
 	}
-	return w.b, nil
+	if len(v.GrantSeals) != 0 && v.Final != 1 {
+		return nil, ErrCryptoMessage
+	}
+	return appendGeneratedGrantSeals(w.b, v.GrantSeals)
 }
 
 func cryptoGeneratedValueEntryResultsSpanError(v CryptoGeneratedValueEntriesResultView) error {
+	if len(v.GrantSeals) != 0 && v.Final != 1 {
+		return ErrCryptoMessage
+	}
+	if err := validateGeneratedGrantSeals(v.GrantSeals); err != nil {
+		return err
+	}
 	if len(v.Rows) > CryptoGeneratedMaterialLimit {
 		return ErrCryptoCapacity
 	}
@@ -1798,7 +1810,7 @@ func cryptoGeneratedValueEntryResultsSpanError(v CryptoGeneratedValueEntriesResu
 }
 
 func InspectCryptoGeneratedValueEntriesResult(b []byte) (CryptoGeneratedValueEntriesResultView, error) {
-	if len(b) > 10+CryptoGeneratedMaterialLimit {
+	if len(b) > 10+CryptoGeneratedMaterialLimit+MaxSelectedGrantRows*GeneratedGrantSealLength {
 		return CryptoGeneratedValueEntriesResultView{}, ErrCryptoCapacity
 	}
 	r := cryptoReader{b: b}
@@ -1806,6 +1818,14 @@ func InspectCryptoGeneratedValueEntriesResult(b []byte) (CryptoGeneratedValueEnt
 		return CryptoGeneratedValueEntriesResultView{}, ErrCryptoMessage
 	}
 	v := CryptoGeneratedValueEntriesResultView{BatchIndex: r.u32(), Final: r.u8(), Rows: r.blob(CryptoGeneratedMaterialLimit)}
+	if r.err == nil && r.i < len(b) && v.Final == 1 {
+		var err error
+		v.GrantSeals, err = readGeneratedGrantSeals(b[r.i:])
+		if err != nil {
+			return CryptoGeneratedValueEntriesResultView{}, err
+		}
+		r.i = len(b)
+	}
 	if err := r.end(); err != nil {
 		return CryptoGeneratedValueEntriesResultView{}, err
 	}
@@ -1840,7 +1860,7 @@ func (v CryptoGeneratedValueEntriesResultView) Own() (CryptoGeneratedValueEntrie
 	if err := cryptoGeneratedValueEntryResultsSpanError(v); err != nil {
 		return CryptoGeneratedValueEntriesResult{}, err
 	}
-	out := CryptoGeneratedValueEntriesResult{BatchIndex: v.BatchIndex, Final: v.Final, Rows: make([]CryptoGeneratedValueEntryResult, v.RowCount())}
+	out := CryptoGeneratedValueEntriesResult{BatchIndex: v.BatchIndex, Final: v.Final, GrantSeals: slices.Clone(v.GrantSeals), Rows: make([]CryptoGeneratedValueEntryResult, v.RowCount())}
 	r := cryptoReader{b: v.Rows}
 	_ = r.u32()
 	for i := range out.Rows {
@@ -1856,20 +1876,24 @@ func (v CryptoGeneratedValueEntriesResultView) Own() (CryptoGeneratedValueEntrie
 	return out, nil
 }
 
-type CryptoGeneratedCompareResult struct{ OperationRef ID }
+type CryptoGeneratedCompareResult struct {
+	OperationRef ID
+	OpenedGrants []byte
+}
 
 func EncodeCryptoGeneratedCompareResult(v CryptoGeneratedCompareResult) ([]byte, error) {
-	if v.OperationRef.IsZero() {
+	if v.OperationRef.IsZero() || len(v.OpenedGrants)%RSACiphertextLength != 0 || len(v.OpenedGrants) > MaxSelectedGrantRows*RSACiphertextLength {
 		return nil, ErrCryptoMessage
 	}
-	return append([]byte(nil), v.OperationRef[:]...), nil
+	b := append([]byte(nil), v.OperationRef[:]...)
+	return append(b, v.OpenedGrants...), nil
 }
 
 func InspectCryptoGeneratedCompareResult(b []byte) (CryptoGeneratedCompareResult, error) {
-	if len(b) != 32 || ID(b).IsZero() {
+	if len(b) < 32 || len(b) > 32+MaxSelectedGrantRows*RSACiphertextLength || (len(b)-32)%RSACiphertextLength != 0 || ID(b[:32]).IsZero() {
 		return CryptoGeneratedCompareResult{}, ErrCryptoMessage
 	}
-	return CryptoGeneratedCompareResult{OperationRef: ID(b)}, nil
+	return CryptoGeneratedCompareResult{OperationRef: ID(b[:32]), OpenedGrants: b[32:len(b):len(b)]}, nil
 }
 
 type CryptoGeneratedPartResult struct{}
@@ -2181,8 +2205,15 @@ func cryptoGeneratedRequestBody(kind CryptoKind, body []byte) error {
 func cryptoGeneratedSuccessBody(q CryptoRequest, body []byte) error {
 	switch q.Kind {
 	case CryptoCompare:
-		_, err := InspectCryptoGeneratedCompareResult(body)
-		return err
+		v, err := InspectCryptoGeneratedCompareResult(body)
+		if err != nil || len(v.OpenedGrants) == 0 {
+			return err
+		}
+		request, err := InspectCryptoGeneratedCompareRequest(q.Body)
+		if err != nil || request.Purpose != CryptoGeneratedFinalPreparationPurpose {
+			return ErrCryptoMessage
+		}
+		return nil
 	case CryptoPrepare:
 		in, err := inspectCryptoGeneratedPrepareBody(q.Body)
 		if err != nil {

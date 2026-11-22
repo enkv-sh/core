@@ -47,6 +47,9 @@ func (b *generatedSelectionBuilder) resolveFinalPreparation() error {
 	if err != nil || id != g.phase.PhaseID {
 		return contract.ErrRecord
 	}
+	if err := g.image.checkGeneratedGrantSeals(&image); err != nil {
+		return err
+	}
 	g.preparation = &preparation
 	return nil
 }
@@ -75,7 +78,7 @@ func selectedFinalPreparationImage(ctx context.Context, g *generatedSelection) (
 }
 
 func (s *StateSession) deriveGeneratedFinalPreparation(ctx context.Context, g *generatedSelection, plan *generatedFinalPlan,
-	prepared []contract.CryptoGeneratedValueEntryResult, supplied []contract.CryptoPreparedSecret) (*generatedReservation, error) {
+	prepared []contract.CryptoGeneratedValueEntryResult, supplied []contract.CryptoPreparedSecret, seals []contract.GeneratedGrantSeal) (*generatedReservation, error) {
 	if g == nil || g.parent == nil || g.phase == nil || plan.materialization != nil || !plan.selecting || len(prepared) != len(plan.entryPlans) {
 		return nil, contract.ErrRecord
 	}
@@ -93,7 +96,13 @@ func (s *StateSession) deriveGeneratedFinalPreparation(ctx context.Context, g *g
 		return nil, err
 	}
 	image := contract.GeneratedFinalPreparationImage{Schema: contract.GeneratorRecordSchema, DomainID: g.parent.DomainID,
-		OperationID: g.parent.OperationID, MaterializationPhaseID: mustGeneratedPhaseID(plan.phase), ControlBindingDigest: digest, Generated: prepared, Supplied: supplied}
+		OperationID: g.parent.OperationID, MaterializationPhaseID: mustGeneratedPhaseID(plan.phase), ControlBindingDigest: digest, Generated: prepared, Supplied: supplied, GrantSeals: seals}
+	if len(seals) != 0 {
+		image.Schema = contract.GeneratedGrantPreparationSchema
+	}
+	if err := s.selectedImage().checkGeneratedGrantSeals(&image); err != nil {
+		return nil, err
+	}
 	body, err := contract.EncodeGeneratedFinalPreparationImage(image)
 	if err != nil {
 		return nil, err

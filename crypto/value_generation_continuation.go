@@ -124,9 +124,19 @@ func (a *generatedAdmission) openContinuation(ctx context.Context, route KeyAcce
 		}
 	}
 	if final := a.purpose.final; final != nil && final.preparedImage != nil {
+		var err error
+		final.openedGrants, err = a.openCheckpointGrants(final.preparedImage)
+		if err != nil {
+			return contract.CryptoStoredAuthenticationFailed
+		}
 		return a.openFinalPreparation(ctx, route, out)
 	}
 	if final := a.purpose.final; final != nil && final.qualificationImage != nil {
+		opened, err := a.openCheckpointGrants(final.qualificationImage)
+		clear(opened)
+		if err != nil {
+			return contract.CryptoStoredAuthenticationFailed
+		}
 		return a.qualifyHistoricalPreparation(ctx, route, out)
 	}
 	return contract.CryptoSuccess

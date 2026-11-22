@@ -10,7 +10,7 @@ import (
 )
 
 const GrantWrapLength = 4 + contract.WrapRowWireLength
-const MaxGrantPages = contract.MaxHeadLength / GrantWrapLength
+const MaxGrantPages = contract.MaxSelectedGrantRows
 
 // GrantHeadFits reserves the final authorization signature at its maximum DER
 // length. The token and setup proofs are already known on an ordinary grant.

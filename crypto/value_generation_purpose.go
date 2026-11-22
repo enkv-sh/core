@@ -122,6 +122,9 @@ type generatedAdoptionState struct {
 }
 
 type generatedFinalPreparationState struct {
+	grantControl           contract.ID
+	grantSeals             []contract.GeneratedGrantSeal
+	openedGrants           []byte
 	canonicalAccess        []generatedCanonicalAccessPin
 	plan                   generatedPlanState
 	phase                  contract.GeneratorPhaseIdentity
@@ -281,6 +284,7 @@ func (p generatedPurposeState) clear() {
 		*p.adoption = generatedAdoptionState{}
 	}
 	if p.final != nil {
+		clear(p.final.openedGrants)
 		for _, pin := range p.final.canonicalAccess {
 			for _, wrap := range pin.access.Wraps {
 				clear(wrap.RSACiphertext[:cap(wrap.RSACiphertext)])

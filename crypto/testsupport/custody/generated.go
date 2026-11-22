@@ -21,15 +21,15 @@ type GeneratedCandidateEntry struct {
 }
 
 type GeneratedCandidate struct {
-	ActiveOwner, ActivePhase, ActiveGraph    contract.ID
-	Subject                                  contract.GeneratorAuthoritySubject
-	PublicState                              contract.PublicState
-	CurrentAccess                            contract.CurrentAccessCore
-	AccessRecords                            []contract.AccessRecord
-	SupportRecords                           []contract.SupportRecord
-	Entries                                  []GeneratedCandidateEntry
-	HeadCore, Conditional, SourceProtections []byte
-	LiveSourceUses                           []contract.GeneratorSourceUse
+	ActiveOwner, ActivePhase, ActiveGraph                contract.ID
+	Subject                                              contract.GeneratorAuthoritySubject
+	PublicState                                          contract.PublicState
+	CurrentAccess                                        contract.CurrentAccessCore
+	AccessRecords                                        []contract.AccessRecord
+	SupportRecords                                       []contract.SupportRecord
+	Entries                                              []GeneratedCandidateEntry
+	HeadCore, Conditional, GrantWraps, SourceProtections []byte
+	LiveSourceUses                                       []contract.GeneratorSourceUse
 }
 
 type GeneratedCanonicalSelection = contract.GeneratedCanonicalSelection
@@ -128,7 +128,7 @@ func (f *Fixture) admitGeneratedPlan(q contract.CryptoGeneratedCompareRequest, c
 func (f *Fixture) BindGeneratedCandidate(ctx context.Context, id contract.ID, candidate GeneratedCandidate) contract.CryptoResultCode {
 	c := privatecrypto.TestGeneratedCandidate{ActiveOwner: candidate.ActiveOwner, ActivePhase: candidate.ActivePhase, ActiveGraph: candidate.ActiveGraph,
 		Subject: candidate.Subject, PublicState: candidate.PublicState, CurrentAccess: candidate.CurrentAccess, AccessRecords: candidate.AccessRecords,
-		SupportRecords: candidate.SupportRecords, HeadCore: candidate.HeadCore, Conditional: candidate.Conditional, SourceProtections: candidate.SourceProtections,
+		SupportRecords: candidate.SupportRecords, HeadCore: candidate.HeadCore, GrantWraps: candidate.GrantWraps, Conditional: candidate.Conditional, SourceProtections: candidate.SourceProtections,
 		LiveSourceUses: candidate.LiveSourceUses}
 	for _, candidateEntry := range candidate.Entries {
 		c.Entries = append(c.Entries, privatecrypto.TestGeneratedCandidateEntry(candidateEntry))

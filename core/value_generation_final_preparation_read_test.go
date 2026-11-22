@@ -31,7 +31,7 @@ func TestGeneratedFinalPreparationClaimKeepsSelectedReadResult(t *testing.T) {
 			before.admission.expires = time.Now().Add(time.Minute)
 			prepared := generatedPreparedValueEntryFixture(t, before, plan.entryPlans[0])
 			reservation, err := before.deriveGeneratedFinalPreparation(t.Context(), mustSelectedGeneratedWork(t, before), plan,
-				[]contract.CryptoGeneratedValueEntryResult{prepared}, nil)
+				[]contract.CryptoGeneratedValueEntryResult{prepared}, nil, nil)
 			if err != nil || reservation == nil {
 				t.Fatal("derive selected FinalPreparation", err)
 			}

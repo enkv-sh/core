@@ -2,6 +2,7 @@ package contract
 
 const (
 	GeneratedFinalPreparationRecordLength = 318
+	GeneratedGrantPreparationSchema       = 2
 	// Bound the complete image before reading or allocating it. Prepared rows
 	// obey the existing 8 MiB raw set and 4,096 current memberships. Every
 	// secret has structural room for historical retained sources covering
@@ -9,7 +10,7 @@ const (
 	// histories have at most 64 ordinary readers for one material.
 	// The 1,024-byte generated metadata/core terms exceed
 	// their canonical bounds; this does not introduce a new Product quota.
-	GeneratedFinalPreparationMaxLength = 138 + CryptoMaxRetainedSet + 32*CryptoMaxMemberships +
+	GeneratedFinalPreparationMaxLength = 138 + MaxSelectedGrantRows*GeneratedGrantSealLength + CryptoMaxRetainedSet + 32*CryptoMaxMemberships +
 		CryptoMaxValueEntries*(ValueEntryFixedLength+CryptoMaxName+CanonicalPayloadOverhead+AccessRecordFixedLength+CryptoMaxName+64) +
 		GeneratedCurrentEntryLimit*2*1024 + WrapRowWireLength*CryptoMaxValueEntries*(CryptoMaxRecipients+1)
 )
@@ -93,10 +94,11 @@ type GeneratedFinalPreparationImage struct {
 	DomainID, OperationID, MaterializationPhaseID, ControlBindingDigest ID
 	Generated                                                           []CryptoGeneratedValueEntryResult
 	Supplied                                                            []CryptoPreparedSecret
+	GrantSeals                                                          []GeneratedGrantSeal
 }
 
 func EncodeGeneratedFinalPreparationImage(v GeneratedFinalPreparationImage) ([]byte, error) {
-	if v.Schema != GeneratorRecordSchema || !publicIDsValid(v.DomainID, v.OperationID, v.MaterializationPhaseID, v.ControlBindingDigest) ||
+	if v.Schema != GeneratorRecordSchema && v.Schema != GeneratedGrantPreparationSchema || (v.Schema == GeneratedGrantPreparationSchema) != (len(v.GrantSeals) != 0) || !publicIDsValid(v.DomainID, v.OperationID, v.MaterializationPhaseID, v.ControlBindingDigest) ||
 		len(v.Generated) == 0 || len(v.Generated) > GeneratedCurrentEntryLimit || len(v.Generated)+len(v.Supplied) > CryptoMaxValueEntries {
 		return nil, ErrRecord
 	}
@@ -153,7 +155,13 @@ func EncodeGeneratedFinalPreparationImage(v GeneratedFinalPreparationImage) ([]b
 			return nil, ErrRecordCapacity
 		}
 	}
-	return w.b, nil
+	if err := v.VisitGrantWraps(nil); err != nil {
+		return nil, err
+	}
+	if len(w.b)+len(v.GrantSeals)*GeneratedGrantSealLength > GeneratedFinalPreparationMaxLength {
+		return nil, ErrRecordCapacity
+	}
+	return appendGeneratedGrantSeals(w.b, v.GrantSeals)
 }
 
 func DecodeGeneratedFinalPreparationImage(body []byte) (v GeneratedFinalPreparationImage, err error) {
@@ -167,7 +175,7 @@ func DecodeGeneratedFinalPreparationImage(body []byte) (v GeneratedFinalPreparat
 	}
 	r := newRecordReader(body)
 	v = GeneratedFinalPreparationImage{Schema: r.u16(), DomainID: r.requiredID(), OperationID: r.requiredID(), MaterializationPhaseID: r.requiredID(), ControlBindingDigest: r.requiredID()}
-	if v.Schema != GeneratorRecordSchema {
+	if v.Schema != GeneratorRecordSchema && v.Schema != GeneratedGrantPreparationSchema {
 		return v, ErrRecord
 	}
 	count := r.u32()
@@ -182,7 +190,7 @@ func DecodeGeneratedFinalPreparationImage(body []byte) (v GeneratedFinalPreparat
 		if err != nil {
 			return v, err
 		}
-		if view.BatchIndex != 0 || view.Final != 1 || view.RowCount() != 1 {
+		if view.BatchIndex != 0 || view.Final != 1 || view.RowCount() != 1 || len(view.GrantSeals) != 0 {
 			return v, ErrRecord
 		}
 		borrowed, err := view.Row(0)
@@ -255,6 +263,13 @@ func DecodeGeneratedFinalPreparationImage(body []byte) (v GeneratedFinalPreparat
 			return v, ErrRecord
 		}
 		slots[row.Slot] = true
+	}
+	if v.Schema == GeneratedGrantPreparationSchema {
+		v.GrantSeals, err = readGeneratedGrantSeals(body[r.i:])
+		if err != nil || len(v.GrantSeals) == 0 || v.VisitGrantWraps(nil) != nil {
+			return v, ErrRecord
+		}
+		r.i = len(body)
 	}
 	if err := r.end(); err != nil {
 		return v, err
