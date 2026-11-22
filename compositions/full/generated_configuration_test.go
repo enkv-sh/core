@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -13,10 +14,50 @@ import (
 )
 
 // full_only: false
+func TestGeneratedInboxSelectorRefusesBeforeSourceAccess(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
+	defer cancel()
+	for _, format := range []configuration.Format{configuration.JSON, configuration.YAML} {
+		for _, source := range []string{"pair", "file"} {
+			t.Run(configurationSourceFormat(format)+"/"+source, func(t *testing.T) {
+				request := contract.ID{1}
+				path := filepath.Join(t.TempDir(), "absent")
+				var out ConfigurationApplyResult
+				if source == "pair" {
+					out = ReleaseConfigurationGeneratedInbox(ctx, request, &configuration.Pair{Format: format}, contract.ID{})
+				} else {
+					out = ReleaseConfigurationGeneratedInboxFile(ctx, request, path, format, contract.ID{})
+				}
+				if out.RequestID != request || out.PreAdmission == nil || out.PreAdmission.Stage != "dispatch" || out.PreAdmission.Code != string(contract.ReasonInvalidInput) || out.Result.Outcome != core.AdmissionRefused || !out.RequestIdentity.IsZero() || out.SourceFailure != nil || len(out.Diagnostics) != 0 || out.Generated != nil || out.Cleanup != nil || out.Payload != nil || len(out.Receipt) != 0 {
+					t.Fatal("invalid inbox reached source admission", out.Result, out.PreAdmission, out.SourceFailure)
+				}
+				body, err := out.RenderGeneratedJSON(contract.OperationCleanOwnedFailureResidue)
+				if err != nil || !json.Valid(body) {
+					t.Fatal("zero inbox refusal is not renderable", err)
+				}
+				if body, err := out.RenderGeneratedHuman(contract.OperationCleanOwnedFailureResidue); err != nil || len(body) == 0 {
+					t.Fatal("zero inbox refusal has no text", err)
+				}
+				wantStage := "parse"
+				if source == "pair" {
+					out = ReleaseConfigurationGeneratedInbox(ctx, request, &configuration.Pair{Format: format}, contract.ID{2})
+				} else {
+					out = ReleaseConfigurationGeneratedInboxFile(ctx, request, path, format, contract.ID{2})
+					wantStage = "capture"
+				}
+				if out.PreAdmission == nil || out.PreAdmission.Stage != wantStage || out.RequestID != request || out.Result.Outcome != core.AdmissionRefused {
+					t.Fatal("valid inbox did not reach its source boundary", out.Result, out.PreAdmission)
+				}
+			})
+		}
+	}
+}
+
+// full_only: false
 func TestGeneratedAcceptedWorkConstructionIgnoresLocalProposal(t *testing.T) {
 	for _, family := range []string{"aws", "gcp"} {
 		t.Run(family, func(t *testing.T) {
-			source := configurationApplyPair(t, family, configuration.JSON, nil)
+			source := configurationAcceptedWorkPair(t, family, configuration.JSON)
 			defer func() {
 				if err := source.pair.Close(); err != nil {
 					t.Error("generated configuration source cleanup failed", err)
@@ -51,7 +92,7 @@ func TestGeneratedAcceptedWorkConstructionIgnoresLocalProposal(t *testing.T) {
 func TestGeneratedConfigurationConstructionIsFiniteAndReadOnly(t *testing.T) {
 	for _, family := range []string{"aws", "gcp"} {
 		t.Run(family, func(t *testing.T) {
-			source := configurationApplyPair(t, family, configuration.JSON, nil)
+			source := configurationAcceptedWorkPair(t, family, configuration.JSON)
 			defer func() {
 				if err := source.pair.Close(); err != nil {
 					t.Error("generated configuration source cleanup failed", err)
@@ -86,7 +127,7 @@ func TestGeneratedConfigurationConstructionIsFiniteAndReadOnly(t *testing.T) {
 func TestGeneratedListConstructionDoesNotValidatePendingIntent(t *testing.T) {
 	for _, family := range []string{"aws", "gcp"} {
 		t.Run(family, func(t *testing.T) {
-			source := configurationApplyPair(t, family, configuration.JSON, nil)
+			source := configurationAcceptedWorkPair(t, family, configuration.JSON)
 			defer func() {
 				if err := source.pair.Close(); err != nil {
 					t.Error("generated configuration source cleanup failed", err)
@@ -117,7 +158,7 @@ func TestGeneratedCleanupPreAdmissionRequiresZeroRequestIdentity(t *testing.T) {
 	for _, family := range []string{"aws", "gcp"} {
 		for _, admitted := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/admitted-%t", family, admitted), func(t *testing.T) {
-				source := configurationApplyPair(t, family, configuration.JSON, nil)
+				source := configurationAcceptedWorkPair(t, family, configuration.JSON)
 				defer func() {
 					if err := source.pair.Close(); err != nil {
 						t.Error("generated source cleanup failed", err)

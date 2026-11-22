@@ -26,7 +26,11 @@ func renderGeneratedMutationHuman(r core.PublicApplyResult, operation uint16, lo
 			w.text("Original receipt observed revision: " + readerID(p.ObservedRevisionID) + "\n")
 		}
 		if r.Result.CommitMayHaveOccurred {
-			w.text("Warning: the HEAD change may have occurred. Observe the operation before another mutation.\n")
+			if r.Cleanup != nil && r.Cleanup.Basis.Kind == core.GeneratedCleanupInboxRelease {
+				w.text("Warning: the HEAD change may have occurred. Use inspect to check this temporary Inbox before another cleanup.\n")
+			} else {
+				w.text("Warning: the HEAD change may have occurred. Observe the operation before another mutation.\n")
+			}
 		}
 		if p := r.Preparation; p != nil {
 			if p.PossibleUnacknowledgedCreate {
@@ -75,9 +79,17 @@ func renderGeneratedMutationHuman(r core.PublicApplyResult, operation uint16, lo
 		}
 		if p := r.Cleanup; p != nil {
 			writeGeneratedCleanupHuman(w, p)
+			if p.Basis.Kind == core.GeneratedCleanupInboxRelease && g.StateResult == "effect-unknown" {
+				w.text("Temporary inbox deletion is unresolved. Run generated cleanup with the same --inbox ID to check the Store again.\n")
+			}
 		}
 		for _, diagnostic := range r.Diagnostics {
 			writeDiagnosticHuman(w, diagnostic)
+			if r.Cleanup != nil && r.Cleanup.Basis.Kind == core.GeneratedCleanupInboxRelease && r.Result.Outcome != core.ObservedCurrent &&
+				diagnostic.Subject == (contract.DiagnosticSubject{Kind: contract.SubjectStore}) && len(diagnostic.Path) == 1 && diagnostic.Path[0] == contract.FieldPresence &&
+				diagnostic.Outcome == contract.DiagnosticUnable && diagnostic.Reason == contract.ReasonEvidenceUnavailable {
+				w.text("The Store did not confirm deletion. Use inspect to check this temporary Inbox before another cleanup.\n")
+			}
 		}
 		writeGeneratedHazardWarnings(w, g.Hazards, generatedMutationHazardWarnings(g))
 		if g.Warnings.LateEffect {
@@ -123,7 +135,10 @@ func renderGeneratedMutationHuman(r core.PublicApplyResult, operation uint16, lo
 
 func writeGeneratedCleanupHuman(w generatedFactWriter, p *core.GeneratedCleanupPayload) {
 	b := p.Basis
-	w.text("Cleanup basis: " + map[core.GeneratedCleanupBasisKind]string{core.GeneratedCleanupNoWork: "no work", core.GeneratedCleanupReflection: "retained result reflection", core.GeneratedCleanupOwnedTarget: "owned target"}[b.Kind] + "\n")
+	w.text("Cleanup basis: " + map[core.GeneratedCleanupBasisKind]string{core.GeneratedCleanupNoWork: "no work", core.GeneratedCleanupReflection: "retained result reflection", core.GeneratedCleanupOwnedTarget: "owned target", core.GeneratedCleanupInboxRelease: "temporary inbox release"}[b.Kind] + "\n")
+	if b.Kind == core.GeneratedCleanupInboxRelease {
+		w.text("Temporary Inbox: " + readerID(b.SourceID) + "\n")
+	}
 	for _, row := range []struct {
 		label string
 		id    contract.ID

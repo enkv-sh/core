@@ -8,8 +8,12 @@ package main
 // Omitted, failed, partial and unobserved roots keep prior or provisional weights.
 // Unlisted tests use the one-second fallback.
 var componentEstimates = map[string]float64{
+	"TestInstalledGeneratedInboxCleanupReopensOnlyNamedMapping":                           62,
+	"TestInstalledGeneratedInboxCleanupRefusesOccupiedGeneratedSlot":                      7,
+	"TestInstalledGeneratedInboxCleanupRefusesUnobservedAndLiveOriginal":                  12,
+	"TestInstalledGeneratedInboxCleanupRetainsCanceledDeleteObservation":                  6,
 	"TestInstalledRetirementReleasesOnlyItsObsoleteInbox":                                 8,
-	"TestInstalledRetirementReleasesInboxAfterLastSupportOwner":                           10,
+	"TestInstalledRetirementReleasesInboxAfterLastSupportOwner":                           9,
 	"TestInstalledCleanupReleasesOriginalAtSelectedHandoff":                               24,
 	"TestInstalledCleanupKeepsSealedReturnAfterCallerCancellation":                        11,
 	"TestInstalledParallelCreateReportsOneStoreFailureInPlanOrder":                        5,
@@ -276,7 +280,7 @@ var componentEstimates = map[string]float64{
 	"TestGeneratedWriterReconstructionRefusesMissingOrCorruptReferencedIntent": 9,
 	"TestGeneratedWriterReferencesCompleteSmallFreshProcessCycles":             23,
 	"TestRecipientReplacementPreservesWrappedEndWorkCapacityCause":             100,
-	"TestGeneratedInboxReleaseSelectedReadResults":                             3,
+	"TestGeneratedInboxReleaseSelectedReadResults":                             6,
 	"TestEndWorkMissingResultPreservesCurrentProgress":                         2,
 
 	"TestPublicationDisposalCycles":                      51,
@@ -708,7 +712,7 @@ var componentEstimates = map[string]float64{
 	"TestGeneratedRecordedResultSurvivesReciprocalCurrentKeyReplacement":                          61,
 	"TestGeneratedRecoveredLineageAdvancesToNextOriginal":                                         5,
 	"TestGeneratedReflectionPackingUsesSuccessorChildren":                                         29,
-	"TestGeneratedRepeatedDeleteReflectionClosesActualOlderResultAndRetainsUnknownGarbage":        7,
+	"TestGeneratedRepeatedDeleteReflectionClosesActualOlderResultAndRetainsUnknownGarbage":        8,
 	"TestGeneratedRepeatedRetirementKeepsEachUnknownInvocation":                                   8,
 	"TestGeneratedRepeatedRetirementParkingPreservesEveryPriorInvocation":                         8,
 	"TestGeneratedRepeatedRetirementRecordingPreservesEarlierUncertainty":                         7,
@@ -1000,7 +1004,7 @@ var componentEstimates = map[string]float64{
 	"TestGeneratedHistoryPackingUsesPredecessorAttempt":                                           1,
 	"TestGeneratedIdentityAllocationPreservesFutureAttemptsAndSourceKeys":                         1,
 	"TestGeneratedIdentityAllocationPreservesRetainedValueKeys":                                   1,
-	"TestGeneratedInboxDeleteRequiresExactObservedHandoff":                                        1,
+	"TestGeneratedInboxDeleteRequiresExactObservedHandoff":                                        2,
 	"TestGeneratedInboxReleaseDoesNotStartDeleteAfterAdmissionExpiry":                             2,
 	"TestGeneratedInboxReleaseLifecyclePlanRemovesOnlyExactCleanHandoff":                          1,
 	"TestGeneratedInboxReleaseLifecycleRetainsUnknownDelete":                                      1,

@@ -43,7 +43,7 @@ func TestGeneratedCleanupDiagnosticCountAndExactCanonicalAccount(t *testing.T) {
 
 // The cleanup encoding recipe in spec/057 uses I(n)=n followed by 31 zero
 // bytes, BE framing and one owned target. Independent Python SHA-256 with
-// Snapshot Ref format 10 gives target/basis/row/vector lengths 273/441/856/1002;
+// Snapshot Ref format 11 gives target/basis/row/vector lengths 273/441/856/1002;
 // Target schema2 binds config/resource/digest and lifecycle; the outer domain is v3.
 func cleanupCommitmentLiteral() PublicApplyResult {
 	id := func(n byte) (v contract.ID) { v[0] = n; return }
@@ -63,7 +63,7 @@ func TestGeneratedCleanupSiblingIndependentLiterals(t *testing.T) {
 		t.Fatal("independent row length", w.length, w.err)
 	}
 	got, err := GeneratedCleanupSiblingResults(r)
-	if err != nil || got.Count != 1 || hex.EncodeToString(got.RootDigest[:]) != "b4e3dae254830a25ffd607fde3ec063887a95c50a9f778df3003b895f78ac0a0" {
+	if err != nil || got.Count != 1 || hex.EncodeToString(got.RootDigest[:]) != "1b8bb65dd8f2a2909efc075b2db9779cdc8c4cc9f96e946f8cb4e102678260c6" {
 		t.Fatal("independent one-row commitment", got, err)
 	}
 	r.Cleanup.Basis = GeneratedCleanupBasis{Kind: GeneratedCleanupNoWork}

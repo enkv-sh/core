@@ -14,8 +14,8 @@ import (
 )
 
 type generatedCommandRequest struct {
-	kind                     uint16
-	operation, duty, attempt contract.ID
+	kind                            uint16
+	operation, duty, attempt, inbox contract.ID
 }
 type generatedMutationExecutor func(context.Context, contract.ID, string, configuration.Format, generatedCommandRequest) compositionfull.ConfigurationApplyResult
 type generatedListExecutor func(context.Context, contract.ID, string, configuration.Format) compositionfull.ConfigurationGeneratedListResult
@@ -51,16 +51,21 @@ func runGeneratedWithExecutors(ctx context.Context, args []string, out, diagnost
 	}
 	flags := flag.NewFlagSet("generated "+args[0], flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
-	var source, format, operation, duty, attempt replacementFlag
+	var source, format, operation, duty, attempt, inbox replacementFlag
 	flags.Var(&source, "source", "")
 	flags.Var(&format, "source-format", "")
 	flags.Var(&operation, "operation", "")
 	flags.Var(&duty, "duty", "")
 	flags.Var(&attempt, "attempt", "")
+	flags.Var(&inbox, "inbox", "")
 	structured := bindCommandJSONFlag(flags)
 	var options commandTelemetryOptions
 	options.BindFlags(flags)
-	if handled, code := commandFlagHelp(args[1:], out, flags, "generated "+args[0]+" [--source PATH] [--source-format yaml|json] [OPTIONS]\n"); handled {
+	usage := "generated " + args[0] + " [--source PATH] [--source-format yaml|json] [OPTIONS]\n"
+	if request.kind == contract.OperationCleanOwnedFailureResidue {
+		usage += "Use --operation ID to continue cleanup or --inbox ID to recheck one temporary result. Select one at a time.\n"
+	}
+	if handled, code := commandFlagHelp(args[1:], out, flags, usage); handled {
 		return code
 	}
 	refuse := func() int {
@@ -114,21 +119,27 @@ func runGeneratedWithExecutors(ctx context.Context, args []string, out, diagnost
 			return invalid()
 		}
 	}
+	if inbox.set {
+		request.inbox, ok = parseID(inbox.value)
+		if !ok {
+			return invalid()
+		}
+	}
 	switch {
 	case isList:
-		if operation.set || duty.set || attempt.set {
+		if operation.set || duty.set || attempt.set || inbox.set {
 			return invalid()
 		}
 	case request.kind == contract.OperationRetireGeneratedGeneration:
-		if operation.set == duty.set || attempt.set {
+		if operation.set == duty.set || attempt.set || inbox.set {
 			return invalid()
 		}
 	case request.kind == contract.OperationAcceptGeneratedRetirementResidue:
-		if operation.set || !duty.set || !attempt.set {
+		if operation.set || !duty.set || !attempt.set || inbox.set {
 			return invalid()
 		}
 	case request.kind == contract.OperationCleanOwnedFailureResidue:
-		if duty.set || attempt.set {
+		if duty.set || attempt.set || operation.set && inbox.set {
 			return invalid()
 		}
 	}
@@ -167,6 +178,9 @@ func executeGeneratedMutation(ctx context.Context, id contract.ID, source string
 	case contract.OperationAcceptGeneratedRetirementResidue:
 		return compositionfull.AcceptConfigurationGeneratedRetirementRiskFile(ctx, id, source, format, core.GeneratedRetirementRiskRequest{DutyID: q.duty, AttemptID: q.attempt})
 	case contract.OperationCleanOwnedFailureResidue:
+		if !q.inbox.IsZero() {
+			return compositionfull.ReleaseConfigurationGeneratedInboxFile(ctx, id, source, format, q.inbox)
+		}
 		if !q.operation.IsZero() {
 			return compositionfull.ContinueConfigurationGeneratedCleanupFile(ctx, id, source, format, core.GeneratedCleanupContinuationRequest{OperationID: q.operation})
 		}

@@ -41,6 +41,24 @@ func CleanupConfigurationGenerated(ctx context.Context, requestID contract.ID, p
 	out.PublicApplyResult = configurationGeneratedMutation(ctx, requestID, pair, func(e *core.InstalledApply) core.PublicApplyResult { return e.CleanupGenerated(ctx, requestID) }, openConfigurationApply, configurationMutationResultFacts{&out.SourceFailure, &out.storeLocation})
 	return out
 }
+func ReleaseConfigurationGeneratedInbox(ctx context.Context, requestID contract.ID, pair *configuration.Pair, inboxID contract.ID) (out ConfigurationApplyResult) {
+	if inboxID.IsZero() {
+		var format configuration.Format
+		if pair != nil {
+			format = pair.Format
+		}
+		var err error
+		out.PublicApplyResult, err = newConfigurationApplyResult(requestID, format)
+		if err != nil {
+			out.Result = core.Result{Outcome: core.EvidenceUnavailable, Reason: core.CustodyUnavailable}
+		}
+		return out
+	}
+	out.PublicApplyResult = configurationGeneratedMutation(ctx, requestID, pair, func(e *core.InstalledApply) core.PublicApplyResult {
+		return e.ReleaseGeneratedInbox(ctx, requestID, inboxID)
+	}, openConfigurationApply, configurationMutationResultFacts{&out.SourceFailure, &out.storeLocation})
+	return out
+}
 func ContinueConfigurationGeneratedCleanup(ctx context.Context, requestID contract.ID, pair *configuration.Pair, request core.GeneratedCleanupContinuationRequest) (out ConfigurationApplyResult) {
 	out.PublicApplyResult = configurationGeneratedMutation(ctx, requestID, pair, func(e *core.InstalledApply) core.PublicApplyResult {
 		return e.ContinueGeneratedCleanup(ctx, requestID, request)
@@ -50,6 +68,19 @@ func ContinueConfigurationGeneratedCleanup(ctx context.Context, requestID contra
 func CleanupConfigurationGeneratedFile(ctx context.Context, requestID contract.ID, path string, format configuration.Format) (out ConfigurationApplyResult) {
 	return configurationGeneratedMutationFile(ctx, requestID, path, format, func(pair *configuration.Pair) ConfigurationApplyResult {
 		return CleanupConfigurationGenerated(ctx, requestID, pair)
+	})
+}
+func ReleaseConfigurationGeneratedInboxFile(ctx context.Context, requestID contract.ID, path string, format configuration.Format, inboxID contract.ID) (out ConfigurationApplyResult) {
+	if inboxID.IsZero() {
+		var err error
+		out.PublicApplyResult, err = newConfigurationApplyResult(requestID, format)
+		if err != nil {
+			out.Result = core.Result{Outcome: core.EvidenceUnavailable, Reason: core.CustodyUnavailable}
+		}
+		return out
+	}
+	return configurationGeneratedMutationFile(ctx, requestID, path, format, func(pair *configuration.Pair) ConfigurationApplyResult {
+		return ReleaseConfigurationGeneratedInbox(ctx, requestID, pair, inboxID)
 	})
 }
 func ContinueConfigurationGeneratedCleanupFile(ctx context.Context, requestID contract.ID, path string, format configuration.Format, request core.GeneratedCleanupContinuationRequest) (out ConfigurationApplyResult) {

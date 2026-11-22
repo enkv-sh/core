@@ -503,15 +503,21 @@ enkv generated retire --source /absolute/configuration.yaml --source-format yaml
 enkv generated accept-retirement-risk --source /absolute/configuration.yaml --source-format yaml --duty "$duty_id" --attempt "$attempt_id" --json
 enkv generated cleanup --source /absolute/configuration.yaml --source-format yaml --json
 enkv generated cleanup --source /absolute/configuration.yaml --source-format yaml --operation "$operation_id" --json
+enkv generated cleanup --source /absolute/configuration.yaml --source-format yaml --inbox "$inbox_id" --json
 ```
 
 Retirement accepts exactly one of `--duty` or `--operation`. Risk acceptance
 requires both `--duty` and `--attempt`; the explicit command records the decision
 without another prompt. It sends no provider request and retains the exact
 possible-live resource as a Hazard. Cleanup first reflects eligible original
-results in Product order, then selects exact owned residue. It has no caller
-target selector. Cleanup and list have no terminal receipt or complete-history
-contract.
+results in Product order, then selects exact owned residue. With `--inbox`,
+cleanup checks only the named temporary result inbox. Get its ID from `inspect`
+after a command leaves a pending or unknown release. The command reads the
+exact Store object and releases the selected mapping after confirmed absence
+or acknowledged conditional deletion. If the outcome remains unknown, inspect
+the current state before another attempt. `--inbox` and `--operation` are
+mutually exclusive. Cleanup and list have no terminal receipt or
+complete-history contract.
 
 After restart or loss of a response, use `generated list` to discover selected
 current generations and exact operations, Attempts, Duties and Hazards. List

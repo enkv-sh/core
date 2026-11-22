@@ -88,6 +88,9 @@ func (capture *generatedCleanupResultCapture) prevalidate(out PublicApplyResult,
 		// These local closed observations validate shape before any selection.
 		// They do not create a checkpoint or claim that a CAS occurred.
 		out.Result = Result{Outcome: ObservedCurrent, Evidence: AuthenticatedClosure, ObservedRevision: variant.payload.RemainingWorkBasis.HeadRevisionID, ObservedSnapshotID: variant.payload.RemainingWorkBasis.Snapshot.Object}
+		if variant.payload.Basis.Kind == GeneratedCleanupInboxRelease && variant.facts == &capture.selected {
+			out.Result.RequestedRevision = capture.candidate.head.Core.Revision
+		}
 		switch variant.facts.StateResult {
 		case "commit-outcome-unknown":
 			out.Result = Result{Outcome: UnresolvedCommit, RequestedRevision: capture.candidate.head.Core.Revision, CommitMayHaveOccurred: true}

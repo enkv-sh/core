@@ -370,6 +370,10 @@ func validateGeneratedCleanup(r PublicApplyResult) error {
 				return err
 			}
 		}
+	case GeneratedCleanupInboxRelease:
+		if !cleanupInboxReleaseValid(r) {
+			return contract.ErrRecord
+		}
 	default:
 		return contract.ErrRecord
 	}
@@ -552,6 +556,34 @@ func validateGeneratedCleanup(r PublicApplyResult) error {
 		}
 	}
 	return nil
+}
+
+func cleanupInboxReleaseValid(r PublicApplyResult) bool {
+	p, g := r.Cleanup, r.Generated
+	b := p.Basis
+	if b.PlanGraphID.IsZero() || b.SourceKind != contract.PendingInboxReleaseSupportKind || b.SourceID.IsZero() || b.OriginalOwnerID.IsZero() ||
+		b.OriginalOperationID.IsZero() || b.OriginalAttemptID.IsZero() || b.OriginalResult == nil || b.Target != nil || p.PredecessorRevisionID.IsZero() {
+		return false
+	}
+	if _, err := contract.EncodeGeneratorResultReference(*b.OriginalResult); err != nil {
+		return false
+	}
+	inbox, err := contract.GeneratorInboxID(r.DomainID, b.OriginalOperationID, b.OriginalAttemptID, b.OriginalResult.ResultID)
+	if err != nil || inbox != b.SourceID {
+		return false
+	}
+	if !g.SummaryCountsAvailable || !g.EffectsAvailable || !g.RelatedWorkAvailable || len(g.Effects) != 0 || len(g.Duties) != 0 || len(g.Hazards) != 0 || len(g.RelatedDutyIDs) != 0 || len(g.RelatedHazardIDs) != 0 ||
+		g.SummaryCounts != [contract.ReceiptSummaryCount]uint32{} || g.AcknowledgedCount != 0 || g.ConfirmedCount != 0 || g.UnknownCount != 0 ||
+		g.EffectSummary != contract.ReceiptEffectNoChange || g.EvidenceCeiling != contract.ReceiptEvidenceCanonical || g.Warnings != (GeneratedResultWarnings{}) {
+		return false
+	}
+	retained := containsCleanupID(p.RemainingInboxIDs, b.SourceID)
+	if r.Result.Outcome == ObservedCurrent {
+		return !r.Result.RequestedRevision.IsZero() && r.Result.RequestedRevision != p.PredecessorRevisionID &&
+			g.CanonicalOutcome == contract.ReceiptCanonicalSelected &&
+			(g.StateResult == "success" && !retained || g.StateResult == "effect-unknown" && retained)
+	}
+	return retained && p.RemainingWorkBasis.HeadRevisionID == p.PredecessorRevisionID
 }
 func containsCleanupID(v []contract.ID, id contract.ID) bool {
 	for _, a := range v {

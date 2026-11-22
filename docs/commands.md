@@ -86,6 +86,7 @@ service identity.
 | `generated retire --duty ID` or `--operation ID` | Retire exact accepted managed-resource work. |
 | `generated accept-retirement-risk --duty ID --attempt ID` | Record an explicit risk decision; it sends no provider request. |
 | `generated cleanup [--operation ID]` | Process eligible original results and select owned residue cleanup. |
+| `generated cleanup --inbox ID` | Recheck and release one exact pending temporary result inbox. Get its ID from `inspect`. |
 | `rekey --name NAME --out PATH` | Refresh a current secret's protection while keeping its value. |
 | `recipients retire --recipient REF --out PATH` | Retire an ordinary recipient and its memberships. |
 | `keys replace --target authority\|recovery\|recipient --out PATH ...` | Replace an existing cloud key binding. |

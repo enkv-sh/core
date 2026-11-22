@@ -34,6 +34,7 @@ func TestGeneratedCLIRefusalEffectSummaries(t *testing.T) {
 	}{
 		{"retire", "effect-no-change", []string{"--duty", id}},
 		{"cleanup", "effect-no-change", nil},
+		{"cleanup", "effect-no-change", []string{"--inbox", id}},
 		{"accept-retirement-risk", "not-applicable", []string{"--duty", id, "--attempt", id}},
 	} {
 		for _, origin := range []string{"invalid-selector", "construction"} {
@@ -119,6 +120,13 @@ func TestGeneratedCLIRejectsAmbiguousSelectorsBeforeExecution(t *testing.T) {
 		{"accept-retirement-risk", "--duty", id, "--attempt", id, "--operation", id},
 		{"cleanup", "--duty", id}, {"cleanup", "--hazard", id}, {"cleanup", "--operation", ""},
 		{"cleanup", "--operation", id, "--operation", id}, {"cleanup", "unexpected"},
+		{"list", "--inbox", id}, {"retire", "--duty", id, "--inbox", id},
+		{"accept-retirement-risk", "--duty", id, "--attempt", id, "--inbox", id},
+		{"cleanup", "--inbox", ""}, {"cleanup", "--inbox", strings.Repeat("0", 64)},
+		{"cleanup", "--inbox", strings.ToUpper(id)}, {"cleanup", "--inbox", id[:63]},
+		{"cleanup", "--inbox", strings.Repeat("g", 64)}, {"cleanup", "--inbox", id, "--inbox", id},
+		{"cleanup", "--inbox", id, "--operation", id}, {"cleanup", "--inbox", id, "--duty", id},
+		{"cleanup", "--inbox", id, "--attempt", id},
 	}
 	for _, row := range cases {
 		t.Run(strings.Join(row, " "), func(t *testing.T) {
@@ -155,12 +163,17 @@ func TestGeneratedCLISelectsOnlyExactInstalledOperation(t *testing.T) {
 		{"accept-retirement-risk", []string{"--duty", idText(id), "--attempt", idText(id)}, contract.OperationAcceptGeneratedRetirementResidue, contract.ID{}, id, id},
 		{"cleanup", nil, contract.OperationCleanOwnedFailureResidue, contract.ID{}, contract.ID{}, contract.ID{}},
 		{"cleanup", []string{"--operation", idText(id)}, contract.OperationCleanOwnedFailureResidue, id, contract.ID{}, contract.ID{}},
+		{"cleanup", []string{"--inbox", idText(id)}, contract.OperationCleanOwnedFailureResidue, contract.ID{}, contract.ID{}, contract.ID{}},
 	} {
 		t.Run(row.name+strings.Join(row.flags, ""), func(t *testing.T) {
 			calls := 0
 			execute := func(_ context.Context, nonce contract.ID, gotPath string, format configuration.Format, q generatedCommandRequest) compositionfull.ConfigurationApplyResult {
 				calls++
-				if nonce.IsZero() || gotPath != path || format != configuration.JSON || q.kind != row.kind || q.operation != row.operation || q.duty != row.duty || q.attempt != row.attempt {
+				var wantInbox contract.ID
+				if len(row.flags) != 0 && row.flags[0] == "--inbox" {
+					wantInbox = id
+				}
+				if nonce.IsZero() || gotPath != path || format != configuration.JSON || q.kind != row.kind || q.operation != row.operation || q.duty != row.duty || q.attempt != row.attempt || q.inbox != wantInbox {
 					t.Fatal("selector or literal path changed", q)
 				}
 				return generatedCLIRefusal()
@@ -183,6 +196,10 @@ func TestGeneratedCLISelectsOnlyExactInstalledOperation(t *testing.T) {
 	var output, diagnostic bytes.Buffer
 	if code := runGeneratedWithExecutors(t.Context(), []string{"list", "--source", path, "--source-format", "json", "--json", "--log-level", "off"}, &output, &diagnostic, executeGeneratedMutation, list); code != 2 || calls != 1 {
 		t.Fatal("list did not use reader", code, calls)
+	}
+	output.Reset()
+	if code := runGeneratedWithExecutors(t.Context(), []string{"cleanup", "--help"}, &output, &diagnostic, executeGeneratedMutation, list); code != 0 || !strings.Contains(output.String(), "--inbox ID") || !strings.Contains(output.String(), "--operation ID") || calls != 1 {
+		t.Fatal("cleanup help lost exact selectors", code, calls, output.String())
 	}
 }
 

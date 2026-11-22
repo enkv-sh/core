@@ -16,6 +16,8 @@ const (
 	generatedInboxDeleteUnknown
 	generatedInboxDeleteExpired
 	generatedInboxDeleteInvalidObject
+	generatedInboxDeleteUnavailable
+	generatedInboxDeleteNotSent
 )
 
 // deleteGeneratedInbox verifies the selected handoff bytes before it asks an
@@ -28,7 +30,7 @@ func (s *StateSession) deleteGeneratedInbox(ctx context.Context, inboxID contrac
 	}
 	g, err := s.selectedGeneratedWork(ctx)
 	if err != nil {
-		return generatedInboxDeleteUnknown
+		return generatedInboxDeleteUnavailable
 	}
 	row, ok := g.records[generatedRecordKey{kind: contract.PendingInboxReleaseSupportKind, id: inboxID}]
 	if !ok {
@@ -46,27 +48,33 @@ func (s *StateSession) deleteGeneratedInbox(ctx context.Context, inboxID contrac
 	read := s.storeRead(ctx, key, release.ObjectLength)
 	switch read.Status {
 	case contract.ReadMissing:
+		if read.Reason != contract.ReasonNone || len(read.Body) != 0 || read.Token != (contract.Token{}) {
+			return generatedInboxDeleteUnavailable
+		}
 		return generatedInboxDeleteClean
 	case contract.ReadOK:
+		if read.Reason != contract.ReasonNone {
+			return generatedInboxDeleteUnavailable
+		}
 		if uint32(len(read.Body)) != release.ObjectLength || contract.Hash(read.Body) != release.SelectedHandoffDigest {
 			return generatedInboxDeleteInvalidObject
 		}
 		if !read.Token.Valid() || read.Token.Family != s.admission.store.Family {
-			return generatedInboxDeleteUnknown
+			return generatedInboxDeleteUnavailable
 		}
 	case contract.ReadInvalid:
 		if read.Reason == contract.ReasonLimit {
 			return generatedInboxDeleteInvalidObject
 		}
-		return generatedInboxDeleteUnknown
+		return generatedInboxDeleteUnavailable
 	default:
-		return generatedInboxDeleteUnknown
+		return generatedInboxDeleteUnavailable
 	}
 	deleter, ok := s.store.(contract.ConditionalDeleteStore)
 	if !ok {
 		// The exact object was observed present, and this Store cannot send
 		// a conditional deletion. Its existing mapping still applies.
-		return generatedInboxDeletePending
+		return generatedInboxDeleteNotSent
 	}
 	if ctx.Err() != nil {
 		return generatedInboxDeleteExpired
@@ -76,8 +84,14 @@ func (s *StateSession) deleteGeneratedInbox(ctx context.Context, inboxID contrac
 	call.Checkpoint(telemetry.DiagnosticCommitObservation, telemetry.DiagnosticReasonNone)
 	result := deleter.DeleteIfToken(telemetry.CallContext(ctx, call), key, read.Token)
 	finishWrite(call, 0, result)
+	if result.NotSent && result.Status != contract.WriteAcknowledged {
+		return generatedInboxDeleteNotSent
+	}
 	switch result.Status {
 	case contract.WriteAcknowledged:
+		if result.Reason != contract.ReasonNone || result.NotSent {
+			return generatedInboxDeleteUnknown
+		}
 		return generatedInboxDeleteClean
 	case contract.WritePrecondition, contract.WriteConflict:
 		return generatedInboxDeletePending

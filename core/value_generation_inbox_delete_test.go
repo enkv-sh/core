@@ -79,6 +79,15 @@ func (s *generatedInboxDeleteStore) DeleteIfToken(_ context.Context, key string,
 
 // full_only: false
 func TestGeneratedInboxDeleteRequiresExactObservedHandoff(t *testing.T) {
+	t.Run("store without conditional deletion", func(t *testing.T) {
+		s, a, release := generatedInboxReleaseState(t, 0, contract.GeneratedReleasePending)
+		descriptor := contract.Descriptor{Family: contract.AWS, Prefix: "fixture"}
+		store := &generatedInboxDeleteStore{descriptor: descriptor, read: contract.ReadResult{Status: contract.ReadOK, Body: a.result, Token: contract.Token{Family: contract.AWS, Value: `"inbox-etag"`}}}
+		s.store, s.admission.store = struct{ contract.Store }{store}, descriptor
+		if got := s.deleteGeneratedInbox(context.Background(), release.InboxID); got != generatedInboxDeleteNotSent || store.deleteCalls != 0 {
+			t.Fatalf("outcome=%d calls=%d", got, store.deleteCalls)
+		}
+	})
 	for _, state := range []uint8{contract.GeneratedReleasePending, contract.GeneratedReleaseUnknown} {
 		for _, tc := range []struct {
 			name      string
@@ -90,6 +99,12 @@ func TestGeneratedInboxDeleteRequiresExactObservedHandoff(t *testing.T) {
 			{"missing", func(_ []byte, _ contract.Token) contract.ReadResult {
 				return contract.ReadResult{Status: contract.ReadMissing}
 			}, contract.WriteResult{}, generatedInboxDeleteClean, 0},
+			{"unqualified missing", func(_ []byte, token contract.Token) contract.ReadResult {
+				return contract.ReadResult{Status: contract.ReadMissing, Token: token, Reason: contract.ReasonAccess}
+			}, contract.WriteResult{}, generatedInboxDeleteUnavailable, 0},
+			{"unqualified present", func(body []byte, token contract.Token) contract.ReadResult {
+				return contract.ReadResult{Status: contract.ReadOK, Token: token, Body: body, Reason: contract.ReasonAccess}
+			}, contract.WriteResult{}, generatedInboxDeleteUnavailable, 0},
 			{"exact", func(body []byte, token contract.Token) contract.ReadResult {
 				return contract.ReadResult{Status: contract.ReadOK, Body: body, Token: token}
 			}, contract.WriteResult{Status: contract.WriteAcknowledged}, generatedInboxDeleteClean, 1},
@@ -104,6 +119,9 @@ func TestGeneratedInboxDeleteRequiresExactObservedHandoff(t *testing.T) {
 			{"lost reply", func(body []byte, token contract.Token) contract.ReadResult {
 				return contract.ReadResult{Status: contract.ReadOK, Body: body, Token: token}
 			}, contract.WriteResult{Status: contract.WriteUnknown, Reason: contract.ReasonTransport}, generatedInboxDeleteUnknown, 1},
+			{"never sent", func(body []byte, token contract.Token) contract.ReadResult {
+				return contract.ReadResult{Status: contract.ReadOK, Body: body, Token: token}
+			}, contract.WriteResult{Status: contract.WriteRefused, Reason: contract.ReasonAccess, NotSent: true}, generatedInboxDeleteNotSent, 1},
 		} {
 			t.Run(map[uint8]string{contract.GeneratedReleasePending: "pending/", contract.GeneratedReleaseUnknown: "unknown/"}[state]+tc.name, func(t *testing.T) {
 				s, a, release := generatedInboxReleaseState(t, 0, state)

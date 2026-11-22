@@ -14,6 +14,7 @@ const (
 	GeneratedCleanupNoWork GeneratedCleanupBasisKind = iota + 1
 	GeneratedCleanupReflection
 	GeneratedCleanupOwnedTarget
+	GeneratedCleanupInboxRelease
 )
 
 type GeneratedCleanupBasis struct {

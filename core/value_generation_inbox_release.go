@@ -22,50 +22,77 @@ type generatedInboxReleaseClosure struct {
 
 func (s *StateSession) generatedInboxReleasePlan(ctx context.Context, inboxID contract.ID,
 	admitted contract.ApplyContext) (*generatedLifecyclePlan, error) {
+	clean, unknown, err := s.prepareInboxReleasePlans(ctx, inboxID, admitted, nil)
+	if err != nil {
+		return nil, err
+	}
+	return s.observeInboxReleasePlan(ctx, clean, unknown, false)
+}
+
+// Both successor images must be viable before the conditional delete. A named
+// command also captures its bounded public results while that evidence exists.
+func (s *StateSession) prepareInboxReleasePlans(ctx context.Context, inboxID contract.ID, admitted contract.ApplyContext, capture func(*generatedSelection, *generatedLifecyclePlan, *generatedReservation) error) (*generatedLifecyclePlan, *generatedLifecyclePlan, error) {
 	if s == nil || s.prepared || ctx == nil || inboxID.IsZero() || !s.generatedContextValid(admitted) {
-		return nil, fmt.Errorf("admit inbox release: %w", contract.ErrRecord)
+		return nil, nil, fmt.Errorf("admit inbox release: %w", contract.ErrRecord)
 	}
 	g, err := s.selectedGeneratedWork(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	clean, err := g.generatedInboxReleaseClosure(inboxID)
 	if err != nil {
-		return nil, fmt.Errorf("derive clean inbox release: %w", err)
+		return nil, nil, fmt.Errorf("derive clean inbox release: %w", err)
 	}
 	unknown, err := g.generatedInboxReleaseUnknownClosure(inboxID)
 	if err != nil {
-		return nil, fmt.Errorf("derive unknown inbox release: %w", err)
+		return nil, nil, fmt.Errorf("derive unknown inbox release: %w", err)
 	}
 	cleanPlan, err := s.generatedInboxReleaseClosurePlan(ctx, clean, generatedLifecycleInboxRelease, admitted)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	unknownPlan, err := s.generatedInboxReleaseClosurePlan(ctx, unknown, generatedLifecycleInboxReleaseUnknown, admitted)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	// Qualify both possible selected closures before the physical object can
-	// disappear. A provider outcome cannot repair missing release provenance.
-	if _, err := s.deriveGeneratedInboxRelease(ctx, cleanPlan); err != nil {
-		return nil, fmt.Errorf("qualify clean inbox release before delete: %w", err)
+	for _, plan := range []*generatedLifecyclePlan{unknownPlan, cleanPlan} {
+		proposal, err := s.deriveGeneratedLifecycle(ctx, plan, nil)
+		if err != nil {
+			return nil, nil, fmt.Errorf("qualify inbox release before delete: %w", err)
+		}
+		if !ordinaryCandidateCapacity(proposal.candidate) {
+			return nil, nil, contract.ErrRecordCapacity
+		}
+		if capture != nil {
+			if err := capture(g, plan, proposal); err != nil {
+				return nil, nil, err
+			}
+		}
 	}
-	if _, err := s.deriveGeneratedInboxReleaseUnknown(ctx, unknownPlan); err != nil {
-		return nil, fmt.Errorf("qualify unknown inbox release before delete: %w", err)
-	}
-	effectContext, cancel := context.WithDeadline(ctx, time.Unix(0, int64(admitted.Expiry)))
+	return cleanPlan, unknownPlan, nil
+}
+
+func (s *StateSession) observeInboxReleasePlan(ctx context.Context, cleanPlan, unknownPlan *generatedLifecyclePlan, reportReadFailure bool) (*generatedLifecyclePlan, error) {
+	effectContext, cancel := context.WithDeadline(ctx, time.Unix(0, int64(cleanPlan.context.Expiry)))
 	defer cancel()
-	switch s.deleteGeneratedInbox(effectContext, inboxID) {
+	switch s.deleteGeneratedInbox(effectContext, cleanPlan.owner) {
 	case generatedInboxDeleteClean:
 		return cleanPlan, nil
+	case generatedInboxDeleteNotSent:
+		return nil, selectedReadFailure(failure(EvidenceUnavailable, ReadUnavailable))
+	case generatedInboxDeleteUnavailable:
+		if reportReadFailure {
+			return nil, selectedReadFailure(failure(EvidenceUnavailable, ReadUnavailable))
+		}
+		return unknownPlan, nil
 	case generatedInboxDeleteUnknown:
 		return unknownPlan, nil
 	case generatedInboxDeleteInvalidObject:
 		return nil, selectedReadFailure(failure(IntegrityFailure, ImmutableConflict))
 	case generatedInboxDeleteExpired:
-		return nil, fmt.Errorf("inbox release deadline: %w", contract.ErrRecord)
+		return nil, context.DeadlineExceeded
 	default:
-		return nil, fmt.Errorf("pending inbox release: %w", contract.ErrRecord)
+		return nil, selectedReadFailure(refused(StalePrecondition))
 	}
 }
 
