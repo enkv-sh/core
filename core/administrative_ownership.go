@@ -15,7 +15,9 @@ import (
 type administrativeConsumers struct {
 	parentVectors       map[generatedVectorKey][]contract.ID
 	graphSourceUses     map[contract.ID][]contract.GeneratorSourceUse
-	operation, attempt  map[contract.ID][]contract.ID
+	activeParents       map[contract.ID]bool
+	graphOwners         map[contract.ID][]contract.ID
+	attempt             map[contract.ID][]contract.ID
 	material            map[contract.ID][]contract.ID
 	canonical           map[contract.ID][]contract.ID
 	history             map[contract.ID][]contract.ID
@@ -80,7 +82,7 @@ func selectedAdministrativeConsumers(pages []format.RequiredSupportPage, project
 
 func selectedAdministrativeConsumersWithValidated(pages []format.RequiredSupportPage, projectedParent *contract.GeneratedParentPlan,
 	bundles []contract.GeneratorPlanBundle, selected *generatedSelection) (administrativeConsumers, error) {
-	c := administrativeConsumers{graphSourceUses: make(map[contract.ID][]contract.GeneratorSourceUse), operation: make(map[contract.ID][]contract.ID), attempt: make(map[contract.ID][]contract.ID),
+	c := administrativeConsumers{activeParents: make(map[contract.ID]bool), graphSourceUses: make(map[contract.ID][]contract.GeneratorSourceUse), graphOwners: make(map[contract.ID][]contract.ID), attempt: make(map[contract.ID][]contract.ID),
 		canonical: make(map[contract.ID][]contract.ID), material: make(map[contract.ID][]contract.ID), history: make(map[contract.ID][]contract.ID), historyOwners: make(map[contract.ID][]contract.ID), historyDependencies: make(map[contract.ID][]contract.ID), actions: make(map[contract.ID]uint8),
 		lineage: make(map[contract.ID][]contract.ID), inbox: make(map[contract.ID]contract.ID), attempts: make(map[contract.ID]contract.GeneratedAttemptRecord),
 		intentAttempts: make(map[contract.ID][]contract.ID), attemptIntent: make(map[contract.ID]administrativeAttemptIntent),
@@ -125,7 +127,8 @@ func selectedAdministrativeConsumersWithValidated(pages []format.RequiredSupport
 				c.materialOperation[material.Core.OperationMaterialID] = material.Core.OperationID
 			case contract.GeneratedParentSupportKind:
 				if projectedParent != nil && row.RecordID == projectedParent.OperationID {
-					appendAdministrativeConsumer(c.operation, projectedParent.OperationID, projectedParent.OperationID)
+					c.activeParents[projectedParent.OperationID] = true
+					appendAdministrativeConsumer(c.graphOwners, projectedParent.OperationID, projectedParent.OperationID)
 					c.graphOperation[projectedParent.PlanGraphID] = projectedParent.OperationID
 					c.materialOperation[projectedParent.MaterialID] = projectedParent.OperationID
 					continue
@@ -134,7 +137,8 @@ func selectedAdministrativeConsumersWithValidated(pages []format.RequiredSupport
 				if err != nil {
 					return c, err
 				}
-				appendAdministrativeConsumer(c.operation, parent.OperationID, parent.OperationID)
+				c.activeParents[parent.OperationID] = true
+				appendAdministrativeConsumer(c.graphOwners, parent.OperationID, parent.OperationID)
 				c.graphOperation[parent.PlanGraphID] = parent.OperationID
 				c.materialOperation[parent.MaterialID] = parent.OperationID
 			case contract.GeneratedFinalPreparationSupportKind:
@@ -158,7 +162,6 @@ func selectedAdministrativeConsumersWithValidated(pages []format.RequiredSupport
 				if err != nil {
 					return c, err
 				}
-				appendAdministrativeConsumer(c.operation, duty.OriginalOperationID, duty.DutyID)
 				appendAdministrativeConsumer(c.attempt, duty.OriginalAttemptID, duty.DutyID)
 				if duty.Kind == contract.GeneratedDutyCreate || duty.Kind == contract.GeneratedDutyUnselectedCleanup {
 					appendAdministrativeConsumer(c.historyOwners, duty.OriginalAttemptID, duty.DutyID)
@@ -171,7 +174,6 @@ func selectedAdministrativeConsumersWithValidated(pages []format.RequiredSupport
 				if err != nil {
 					return c, err
 				}
-				appendAdministrativeConsumer(c.operation, hazard.OriginalOperationID, hazard.HazardID)
 				appendAdministrativeConsumer(c.attempt, hazard.OriginalAttemptID, hazard.HazardID)
 				appendAdministrativeConsumer(c.historyOwners, hazard.OriginalAttemptID, hazard.HazardID)
 				if err := c.bindTargetOperation(hazard.OriginalOperationID, hazard.OriginalAttemptID); err != nil {
@@ -187,7 +189,6 @@ func selectedAdministrativeConsumersWithValidated(pages []format.RequiredSupport
 				c.inbox[attempt.InboxID] = attempt.AttemptID
 				// A retained cleanup attempt belongs to its exact duty or
 				// hazard even after the cleanup parent leaves selection.
-				appendAdministrativeConsumer(c.operation, attempt.OperationID, attempt.OwnerID)
 				appendAdministrativeConsumer(c.attempt, attempt.AttemptID, attempt.OwnerID)
 				appendAdministrativeConsumer(c.lineage, attempt.LineageID, attempt.AttemptID)
 			case contract.GeneratedResultSupportKind:
@@ -246,7 +247,6 @@ func selectedAdministrativeConsumersWithValidated(pages []format.RequiredSupport
 					if err != nil {
 						return c, err
 					}
-					appendAdministrativeConsumer(c.operation, target.OriginalOperationID, carrier.OwnerID)
 					appendAdministrativeConsumer(c.attempt, target.OriginalAttemptID, carrier.OwnerID)
 					if err := c.bindTargetOperation(target.OriginalOperationID, target.OriginalAttemptID); err != nil {
 						return c, err
@@ -306,7 +306,7 @@ func selectedAdministrativeConsumersWithValidated(pages []format.RequiredSupport
 		}
 		preparation, present := c.finalPreparations[location.ContentID]
 		if !present || preparationSlices[location.ContentID] || preparation.Image != location.Logical() ||
-			!slices.Contains(c.operation[preparation.OperationID], preparation.OperationID) {
+			!c.activeParents[preparation.OperationID] {
 			return c, contract.ErrRecord
 		}
 		preparationSlices[location.ContentID] = true
@@ -342,13 +342,12 @@ func selectedAdministrativeConsumersWithValidated(pages []format.RequiredSupport
 		}
 	}
 	for attemptID, groups := range c.history {
-		attempt, ok := c.attempts[attemptID]
+		_, ok := c.attempts[attemptID]
 		if !ok {
 			return c, contract.ErrRecord
 		}
 		for _, group := range groups {
 			appendAdministrativeConsumer(c.attempt, attemptID, group)
-			appendAdministrativeConsumer(c.operation, attempt.OperationID, group)
 		}
 	}
 	for attemptID, operation := range c.targetOperation {
@@ -375,9 +374,24 @@ func selectedAdministrativeConsumersWithValidated(pages []format.RequiredSupport
 			continue // The complete generated selection validates release ancestry.
 		}
 		attempt := c.attempts[attemptID]
-		appendAdministrativeConsumer(c.operation, attempt.OperationID, release.InboxID)
+		appendAdministrativeConsumer(c.graphOwners, attempt.OperationID, release.InboxID)
 		appendAdministrativeConsumer(c.attempt, attemptID, release.InboxID)
 		appendAdministrativeConsumer(c.historyOwners, attemptID, release.InboxID)
+	}
+	// Each retained Attempt needs its template graph. A released Attempt belongs
+	// to its inbox mapping. A retirement target or detached Create evidence can
+	// refer to an original operation without consuming that operation's graph.
+	for id, attempt := range c.attempts {
+		if _, released := releasesByInbox[attempt.InboxID]; released {
+			continue
+		}
+		appendAdministrativeConsumer(c.graphOwners, attempt.OperationID, attempt.OwnerID)
+		for _, owner := range c.historyOwners[id] {
+			appendAdministrativeConsumer(c.graphOwners, attempt.OperationID, owner)
+		}
+		for _, owner := range c.history[id] {
+			appendAdministrativeConsumer(c.graphOwners, attempt.OperationID, owner)
+		}
 	}
 	var releaseVectors *generatedVectorSet
 	// A disposed ACK no longer has an Attempt mapping. The released probe's
@@ -436,7 +450,7 @@ func selectedAdministrativeConsumersWithValidated(pages []format.RequiredSupport
 			if err != nil || fact.Disposition != contract.GeneratorDispositionScopedUnusability || fact.PrecedingResultID != prefix.ResultID || fact.PrecedingResultBodyDigest != prefix.Evidence.Digest {
 				return c, contract.ErrRecord
 			}
-			appendAdministrativeConsumer(c.operation, binding.operation, release.InboxID)
+			appendAdministrativeConsumer(c.graphOwners, binding.operation, release.InboxID)
 		}
 	}
 	for _, location := range c.slices {
@@ -444,7 +458,7 @@ func selectedAdministrativeConsumersWithValidated(pages []format.RequiredSupport
 			appendAdministrativeConsumer(c.blobs, location.BlobID, group)
 		}
 	}
-	for _, m := range []map[contract.ID][]contract.ID{c.operation, c.attempt, c.material, c.lineage, c.intentOperation, c.sourceOperation, c.blobs} {
+	for _, m := range []map[contract.ID][]contract.ID{c.graphOwners, c.attempt, c.material, c.lineage, c.intentOperation, c.sourceOperation, c.blobs} {
 		for key, groups := range m {
 			slices.SortFunc(groups, func(a, b contract.ID) int { return bytes.Compare(a[:], b[:]) })
 			m[key] = groups
@@ -645,23 +659,23 @@ func (c administrativeConsumers) contentOwners(location contract.GeneratorSliceL
 	case contract.GeneratorContentFinalPreparation:
 		preparation, present := c.finalPreparations[location.ContentID]
 		if present && preparation.Image == location.Logical() &&
-			slices.Contains(c.operation[preparation.OperationID], preparation.OperationID) {
+			c.activeParents[preparation.OperationID] {
 			owners = append(owners, preparation.OperationID)
 		}
 	case contract.GeneratorContentDeclaration, contract.GeneratorContentRecipientRegistry, contract.GeneratorContentOutputConfiguration:
-		if slices.Contains(c.operation[location.ContentID], location.ContentID) {
+		if c.activeParents[location.ContentID] {
 			owners = append(owners, location.ContentID)
 		}
 	case contract.GeneratorContentGraph:
-		owners = append(owners, c.operation[c.graphOperation[location.ContentID]]...)
+		owners = append(owners, c.graphOwners[c.graphOperation[location.ContentID]]...)
 	case contract.GeneratorContentConfiguration:
 		operation := c.materialOperation[location.ContentID]
-		if slices.Contains(c.operation[operation], operation) {
+		if c.activeParents[operation] {
 			owners = append(owners, operation)
 		}
 	case contract.GeneratorContentIntent:
 		for _, operation := range c.intentOperation[location.ContentID] {
-			if slices.Contains(c.operation[operation], operation) {
+			if c.activeParents[operation] {
 				owners = append(owners, operation)
 			}
 		}
@@ -674,7 +688,7 @@ func (c administrativeConsumers) contentOwners(location contract.GeneratorSliceL
 		}
 	case contract.GeneratorContentSource:
 		for _, operation := range c.sourceOperation[location.ContentID] {
-			if slices.Contains(c.operation[operation], operation) {
+			if c.activeParents[operation] {
 				owners = append(owners, operation)
 			}
 		}
@@ -685,7 +699,7 @@ func (c administrativeConsumers) contentOwners(location contract.GeneratorSliceL
 
 func (c administrativeConsumers) sliceOwners(location contract.GeneratorSliceLocation, complete bool) []contract.ID {
 	owners := c.contentOwners(location)
-	if !complete && len(owners) == 0 {
+	if !complete && location.ContentKind != contract.GeneratorContentGraph && len(owners) == 0 {
 		owners = slices.Clone(c.blobs[location.BlobID])
 	}
 	return owners
@@ -693,7 +707,7 @@ func (c administrativeConsumers) sliceOwners(location contract.GeneratorSliceLoc
 
 func (c administrativeConsumers) attemptOwners(attempt, operation contract.ID) []contract.ID {
 	out := slices.Clone(c.attempt[attempt])
-	if slices.Contains(c.operation[operation], operation) && !slices.Contains(out, operation) {
+	if c.activeParents[operation] && !slices.Contains(out, operation) {
 		out = append(out, operation)
 	}
 	slices.SortFunc(out, func(a, b contract.ID) int { return bytes.Compare(a[:], b[:]) })
@@ -702,7 +716,7 @@ func (c administrativeConsumers) attemptOwners(attempt, operation contract.ID) [
 
 func (c administrativeConsumers) materialOwners(material, operation contract.ID) []contract.ID {
 	out := slices.Clone(c.material[material])
-	if slices.Contains(c.operation[operation], operation) && !slices.Contains(out, operation) {
+	if c.activeParents[operation] && !slices.Contains(out, operation) {
 		out = append(out, operation)
 	}
 	slices.SortFunc(out, func(a, b contract.ID) int { return bytes.Compare(a[:], b[:]) })
@@ -834,7 +848,6 @@ func (s *StateSession) bindAutomaticHistoricalConsumers(root format.Root, pages 
 			}
 			if owned {
 				appendAdministrativeConsumer(c.attempt, core.AttemptID, parent.OperationID)
-				appendAdministrativeConsumer(c.operation, core.OperationID, parent.OperationID)
 			}
 		}
 	}

@@ -1,6 +1,7 @@
 package core
 
 import (
+	"slices"
 	"testing"
 
 	"enkv.sh/core/contract"
@@ -188,5 +189,30 @@ func TestAdministrativeCheckpointOwnershipRefusesMissingAndDuplicateAssociations
 				t.Fatal("checkpoint accepted inconsistent parent/image ownership", condition)
 			}
 		})
+	}
+}
+
+// full_only: false
+func TestAdministrativeGraphDoesNotBorrowIntentFragmentOwners(t *testing.T) {
+	op, duty, release := generatedVectorID(1), generatedVectorID(2), generatedVectorID(3)
+	intent, graph, blob, attempt := generatedVectorID(4), generatedVectorID(5), generatedVectorID(6), generatedVectorID(7)
+	c := administrativeConsumers{
+		graphOperation: map[contract.ID]contract.ID{graph: op}, graphOwners: map[contract.ID][]contract.ID{op: {release}},
+		intentAttempts: map[contract.ID][]contract.ID{intent: {attempt}}, attempt: map[contract.ID][]contract.ID{attempt: {duty}},
+		blobs: map[contract.ID][]contract.ID{blob: {duty, release}},
+	}
+	g := contract.GeneratorSliceLocation{ContentKind: contract.GeneratorContentGraph, ContentID: graph, BlobID: blob}
+	i := contract.GeneratorSliceLocation{ContentKind: contract.GeneratorContentIntent, ContentID: intent, BlobID: blob}
+	for _, complete := range []bool{true, false} {
+		if !slices.Equal(c.sliceOwners(g, complete), []contract.ID{release}) || !slices.Equal(c.sliceOwners(i, complete), []contract.ID{duty}) {
+			t.Fatal("co-packed logical rights changed")
+		}
+	}
+	delete(c.graphOwners, op)
+	c.blobs[blob] = []contract.ID{duty}
+	for _, complete := range []bool{true, false} {
+		if len(c.sliceOwners(g, complete)) != 0 || !slices.Equal(c.sliceOwners(i, complete), []contract.ID{duty}) {
+			t.Fatal("surviving Intent conferred ownership of the ended graph")
+		}
 	}
 }
