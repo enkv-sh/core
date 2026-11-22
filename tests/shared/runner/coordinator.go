@@ -1021,6 +1021,14 @@ func (s *runState) executeCleanup(ctx context.Context, binary string, inv record
 	// A missing inventory cannot prove that no cloud objects remain.
 	ledger := "inventory.json"
 	if scenario == records.StockPluginScenario {
+		var input workerInput
+		if records.ReadJSON(inv.Input, &input) != nil {
+			return nil, unresolvedCleanup()
+		}
+		if input.PublicConfiguration != nil && input.PublicConfiguration.Stock != nil &&
+			input.PublicConfiguration.Stock.Fixture.Purpose == records.StockRetirementProofPurpose && !s.stockRetirementCleanupReady(inv, input) {
+			return nil, unresolvedCleanup()
+		}
 		ledger = "stock-plugin-grant.json"
 	} else if recordedHasFixture(scenario, catalog.FixturePublicConfiguration) {
 		ledger = "public-ownership.json"
@@ -1097,6 +1105,32 @@ func (s *runState) executeCleanup(ctx context.Context, binary string, inv record
 		cleanup.Outcome, cleanup.Failure = "unresolved", &records.Failure{Class: "budget_evidence_unavailable", Stage: "cleanup"}
 	}
 	return &evidence, cleanup
+}
+
+func (s *runState) stockRetirementCleanupReady(inv records.Invocation, input workerInput) bool {
+	// Failed-writer recovery combines provider work and fixture destruction.
+	// The dedicated fixture has no admitted recovery path for that worker.
+	if s.record.RecoveryRunID != "" || input.StockRecovery != nil {
+		return false
+	}
+	for _, result := range s.record.Scenarios {
+		name, err := currentCaseDirectory(result.Entry)
+		if err != nil || result.Scenario != inv.Scenario || filepath.Join(s.private, name) != inv.StateDir {
+			continue
+		}
+		if !result.CorrectnessPassed || !awsCleanupProductPassed(result) {
+			return false
+		}
+		workers := append([]workerEvidence{*result.Writer}, result.Children...)
+		workers = append(workers, result.PostExit...)
+		for _, worker := range workers {
+			if !worker.Started || !s.workerRecords[worker.Worker] {
+				return false
+			}
+		}
+		return true
+	}
+	return false
 }
 
 func (s *runState) publicationCleanupEvidence(inv records.Invocation, scenario string, cleanup *records.Cleanup) (publicationResidue, error) {
