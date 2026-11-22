@@ -237,17 +237,8 @@ func reconstructionConfigurationOwned(ctx context.Context, projection *core.Reco
 		return nil, ErrReconstructionConfiguration
 	}
 	m.Public = validated.Configuration
-	counter := &reconstructionByteCount{}
-	if err := configuration.EmitGenerated(counter, m); err != nil {
-		return nil, err
-	}
-	generatedBytes := counter.n
-	for _, encoding := range []configuration.Format{configuration.JSON, configuration.YAML} {
-		counter.n = generatedBytes
-		if err := configuration.EmitEditable(counter, m, encoding); err != nil {
-			return nil, err
-		}
-	}
+	// Stage enforces the pair limit on the generated companion and the
+	// requested editable representation, including a preserved source file.
 	after, ok := projection.Provenance()
 	if !ok || after != before || ctx.Err() != nil {
 		return nil, ErrReconstructionConfiguration
@@ -255,15 +246,6 @@ func reconstructionConfigurationOwned(ctx context.Context, projection *core.Reco
 	return m, nil
 }
 
-type reconstructionByteCount struct{ n int64 }
-
-func (w *reconstructionByteCount) Write(body []byte) (int, error) {
-	if int64(len(body)) > configuration.MaxPairBytes-w.n {
-		return 0, configuration.ErrEditBounds
-	}
-	w.n += int64(len(body))
-	return len(body), nil
-}
 func reconstructionField[T any](value T) contract.PublicField[T] {
 	return contract.PublicField[T]{State: contract.PublicPresent, Value: value}
 }
