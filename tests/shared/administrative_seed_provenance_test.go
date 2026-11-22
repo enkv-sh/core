@@ -22,37 +22,44 @@ func TestAdministrativeEndWorkRepairsHistoricalInboxProvenance(t *testing.T) {
 	checkAdministrativeSeedProvenance(t, true)
 }
 
+func pendingInboxProvenanceFixture(t *testing.T, recovery bool) (fixtureEnvironment, *StateSession, generatedAttempt, generatedAttempt) {
+	t.Helper()
+	env, _ := genesisEnvironment(t, contract.GCP, recovery)
+	f := newEnvironmentFixture(t, t.Context(), env, nil, false)
+	sources, canonical := generatedCurrentDeclaration(t, f.session)
+	input := generatedPlanInputForGenerations(t, f.session, testID(t.Name()+" original"), []string{"alpha", "omega"}, defaultGeneratedFixtureProfile(), sources...)
+	closed, failed := selectPrivateOwnedUnusableAggregateFromInput(t, env, f.session, []string{"alpha", "omega"}, input, canonical)
+	closed = retainedReaderColdOpen(t, closed, env.Store)
+	work := mustSelectedGeneratedWork(t, closed)
+	cleanup, ok, err := work.selectGeneratedCleanup(t.Context(), nil)
+	if err != nil || !ok || cleanup.kind != generatedCleanupDuty {
+		t.Fatal("actual succeeded sibling has no cleanup Duty", err)
+	}
+	original := work.attempts[cleanup.duty.OriginalAttemptID]
+	source, err := contract.InspectGeneratedDeleteSource(work.records[generatedRecordKey{contract.GeneratedDutySupportKind, cleanup.duty.DutyID}])
+	target, targetErr := work.generatedCleanupTarget(source.Record.Kind, source.OwnerID, source.Target)
+	if err != nil || targetErr != nil {
+		t.Fatal("actual cleanup target", err, targetErr)
+	}
+	input, canonical = generatedDeletePlanInputForSource(t, closed, testID(t.Name()+" cleanup"), source.Record, target)
+	prior, _ := preparePrivateGeneratedReservation(t, env, closed, input, canonical)
+	recorded, _, expected, _ := selectActualGeneratedPacketRecord(t, env, closed, prior, custody.StandardValue, true, nil)
+	env.Custody.RetireGenerated()
+	closed = selectOrdinaryGeneratedCleanupClose(t, t.Context(), env, recorded, expected.Template.AttemptID)
+	store := &generatedCleanupDeleteStore{memoryStore: env.Store.(*memoryStore)}
+	closed = selectActualGeneratedInboxRelease(t, t.Context(), env, closed, store, expected.Template.AttemptID, false)
+	closed = retainedReaderColdOpen(t, closed, store)
+	return env, closed, failed, original
+}
+
 func checkAdministrativeSeedProvenance(t *testing.T, historical bool) {
 	t.Helper()
 	for _, recovery := range []bool{false, true} {
 		for _, partial := range []bool{false, true} {
 			t.Run(fmt.Sprintf("recovery=%t/partial=%t", recovery, partial), func(t *testing.T) {
-				env, _ := genesisEnvironment(t, contract.GCP, recovery)
-				f := newEnvironmentFixture(t, t.Context(), env, nil, false)
-				sources, canonical := generatedCurrentDeclaration(t, f.session)
-				input := generatedPlanInputForGenerations(t, f.session, testID(t.Name()+" original"), []string{"alpha", "omega"}, defaultGeneratedFixtureProfile(), sources...)
-				closed, failed := selectPrivateOwnedUnusableAggregateFromInput(t, env, f.session, []string{"alpha", "omega"}, input, canonical)
-				closed = retainedReaderColdOpen(t, closed, env.Store)
+				env, closed, failed, original := pendingInboxProvenanceFixture(t, recovery)
+				store := closed.store.(*generatedCleanupDeleteStore)
 				work := mustSelectedGeneratedWork(t, closed)
-				cleanup, ok, err := work.selectGeneratedCleanup(t.Context(), nil)
-				if err != nil || !ok || cleanup.kind != generatedCleanupDuty {
-					t.Fatal("actual succeeded sibling has no cleanup Duty", err)
-				}
-				original := work.attempts[cleanup.duty.OriginalAttemptID]
-				source, err := contract.InspectGeneratedDeleteSource(work.records[generatedRecordKey{contract.GeneratedDutySupportKind, cleanup.duty.DutyID}])
-				target, targetErr := work.generatedCleanupTarget(source.Record.Kind, source.OwnerID, source.Target)
-				if err != nil || targetErr != nil {
-					t.Fatal("actual cleanup target", err, targetErr)
-				}
-				input, canonical = generatedDeletePlanInputForSource(t, closed, testID(t.Name()+" cleanup"), source.Record, target)
-				prior, _ := preparePrivateGeneratedReservation(t, env, closed, input, canonical)
-				recorded, _, expected, _ := selectActualGeneratedPacketRecord(t, env, closed, prior, custody.StandardValue, true, nil)
-				env.Custody.RetireGenerated()
-				closed = selectOrdinaryGeneratedCleanupClose(t, t.Context(), env, recorded, expected.Template.AttemptID)
-				store := &generatedCleanupDeleteStore{memoryStore: env.Store.(*memoryStore)}
-				closed = selectActualGeneratedInboxRelease(t, t.Context(), env, closed, store, expected.Template.AttemptID, false)
-				closed = retainedReaderColdOpen(t, closed, store)
-				work = mustSelectedGeneratedWork(t, closed)
 				release := work.releases[original.record.AttemptID]
 				material := failed.material.Core.OperationMaterialID
 				if release.release.State != contract.GeneratedReleasePending || release.release.OriginalResultID != original.record.ResultID ||

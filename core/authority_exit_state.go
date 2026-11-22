@@ -141,9 +141,24 @@ func (s *StateSession) administrativeWorkDispositionScope(groupID contract.ID, i
 			scope = append(scope, group)
 		}
 	}
+	pages, ownershipChanged, err := s.administrativeDispositionPages()
+	if err != nil {
+		return format.AdministrativeIndex{}, nil, err
+	}
+	next, err := s.retainedAdministrativeIndex(pages, ownershipChanged, ended, publicationCoordinates)
+	if err != nil {
+		return format.AdministrativeIndex{}, nil, err
+	}
+	return next, scope, nil
+}
+
+// Build the logical projection from the authenticated physical ordinals.
+// GC keeps every group when its own operation is absent on this side of a phase.
+func (s *StateSession) retainedAdministrativeIndex(pages []format.AdministrativePage, ownershipChanged bool,
+	ended []bool, publicationCoordinates map[contract.ID]contract.PublicationCoordinate) (format.AdministrativeIndex, error) {
 	for i, page := range s.adminIndex.Pages {
 		if page.Ref != s.root.RequiredSupport[i] {
-			return format.AdministrativeIndex{}, nil, contract.ErrRecord
+			return format.AdministrativeIndex{}, contract.ErrRecord
 		}
 		mandatory := page.ReadRequired || slices.ContainsFunc(page.Spans, func(span format.AdministrativeSpan) bool { return span.Mandatory })
 		if !mandatory {
@@ -157,7 +172,7 @@ func (s *StateSession) administrativeWorkDispositionScope(groupID contract.ID, i
 			}
 		}
 		if !present {
-			return format.AdministrativeIndex{}, nil, contract.ErrRecord
+			return format.AdministrativeIndex{}, contract.ErrRecord
 		}
 	}
 	next := format.AdministrativeIndex{Domain: s.adminIndex.Domain, Object: s.adminIndex.Object, SliceSnapshot: s.adminIndex.SliceSnapshot}
@@ -173,18 +188,14 @@ func (s *StateSession) administrativeWorkDispositionScope(groupID contract.ID, i
 		for j, related := range next.Groups[i].RelatedGroupIndexes {
 			mapped, ok := retainedGroups[related]
 			if !ok {
-				return format.AdministrativeIndex{}, nil, contract.ErrRecord
+				return format.AdministrativeIndex{}, contract.ErrRecord
 			}
 			next.Groups[i].RelatedGroupIndexes[j] = mapped
 		}
 	}
 	requiredBirths, err := publicationRequiredBirths(next.Groups, publicationCoordinates)
 	if err != nil {
-		return format.AdministrativeIndex{}, nil, err
-	}
-	pages, ownershipChanged, err := s.administrativeDispositionPages()
-	if err != nil {
-		return format.AdministrativeIndex{}, nil, err
+		return format.AdministrativeIndex{}, err
 	}
 	for _, page := range pages {
 		kept := page
@@ -205,12 +216,12 @@ func (s *StateSession) administrativeWorkDispositionScope(groupID contract.ID, i
 				switch row.Kind {
 				case contract.PublicationCoordinateSupportKind:
 					if group.OwnerKind != format.AdministrativePublicationCoordinate || row.RecordID != group.GroupID {
-						return format.AdministrativeIndex{}, nil, contract.ErrRecord
+						return format.AdministrativeIndex{}, contract.ErrRecord
 					}
 					retained.Mandatory = len(retained.GroupIndexes) != 0
 				case contract.PublicationMarkerSupportKind:
 					if group.OwnerKind != format.AdministrativePublicationMarker || row.RecordID != group.GroupID {
-						return format.AdministrativeIndex{}, nil, contract.ErrRecord
+						return format.AdministrativeIndex{}, contract.ErrRecord
 					}
 					retained.Mandatory = requiredBirths[group.GroupID]
 				}
@@ -230,10 +241,10 @@ func (s *StateSession) administrativeWorkDispositionScope(groupID contract.ID, i
 	next.PublicationOrder = slices.Clone(s.adminIndex.PublicationOrder)
 	next.PublicationOrder, err = publicationIncarnationOrder(next, publicationCoordinates, true)
 	if err != nil {
-		return format.AdministrativeIndex{}, nil, err
+		return format.AdministrativeIndex{}, err
 	}
 	if !next.Valid() {
-		return format.AdministrativeIndex{}, nil, contract.ErrRecord
+		return format.AdministrativeIndex{}, contract.ErrRecord
 	}
 	if ownershipChanged {
 		views := make(map[format.Ref]format.RequiredSupportPageView)
@@ -243,13 +254,13 @@ func (s *StateSession) administrativeWorkDispositionScope(groupID contract.ID, i
 			}
 			view, err := s.administrativeSelectedSupportPage(page)
 			if err != nil {
-				return format.AdministrativeIndex{}, nil, err
+				return format.AdministrativeIndex{}, err
 			}
 			views[page.Ref] = view
 		}
 		if err := rechargeEndWorkGroups(&next, views); err != nil {
-			return format.AdministrativeIndex{}, nil, err
+			return format.AdministrativeIndex{}, err
 		}
 	}
-	return next, scope, nil
+	return next, nil
 }

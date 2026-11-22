@@ -223,6 +223,43 @@ func validateGCProgressTransition(before, after *contract.GCProgress, phase cont
 	}
 	return nil
 }
+
+// Resolve historical inbox-release ownership before committing unrelated
+// work, including on the side of select or final close with no named GC group.
+func (s *StateSession) gcUnrelatedWork(operation contract.ID) (format.AdministrativeIndex, error) {
+	index := s.adminIndex
+	if index.Domain != s.root.Domain || index.Object != s.root.AdministrativeIndex.Object || len(index.Pages) != len(s.root.RequiredSupport) {
+		return format.AdministrativeIndex{}, contract.ErrRecord
+	}
+	position := slices.IndexFunc(index.Groups, func(group format.AdministrativeGroup) bool { return group.GroupID == operation })
+	pages, changed, err := s.administrativeDispositionPages()
+	if err != nil {
+		return format.AdministrativeIndex{}, err
+	}
+	if changed {
+		// Recharging a historical projection must not repair an invalid
+		// commitment to any other owner as a side effect of the comparison.
+		if _, _, err := s.administrativeGeneratedProjection(index); err != nil {
+			return format.AdministrativeIndex{}, err
+		}
+	} else if position < 0 {
+		return index, nil
+	}
+	coordinates, err := s.publicationCoordinatesForDisposition()
+	if err != nil {
+		return format.AdministrativeIndex{}, err
+	}
+	ended := make([]bool, len(index.Groups))
+	if position >= 0 {
+		group := index.Groups[position]
+		if group.OwnerKind != format.AdministrativeGC || !administrativeTargetSelectable(s.root, index, group, coordinates) {
+			return format.AdministrativeIndex{}, contract.ErrRecord
+		}
+		ended[position] = true
+	}
+	return s.retainedAdministrativeIndex(pages, changed, ended, coordinates)
+}
+
 func (s *StateSession) gcPreservedCurrent(ctx context.Context, operation contract.ID) (contract.DigestLength, error) {
 	if s == nil || operation.IsZero() {
 		return contract.DigestLength{}, contract.ErrRecord
@@ -234,12 +271,9 @@ func (s *StateSession) gcPreservedCurrent(ctx context.Context, operation contrac
 	if e != nil {
 		return contract.DigestLength{}, e
 	}
-	index := s.adminIndex
-	if slices.ContainsFunc(index.Groups, func(g format.AdministrativeGroup) bool { return g.GroupID == operation }) {
-		index, e = s.administrativeWorkDisposition(operation)
-		if e != nil {
-			return contract.DigestLength{}, e
-		}
+	index, e := s.gcUnrelatedWork(operation)
+	if e != nil {
+		return contract.DigestLength{}, e
 	}
 	index.Object = index.Domain
 	index.SliceSnapshot = index.Domain

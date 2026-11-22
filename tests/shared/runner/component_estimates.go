@@ -79,6 +79,7 @@ var componentEstimates = map[string]float64{
 	"TestReconstructionExportsPortablePublicBasisWithoutSavedTrust":                       1,
 	"TestGCActualJointMaximumCapacityAndUsefulReclamationMemory":                          2642,
 	"TestGCConfiguredOrdinaryMutationRetainsSuppliedSecretsMemory":                        3,
+	"TestGCPreservesHistoricalInboxOwnership":                                             2,
 	"TestGCProcessLossRetainsOriginalVectorAndConsumedAllowance":                          7,
 
 	"TestApplyPublicationBetweenStagesUnroutedRemovalRespectsParticipatingGroup":         6,
@@ -242,7 +243,7 @@ var componentEstimates = map[string]float64{
 	"TestRetainedReaderUnionUsesBothAdmittedMemberSets":                            1,
 	"TestSignerRestorationPreservesSkippedCanonicalUntilOwnerDisposition":          5,
 
-	"TestAdministrativeEndWorkRepairsHistoricalInboxProvenance":    6,
+	"TestAdministrativeEndWorkRepairsHistoricalInboxProvenance":    7,
 	"TestAdministrativeEndWorkDropsSeedKeptOnlyForInboxProvenance": 7,
 	// Focused retained-reader observations.
 	"TestGeneratedLateDeleteReflectionRemovesFinalNoncurrentCanonicalAccessPage": 4,
