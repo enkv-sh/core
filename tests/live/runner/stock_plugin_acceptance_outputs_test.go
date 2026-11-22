@@ -844,21 +844,27 @@ func stockSourcePublicBasis(body []byte) (PublicBasis, contract.ID, error) {
 	}
 }
 
-func (r *stockPluginRun) selected(ctx context.Context, source string) *StateSession {
-	document := publicSourceDocument(r.t, source)
+func stockPublicBasis(t testing.TB, source string) (PublicBasis, contract.ID) {
+	t.Helper()
+	document := publicSourceDocument(t, source)
 	reference, ok := document["generated"].(string)
 	if !ok {
-		r.t.Fatal("stock generated source unavailable")
+		t.Fatal("stock generated source unavailable")
 	}
 	body, err := os.ReadFile(filepath.Join(filepath.Dir(source), filepath.FromSlash(reference)))
 	if err != nil || len(body) > 8<<20 {
-		r.t.Fatal("stock generated public basis unavailable")
+		t.Fatal("stock generated public basis unavailable")
 	}
 	basis, domain, err := stockSourcePublicBasis(body)
 	clear(body)
 	if err != nil {
-		r.t.Fatal("stock generated public basis refused")
+		t.Fatal("stock generated public basis refused")
 	}
+	return basis, domain
+}
+
+func (r *stockPluginRun) selected(ctx context.Context, source string) *StateSession {
+	basis, domain := stockPublicBasis(r.t, source)
 	defer basis.clear()
 	store, err := openPublicReaderStore(ctx, r.input, domain, r.inv.StateDir)
 	if err != nil {

@@ -542,6 +542,14 @@ func runStockPluginAcceptance(t testing.TB, inv records.Invocation, input liveRu
 	if initialized.Code != 0 || product.State != "success" || !publicIdentityHex(product.Payload.Domain) {
 		t.Fatal("stock initialization did not select an empty domain")
 	}
+	if stock.Fixture.Purpose == records.StockRetirementProofPurpose {
+		initial := r.selected(ctx, source)
+		if initial.head.Genesis == nil || publicReplacementID(t, product.Payload.Domain) != initial.root.Domain {
+			t.Fatal("stock signed initialization differs from the original command")
+		}
+		r.evidence.GenesisHEAD = bodyDigest(initial.body)
+		r.save()
+	}
 	expires := time.Now().UTC().Add(2 * time.Hour).Truncate(time.Second).Format(time.RFC3339)
 	stockDeclareGenerated(t, source, *stock, input.RunID, expires, 0, true)
 	a0Result := r.generated(ctx, "a0-created", "a", source, "success", "apply")

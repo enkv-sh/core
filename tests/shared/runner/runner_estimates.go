@@ -4,6 +4,7 @@ package main
 // rounded up to seconds. Unknown and sub-second roots use a one-second estimate.
 // These weights affect scheduling only; discovery owns selection.
 var runnerEstimates = map[string]float64{
+	"enkv.sh/core/internal/testmain\x00TestStockCleanupRejectsPassedWorkerWithoutStockProof":              2,
 	"enkv.sh/core/internal/testmain\x00TestManualReleaseSigningKeepsPrivateKeyOutsideOutput":              2,
 	"enkv.sh/core/internal/testmain\x00TestSupervisorSetupNativeFailurePreservesVerifiedSettlement":       18,
 	"enkv.sh/core/internal/testmain\x00TestSupervisorSetupScriptJoinsBeforeLockRelease":                   42,
@@ -64,7 +65,7 @@ var runnerEstimates = map[string]float64{
 	"enkv.sh/core/internal/testmain\x00TestAdmissionNoSendCleanupGrantRefusesChangedEvidence":                        4,
 	"enkv.sh/core/internal/testmain\x00TestAssemblyFocusPlanAndRunUseBoundBinaryAndLiteralSelection":                 11,
 	"enkv.sh/core/internal/testmain\x00TestCleanupOnlyCaseFailureKeepsRunCleanupStage":                               3,
-	"enkv.sh/core/internal/testmain\x00TestCleanupRecoveryDoesNotRepeatProductWork":                                  16,
+	"enkv.sh/core/internal/testmain\x00TestCleanupRecoveryDoesNotRepeatProductWork":                                  21,
 	"enkv.sh/core/internal/testmain\x00TestCleanupRecoveryStopsOnCancellation":                                       3,
 	"enkv.sh/core/internal/testmain\x00TestCleanupRecoveryUsesNewOutputsAndOriginalStateOnly":                        7,
 	"enkv.sh/core/internal/testmain\x00TestCloudflareArtifactAssemblyOnMaintainedSource":                             5,
@@ -97,7 +98,7 @@ var runnerEstimates = map[string]float64{
 	"enkv.sh/core/internal/testmain\x00TestConfigurationRecoveryRunnerKeepsClosedCustodyImports":                     3,
 	"enkv.sh/core/internal/testmain\x00TestCoordinatorAssertionEvidencePreservesTypedRerun":                          22,
 	"enkv.sh/core/internal/testmain\x00TestCoordinatorJoinsWorkersAndKeepsCleanupIndependent":                        37,
-	"enkv.sh/core/internal/testmain\x00TestCoordinatorOutcomeKeepsAssertionsAndCleanupSeparate":                      9,
+	"enkv.sh/core/internal/testmain\x00TestCoordinatorOutcomeKeepsAssertionsAndCleanupSeparate":                      10,
 	"enkv.sh/core/internal/testmain\x00TestCoordinatorRetainsAssertionEvidenceAndIndependentCleanup":                 17,
 	"enkv.sh/core/internal/testmain\x00TestCoordinatorRetainsClosedCleanupCauseWithoutTelemetry":                     3,
 	"enkv.sh/core/internal/testmain\x00TestCoordinatorTelemetryWriteFailureDoesNotChangeExecution":                   4,
@@ -268,7 +269,7 @@ var runnerEstimates = map[string]float64{
 	"enkv.sh/core/internal/testmain\x00TestLintCommonContinuesIndependentModuleChecks":                       483,
 	"enkv.sh/core/internal/testmain\x00TestLocalWorkflowPublishesFailedCollection":                           45,
 	"enkv.sh/core/internal/testmain\x00TestPreparedOrdinaryVerificationKeepsCacheOnlyEnvironment":            7,
-	"enkv.sh/core/internal/testmain\x00TestStockPluginArtifactPreparesOrdinaryBuildsAfterUnchangedCLI":       461,
+	"enkv.sh/core/internal/testmain\x00TestStockPluginArtifactPreparesOrdinaryBuildsAfterUnchangedCLI":       34,
 	"enkv.sh/core/internal/testmain\x00TestCompiledCoreCustodyUsesCgoCompilerSources":                        2,
 	"enkv.sh/core/internal/testmain\x00TestComponentSelectedSetUsesExactNativeGroups":                        8,
 	"enkv.sh/core/internal/testmain\x00TestDirectUnitContinuesAfterSameModulePackageCompileFailure":          2,

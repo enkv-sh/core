@@ -284,6 +284,8 @@ type StockPluginOutput struct {
 // StockPluginEvidence retains only public identities and closed observations.
 // Original worker invocation/result hashes are bound by the coordinator.
 type StockPluginEvidence struct {
+	GenesisHEAD          string                  `json:"genesis_head,omitempty"`
+	FinalHEAD            string                  `json:"final_head,omitempty"`
 	ServiceVerifications uint32                  `json:"service_verifications"`
 	Schema               uint16                  `json:"schema"`
 	RunID                string                  `json:"run_id"`
@@ -348,6 +350,14 @@ func (v StockPluginEvidence) ValidateComplete(input StockPluginAcceptanceInput) 
 }
 
 func (v StockPluginEvidence) validateFacts(input StockPluginAcceptanceInput) error {
+	if input.Fixture.Purpose == StockRetirementProofPurpose {
+		if !publicOutputID(v.GenesisHEAD) || !publicOutputID(v.FinalHEAD) || v.GenesisHEAD == v.FinalHEAD {
+			return errRecord
+		}
+	} else if v.GenesisHEAD != "" || v.FinalHEAD != "" {
+		return errRecord
+	}
+
 	if input.Fixture.Validate() != nil || input.Artifact.Validate(input.Fixture.Provider) != nil || v.Schema != 1 || !ValidRunID(v.RunID) || v.Scenario != StockPluginScenario ||
 		v.Provider != input.Fixture.Provider || v.FixtureID != input.Fixture.FixtureID || v.CLISHA256 != input.Artifact.CLI.SHA256 ||
 		!strings.HasPrefix(v.Prefix, "enkv-test/"+v.RunID+"/") || filepath.Clean(v.Prefix) != v.Prefix || strings.Contains(v.Prefix, `\`) ||

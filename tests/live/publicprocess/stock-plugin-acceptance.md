@@ -77,8 +77,10 @@ bucket. The fixture ID and the runner's invocation ID are different identities.
 
 Keep the same fixture ID and bucket across invocations. Each invocation gets a
 fresh random RunID and an object prefix `enkv-test/<RunID>/<case>`. Never reuse an
-old run prefix. The bucket must be unversioned, without retention or holds, and,
-for GCP, without soft deletion. Before its first Product effect, the scenario
+old run prefix. The ordinary fixture requires a bucket with versioning disabled.
+The dedicated AWS `stock-plugin-retirement-proof` fixture requires versioning
+enabled. Both require retention and holds disabled. GCP also requires soft
+deletion disabled. Before its first Product effect, the scenario
 checks the actual bucket configuration and requires only its selected prefix to
 be empty. It retains a grant bound to the original run, prefix, fixture, bucket
 identity and limits. Objects in old or sibling prefixes do not block a new run.
@@ -319,6 +321,21 @@ requires a final empty-prefix observation. It leaves the bucket and all other
 prefixes intact. IAM bounds the bucket/test object namespace; the runner enforces
 the exact per-run scope. AWS retains bucket LIST permission because missing-key
 GET requests need it to return 404.
+
+The dedicated AWS fixture also checks historical versions. The initial prefix
+must contain zero data versions and zero delete markers. Cleanup opens the
+final domain using its public handoff and checks every HEAD version back to
+the signed initialization. It reads each data version by ID. For a released
+result it requires the original bytes, the signed release, the resource from
+this run and one current delete marker. The worker removes qualified data
+versions first, then their markers, then the final HEAD. Before the first
+deletion it saves `stock-version-proof.json` in the private run directory.
+The file records version IDs, ETags, lengths, hashes, signed HEADs and the three
+original retirement acknowledgements. It can be inspected after interruption.
+Other value bodies stay out of this file. The worker lists the complete
+prefix again between stages and after the final deletion. An unexpected
+version, an incomplete listing or a lost deletion reply leaves cleanup open.
+The failed-writer recovery route cannot dispose of this fixture.
 
 The retained `stock-prefix-cleanup.json` record binds the original RunID, fixture,
 prefix and bucket identity to `Started`, `Completed` and `ObservedEmpty` facts.

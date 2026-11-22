@@ -175,6 +175,10 @@ func assertCompleteStockPluginEvidencePredicates(t *testing.T, artifact records.
 					observed.Retirements[i].ResultDigest = id(340 + i)
 					observed.Retirements[i].ResultLength = 1024
 				}
+				if observed.ValidateComplete(proof) == nil {
+					t.Fatal("versioned cleanup admitted without authenticated initialization and final HEAD")
+				}
+				observed.GenesisHEAD, observed.FinalHEAD = id(360), id(361)
 				if observed.ValidateComplete(proof) != nil || observed.ValidateComplete(input) == nil {
 					t.Fatal("historical evidence is not bound to its profile")
 				}

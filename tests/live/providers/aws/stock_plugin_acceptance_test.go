@@ -64,7 +64,7 @@ func openStockStorePrefix(ctx context.Context, input liveRunInput, directory str
 	if deadline, ok := ctx.Deadline(); !ok || !time.Now().Before(deadline) {
 		return nil, errInventory
 	}
-	if fixture, err := stockAWSFixture(input); err != nil || fixture.Purpose != "stock-plugin-acceptance" {
+	if fixture, err := stockAWSFixture(input); err != nil || fixture.Purpose == records.StockRetirementProofPurpose && input.StockRecovery != nil {
 		return nil, errInventory
 	}
 	restore, err := publicSDKEnvironment(input, "cleanup", directory)
@@ -126,7 +126,7 @@ func stockAWSStorePrefix(input liveRunInput, setup *awsSetup, original *stockPre
 		return stockPrefixInspection{Empty: len(keys) == 0, Identity: identity, Prefix: input.Prefix}, nil
 	}
 	attempted := false
-	return &stockStorePrefix{Inspect: inspect, Clean: func(ctx context.Context, budget *runBudget) (bool, error) {
+	store := &stockStorePrefix{Inspect: inspect, Clean: func(ctx context.Context, budget *runBudget) (bool, error) {
 		if attempted || admitted == nil || versioned {
 			return false, errInventory
 		}
@@ -156,7 +156,45 @@ func stockAWSStorePrefix(input liveRunInput, setup *awsSetup, original *stockPre
 			return false, errInventory
 		}
 		return true, nil
-	}}, nil
+	}}
+	if versioned && admitted != nil && input.StockRecovery == nil {
+		store.CleanHistory = func(ctx context.Context, budget *runBudget, basis PublicBasis, domain contract.ID, evidence records.StockPluginEvidence, directory string) (bool, error) {
+			if attempted || budget == nil || domain.IsZero() || evidence.RunID != input.RunID || evidence.Prefix != input.Prefix || !stockProviderWorkClosed(evidence) || evidence.ValidateBeforeCleanup(*input.PublicConfiguration.Stock) != nil {
+				return false, errInventory
+			}
+			attempted = true
+			ctx = context.WithValue(ctx, stockAWSBudgetKey{}, budget)
+			if err := setup.checkBucketVersioning(ctx, versioning); err != nil {
+				return false, err
+			}
+			s := input.Settings
+			reader, err := awsprovider.NewStore(awsprovider.StoreConfig{Region: s.Region, Bucket: s.Bucket, ExpectedBucketOwner: s.Account, Prefix: input.Prefix, Domain: domain, CredentialRoute: contract.Hash([]byte("enkv/test/public-get-only/aws/v1")), Credentials: setup.credentials, Transport: setup.transport.base, Timeout: time.Minute})
+			if err != nil {
+				return false, errInventory
+			}
+			observed := recordedStore{Store: reader, budget: budget}
+			admission, result := admitPublicNormal(ctx, domain, observed.Descriptor(), basis, observed, contract.Hash([]byte("enkv/composition/full/v1")), nil)
+			if result.Outcome != ObservedCurrent {
+				return false, errInventory
+			}
+			selected, result := Open(ctx, admission, observed)
+			if result.Outcome != ObservedCurrent || selected == nil || selected.root.Domain != domain {
+				return false, errInventory
+			}
+			items, err := stockS3ListVersions(ctx, setup, input.Prefix+"/", false)
+			if err != nil {
+				return false, err
+			}
+			err = stockS3RetainQualifiedHistory(ctx, selected, *input.PublicConfiguration.Stock, evidence, items, directory, func(ctx context.Context, item stockS3Version) (contract.ReadResult, error) {
+				return stockS3ReadVersion(ctx, setup, item)
+			})
+			if err != nil {
+				return false, err
+			}
+			return stockS3PurgeVersions(ctx, setup, input.Prefix, items)
+		}
+	}
+	return store, nil
 }
 
 func stockAWSPrefixKeys(ctx context.Context, setup *awsSetup, prefix string) ([]string, error) {

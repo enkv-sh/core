@@ -22,8 +22,9 @@ type stockPrefixInspection struct {
 }
 
 type stockStorePrefix struct {
-	Inspect func(context.Context, *runBudget) (stockPrefixInspection, error)
-	Clean   func(context.Context, *runBudget) (bool, error)
+	Inspect      func(context.Context, *runBudget) (stockPrefixInspection, error)
+	Clean        func(context.Context, *runBudget) (bool, error)
+	CleanHistory func(context.Context, *runBudget, PublicBasis, contract.ID, records.StockPluginEvidence, string) (bool, error)
 }
 
 func stockExistingRun(t testing.TB, inv records.Invocation, input liveRunInput, budget *runBudget) *stockPluginRun {
@@ -79,6 +80,13 @@ func runStockPluginAcceptanceFresh(t testing.TB, inv records.Invocation, input l
 	current := r.list(ctx, facts.Source)
 	if len(current.Current) != 0 || len(current.Duties) != 0 || len(current.Hazards) != 0 {
 		t.Fatal("stock post-exit generated work remains")
+	}
+	if input.PublicConfiguration.Stock.Fixture.Purpose == records.StockRetirementProofPurpose {
+		final := r.selected(ctx, facts.Source)
+		if final.root.Domain != publicReplacementID(t, facts.Domain) || r.evidence.GenesisHEAD == "" {
+			t.Fatal("stock final Reader differs from the initialized domain")
+		}
+		r.evidence.FinalHEAD = bodyDigest(final.body)
 	}
 	publicImageUnchanged(t, image)
 	r.assert("post-exit-reader")
@@ -171,7 +179,21 @@ func runStockPluginAcceptanceCleanup(t testing.TB, inv records.Invocation, input
 	if records.WriteJSONExclusive(attemptPath, attempt, records.MaximumJSONBytes) != nil {
 		t.Fatal("stock prefix cleanup intent could not be retained")
 	}
-	empty, err := store.Clean(ctx, budget)
+	var empty bool
+	if grant.Fixture.Purpose == records.StockRetirementProofPurpose {
+		var facts publicProcessFacts
+		if store.CleanHistory == nil || records.ReadJSON(filepath.Join(inv.StateDir, "after.json"), &facts) != nil || facts.RunID != grant.RunID || facts.Prefix != grant.Prefix || !facts.ExpectReady || !publicFreshPairSourceValid(inv.StateDir, facts.Source) {
+			t.Fatal("stock original domain handoff unavailable for cleanup")
+		}
+		basis, domain := stockPublicBasis(t, facts.Source)
+		defer basis.clear()
+		if domain != publicReplacementID(t, facts.Domain) {
+			t.Fatal("stock cleanup basis does not match initialized domain")
+		}
+		empty, err = store.CleanHistory(ctx, budget, basis, domain, r.evidence, inv.StateDir)
+	} else {
+		empty, err = store.Clean(ctx, budget)
+	}
 	if err != nil || !empty {
 		t.Fatal("stock prefix cleanup did not observe absence; original attempt retained")
 	}

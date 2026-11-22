@@ -20,6 +20,7 @@ func StockPluginEvidenceReservationBytes(current StockPluginEvidence, coordinate
 	}
 	identity, label := strings.Repeat("a", 64), strings.Repeat("x", 96)
 	maximum := current
+	maximum.GenesisHEAD, maximum.FinalHEAD = identity, identity
 	maximum.Commands = make([]StockPluginCommand, MaximumStockPluginCommands)
 	for i := range maximum.Commands {
 		maximum.Commands[i] = StockPluginCommand{Ordinal: uint32(i), Worker: label, Nonce: strings.Repeat("a", 32), Role: label, Actor: label, Phase: label, ExitCode: -int(^uint(0)>>1) - 1, ResultSHA256: identity, DiagnosticSHA256: identity, DiagnosticBytes: ^uint32(0), DiagnosticStatus: label}

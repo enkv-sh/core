@@ -662,6 +662,29 @@
       "tests": [
         "TestStockAWSHistoryPreflightRejectsRetainedPrefix"
       ]
+    },
+    {
+      "id": "stock-history-joins",
+      "kind": "runner-tests",
+      "tests": [
+        "TestCoordinatorStockCleanupRequiresJoinedSuccess"
+      ]
+    },
+    {
+      "id": "stock-aws-history-purge",
+      "kind": "assembly-checks",
+      "responsibility": "aws",
+      "tests": [
+        "TestStockAWSPurgeVersionsRequiresExactInventoryAndFinalAcknowledgements"
+      ]
+    },
+    {
+      "id": "stock-aws-history-ownership",
+      "kind": "assembly-checks",
+      "responsibility": "aws",
+      "tests": [
+        "TestStockAWSVersionOwnershipRequiresSignedRunAndOriginalResults"
+      ]
     }
   ]
 }
