@@ -391,6 +391,9 @@ func (s *StateSession) buildAdministrativeIndexInputForEntries(ctx context.Conte
 	if err := s.bindAutomaticHistoricalConsumers(root, pages, bundles, prior, &consumers); err != nil {
 		return format.AdministrativeIndex{}, err
 	}
+	if err := consumers.bindParentVectorOwners(root, pages); err != nil {
+		return format.AdministrativeIndex{}, err
+	}
 	locations := make([]contract.GeneratorSliceLocation, 0, len(consumers.slices))
 	for _, location := range consumers.slices {
 		locations = append(locations, location)
@@ -775,7 +778,7 @@ func (s *StateSession) buildAdministrativeIndexInputForEntries(ctx context.Conte
 						retained = true
 					}
 				case contract.GeneratedParentSupportKind:
-					ownership = administrativeRowOwnership{groups: consumers.operationOwners(carrier.OwnerID)}
+					ownership = administrativeRowOwnership{groups: consumers.parentVectors[generatedVectorKey{carrier.OwnerKind, carrier.OwnerID, carrier.VectorKind, carrier.Vector}]}
 					retained = true
 				case contract.GeneratedAttemptSupportKind:
 					attempt := consumers.attempts[carrier.OwnerID]

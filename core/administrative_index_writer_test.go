@@ -763,3 +763,89 @@ func TestAdministrativeIndexLocalCreateHasNoRemoteAffectedSubjects(t *testing.T)
 	}
 
 }
+
+func administrativeOwnersWithoutProjectedBundle(t testing.TB, s *StateSession, prior *generatedSelection) administrativeConsumers {
+	t.Helper()
+	pages := make([]format.RequiredSupportPage, len(s.support))
+	for i, page := range s.support {
+		pages[i] = format.RequiredSupportPage{Domain: page.Domain, Object: page.Object, Index: page.Index}
+		for _, view := range page.Records {
+			row := contract.SupportRecord(view)
+			if row.Kind == contract.GeneratedFragmentSupportKind && prior != nil {
+				row.Body = nil
+			}
+			pages[i].Records = append(pages[i].Records, row)
+		}
+	}
+	consumers, err := selectedAdministrativeConsumersWithValidated(pages, nil, nil, prior)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := consumers.bindParentVectorOwners(s.root, pages); err != nil {
+		t.Fatal(err)
+	}
+	return consumers
+}
+
+// full_only: false
+func TestAdministrativeParentVectorsRecoverSourceUsesWithoutProjectedGraph(t *testing.T) {
+	s := generatedReservationState(t, generatedSealedSource(t, "alpha"), generatedSealedSource(t, "omega"))
+	generatedSealSelectedFixture(t, s)
+	selected, err := s.selectedGeneratedWork(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	operation := s.root.Generated.ActiveOwner
+	uses := selected.bundles[0].SourceUses
+	if len(uses) != 2 || uses[0].Consumers == uses[1].Consumers {
+		t.Fatal("expected two distinct sealed-input consumers")
+	}
+	for _, prior := range []*generatedSelection{nil, selected} {
+		consumers := administrativeOwnersWithoutProjectedBundle(t, s, prior)
+		for _, use := range uses {
+			key := generatedVectorKey{contract.GeneratedParentSupportKind, operation, contract.GeneratorVectorConsumers, use.Consumers}
+			if !slices.Equal(consumers.parentVectors[key], []contract.ID{operation}) {
+				t.Fatal("active source lost its exact group", key, consumers.parentVectors[key])
+			}
+		}
+	}
+}
+
+// full_only: false
+func TestAdministrativeDeleteHazardUsesTargetSupportWithoutProjectedGraph(t *testing.T) {
+	s, _, hazard, target := generatedDeleteHazardState(t, 1)
+	if target.OriginalOperationID == hazard.OriginalOperationID {
+		t.Fatal("fixture requires distinct Create and Delete operations")
+	}
+	binding, err := contract.EncodeGeneratorSupportBinding(contract.GeneratorSupportBinding{Schema: contract.GeneratorSupportBindingSchema, Role: 3,
+		ContractID: hazard.ConfigContractID, ImplementationID: hazard.ExecutorID, PublicBindingDigest: hazard.DescriptorID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	support, carriers, err := generatedCarrierRows(s.root.Domain, contract.GeneratedParentSupportKind, target.OriginalOperationID, contract.GeneratorVectorSupport, [][]byte{binding})
+	if err != nil {
+		t.Fatal(err)
+	}
+	hazard.Support = support
+	body, err := contract.EncodeGeneratedHazardRecord(hazard)
+	if err != nil {
+		t.Fatal(err)
+	}
+	generatedReplaceRecord(t, s, contract.GeneratedHazardSupportKind, hazard.HazardID, body)
+	page := &s.support[len(s.support)-1]
+	for _, r := range carriers {
+		page.Records = append(page.Records, contract.SupportRecordView(r))
+	}
+	generatedRefreshSupport(t, s)
+	selected, err := s.selectedGeneratedWork(t.Context())
+	if err != nil {
+		t.Fatal("cold validation of Delete Hazard support", err)
+	}
+	for _, prior := range []*generatedSelection{nil, selected} {
+		consumers := administrativeOwnersWithoutProjectedBundle(t, s, prior)
+		key := generatedVectorKey{contract.GeneratedParentSupportKind, target.OriginalOperationID, contract.GeneratorVectorSupport, support}
+		if !slices.Equal(consumers.parentVectors[key], []contract.ID{hazard.HazardID}) {
+			t.Fatal("target support lost the Hazard that uses it", consumers.parentVectors[key])
+		}
+	}
+}

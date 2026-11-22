@@ -13,6 +13,8 @@ import (
 // Several independent work groups may use one operation or attempt record;
 // they share that row without acquiring a dependency on each other.
 type administrativeConsumers struct {
+	parentVectors       map[generatedVectorKey][]contract.ID
+	graphSourceUses     map[contract.ID][]contract.GeneratorSourceUse
 	operation, attempt  map[contract.ID][]contract.ID
 	material            map[contract.ID][]contract.ID
 	canonical           map[contract.ID][]contract.ID
@@ -78,7 +80,7 @@ func selectedAdministrativeConsumers(pages []format.RequiredSupportPage, project
 
 func selectedAdministrativeConsumersWithValidated(pages []format.RequiredSupportPage, projectedParent *contract.GeneratedParentPlan,
 	bundles []contract.GeneratorPlanBundle, selected *generatedSelection) (administrativeConsumers, error) {
-	c := administrativeConsumers{operation: make(map[contract.ID][]contract.ID), attempt: make(map[contract.ID][]contract.ID),
+	c := administrativeConsumers{graphSourceUses: make(map[contract.ID][]contract.GeneratorSourceUse), operation: make(map[contract.ID][]contract.ID), attempt: make(map[contract.ID][]contract.ID),
 		canonical: make(map[contract.ID][]contract.ID), material: make(map[contract.ID][]contract.ID), history: make(map[contract.ID][]contract.ID), historyOwners: make(map[contract.ID][]contract.ID), historyDependencies: make(map[contract.ID][]contract.ID), actions: make(map[contract.ID]uint8),
 		lineage: make(map[contract.ID][]contract.ID), inbox: make(map[contract.ID]contract.ID), attempts: make(map[contract.ID]contract.GeneratedAttemptRecord),
 		intentAttempts: make(map[contract.ID][]contract.ID), attemptIntent: make(map[contract.ID]administrativeAttemptIntent),
@@ -96,6 +98,7 @@ func selectedAdministrativeConsumersWithValidated(pages []format.RequiredSupport
 	var histories []historyConsumer
 	for _, bundle := range bundles {
 		operation := bundle.Header.OperationID
+		c.graphSourceUses[operation] = bundle.SourceUses
 		c.graphOperation[bundle.UsePlan.PlanGraphID] = operation
 		c.materialOperation[bundle.Header.MaterialID] = operation
 		for _, lineage := range bundle.Lineages {
@@ -221,6 +224,12 @@ func selectedAdministrativeConsumersWithValidated(pages []format.RequiredSupport
 				carrier, err := contract.InspectGeneratorVectorCarrier(row.Body)
 				if err != nil {
 					return c, err
+				}
+				if carrier.OwnerKind == contract.GeneratedParentSupportKind {
+					if c.parentVectors == nil {
+						c.parentVectors = make(map[generatedVectorKey][]contract.ID)
+					}
+					c.parentVectors[generatedVectorKey{carrier.OwnerKind, carrier.OwnerID, carrier.VectorKind, carrier.Vector}] = nil
 				}
 				if carrier.OwnerKind == contract.GeneratorSnapshotOwner && carrier.VectorKind == contract.GeneratorVectorSlices {
 					location, err := contract.InspectGeneratorSliceLocation(carrier.Row)
@@ -509,6 +518,7 @@ func (c administrativeConsumers) bindDeclarationSources(pages []format.RequiredS
 			graph.UsePlan.PlanGraphID != location.ContentID {
 			return contract.ErrRecord
 		}
+		c.graphSourceUses[graph.Header.OperationID] = graph.SourceUses
 		c.graphOperation[location.ContentID] = graph.Header.OperationID
 		for _, lineage := range graph.Lineages {
 			for _, template := range lineage.Templates[:lineage.TemplateCount] {
@@ -614,6 +624,7 @@ func (c administrativeConsumers) bindDeclarationSourcesFromValidated(selected *g
 			if !present {
 				return contract.ErrRecord
 			}
+			c.graphSourceUses[bundle.Header.OperationID] = bundle.SourceUses
 			c.graphOperation[location.ContentID] = bundle.Header.OperationID
 		case contract.GeneratorContentDeclaration, contract.GeneratorContentRecipientRegistry, contract.GeneratorContentOutputConfiguration:
 			if _, present := byOperation[location.ContentID]; !present {
@@ -687,10 +698,6 @@ func (c administrativeConsumers) attemptOwners(attempt, operation contract.ID) [
 	}
 	slices.SortFunc(out, func(a, b contract.ID) int { return bytes.Compare(a[:], b[:]) })
 	return out
-}
-
-func (c administrativeConsumers) operationOwners(operation contract.ID) []contract.ID {
-	return slices.Clone(c.operation[operation])
 }
 
 func (c administrativeConsumers) materialOwners(material, operation contract.ID) []contract.ID {

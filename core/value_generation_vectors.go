@@ -44,17 +44,21 @@ func generatedHazardSupportOwner(h contract.GeneratedHazardRecord, bundles []con
 		if !ok || x.Action != contract.GeneratorActionDelete {
 			continue
 		}
-		rows, err := vectors.resolve(contract.GeneratedHazardSupportKind, h.HazardID, contract.GeneratorVectorTargets, h.Target)
-		if err != nil || len(rows) != 1 {
-			return contract.ID{}, contract.ErrRecord
-		}
-		target, err := contract.InspectGeneratorTarget(rows[0])
-		if err != nil {
-			return contract.ID{}, err
-		}
-		return target.OriginalOperationID, nil
+		return generatedDeleteHazardSupportOwner(h, vectors)
 	}
 	return h.OriginalOperationID, nil
+}
+
+func generatedDeleteHazardSupportOwner(h contract.GeneratedHazardRecord, vectors generatedVectorSet) (contract.ID, error) {
+	rows, err := vectors.resolve(contract.GeneratedHazardSupportKind, h.HazardID, contract.GeneratorVectorTargets, h.Target)
+	if err != nil || len(rows) != 1 {
+		return contract.ID{}, contract.ErrRecord
+	}
+	target, err := contract.InspectGeneratorTarget(rows[0])
+	if err != nil {
+		return contract.ID{}, err
+	}
+	return target.OriginalOperationID, nil
 }
 
 func newGeneratedVectorSet(domain contract.ID, records []contract.SupportRecord) (generatedVectorSet, error) {
