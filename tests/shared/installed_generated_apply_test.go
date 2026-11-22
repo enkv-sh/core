@@ -727,7 +727,7 @@ func TestInstalledGeneratedPlanRequiresFreshReadinessBeforeRequestBinding(t *tes
 		ConfigContractID: process.Implementation.ConfigContractID, ResourceContractID: hermeticCloudflareResourceContractID(),
 		CompletionClass: contract.GeneratedCompletionAcknowledged, Intent: bytes.Clone(process.Intent)}
 	input := []ApplyEntryInput{{Name: "generated", Recipients: []contract.ID{f.selected.admission.recipient},
-		ValueSource: contract.Generated, ConfidentialityClass: contract.Secret, Generated: &meta}}
+		ValueSource: contract.Generated, ConfidentialityClass: contract.Secret, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, Generated: &meta}}
 	requestCalls := 0
 	installation := ApplyInstallation{DesiredRecipients: currentApplyRecipients(f.selected.registry()), Generated: &GeneratedApplyInstallation{
 		ResolveImplementation: func(GeneratedImplementationRequest) (contract.GeneratorImplementation, error) {
@@ -745,10 +745,27 @@ func TestInstalledGeneratedPlanRequiresFreshReadinessBeforeRequestBinding(t *tes
 		t.Fatal("fresh CREATE without readiness reached request binding", "plan", plan != nil, "error", err,
 			"request calls", requestCalls, "creates", creates, "deletes", deletes)
 	}
-	refused := errors.New("selected generator cannot create")
+	refused := errors.Join(contract.ErrRecord, errors.New("selected generator cannot create"))
 	installation.Generated.CheckCreateReadiness = func(context.Context, string, contract.GeneratorImplementation, []byte) error { return refused }
 	if plan, err := f.selected.installedGeneratedPlan(ctx, installation, input, nil, deadline); !errors.Is(err, refused) || plan != nil || requestCalls != 0 {
 		t.Fatal("fresh readiness refusal reached request binding or lost its cause", plan != nil, err, requestCalls)
+	}
+	f.env.GeneratedProcess = process
+	callbacks := installedGeneratedTestCallbacks(t, f, process)
+	refusedCalls := 0
+	callbacks.CheckCreateReadiness = func(context.Context, string, contract.GeneratorImplementation, []byte) error {
+		refusedCalls++
+		return refused
+	}
+	callbacks.RequestDigest = installation.Generated.RequestDigest
+	engine := installedGeneratedTestEngine(t, ctx, f, f.selected, input, installation.DesiredRecipients, callbacks)
+	refusal := engine.Apply(ctx, testID("refused fresh generator settings"), input)
+	engine.Close()
+	cold := f.open(t, ctx)
+	creates, deletes = effects()
+	if refusal.Result.Outcome != AdmissionRefused || refusal.Result.CommitMayHaveOccurred || !bytes.Equal(cold.body, f.selected.body) ||
+		!cold.root.Generated.ActiveOwner.IsZero() || refusedCalls != 1 || requestCalls != 0 || creates != 0 || deletes != 0 {
+		t.Fatalf("semantic refusal: outcome=%d commit=%t same_head=%t active_owner=%t readiness=%d requests=%d creates=%d deletes=%d", refusal.Result.Outcome, refusal.Result.CommitMayHaveOccurred, bytes.Equal(cold.body, f.selected.body), !cold.root.Generated.ActiveOwner.IsZero(), refusedCalls, requestCalls, creates, deletes)
 	}
 	readyCalls := 0
 	installation.Generated.CheckCreateReadiness = func(ctx context.Context, name string, row contract.GeneratorImplementation, intent []byte) error {

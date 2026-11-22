@@ -21,6 +21,49 @@ func TestPublicNativeRecoveredGeneratorEditsRespectCurrentEpoch(t *testing.T) {
 		t.Setenv(key, "")
 	}
 	build, _ := nativeExtensionBuildAuthor(t, nativeExtensionCopyExample(t, "local-token-generator"))
+	t.Run("readiness-before-owner", func(t *testing.T) {
+		f := newNativeExtensionCase(t, cli, []artifact.LocalPlugin{build})
+		subject := "token"
+		f.declare(t, 0, "manual", &subject, false)
+		credential := []string{"ENKV_EXAMPLE_TOKEN=" + nativeExtensionBearer}
+		apply := func() workflowChild {
+			return f.run(t, "apply", false, credential, "apply", "--source", f.path, "--source-format", "json", "--json")
+		}
+		nativeExtensionGeneratedOutcome(t, apply(), "success", 0)
+		before, root, _ := f.selected(t)
+		counts := f.service.Counts()
+		path := filepath.Join(filepath.Dir(f.path), f.source["generated"].(string))
+		var companion map[string]any
+		nativeGeneratedReadJSON(t, path, &companion)
+		source := nativeMaintenanceCanonicalGenerator(t, f.server.URL, companion)
+		source["epoch"] = 1
+		settings := source["canonical"].(map[string]any)
+		valid := settings["settings"].(json.RawMessage)
+		settings["settings"] = json.RawMessage(bytes.Replace(valid, []byte(`"subject":"token"`), []byte(`"subject":""`), 1))
+		f.source["entries"].(map[string]any)["TOKEN"].(map[string]any)["source"] = source
+		nativeGeneratedWriteJSON(t, path, companion)
+		for _, local := range []string{"", "private-local-token"} {
+			if local == "" {
+				delete(source, "plugin")
+			} else {
+				source["plugin"] = local
+			}
+			nativeGeneratedWriteJSON(t, f.path, f.source)
+			child := apply()
+			after, current, _ := f.selected(t)
+			if child.code != 2 || !reflect.DeepEqual(before, after) || !current.Generated.ActiveOwner.IsZero() || !root.Generated.ActiveOwner.IsZero() || f.service.Counts() != counts {
+				t.Fatal("invalid recovered settings selected work or called the service", local, child.code)
+			}
+		}
+		settings["settings"] = valid
+		nativeGeneratedWriteJSON(t, f.path, f.source)
+		rotated := nativeExtensionGeneratedOutcome(t, apply(), "retirement-pending", 3)
+		_, current, entries := f.selected(t)
+		if !current.Generated.ActiveOwner.IsZero() || len(rotated.Duties) != 1 || entries["TOKEN"].Generated.Epoch != 1 || f.service.Counts().TokenCreates != counts.TokenCreates+1 {
+			t.Fatal("valid recovered settings did not complete one fresh generation")
+		}
+		f.finish(t, len(f.children), "token/t1", "token/t2")
+	})
 	for _, format := range []configuration.Format{configuration.JSON, configuration.YAML} {
 		t.Run(map[configuration.Format]string{configuration.JSON: "json", configuration.YAML: "yaml"}[format], func(t *testing.T) {
 			f := newNativeExtensionCase(t, cli, []artifact.LocalPlugin{build})
