@@ -9,7 +9,8 @@ package main
 // Unlisted tests use the one-second fallback.
 var componentEstimates = map[string]float64{
 	"TestInstalledRemovalRefusesRejectedRetirementBeforeDuty":                             4,
-	"TestInstalledUnavailableRetirementKeepsIdentityUntilAuthorizedEnd":                   5,
+	"TestInstalledUnavailableRetirementKeepsIdentityUntilAuthorizedEnd":                   4,
+	"TestInstalledPlainEditPreservesTwoCurrentCreationProofs":                             3,
 	"TestInstalledGeneratedInboxCleanupReopensOnlyNamedMapping":                           62,
 	"TestInstalledGeneratedInboxCleanupRefusesOccupiedGeneratedSlot":                      7,
 	"TestInstalledGeneratedInboxCleanupRefusesUnobservedAndLiveOriginal":                  12,

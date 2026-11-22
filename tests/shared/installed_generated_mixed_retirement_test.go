@@ -14,6 +14,53 @@ import (
 )
 
 // full_only: false
+func TestInstalledPlainEditPreservesTwoCurrentCreationProofs(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+	defer cancel()
+	process, effects := installedGeneratedRetirementProcess(t, "acknowledged")
+	f := newInstalledApplyTestFixture(t, ctx, contract.GCP, false)
+	f.env.GeneratedProcess = process
+	input := installedGeneratedRetirementEntries(process, f.selected.admission.recipient, 0, "before")
+	second := input[0]
+	second.Name = "second"
+	input = append(input, second)
+	apply := func(selected *StateSession, label string) *StateSession {
+		t.Helper()
+		engine := installedGeneratedTestEngine(t, ctx, f, selected, input, currentApplyRecipients(selected.registry()), installedGeneratedRetirementCallbacks(t, f, process))
+		got := engine.Apply(ctx, testID(label), input)
+		engine.Close()
+		if got.Result.Outcome != ObservedCurrent {
+			t.Fatal(label, got.Result)
+		}
+		return f.open(t, ctx)
+	}
+	selected := apply(f.selected, "create two current values")
+	_, first := observeCurrentValueEntry(t, selected, "generated")
+	_, other := observeCurrentValueEntry(t, selected, "second")
+	rows, err := selected.priorAdministrativeRows()
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, foundA := rows[generatedRecordKey{contract.GeneratedCreateEvidenceSupportKind, first.Generated.CreateResultID}]
+	b, foundB := rows[generatedRecordKey{contract.GeneratedCreateEvidenceSupportKind, other.Generated.CreateResultID}]
+	if first.Generated.CreateResultID == other.Generated.CreateResultID || !foundA || !foundB || a.page != b.page ||
+		!selected.priorAdministrativeOwnership(a).mandatory || !selected.priorAdministrativeOwnership(b).mandatory {
+		t.Fatal("installed writer did not select two distinct mandatory creation proofs on the same page")
+	}
+	input[1].InputBytes = []byte("after")
+	changed := apply(selected, "edit plain sibling")
+	_, afterFirst := observeCurrentValueEntry(t, changed, "generated")
+	_, afterOther := observeCurrentValueEntry(t, changed, "second")
+	_, plain := observeCurrentValueEntry(t, changed, "healthy")
+	creates, deletes := effects()
+	if !reflect.DeepEqual(first, afterFirst) || !reflect.DeepEqual(other, afterOther) || !bytes.Equal(plain.ValueBytes, []byte("after")) ||
+		changed.head.Core.Revision == selected.head.Core.Revision || !changed.root.Generated.ActiveOwner.IsZero() ||
+		changed.root.Generated.Duties != 0 || creates != 2 || len(deletes) != 0 {
+		t.Fatal("ordinary edit did not preserve both generated entries and their work state", creates, deletes)
+	}
+}
+
+// full_only: false
 func TestInstalledGeneratedRetirementKeepsMixedCurrentValues(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
 	defer cancel()
