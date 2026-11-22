@@ -607,7 +607,7 @@ var componentEstimates = map[string]float64{
 	"TestGeneratedFinalKeepsLateSelectedReadResult":                                               2,
 	"TestAdministrativeDispositionKeepsMandatoryAndCommitsRemovedRows":                            1,
 	"TestEndWorkReserveFallbackFromAuthenticHistory":                                              1997,
-	"TestSignedSharedFragmentCurrentIntentsFirstExitColdOpen":                                     15,
+	"TestSignedSharedFragmentCurrentIntentsFirstExitColdOpen":                                     470,
 	"TestAdministrativeReceiptRefreshKeepsPartialReadMode":                                        6,
 	"TestAuthenticatedSupportRowUsesExactPhysicalOrdinalAndBorrowScope":                           1,
 	"TestAuthorityCryptoPrivateProbeAndExactSurvivingSource":                                      3,

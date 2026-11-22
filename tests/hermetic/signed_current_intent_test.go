@@ -1587,7 +1587,8 @@ func TestSignedSharedFragmentCurrentIntentsFirstExitColdOpen(t *testing.T) {
 	}
 	const perOrigin = 4
 	filler := []ApplyEntryInput{{Name: "a-seed", Recipients: []contract.ID{sourceB.admission.recipient},
-		ValueSource: format.Supplied, ConfidentialityClass: format.Plain, InputBytes: []byte{0}}}
+		ValueSource: format.Supplied, ConfidentialityClass: format.Plain, InputBytes: []byte{0},
+		InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw}}
 	var alpha, omega []string
 	for i := 0; i < perOrigin; i++ {
 		filler = append(filler, ApplyEntryInput{Name: fmt.Sprintf("b-filler-%d", i),
@@ -1654,6 +1655,15 @@ func TestSignedSharedFragmentCurrentIntentsFirstExitColdOpen(t *testing.T) {
 	if len(retiring) != len(names) {
 		t.Fatal("replacement predecessor lost a current generated value")
 	}
+	t.Run("reconstruct shared intents", func(t *testing.T) {
+		projection := reconstructProjectionFixture(t, env, opened, store)
+		for _, name := range names {
+			intent, err := projection.CopyGeneratedIntent(t.Context(), retiring[name].Generated.IntentDigest)
+			if err != nil || !bytes.Equal(intent, hermeticSizedGeneratorIntent(name, 0x5a, 384<<10)) {
+				t.Fatal("reconstruction lost a current intent from the shared blob", name, err)
+			}
+		}
+	})
 	operation := fixtureID(env.Domain, "shared-page whole-set replacement")
 	profile := defaultGeneratedFixtureProfile()
 	replacementIntent := func(name string) []byte {
