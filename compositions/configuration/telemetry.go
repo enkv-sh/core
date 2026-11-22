@@ -56,6 +56,12 @@ func Parse(ctx context.Context, pair *Pair) (*Model, error) {
 	return parseSource(ctx, pair, nil, false)
 }
 
+// ParseForAcceptedWork reads source facts for an already accepted operation.
+// The operation independently authenticates the current domain and authority.
+func ParseForAcceptedWork(ctx context.Context, pair *Pair) (*Model, error) {
+	return parseEditModel(ctx, pair, &Model{acceptedWork: true})
+}
+
 // ParseForPreparation validates every present record and ordinary source join,
 // and enumerates all positively absent supplied-secret records. Its model does
 // not make an incomplete pair admissible to ordinary operations.

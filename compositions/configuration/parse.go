@@ -29,7 +29,7 @@ func parseEditModel(ctx context.Context, pair *Pair, model *Model) (*Model, erro
 	} else {
 		model, err = parsePairModel(next, pair, model)
 	}
-	if err == nil && model.selectedRecipient != nil && !model.Resolved {
+	if err == nil && (model.selectedRecipient != nil || model.acceptedWork) && !model.Resolved {
 		err = sourceError("generated", "restore-exact-generated-file")
 		model = nil
 	}

@@ -607,7 +607,7 @@ func TestInstalledGeneratedContinueInstallsAcceptedRegistryAfterRestart(t *testi
 			readers := []contract.ID{f.selected.admission.recipient, pending}
 			slices.SortFunc(readers, compareGeneratedIDs)
 			meta := contract.GeneratorDeclaredGeneration{Schema: contract.GeneratorDeclaredGenerationSchema, LifecycleMode: contract.GeneratorLifecycleManaged, Epoch: 0, RetirementMode: contract.GeneratedRetirementManual, ConfigContractID: process.Implementation.ConfigContractID, ResourceContractID: hermeticCloudflareResourceContractID(), CompletionClass: contract.GeneratedCompletionAcknowledged, Intent: bytes.Clone(process.Intent)}
-			input := []ApplyEntryInput{{Name: "generated", Recipients: readers, ValueSource: contract.Generated, ConfidentialityClass: contract.Secret, Generated: &meta}, {Name: "plain", Recipients: []contract.ID{f.selected.admission.recipient}, ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, InputBytes: []byte("accepted complete sibling")}}
+			input := []ApplyEntryInput{{Name: "generated", Recipients: readers, ValueSource: contract.Generated, ConfidentialityClass: contract.Secret, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, Generated: &meta}, {Name: "plain", Recipients: []contract.ID{f.selected.admission.recipient}, ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, InputBytes: []byte("accepted complete sibling")}}
 			callbacks := installedGeneratedTestCallbacks(t, f, process)
 			traceOwner := func(stage string, owner *InstalledGeneratedCustody, err error) {
 				t.Log("registry restart admission", stage, "owner present", owner != nil, "error", err)

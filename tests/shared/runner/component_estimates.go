@@ -135,7 +135,7 @@ var componentEstimates = map[string]float64{
 	"TestInstalledRetirementParksHostRejectedResource":                                   12,
 	"TestInstalledActiveRetirementAcceptsSavedUnknownAfterParkingFailure":                31,
 	"TestInstalledGeneratedRetirementRiskRequiresExactQualifiedAmbiguity":                23,
-	"TestInstalledGeneratedRetirementContinuesLateOriginalWithoutAnotherSend":            10,
+	"TestInstalledGeneratedRetirementContinuesLateOriginalWithoutAnotherSend":            11,
 	"TestInstalledGeneratedCleanupPreparationStopPreservesSelectedResult":                17,
 	"TestInstalledGeneratedCleanupCaptureRefusalPrecedesSigning":                         4,
 	"TestInstalledGeneratedLaterContentionReplacesSelectionCheckpoint":                   4,

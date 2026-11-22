@@ -17,11 +17,9 @@ import (
 
 func applyPublicationIntentSource(t *testing.T) configurationReaderSource {
 	t.Helper()
-	return configurationApplyPair(t, "aws", configuration.JSON, func(editable, _ map[string]any) {
-		editable["entries"].(map[string]any)["future"] = map[string]any{
-			"confidentiality": "secret", "recipients": []string{},
-			"source": map[string]any{"kind": "generated", "plugin": "intent-fixture-uninstalled-generator", "epoch": 0, "retirement": "manual", "settings": map[string]any{}},
-		}
+	return configurationAcceptedWorkPair(t, "aws", configuration.JSON, configuration.Entry{
+		Name: "future", Secret: true, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw,
+		Generated: &configuration.Generator{Plugin: "intent-fixture-uninstalled-generator", Retirement: "manual", Settings: []byte("{}")},
 	})
 }
 
@@ -104,7 +102,9 @@ func TestApplyPublicationFreshAndContinuationKeepDistinctConstruction(t *testing
 			if continuation {
 				source = applyPublicationIntentSource(t)
 			} else {
-				source = configurationApplyPair(t, "aws", configuration.JSON, nil)
+				source = configurationAcceptedWorkPair(t, "aws", configuration.JSON, configuration.Entry{
+					Name: "plain", InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, Plain: []byte("fresh input"),
+				})
 			}
 			defer func() {
 				if err := source.pair.Close(); err != nil {

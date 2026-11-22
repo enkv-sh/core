@@ -132,7 +132,7 @@ func configurationGeneratedMutation(ctx context.Context, requestID contract.ID, 
 		return configurationApplyFailure(ctx, out, stage, err, mutationSourceFailureTarget(resultFacts))
 	}
 
-	m, err := configuration.Parse(ctx, pair)
+	m, err := configuration.ParseForAcceptedWork(ctx, pair)
 	if err != nil {
 		return refuse("parse", err)
 	}

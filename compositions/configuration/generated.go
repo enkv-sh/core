@@ -217,7 +217,7 @@ func parseGenerated(p *parser, m *Model) {
 	for i, r := range m.Recipients {
 		row, ok := recipientRows[r.Reference]
 		if !ok {
-			if m.selectedRecipient != nil && r.Reference == *m.selectedRecipient {
+			if m.selectedRecipient != nil && r.Reference == *m.selectedRecipient || m.acceptedWork && r.ID.IsZero() {
 				continue
 			}
 			if p.err == nil {
@@ -235,7 +235,7 @@ func parseGenerated(p *parser, m *Model) {
 		if e.Secret && e.Generated == nil {
 			row, ok := secretRows[e.Name]
 			if !ok {
-				if m.preparation {
+				if m.preparation || m.acceptedWork {
 					if m.MissingInputs == nil {
 						m.MissingInputs = make([]string, 0, len(m.Entries))
 					}

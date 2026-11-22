@@ -153,6 +153,7 @@ type Model struct {
 	SelectedConfidentialityOffset, SelectedConfidentialityLength uint32
 	discardPayloads                                              bool
 	preparation                                                  bool
+	acceptedWork                                                 bool
 	selected                                                     *string
 	selectedRecipient, selectedReference                         *string
 	parsedPair                                                   *Pair
@@ -176,8 +177,8 @@ type Model struct {
 	Outputs                                                      []OutputBinding
 	Plugins                                                      []PluginRequirement
 	Entries                                                      []Entry
-	// MissingInputs is complete only after successful preparation parsing or
-	// reconstruction joining. Its ordered names borrow the declared entry names.
+	// MissingInputs is complete after successful preparation, accepted-work
+	// parsing or reconstruction joining. Its names borrow declared entry names.
 	MissingInputs []string
 	Basis         Basis
 	Observation   *Observation

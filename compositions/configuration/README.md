@@ -149,6 +149,14 @@ returns the complete ordered missing supplied-secret set in `Model.MissingInputs
 It does not admit that incomplete pair to ordinary consumers. Repeated preparation
 with the companion present re-enumerates this set without reconstruction.
 
+`ParseForAcceptedWork` requires the captured generated companion. It validates
+the complete grammar, present records and source joins while retaining missing
+draft supplied-secret inputs and additional recipients that have no ID or
+prepared row. A recipient with a public ID still requires its matching row.
+The model retains local output settings and plugin requirements for the owning
+operation. Accepted execution independently authenticates the current domain,
+Store and authority before using that model.
+
 `ParseForSet` uses the same admission and adds the selected entry's source spans.
 Set may fill one missing input while preserving all others. Its staged missing
 set must equal the original set minus that exact target. Present records and

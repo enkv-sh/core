@@ -75,7 +75,11 @@ func configurationApplyPublication(ctx context.Context, applyRequestID, publicat
 	if err != nil {
 		return out
 	}
-	m, err := configuration.Parse(ctx, pair)
+	parse := configuration.Parse
+	if !operationID.IsZero() {
+		parse = configuration.ParseForAcceptedWork
+	}
+	m, err := parse(ctx, pair)
 	if err != nil {
 		out.Apply = configurationApplyFailure(ctx, apply, "parse", err, mutationSourceFailureTarget(resultFacts))
 		return out
