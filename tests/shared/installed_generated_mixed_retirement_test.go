@@ -286,7 +286,7 @@ func TestInstalledNormalHandoffAddsRecipientAcrossPageBoundary(t *testing.T) {
 				ConfigContractID: process.Implementation.ConfigContractID, ResourceContractID: hermeticCloudflareResourceContractID(),
 				CompletionClass: contract.GeneratedCompletionAcknowledged, Intent: bytes.Clone(process.Intent)}
 			input := []ApplyEntryInput{{Name: "generated", ValueSource: contract.Generated, ConfidentialityClass: contract.Secret,
-				Recipients: []contract.ID{authority}, Generated: &meta}, plain}
+				Recipients: []contract.ID{authority}, Generated: &meta, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw}, plain}
 			callbacks := installedGeneratedRetirementCallbacks(t, f, process)
 			creator := installedGeneratedTestEngine(t, ctx, f, selected, input, currentApplyRecipients(selected.registry()), callbacks)
 			created := creator.Apply(ctx, fixtureID(f.env.Domain, "handoff actual generated predecessor"), input)
@@ -302,7 +302,7 @@ func TestInstalledNormalHandoffAddsRecipientAcrossPageBoundary(t *testing.T) {
 				input = append([]ApplyEntryInput{suppliedSecret(t, f.env, "generated", "handoff supplied replacement", custody.StandardValue, authority)}, input...)
 			} else if name == "generated_to_plain" {
 				input = append([]ApplyEntryInput{{Name: "generated", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain,
-					Recipients: []contract.ID{authority}, InputBytes: []byte("selected replacement")}}, input...)
+					Recipients: []contract.ID{authority}, InputBytes: []byte("selected replacement"), InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw}}, input...)
 			}
 			engine := installedGeneratedTestEngine(t, ctx, f, selected, input, desired, callbacks)
 			changed := engine.Apply(ctx, fixtureID(f.env.Domain, "handoff adds ninth recipient"), input)

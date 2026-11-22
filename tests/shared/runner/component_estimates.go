@@ -59,7 +59,7 @@ var componentEstimates = map[string]float64{
 	"TestInstalledGeneratedCleanupFinalQualificationKeepsInstallationLease":               5,
 	"TestInstalledGeneratedListRechecksAdmissionAfterHazardQualification":                 12,
 	"TestInstalledGeneratedListCloseJoinsHazardQualification":                             4,
-	"TestInstalledNormalHandoffAddsRecipientAcrossPageBoundary":                           8,
+	"TestInstalledNormalHandoffAddsRecipientAcrossPageBoundary":                           9,
 	"TestInstalledGeneratedCleanupLateCreateReflectionAllowsFollowingCleanup":             13,
 	"TestGCActiveLocalAndMixedGraphPublicReadersProtectAdmittedInboxes":                   5,
 	"TestApplyPreparationExcludesPublicationImmutableWrites":                              13,

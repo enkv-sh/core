@@ -7,7 +7,57 @@ import (
 	"testing"
 
 	"enkv.sh/core/contract"
+	"enkv.sh/sdk/artifact/credentialroute"
 )
+
+// full_only: false
+func TestRetirementRouteGroupsFitOneSupportPage(t *testing.T) {
+	const handoffs = 128
+	groups := make([]RequiredSupportGroup, handoffs)
+	for i := range groups {
+		// Alternate two full-width public routes across distinct original operations.
+		route := credentialroute.Route{Schema: 1, ContractID: fid(1), Mode: credentialroute.ModeSDK,
+			PublicData: bytes.Repeat([]byte{byte(i % 2)}, 1581-40)}
+		body, err := credentialroute.Encode(route)
+		if err != nil {
+			t.Fatal(err)
+		}
+		identity, err := credentialroute.Identity(route)
+		if err != nil {
+			t.Fatal(err)
+		}
+		row, err := contract.EncodeGeneratorSupportBinding(contract.GeneratorSupportBinding{Schema: contract.GeneratorSupportBindingSchema,
+			Role: 7, ContractID: route.ContractID, ImplementationID: fid(2), PublicBindingDigest: identity, Binding: body})
+		if err != nil {
+			t.Fatal(err)
+		}
+		vector, err := contract.GeneratorVectorDescriptor(contract.GeneratorVectorSupport, [][]byte{row})
+		if err != nil {
+			t.Fatal(err)
+		}
+		carrier := contract.GeneratorVectorCarrier{Schema: 1, DomainID: fid(3), OwnerKind: contract.GeneratedParentSupportKind,
+			OwnerID: fid(byte(i + 1)), VectorKind: contract.GeneratorVectorSupport, Vector: vector, Row: row}
+		encoded, err := contract.EncodeGeneratorVectorCarrier(carrier)
+		if err != nil {
+			t.Fatal(err)
+		}
+		id, err := contract.GeneratorVectorCarrierID(carrier)
+		if err != nil {
+			t.Fatal(err)
+		}
+		groups[i] = RequiredSupportGroup{Class: AuxiliaryIndexSupport, Owner: id,
+			Records: []contract.SupportRecord{{Kind: contract.GeneratorVectorSupportKind, RecordID: id, Body: encoded}}}
+	}
+	pages, err := PackRequiredSupportRows(fid(3), groups, 255)
+	if err != nil || len(pages) != 1 || len(pages[0]) != handoffs {
+		t.Fatal("route groups did not fit the remaining child page", len(pages), err)
+	}
+	body, err := EncodeRequiredSupportPage(RequiredSupportPage{Domain: fid(3), Object: fid(4), Records: pages[0]})
+	// Page header 75, record 37, vector carrier 120, binding 103, public route 1581.
+	if err != nil || len(body) != 75+handoffs*(37+120+103+1581) {
+		t.Fatal("route group page length", len(body), err)
+	}
+}
 
 // full_only: false
 func TestGeneratedSliceCarriersFitGraphAllocation(t *testing.T) {
