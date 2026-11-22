@@ -118,47 +118,7 @@ func generatedAutomaticTerminalRows(g *generatedSelection, rows []contract.Suppo
 			return row.Kind == contract.OperationMaterialSupportKind && row.RecordID == g.parent.MaterialID
 		})
 	}
-	neededEvidence := make(map[contract.ID]bool)
-	for _, name := range g.image.root.Names {
-		entry := g.session.valueEntry(name.Slot)
-		if entry != nil && entry.ValueSource == contract.Generated {
-			neededEvidence[entry.Generated.CreateResultID] = true
-		}
-	}
-	for _, row := range out {
-		var targets contract.GeneratorDescriptor
-		switch row.Kind {
-		case contract.GeneratedDutySupportKind:
-			d, e := contract.InspectGeneratedDutyRecord(row.Body)
-			if e != nil {
-				return nil, e
-			}
-			targets = d.Target
-		case contract.GeneratedHazardSupportKind:
-			h, e := contract.InspectGeneratedHazardRecord(row.Body)
-			if e != nil {
-				return nil, e
-			}
-			targets = h.Target
-		default:
-			continue
-		}
-		if targets.Count != 0 {
-			target, e := g.generatedCleanupTarget(row.Kind, row.RecordID, targets)
-			if e != nil {
-				return nil, e
-			}
-			result, e := generatedCreateResultID(g.image.root.Domain, target.OriginalOperationID, target.OriginalAttemptID)
-			if e != nil {
-				return nil, e
-			}
-			neededEvidence[result] = true
-		}
-	}
-	out = slices.DeleteFunc(out, func(row contract.SupportRecord) bool {
-		return row.Kind == contract.GeneratedCreateEvidenceSupportKind && !neededEvidence[row.RecordID]
-	})
-	return out, nil
+	return g.pruneClosedCreateEvidence(out)
 }
 
 func (s *StateSession) deriveGeneratedAutomaticClose(ctx context.Context, plan *generatedLifecyclePlan) (*generatedReservation, error) {

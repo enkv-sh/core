@@ -622,49 +622,6 @@ func (g *generatedSelection) generatedDeleteSourceClosure(a generatedAttempt, so
 	if len(originals) == 0 || release.InboxID.IsZero() {
 		return generatedDeleteReflection{}, contract.ErrRecord
 	}
-	createOperation, createAttempt := target.OriginalOperationID, target.OriginalAttemptID
-	if a.expected.Template.Action == contract.GeneratorActionCreate {
-		createOperation, createAttempt = a.record.OperationID, a.record.AttemptID
-	}
-	createResult, err := generatedCreateResultID(source.DomainID, createOperation, createAttempt)
-	if err != nil {
-		return generatedDeleteReflection{}, err
-	}
-	createNeeded := generatedSelectionAnchored(g) || g.generatedResultSelectedByEntry(createResult)
-	for key, row := range g.records {
-		if key.kind == source.Record.Kind && key.id == source.SourceID {
-			continue
-		}
-		var kind uint8
-		var descriptor contract.GeneratorDescriptor
-		switch key.kind {
-		case contract.GeneratedDutySupportKind:
-			d, err := contract.InspectGeneratedDutyRecord(row.Body)
-			if err != nil {
-				return generatedDeleteReflection{}, err
-			}
-			kind, descriptor = 10, d.Target
-		case contract.GeneratedHazardSupportKind:
-			if key.id == h.HazardID {
-				continue
-			}
-			sibling, err := contract.InspectGeneratedHazardRecord(row.Body)
-			if err != nil {
-				return generatedDeleteReflection{}, err
-			}
-			kind, descriptor = 11, sibling.Target
-		default:
-			continue
-		}
-		if descriptor.Count == 0 {
-			continue
-		}
-		siblingTarget, err := g.generatedCleanupTarget(kind, key.id, descriptor)
-		if err != nil {
-			return generatedDeleteReflection{}, err
-		}
-		createNeeded = createNeeded || siblingTarget.OriginalOperationID == createOperation && siblingTarget.OriginalAttemptID == createAttempt
-	}
 	rows := make([]contract.SupportRecord, 0, len(g.records)+2)
 	for _, existing := range g.image.supportRecords() {
 		remove := false
@@ -679,8 +636,6 @@ func (g *generatedSelection) generatedDeleteSourceClosure(a generatedAttempt, so
 			remove = existing.Kind == source.Record.Kind && existing.RecordID == source.SourceID
 		case contract.GeneratedParentSupportKind, contract.GeneratedPhaseSupportKind:
 			remove = g.parent != nil && existing.RecordID == g.parent.OperationID && !generatedSelectionAnchored(g)
-		case contract.GeneratedCreateEvidenceSupportKind:
-			remove = existing.RecordID == createResult && !createNeeded
 		case contract.GeneratorVectorSupportKind:
 			carrier, inspectErr := contract.InspectGeneratorVectorCarrier(existing.Body)
 			if inspectErr != nil {
@@ -699,6 +654,14 @@ func (g *generatedSelection) generatedDeleteSourceClosure(a generatedAttempt, so
 	rows, values, err := g.generatedPruneRetainedCanonicals(rows)
 	if err != nil {
 		return generatedDeleteReflection{}, fmt.Errorf("prune retained canonicals: %w", err)
+	}
+	// Until the enclosing apply finishes, its graph also claims the create
+	// evidence for automatic retirements that have already released their Duty.
+	if !generatedSelectionAnchored(g) {
+		rows, err = g.pruneClosedCreateEvidence(rows)
+		if err != nil {
+			return generatedDeleteReflection{}, err
+		}
 	}
 	rows = append(rows, releasedRows...)
 	rows, locations, sliceDescriptor, err := g.generatedCloseContent(rows)

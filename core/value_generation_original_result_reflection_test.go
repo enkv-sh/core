@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"reflect"
 	"slices"
 	"testing"
 
@@ -144,6 +145,223 @@ func TestGeneratedDeletePrunesAccessForNoncurrentFinalCanonicalConsumer(t *testi
 	rows, values, err = g.generatedPruneRetainedCanonicals([]contract.SupportRecord{retainedRow})
 	if err != nil || len(rows) != 0 || len(values) != 1 || values[0] != retained.Entry.ValueState {
 		t.Fatal("noncurrent canonical cleanup did not remove its final access", err)
+	}
+}
+
+// full_only: false
+func TestGeneratedClosePreservesAnotherResourcesRetainedGeneratedValue(t *testing.T) {
+	// One retired resource supplied an older selected secret. A separate failed
+	// CREATE still owns that historical secret. Neither resource is current.
+	old, duty, target := generatedDetachedRetirementState(t, "absent", 0)
+	s := generatedEmptyPredecessor(t)
+	s.support, s.root.Generated = old.support, old.root.Generated
+	generatedRefreshSupport(t, s)
+	s.recountChildren()
+	reserved, err := s.deriveGeneratedReservation(t.Context(), generatedReservationInputForGenerations(t, s, generatedVectorID(170), []string{"other"}))
+	if err != nil {
+		t.Fatal("reserve second resource", err)
+	}
+	s = reserved.state
+	g := mustSelectedGeneratedWork(t, s)
+	original := g.attempts[g.phase.FrontierAttemptID]
+	packet := generatedPublicResultFixtureWithRawToken(t, original, contract.GeneratorDispositionOwnedUnusableCreate, 1, generatedVectorID(171))
+	record, err := s.generatedRecordRequest(t.Context(), original.record.AttemptID, packet, generatedContinuationContext(t, s, 180, 181))
+	if err != nil {
+		t.Fatal(err)
+	}
+	recorded, err := s.deriveGeneratedRecord(t.Context(), record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s = recorded.state
+	final, err := s.generatedFinalRequest(t.Context(), generatedContinuationContext(t, s, 182, 183))
+	if err != nil || final.selecting {
+		t.Fatal("nonselecting Final", err)
+	}
+	closed, err := s.deriveGeneratedFinal(t.Context(), final, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s = closed.state
+	g = mustSelectedGeneratedWork(t, s)
+	originalKey := generatedRecordKey{contract.GeneratedHazardSupportKind, original.expected.Template.HazardID}
+	hazard, err := contract.InspectGeneratedHazardRecord(g.records[originalKey].Body)
+	if err != nil || hazard.ResourceID == target.ResourceID || s.root.ValueEntryCount != 0 {
+		t.Fatal("two independent noncurrent resources", err)
+	}
+
+	// The current declaration grammar emits references for Generated entries.
+	// Install the authenticated retained layout supported by the selected reader.
+	donor := generatedSelectedEntryOrigin(t, generatedVectorID(10), generatedVectorID(11), 0)
+	entry := *donor.valueEntry(0)
+	entry.Recipients = []contract.ID{s.admission.recipient}
+	payload, err := contract.DecodeCanonicalPayload(entry.ValueBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload.CryptoSupportID = s.root.CurrentAccess.Core.CryptoSupportID
+	entry.ValueBytes, err = contract.EncodeCanonicalPayload(payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	canonical := contract.RetainedCanonicalRecord{OriginalSlot: 0, Entry: entry}
+	body, err := contract.EncodeRetainedCanonicalRecord(canonical)
+	if err != nil || entry.Generated.ResourceIncarnationID != target.ResourceID {
+		t.Fatal("wrong historical value", err)
+	}
+	evidenceKey := generatedRecordKey{contract.GeneratedCreateEvidenceSupportKind, entry.Generated.CreateResultID}
+	wantEvidence := bytes.Clone(g.records[evidenceKey].Body)
+	value, err := contract.ValueCoreForEntry(s.root.Domain, s.root.CurrentAccess.Core.CompatibilityID, entry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	materialContext, err := contract.ValueMaterialContextDigest(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	access := contract.AccessRecord{Schema: contract.CanonicalSchema, MaterialKind: contract.ValueMaterialKind, MaterialID: entry.ValueState, MaterialContextDigest: materialContext, PackageCheck: payload.PackageCheck, Wraps: slices.Clone(s.access[0].Records[0].Wraps)}
+	consumer, err := contract.EncodeGeneratorConsumer(contract.GeneratorConsumer{Schema: 1, OwnerID: hazard.HazardID,
+		MaterialID: entry.ValueState, ContextDigest: access.MaterialContextDigest, SubjectKind: contract.GeneratorConsumerRetainedCanonicalValue,
+		SubjectID: entry.ValueState, Purpose: contract.GeneratorConsumerUseRetainedCanonical})
+	if err != nil {
+		t.Fatal(err)
+	}
+	consumers, err := g.vectors.resolve(originalKey.kind, originalKey.id, contract.GeneratorVectorConsumers, hazard.Consumers)
+	if err != nil {
+		t.Fatal(err)
+	}
+	consumers = append(slices.Clone(consumers), consumer)
+	slices.SortFunc(consumers, bytes.Compare)
+	var carriers []contract.SupportRecord
+	hazard.Consumers, carriers = generatedVectorRows(t, originalKey.kind, originalKey.id, contract.GeneratorVectorConsumers, consumers)
+	hbody, err := contract.EncodeGeneratedHazardRecord(hazard)
+	if err != nil {
+		t.Fatal(err)
+	}
+	generatedMaterializeFixtureSupport(t, s)
+	rows := slices.DeleteFunc(s.supportRecords(), func(row contract.SupportRecord) bool {
+		if row.Kind == originalKey.kind && row.RecordID == originalKey.id {
+			return true
+		}
+		if row.Kind != contract.GeneratorVectorSupportKind {
+			return false
+		}
+		v, err := contract.InspectGeneratorVectorCarrier(row.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return v.OwnerKind == originalKey.kind && v.OwnerID == originalKey.id && v.VectorKind == contract.GeneratorVectorConsumers
+	})
+	rows = append(rows, carriers...)
+	canonicalKey := generatedRecordKey{contract.RetainedCanonicalSupportKind, entry.ValueState}
+	rows = append(rows, contract.SupportRecord{Kind: originalKey.kind, RecordID: originalKey.id, Body: hbody},
+		contract.SupportRecord{Kind: canonicalKey.kind, RecordID: canonicalKey.id, Body: body})
+	s.access[0].Records = append(s.access[0].Records, access)
+	generatedCommitFixtureAccess(t, s)
+	generatedRepackSupport(t, s, rows, g.bundles)
+	generatedSealSelectedFixture(t, s)
+	generatedVerifySelectedFixtureSlices(t, s)
+	if !s.indexSelectedMaterials() {
+		t.Fatal("historical material index")
+	}
+	checkRetained := func(s *StateSession) {
+		t.Helper()
+		if _, err := s.selectedGeneratedWork(t.Context()); err != nil {
+			t.Fatal("historical selected work", err)
+		}
+		if _, err := s.validateRelationsMode(t.Context(), false); err != nil {
+			t.Fatal("historical relation", err)
+		}
+		g := mustSelectedGeneratedWork(t, s)
+		selection, err := g.canonicalConsumer(originalKey, entry.ValueState, entry.Recipients[0])
+		if err != nil || selection.Record.Entry.Generated != entry.Generated || !bytes.Equal(g.records[evidenceKey].Body, wantEvidence) ||
+			!bytes.Equal(g.records[canonicalKey].Body, body) {
+			t.Fatal("surviving owner lost the historical secret or its create evidence", err)
+		}
+		got, ok := s.materialAccess(contract.ValueMaterialKind, entry.ValueState)
+		if !ok || !reflect.DeepEqual(got, access) {
+			t.Fatal("surviving historical access changed")
+		}
+	}
+	checkRetained(s)
+	for _, retiring := range []bool{true, false} {
+		var input generatedReservationInput
+		if retiring {
+			input = generatedDeleteReservationInputFixture(t, s, generatedVectorID(177), 2)
+		} else {
+			source, err := mustSelectedGeneratedWork(t, s).generatedDeleteSource(hazard.OwnerID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			input = generatedOrdinaryCleanupReservationInput(t, s, source, generatedVectorID(178))
+		}
+		reserved, err := s.deriveGeneratedReservation(t.Context(), input)
+		if err != nil {
+			t.Fatal("reserve exact resource", retiring, err)
+		}
+		if retiring {
+			s = reserved.state
+		} else {
+			s = generatedReflectionSelectAndColdOpen(t, s, reserved)
+		}
+		g = mustSelectedGeneratedWork(t, s)
+		a := g.attempts[g.phase.FrontierAttemptID]
+		if (a.record.ResourceID == target.ResourceID) != retiring {
+			t.Fatal("wrong delete target")
+		}
+		packet := generatedRetirementResultFixture(t, s, a, contract.GeneratorDispositionRetirementAcknowledged)
+		record, err := s.generatedRecordRequest(t.Context(), a.record.AttemptID, packet, generatedContinuationContext(t, s, 184, 185))
+		if err != nil {
+			t.Fatal(err)
+		}
+		recorded, err := s.deriveGeneratedRecord(t.Context(), record)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if retiring {
+			s = recorded.state
+		} else {
+			s = generatedReflectionSelectAndColdOpen(t, s, recorded)
+		}
+		var closePlan *generatedLifecyclePlan
+		if retiring {
+			closePlan, err = s.generatedRetirementClosePlan(t.Context(), a.record.AttemptID, generatedContinuationContext(t, s, 186, 187))
+		} else {
+			closePlan, err = s.generatedOrdinaryCleanupClosePlan(t.Context(), a.record.AttemptID, generatedContinuationContext(t, s, 188, 189))
+		}
+		if err != nil {
+			t.Fatal("plan exact resource close", retiring, err)
+		}
+		if retiring {
+			closed, err = s.deriveGeneratedRetirementClose(t.Context(), closePlan, nil)
+		} else {
+			closed, err = s.deriveGeneratedCleanupClose(t.Context(), closePlan)
+		}
+		if err != nil || closed == nil {
+			t.Fatal("close exact resource with surviving dependencies", retiring, err)
+		}
+		s = generatedReflectionSelectAndColdOpen(t, s, closed)
+		if retiring {
+			checkRetained(s)
+			// The enclosing automatic operation makes its final evidence decision
+			// after removing its own consumers. The other resource still owns A.
+			terminal := *mustSelectedGeneratedWork(t, s)
+			terminal.parent = &contract.GeneratedParentRecord{OperationID: original.record.OperationID, MaterialID: original.material.Core.OperationMaterialID}
+			remaining, err := generatedAutomaticTerminalRows(&terminal, s.supportRecords())
+			if err != nil || !slices.ContainsFunc(remaining, func(row contract.SupportRecord) bool {
+				return row.Kind == evidenceKey.kind && row.RecordID == evidenceKey.id && bytes.Equal(row.Body, wantEvidence)
+			}) {
+				t.Fatal("automatic terminal lost create evidence needed by the surviving resource", err)
+			}
+			if mustSelectedGeneratedWork(t, s).hasRecord(generatedRecordKey{contract.GeneratedDutySupportKind, duty.DutyID}) {
+				t.Fatal("retirement Duty survived")
+			}
+		}
+	}
+	g = mustSelectedGeneratedWork(t, s)
+	_, hasAccess := s.materialAccess(contract.ValueMaterialKind, entry.ValueState)
+	if g.hasRecord(originalKey) || g.hasRecord(evidenceKey) || g.hasRecord(canonicalKey) || hasAccess {
+		t.Fatal("final consumer left exclusive support")
 	}
 }
 
@@ -617,22 +835,24 @@ func (s *generatedReflectionSelectionStore) CompareAndSwap(ctx context.Context, 
 	}
 	s.sends++
 	s.objects[key] = bytes.Clone(body)
-	s.token = contract.Token{Family: contract.AWS, Value: `"reflection-selected-token"`}
+	s.token = contract.Token{Family: contract.AWS, Value: fmt.Sprintf(`"reflection-selected-%d"`, s.sends)}
 	return contract.WriteResult{Status: contract.WriteAcknowledged}
 }
 
 func generatedReflectionSelectAndColdOpen(t *testing.T, predecessor *StateSession, successor *generatedReservation) *StateSession {
 	t.Helper()
-	observationProtectFixture(t, predecessor)
-	physical := observationPhysicalGeneratedStore(t, predecessor)
-	// The unchanged source constructor supplies a unit-owned admitted session
-	// and a complete relation-valid image. Its before-HEAD is a synthetic unit
-	// boundary, not a signed cold-opened historical HEAD. CAS still requires
-	// those exact selected bytes and the exact opaque condition before commit.
-	physical.objects[predecessor.admission.store.HeadKey] = bytes.Clone(predecessor.body)
-	store := &generatedReflectionSelectionStore{observationSelectionStore: physical,
-		predecessorToken: predecessor.token, predecessorBody: bytes.Clone(predecessor.body)}
-	predecessor.store = store
+	store, ok := predecessor.store.(*generatedReflectionSelectionStore)
+	if !ok {
+		observationProtectFixture(t, predecessor)
+		physical := observationPhysicalGeneratedStore(t, predecessor)
+		// The first predecessor is a relation-validated fixture. Every later
+		// transition uses the HEAD and objects selected by the preceding CAS.
+		physical.objects[predecessor.admission.store.HeadKey] = bytes.Clone(predecessor.body)
+		store = &generatedReflectionSelectionStore{observationSelectionStore: physical}
+		predecessor.store = store
+	}
+	store.predecessorToken, store.predecessorBody = predecessor.token, bytes.Clone(predecessor.body)
+	sendsBefore := store.sends
 	signer := testtrust.New(t, contract.AWS, predecessor.admission.trust)
 	if !bytes.Equal(signer.PublicKey(), predecessor.admission.publicKey) {
 		t.Fatal("physical reflection fixture signer differs from the frozen AWS public basis")
@@ -653,7 +873,7 @@ func generatedReflectionSelectAndColdOpen(t *testing.T, predecessor *StateSessio
 	}
 	selected, result := predecessor.selectCandidate(t.Context(), candidate)
 	if selected == nil || result.Outcome != ObservedCurrent || result.Evidence != AuthenticatedClosure ||
-		selected.head.Core.Revision != candidate.head.Core.Revision || store.sends != 1 {
+		selected.head.Core.Revision != candidate.head.Core.Revision || store.sends != sendsBefore+1 {
 		t.Fatal("select exact physical reflection candidate", result, store.sends)
 	}
 	admission := predecessor.admission

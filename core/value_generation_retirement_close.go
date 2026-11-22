@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"slices"
 
 	"enkv.sh/core/contract"
 )
@@ -77,12 +78,46 @@ func (g *generatedSelection) generatedRetirementAcknowledgement(ctx context.Cont
 		locations: closed.locations, rows: closed.rows}, nil
 }
 
-func (g *generatedSelection) generatedResultSelectedByEntry(result contract.ID) bool {
-	for _, entry := range g.image.root.Names {
-		valueEntry := g.session.valueEntry(entry.Slot)
-		if valueEntry != nil && valueEntry.ValueSource == contract.Generated && valueEntry.Generated.CreateResultID == result {
-			return true
+// Resource closure can end a canonical consumer whose secret belongs to a
+// different CREATE. Rebuild the evidence set from the surviving owners.
+func (g *generatedSelection) pruneClosedCreateEvidence(rows []contract.SupportRecord) ([]contract.SupportRecord, error) {
+	needed := make(map[contract.ID]bool)
+	for _, name := range g.image.root.Names {
+		entry := g.image.valueEntry(name.Slot)
+		if entry != nil && entry.ValueSource == contract.Generated {
+			needed[entry.Generated.CreateResultID] = true
 		}
 	}
-	return false
+	for _, row := range rows {
+		switch row.Kind {
+		case contract.RetainedCanonicalSupportKind:
+			canonical, err := contract.InspectRetainedCanonicalRecord(row.Body)
+			if err != nil {
+				return nil, err
+			}
+			if canonical.Entry.ValueSource == contract.Generated {
+				needed[canonical.Entry.Generated.CreateResultID] = true
+			}
+		case contract.GeneratedDutySupportKind, contract.GeneratedHazardSupportKind:
+			source, err := contract.InspectGeneratedDeleteSource(row)
+			if err != nil {
+				return nil, err
+			}
+			if source.Target.Count == 0 {
+				continue
+			}
+			target, err := g.generatedCleanupTarget(row.Kind, row.RecordID, source.Target)
+			if err != nil {
+				return nil, err
+			}
+			result, err := generatedCreateResultID(source.DomainID, target.OriginalOperationID, target.OriginalAttemptID)
+			if err != nil {
+				return nil, err
+			}
+			needed[result] = true
+		}
+	}
+	return slices.DeleteFunc(rows, func(row contract.SupportRecord) bool {
+		return row.Kind == contract.GeneratedCreateEvidenceSupportKind && !needed[row.RecordID]
+	}), nil
 }
