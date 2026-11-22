@@ -8,6 +8,7 @@ package main
 // Omitted, failed, partial and unobserved roots keep prior or provisional weights.
 // Unlisted tests use the one-second fallback.
 var componentEstimates = map[string]float64{
+	"TestInstalledSignerReplacementKeepsStreamedCurrentIntents":                           27,
 	"TestAuthorityKeyRecoveryKeepsReservationAndPublication":                              2,
 	"TestReconstructionPendingRecipientFollowsOriginalApply":                              5,
 	"TestInstalledRecipientReplacementWaitsForActiveGeneratedWork":                        3,
@@ -1314,7 +1315,6 @@ var componentEstimates = map[string]float64{
 	"TestReaderAcceptsSharedPublicBasisWriter":                                    1,
 	"TestReaderAdmissionRejectsForgedChangedAndExpiredContext":                    1,
 	"TestReaderAuthenticatesIndependentGenesisWithoutEnrollment":                  1,
-	"TestReaderCallableOperationsAfterSignerAndRecipientReplacement":              1,
 	"TestReaderCallableOperationsWithSelectedOutputHistory":                       1,
 	"TestReaderCloseJoinsActiveFiniteInvocation":                                  1,
 	"TestReaderCompactAndFragmentedCurrentMeaning":                                1,
