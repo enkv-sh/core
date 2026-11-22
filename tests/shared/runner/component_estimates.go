@@ -34,7 +34,7 @@ var componentEstimates = map[string]float64{
 	"TestAdministrativeRetirementExitKeepsOnlyConsumedVectors":                            4,
 	"TestInstalledMaximumGeneratedResultResumesAfterReopen":                               2,
 	"TestInstalledGeneratedAutomaticTerminalPreservesEarlierCreateHazard":                 14,
-	"TestInstalledManagedCreateRecoversAcrossStoreLoss":                                   47,
+	"TestInstalledManagedCreateRecoversAcrossStoreLoss":                                   48,
 	"TestInstalledManagedCreateKeepsCleanupTargetAfterValueEncodingRefusal":               18,
 	"TestInstalledGeneratedCleanupRecordsProviderIdentityConflict":                        9,
 	"TestGeneratedOrdinaryCleanupAmbiguityRefusesInvalidFactsWithoutStateChange":          1,
