@@ -35,7 +35,9 @@ func (b *generatedSelectionBuilder) validateCreateHistories() error {
 			}
 			if a.record.State == contract.GeneratedEffectFailedTerminal && h.Fenced == 1 &&
 				h.Eligibility == 0 && !g.cleanupConflicts[h.HazardID] {
-				return contract.ErrRecord
+				if err := b.validateRecordedCleanupContradiction(row); err != nil {
+					return err
+				}
 			}
 			hasCleanup := false
 			for _, entered := range g.attempts {
@@ -53,6 +55,36 @@ func (b *generatedSelectionBuilder) validateCreateHistories() error {
 				return contract.ErrRecord
 			}
 		}
+	}
+	return nil
+}
+
+// A fenced failed CREATE loses eligibility only on evidence for its own cleanup.
+// A scoped probe must reference the selected acknowledgement and end this history.
+func (b *generatedSelectionBuilder) validateRecordedCleanupContradiction(row contract.SupportRecord) error {
+	source, err := contract.InspectGeneratedDeleteSource(row)
+	if err != nil {
+		return err
+	}
+	history, err := b.vectors.resolve(row.Kind, row.RecordID, contract.GeneratorVectorHistory, source.History)
+	if err != nil || len(history) == 0 {
+		return contract.ErrRecord
+	}
+	last, err := contract.InspectGeneratorHistory(history[len(history)-1])
+	if err != nil || last.Outcome != contract.GeneratedEffectFailedTerminal || last.ResultID.IsZero() {
+		return contract.ErrRecord
+	}
+	probe, ok := b.facts.attempts[last.PredecessorAttemptID]
+	if !ok || probe.expected.Template.Action != contract.GeneratorActionDelete {
+		return contract.ErrRecord
+	}
+	conflict, err := b.facts.validateDeleteFacts(probe)
+	if err != nil || !conflict {
+		return contract.ErrRecord
+	}
+	progress, err := b.facts.controlledDeleteSourceProgress(source, nil, true)
+	if err != nil || !progress.contradiction {
+		return contract.ErrRecord
 	}
 	return nil
 }

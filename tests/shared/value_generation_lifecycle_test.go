@@ -3839,9 +3839,18 @@ func TestGeneratedActualOwnedUnusableRetryCleanupPreservesCreateAncestry(t *test
 
 // full_only: false
 func TestGeneratedActualStrongerOwnedUnusableHazardRecordsOwnAck(t *testing.T) {
-	for _, recovery := range []bool{false, true} {
-		t.Run(fmt.Sprint(recovery), func(t *testing.T) {
-			env, _ := genesisEnvironment(t, contract.GCP, recovery)
+	for _, tc := range []struct {
+		name        string
+		recovery    bool
+		disposition uint8
+	}{
+		{"false", false, contract.GeneratorDispositionScopedUnusability},
+		{"true", true, contract.GeneratorDispositionScopedUnusability},
+		{"continued use", false, contract.GeneratorDispositionContinuedUsability},
+		{"conflicting binding", true, contract.GeneratorDispositionConflictingBinding},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			env, _ := genesisEnvironment(t, contract.GCP, tc.recovery)
 			env = syntheticAuthorityScenarioEnvironment(t, env)
 			f := newEnvironmentFixture(t, context.Background(), env, nil, false)
 			profile := defaultGeneratedFixtureProfile()
@@ -3851,7 +3860,8 @@ func TestGeneratedActualStrongerOwnedUnusableHazardRecordsOwnAck(t *testing.T) {
 			work := mustSelectedGeneratedWork(t, closed)
 			row := work.records[generatedRecordKey{11, original.expected.Template.HazardID}]
 			source, err := contract.InspectGeneratedDeleteSource(row)
-			if err != nil || source.Record.Kind != 11 || source.CompletionClass != contract.GeneratedCompletionConfirmed {
+			if err != nil || source.Record.Kind != 11 || source.CompletionClass != contract.GeneratedCompletionConfirmed || source.Hazard.Fenced != 1 ||
+				source.Hazard.Eligibility != contract.GeneratedExposureLateEffect || original.record.State != contract.GeneratedEffectFailedTerminal {
 				t.Fatal("actual stronger Hazard source", err)
 			}
 			target, err := work.generatedCleanupTarget(11, source.SourceID, source.Target)
@@ -3896,9 +3906,15 @@ func TestGeneratedActualStrongerOwnedUnusableHazardRecordsOwnAck(t *testing.T) {
 			deleteContract := input.graph.Lineages[0].Templates[0].ResultContractID
 			scope := contract.GeneratorControlledRetirementScope(source.DescriptorID, source.ConfigContractID, deleteContract)
 			input.requestBindings[0].Digest = contract.GeneratorControlledRetirementProbeDigest(source.DomainID, source.ResourceID, target.ResourceDigest, scope, expected.Template.ResultID, contract.Hash(packet))
-			responder := custody.NewControlledRetirementResponder(source.ResourceID, target.ResourceDigest, scope)
+			resource := source.ResourceID
+			if tc.disposition == contract.GeneratorDispositionConflictingBinding {
+				resource = generatedVectorID(240)
+			}
+			responder := custody.NewControlledRetirementResponder(resource, target.ResourceDigest, scope)
 			defer responder.Close()
-			responder.DeleteExact(target.ResourceDigest)
+			if tc.disposition != contract.GeneratorDispositionContinuedUsability {
+				responder.DeleteExact(target.ResourceDigest)
+			}
 			prior, _ = preparePrivateGeneratedReservation(t, env, parked, input, inputCanonical)
 			probes := 0
 			recorded, _, remaining, finalPacket := selectActualGeneratedPacketRecord(t, env, parked, prior, custody.StandardValue, true, func(ctx context.Context, command contract.GeneratedProducerCommand) []byte {
@@ -3908,10 +3924,63 @@ func TestGeneratedActualStrongerOwnedUnusableHazardRecordsOwnAck(t *testing.T) {
 			if probes != 1 {
 				t.Fatal("stronger ordinary remaining step did not use one qualified probe", probes)
 			}
+			observed, err := contract.InspectGeneratedResultRecord(finalPacket)
+			if err != nil || observed.SafeFacts.Disposition != tc.disposition || observed.SafeFacts.ScopeID != scope ||
+				observed.SafeFacts.PrecedingResultID != expected.Template.ResultID || observed.SafeFacts.PrecedingResultBodyDigest != contract.Hash(packet) {
+				t.Fatal("unexpected scoped observation", err)
+			}
+			checkContradiction := func(s *StateSession) {
+				t.Helper()
+				got := mustSelectedGeneratedWork(t, s)
+				kept, err := got.generatedDeleteSource(source.OwnerID)
+				if err != nil || kept.SourceID != source.SourceID || kept.Target != source.Target || kept.Hazard.Fenced != 1 ||
+					kept.Hazard.Exposure != contract.GeneratedExposureLateEffect || kept.Hazard.Eligibility != 0 ||
+					kept.Hazard.OriginalResults != source.Hazard.OriginalResults || kept.OriginalAttemptID != original.record.AttemptID {
+					t.Fatal("contradiction changed the source of the warning", err)
+				}
+				progress, err := got.controlledDeleteSourceProgress(kept, nil, true)
+				if err != nil || !progress.contradiction || len(progress.rows) != 1 || progress.ack.record.AttemptID != expected.Template.AttemptID ||
+					got.attempts[remaining.Template.AttemptID].record.State != contract.GeneratedEffectFailedTerminal || len(got.releases) != 0 {
+					t.Fatal("contradiction lost the acknowledgement or created release", err)
+				}
+				for id, body := range map[contract.ID][]byte{original.record.AttemptID: original.result, expected.Template.AttemptID: packet, remaining.Template.AttemptID: finalPacket} {
+					if !bytes.Equal(got.attempts[id].result, body) {
+						t.Fatal("contradiction lost sealed evidence", id)
+					}
+				}
+				if s.root.Generated.SuccessWindow != parked.root.Generated.SuccessWindow || s.root.Generated.FailureWindow != parked.root.Generated.FailureWindow || s.root.Generated.ReceiptOrder != parked.root.Generated.ReceiptOrder {
+					t.Fatal("unfinished cleanup changed receipt windows")
+				}
+			}
+			if tc.disposition != contract.GeneratorDispositionScopedUnusability {
+				recorded = generatedLifecycleReopen(t, t.Context(), recorded, env.Store)
+				checkContradiction(recorded)
+			}
 			env.Custody.RetireGenerated()
 			finished := selectOrdinaryGeneratedCleanupClose(t, t.Context(), env, recorded, remaining.Template.AttemptID)
 			finished = generatedLifecycleReopen(t, t.Context(), finished, env.Store)
 			work = mustSelectedGeneratedWork(t, finished)
+			if tc.disposition != contract.GeneratorDispositionScopedUnusability {
+				checkContradiction(finished)
+				if work.parent != nil || work.phase != nil || probes != 1 {
+					t.Fatal("parked contradiction retained active ownership or redispatched")
+				}
+				if _, admitted, err := finished.generatedDeleteReservationSelection(t.Context(), input.graph, work); err != nil || admitted {
+					t.Fatal("contradiction admitted further cleanup", err)
+				}
+				run := newScenarioRun(t, t.Context(), env)
+				f.session = run.open(f.admission)
+				changed := run.suppliedSelection(f, []ApplyEntryInput{{
+					Name: "unrelated", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain,
+					Recipients: []contract.ID{finished.admission.recipient}, InputBytes: []byte("available"),
+					InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw,
+				}})
+				after := mustSelectedGeneratedWork(t, changed)
+				if !bytes.Equal(after.records[generatedRecordKey{11, source.SourceID}].Body, work.records[generatedRecordKey{11, source.SourceID}].Body) || probes != 1 {
+					t.Fatal("unrelated edit lost the warning or issued another cleanup probe")
+				}
+				return
+			}
 			if _, present := work.records[generatedRecordKey{11, source.SourceID}]; present || work.parent != nil || work.phase != nil || len(work.releases) != 3 ||
 				finished.root.Generated.SuccessWindow != recorded.root.Generated.SuccessWindow || finished.root.Generated.FailureWindow != recorded.root.Generated.FailureWindow || finished.root.Generated.ReceiptOrder != recorded.root.Generated.ReceiptOrder {
 				t.Fatal("qualified stronger ordinary completion lost receipt-free exact release closure", present, len(work.releases))

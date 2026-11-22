@@ -651,7 +651,7 @@ var componentEstimates = map[string]float64{
 	"TestGeneratedActualOwnedUnusableRetryCleanupPreservesCreateAncestry":                         4,
 	"TestGeneratedActualReciprocalKEKLossPreservesPendingResult":                                  12,
 	"TestGeneratedActualRecoveryDisabledRefusesBeforeEffect":                                      4,
-	"TestGeneratedActualStrongerOwnedUnusableHazardRecordsOwnAck":                                 7,
+	"TestGeneratedActualStrongerOwnedUnusableHazardRecordsOwnAck":                                 13,
 	"TestGeneratedCleanupReservationReplyLossNeverRestoresFirstSend":                              3,
 	"TestGeneratedConfirmedLateAcknowledgementsKeepExactMembershipInEitherOrder":                  9,
 	"TestGeneratedControlledAckThenUnknownProbeTransfersResidue":                                  10,

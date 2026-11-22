@@ -183,4 +183,21 @@ func TestGeneratedFinalAfterOwnedUnusablePreservesResidue(t *testing.T) {
 	if err != nil || !bytes.Equal(beforeBody, afterBody) {
 		t.Fatal("successful frontier changed earlier owned unusable wraps", err)
 	}
+
+	// There has been no cleanup Attempt. Disabling cleanup has no evidence.
+	key := generatedRecordKey{contract.GeneratedHazardSupportKind, original.expected.Template.HazardID}
+	hazard, err := contract.InspectGeneratedHazardRecord(closed.records[key].Body)
+	if err != nil || hazard.Fenced != 1 || hazard.Eligibility != contract.GeneratedExposureLateEffect {
+		t.Fatal("expected an eligible fenced failed CREATE", err)
+	}
+	hazard.Eligibility = 0
+	body, err := contract.EncodeGeneratedHazardRecord(hazard)
+	if err != nil {
+		t.Fatal(err)
+	}
+	generatedReplaceRecord(t, selected, key.kind, key.id, body)
+	generatedRefreshSupport(t, selected)
+	if _, err := selected.selectedGeneratedWork(t.Context()); err == nil {
+		t.Fatal("accepted disabled cleanup without a contradiction")
+	}
 }
