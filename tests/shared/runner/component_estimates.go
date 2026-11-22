@@ -638,7 +638,7 @@ var componentEstimates = map[string]float64{
 	"TestDisjointSuppliedReplacementAtJointBounds":                                                16,
 	"TestEmptyGenesisScenarioAuthenticatesDuringTransition":                                       3,
 	"TestEndWorkFreshProcessSelectsAndReopens":                                                    7,
-	"TestEndWorkPacksExclusiveCurrentIntentFromMandatoryBytes":                                    7,
+	"TestEndWorkPacksExclusiveCurrentIntentFromMandatoryBytes":                                    8,
 	"TestEndWorkPacksCurrentIntentStillOwnedBySurvivingGroup":                                     7,
 	"TestEndWorkDemotesSharedOldIntentBlobAfterCurrentRelocation":                                 10,
 	"TestEndWorkKeepsUnchangedSelectedSlicesThroughLaterReceipt":                                  5,
