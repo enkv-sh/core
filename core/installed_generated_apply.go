@@ -159,7 +159,22 @@ func (p *generatedPreparation) invokeInstalledProducer(ctx context.Context, owne
 	if returned.Code != contract.CryptoSuccess || len(returned.Record) == 0 {
 		return returned, Result{}
 	}
-	stored := p.reservation.state.persistGeneratedResult(ctx, generatedResultWrite{attempt: p.attempt, body: returned.Record})
+	s := p.reservation.state
+	if p.managedProducer && returned.ResultDeadlineUnixMillis != 0 {
+		// Only the fixed immutable inbox write owns the remainder of the issued
+		// command lifetime. All selection and adoption still use the caller.
+		deadline := min(returned.ResultDeadlineUnixMillis, uint64(p.operation.deadline.UnixMilli()), uint64(s.admission.expires.UnixMilli()))
+		if caller, ok := ctx.Deadline(); ok {
+			deadline = min(deadline, uint64(caller.UnixMilli()))
+		}
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithDeadline(context.WithoutCancel(ctx), time.UnixMilli(int64(deadline)))
+		defer cancel()
+		if ctx.Err() != nil {
+			return returned, failure(EvidenceUnavailable, ReadUnavailable)
+		}
+	}
+	stored := s.persistGeneratedResult(ctx, generatedResultWrite{attempt: p.attempt, body: returned.Record})
 	return returned, stored
 }
 

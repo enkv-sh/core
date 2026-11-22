@@ -202,7 +202,7 @@ func (c *GeneratedCustody) InvokeProducer(ctx context.Context, locator, authorit
 	call.Checkpoint(telemetry.DiagnosticPrivateCustody, telemetry.DiagnosticReasonNone)
 	out := c.runtime.invokeGeneratedProducerAdmission(telemetry.CallContext(ctx, call), c.admission.id, locator, authority, c.admission, c.localFailure)
 	code = out.code
-	return contract.GeneratedProducerResult{Record: out.Record, Facts: out.Facts, Code: code, ExecutableCleanupFailed: out.executableCleanupFailed}
+	return contract.GeneratedProducerResult{Record: out.Record, Facts: out.Facts, Code: code, ExecutableCleanupFailed: out.executableCleanupFailed, ResultDeadlineUnixMillis: out.resultDeadlineUnixMillis}
 }
 
 func (c *GeneratedCustody) Close() {

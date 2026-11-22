@@ -105,7 +105,7 @@ func TestInstalledParallelCreateReportsOneStoreFailureInPlanOrder(t *testing.T) 
 
 // full_only: false
 func TestInstalledManagedCreateRecoversAcrossStoreLoss(t *testing.T) {
-	for _, mode := range []string{"reservation-not-sent", "reservation-ack-lost", "result-ack-lost", "result-not-saved", "result-conflict", "result-denied", "result-cancelled"} {
+	for _, mode := range []string{"reservation-not-sent", "reservation-ack-lost", "result-ack-lost", "result-cancel-and-save", "result-not-saved", "result-conflict", "result-denied", "result-cancelled"} {
 		t.Run(mode, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
 			defer cancel()
@@ -165,7 +165,13 @@ func TestInstalledManagedCreateRecoversAcrossStoreLoss(t *testing.T) {
 					return contract.WriteResult{Status: contract.WriteRefused, Reason: contract.ReasonAccess, NotSent: true}
 				}
 				denyRead = true
-				if mode == "result-ack-lost" {
+				if mode == "result-cancel-and-save" {
+					cancelApply()
+					if ctx.Err() != nil {
+						t.Error("caller cancellation ended the sealed managed CREATE write")
+					}
+				}
+				if mode == "result-ack-lost" || mode == "result-cancel-and-save" {
 					if result := base.Create(ctx, key, body); result.Status != contract.WriteAcknowledged {
 						t.Error("fixture did not commit the original result", result.Status)
 					}
@@ -276,7 +282,7 @@ func TestInstalledManagedCreateRecoversAcrossStoreLoss(t *testing.T) {
 				t.Fatal("invalid result advanced recovery", bad.Result, creates, deletes)
 			}
 			read := base.Read(ctx, inbox, uint32(contract.GeneratedResultRecordMaxLength))
-			saved := mode == "result-ack-lost"
+			saved := mode == "result-ack-lost" || mode == "result-cancel-and-save"
 			if saved {
 				if read.Status != contract.ReadOK || sha256.Sum256(read.Body) != attemptedDigest {
 					t.Fatal("committed inbox lost its exact bytes")

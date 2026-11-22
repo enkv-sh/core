@@ -284,6 +284,7 @@ func (s *StateSession) prepareGeneratedProducerExchange(ctx context.Context, per
 	p := &generatedPreparation{reservation: permit.prior.reservation, operation: &cryptoOperation{observation: permit.observation, source: source, adapter: permit.crypto, instance: permit.instance,
 		authority: s.admission.recipient, context: q.Context, deadline: permit.deadline, bindings: bindings, sourceCount: 1 + currentOpens}}
 	p.attempt = a.record.AttemptID
+	p.managedProducer = a.expected.Template.SemanticLifecycleMode() == contract.GeneratorLifecycleManaged
 	if a.record.CompletionClass == contract.GeneratedCompletionConfirmed && a.expected.Template.Action == contract.GeneratorActionDelete {
 		source, err := g.generatedDeleteSource(a.record.OwnerID)
 		if err != nil {

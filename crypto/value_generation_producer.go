@@ -39,13 +39,14 @@ type generatedProducerReturn struct {
 }
 
 type generatedProducerOutput struct {
-	Record                  []byte
-	Facts                   contract.GeneratorSafeFacts
-	code                    contract.CryptoResultCode
-	stage                   generatedFailureStage
-	category                generatedFailureCategory
-	effect                  generatedEffect
-	executableCleanupFailed bool
+	resultDeadlineUnixMillis uint64
+	Record                   []byte
+	Facts                    contract.GeneratorSafeFacts
+	code                     contract.CryptoResultCode
+	stage                    generatedFailureStage
+	category                 generatedFailureCategory
+	effect                   generatedEffect
+	executableCleanupFailed  bool
 }
 
 type generatedEffect string
@@ -850,5 +851,8 @@ func (r *Runtime) invokeGeneratedProducerAdmission(ctx context.Context, id, loca
 	out.code = contract.CryptoSuccess
 	out.stage, out.category = "", ""
 	out.effect = generatedEffectFromDisposition(record.Disposition())
+	if owner.command.LifecycleMode == contract.GeneratorLifecycleManaged {
+		out.resultDeadlineUnixMillis = owner.command.DeadlineUnixMillis
+	}
 	return out
 }

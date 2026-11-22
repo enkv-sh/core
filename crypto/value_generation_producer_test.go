@@ -539,7 +539,7 @@ func TestGeneratedProducerCancellationJoinsOriginalReturn(t *testing.T) {
 				out := <-result
 				<-closed
 				generatedOutputReleased(t, r, a, f.producer.Session.Output, witness)
-				if out.code != contract.CryptoSuccess || len(out.Record) == 0 || !bytes.Equal(secret, make([]byte, len(secret))) ||
+				if out.resultDeadlineUnixMillis != owner.command.DeadlineUnixMillis || out.code != contract.CryptoSuccess || len(out.Record) == 0 || !bytes.Equal(secret, make([]byte, len(secret))) ||
 					!bytes.Equal(ownedSeed, make([]byte, len(ownedSeed))) || !bytes.Equal(ownedIntent, make([]byte, len(ownedIntent))) ||
 					!bytes.Equal(progressBacking, make([]byte, len(progressBacking))) || len(owner.seed) != 0 || len(owner.intent) != 0 || len(owner.progress) != 0 {
 					t.Fatal("return-only disposal", out.code)

@@ -1024,3 +1024,137 @@ func TestInstalledManagedCreateKeepsCleanupTargetAfterValueEncodingRefusal(t *te
 		})
 	}
 }
+
+// full_only: false
+func TestInstalledCleanupKeepsSealedReturnAfterCallerCancellation(t *testing.T) {
+	for _, mode := range []string{"saved", "expired", "offline", "no-issued-deadline"} {
+		t.Run(mode, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+			defer cancel()
+			process, effects := installedGeneratedRetirementProcess(t, "acknowledged")
+			f := newInstalledApplyTestFixture(t, ctx, contract.GCP, true)
+			f.env.GeneratedProcess = process
+			entries := installedGeneratedRetirementEntries(process, f.selected.admission.recipient, 0, "healthy")
+			entries[0].InputEncoding = contract.InputEncodingBase64
+			callbacks := installedGeneratedRetirementCallbacks(t, f, process)
+			engine := installedGeneratedTestEngine(t, ctx, f, f.selected, entries, currentApplyRecipients(f.selected.registry()), callbacks)
+			applied := engine.Apply(ctx, testID("create cleanup hazard"), entries)
+			engine.Close()
+			if applied.Generated == nil || applied.Generated.StateResult != "effect-terminal-failure" {
+				t.Fatal("missing selected cleanup target", applied.Result)
+			}
+			selected := f.open(t, ctx)
+			cleanCtx, stop := context.WithCancel(ctx)
+			defer stop()
+			var packet []byte
+			var attempt contract.ID
+			var inbox string
+			var writes int
+			var issued uint64
+			base := requireAdmittedMemoryStore(t, f.env.Store)
+			proxy := &applyPreparationTestStore{Store: base, memory: base, read: base.Read}
+			proxy.create = func(c context.Context, key string, b []byte) contract.WriteResult {
+				if key == inbox {
+					writes++
+					if mode == "offline" {
+						limit, ok := c.Deadline()
+						if !ok || limit.UnixMilli() != int64(issued) {
+							t.Fatal("Store did not retain issued deadline")
+						}
+						<-c.Done()
+						return contract.WriteResult{Status: contract.WriteUnknown, Reason: contract.ReasonTransport}
+					}
+				}
+				return base.Create(c, key, b)
+			}
+			f.env.Store = proxy
+			admit := callbacks.AdmitProducer
+			callbacks.AdmitProducer = func(c context.Context, q contract.CryptoGeneratedCompareRequest, control contract.ControlCore, in contract.GeneratedProducerInput, impl contract.GeneratorImplementation, deadline time.Time) (*InstalledGeneratedProducerCustody, error) {
+				owner, err := admit(c, q, control, in, impl, deadline)
+				if err != nil {
+					return nil, err
+				}
+				if in.Expected.Template.Action != contract.GeneratorActionDelete {
+					t.Fatal("unexpected producer")
+				}
+				attempt = in.Expected.Template.AttemptID
+				inbox, err = format.GeneratedResultKey(base.desc.Prefix, f.env.Domain, in.Expected.Template.InboxID)
+				if err != nil {
+					t.Fatal(err)
+				}
+				invoke := owner.InvokeProducer
+				owner.InvokeProducer = func(c context.Context, loc, authority contract.ID) contract.GeneratedProducerResult {
+					r := invoke(c, loc, authority)
+					if r.Code != contract.CryptoSuccess || len(r.Record) == 0 {
+						t.Fatal("missing sealed delete reply")
+					}
+					packet = bytes.Clone(r.Record)
+					if r.ResultDeadlineUnixMillis == 0 {
+						t.Fatal("managed return lacks issued deadline")
+					}
+					switch mode {
+					case "expired":
+						r.ResultDeadlineUnixMillis = uint64(time.Now().Add(-time.Second).UnixMilli())
+					case "offline":
+						r.ResultDeadlineUnixMillis = uint64(time.Now().Add(300 * time.Millisecond).UnixMilli())
+					case "no-issued-deadline":
+						r.ResultDeadlineUnixMillis = 0
+					}
+					issued = r.ResultDeadlineUnixMillis
+					if mode != "expired" {
+						stop()
+					}
+					return r
+				}
+				return owner, nil
+			}
+			cleaner := installedGeneratedRetirementEngine(t, ctx, f, selected, callbacks)
+			ended, end := context.WithCancel(ctx)
+			end()
+			before := cleaner.CleanupGenerated(ended, testID("cancel before cleanup launch"))
+			_, deletes := effects()
+			if len(deletes) != 0 || before.Result.Outcome != AdmissionRefused || !bytes.Equal(f.open(t, ctx).body, selected.body) {
+				t.Fatal("early cancellation admitted cleanup")
+			}
+			out := cleaner.CleanupGenerated(cleanCtx, testID("cancel after sealed delete"))
+			cleaner.Close()
+			cold := f.open(t, ctx)
+			if len(packet) == 0 || out.OperationID.IsZero() || cold.root.Generated.ActiveOwner != out.OperationID {
+				t.Fatal("lost selected cleanup or its exact return")
+			}
+			stored, found, failure := cold.readGeneratedResult(ctx, attempt)
+			wantSaved := mode == "saved"
+			wantWrites := 0
+			if wantSaved || mode == "offline" {
+				wantWrites = 1
+			}
+			if writes != wantWrites || failure.Outcome != 0 || found != wantSaved || (found && !bytes.Equal(stored, packet)) {
+				t.Fatalf("sealed inbox writes=%d want=%d present=%t want=%t read=%v", writes, wantWrites, found, wantSaved, failure.Outcome)
+			}
+			callbacks = installedGeneratedRetirementCallbacks(t, f, process)
+			callbacks.AdmitProducer = func(context.Context, contract.CryptoGeneratedCompareRequest, contract.ControlCore, contract.GeneratedProducerInput, contract.GeneratorImplementation, time.Time) (*InstalledGeneratedProducerCustody, error) {
+				t.Fatal("cold cleanup attempted to dispatch again")
+				return nil, contract.ErrRecord
+			}
+			next := installedGeneratedRetirementEngine(t, ctx, f, cold, callbacks)
+			done := next.ContinueGeneratedCleanup(ctx, testID("continue original cancelled cleanup"), GeneratedCleanupContinuationRequest{OperationID: out.OperationID})
+			next.Close()
+			creates, deletes := effects()
+			if done.OperationID != out.OperationID || creates != 1 || len(deletes) != 1 || done.Generated == nil {
+				t.Fatal("lost original cleanup identity", creates, len(deletes))
+			}
+			if !wantSaved {
+				after := f.open(t, ctx)
+				original := mustSelectedGeneratedWork(t, after).attempts[attempt]
+				if done.Generated.StateResult == "success" || !bytes.Equal(after.body, cold.body) ||
+					original.record.AttemptID != attempt || original.record.State != contract.GeneratedEffectTransmitted || len(original.result) != 0 {
+					t.Fatal("missing inbox changed the exact transmitted cleanup attempt")
+				}
+				return
+			}
+			if done.Generated.StateResult != "success" || !f.open(t, ctx).root.Generated.ActiveOwner.IsZero() {
+				t.Fatal("cold cleanup failed to close exact original result", done.Result, creates, len(deletes))
+			}
+		})
+	}
+}

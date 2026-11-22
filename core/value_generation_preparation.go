@@ -33,6 +33,7 @@ type generatedPreparation struct {
 	authority           contract.ID
 	attempt             contract.ID
 	producerLocator     contract.ID
+	managedProducer     bool
 	producerPhase       *contract.GeneratorPhaseIdentity
 	producerBaseContext contract.ApplyContext
 	results             []contract.GeneratorResultReference

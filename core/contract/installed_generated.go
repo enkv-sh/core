@@ -63,10 +63,13 @@ type GeneratedProducerInput struct {
 // facts. ExecutableCleanupFailed reports the host-qualified local removal
 // failure separately; it grants no effect or replay authority.
 type GeneratedProducerResult struct {
-	Record                  []byte
-	Facts                   GeneratorSafeFacts
-	Code                    CryptoResultCode
-	ExecutableCleanupFailed bool
+	// ResultDeadlineUnixMillis is the original issued command deadline for a sealed
+	// managed result. Zero keeps inbox persistence bound to the caller context.
+	ResultDeadlineUnixMillis uint64
+	Record                   []byte
+	Facts                    GeneratorSafeFacts
+	Code                     CryptoResultCode
+	ExecutableCleanupFailed  bool
 }
 
 type GeneratedAdoptionInput struct {
