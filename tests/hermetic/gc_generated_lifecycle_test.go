@@ -65,6 +65,40 @@ func TestGCDefersGeneratedLifecycleWritesUntilClose(t *testing.T) {
 	})
 }
 
+// full_only: false
+func TestControlledRetirementCompletesAfterPreservingGC(t *testing.T) {
+	checkControlledRetirementCompletion(t, func(t *testing.T, env fixtureEnvironment, parked *StateSession) *StateSession {
+		t.Helper()
+		ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+		defer cancel()
+		store := newGCInterleavingStore(requireAdmittedMemoryStore(t, env.Store))
+		old, err := format.DecodeHead(store.casBodies[0])
+		if err != nil {
+			t.Fatal(err)
+		}
+		keys := []string{mustKey(t, store.desc.Prefix, old.Core.Root)}
+		plan, encoded := gcInterleavingPreview(t, ctx, parked, store, keys, "GC after retirement acknowledgement")
+		if len(plan.Targets) != 1 || plan.Targets[0].Object.ObjectID != old.Core.Root.Object {
+			t.Fatal("expected one obsolete root")
+		}
+		gc := gcInterleavingEngine(t, parked, store, keys, env.Trust)
+		result := gc.ApplyPlan(ctx, GCApplyPlanRequest{RequestNonce: fixtureID(env.Domain, "collect before confirmation"), EncodedPlan: encoded})
+		if err := gc.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if result.StateResult != "success" || result.Payload == nil || !result.Payload.Closed || len(store.deleteCalls) != 1 {
+			t.Fatal("GC did not close", result.Result)
+		}
+		selected := retainedReaderColdOpen(t, parked, env.Store)
+		if selected.root.Snapshot == parked.root.Snapshot || selected.adminIndex.SliceSnapshot != parked.adminIndex.SliceSnapshot ||
+			selected.adminIndex.SliceSnapshot == selected.root.Snapshot || selected.root.Generated.Slices != parked.root.Generated.Slices ||
+			selected.valueEntry(0).Generated.RetiringDutyID != parked.valueEntry(0).Generated.RetiringDutyID {
+			t.Fatal("GC changed the retained slice directory or retirement duty")
+		}
+		return selected
+	})
+}
+
 func checkGCLifecycleAfterClose(t *testing.T, ctx context.Context, env fixtureEnvironment, selected *StateSession, run func(*StateSession, contract.ID) PublicApplyResult) PublicApplyResult {
 	t.Helper()
 	store := newGCInterleavingStore(requireAdmittedMemoryStore(t, env.Store))

@@ -15,6 +15,11 @@ import (
 
 // full_only: false
 func TestGeneratedControlledRetirementRecordsNonfinalAcknowledgement(t *testing.T) {
+	checkControlledRetirementCompletion(t, nil)
+}
+
+func checkControlledRetirementCompletion(t *testing.T, afterReplacement func(*testing.T, fixtureEnvironment, *StateSession) *StateSession) {
+	t.Helper()
 	for _, recovery := range []bool{false, true} {
 		t.Run(fmt.Sprint(recovery), func(t *testing.T) {
 			ctx := context.Background()
@@ -90,6 +95,9 @@ func TestGeneratedControlledRetirementRecordsNonfinalAcknowledgement(t *testing.
 			a := &generatedActualOperation{env: env, fixture: f}
 			env = selectActualGeneratedLoss(t, a, generatedActualLoss{name: "controlled-authority-kek", operation: 1, approval: contract.NormalSigningRole, mask: 2})
 			parked = a.fixture.session
+			if afterReplacement != nil {
+				parked = afterReplacement(t, env, parked)
+			}
 			work, err = parked.selectedGeneratedWork(ctx)
 			if err != nil {
 				t.Fatal(err)

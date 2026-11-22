@@ -676,6 +676,11 @@ func generatedControlledRetainedHistory(t *testing.T, count int, damage string) 
 	records = append(records, generatedVectorSupport(t, source.DomainID, 10, source.DutyID, contract.GeneratorVectorTargets, [][]byte{targetBody})...)
 	records = append(records, generatedVectorSupport(t, source.DomainID, 10, source.DutyID, contract.GeneratorVectorHistory, history)...)
 	records = append(records, generatedVectorSupport(t, source.DomainID, 10, source.DutyID, contract.GeneratorVectorConsumers, consumers)...)
+	if damage == "different slice owners" {
+		records = append(records, generatedVectorSupport(t, source.DomainID, contract.GeneratorSnapshotOwner,
+			consumerID("other slice owner"), contract.GeneratorVectorSlices, locations[:1])...)
+		locations = locations[1:]
+	}
 	records = append(records, generatedVectorSupport(t, source.DomainID, contract.GeneratorSnapshotOwner, ref.Object, contract.GeneratorVectorSlices, locations)...)
 	slices.SortFunc(records, func(a, b contract.SupportRecord) int {
 		if a.Kind != b.Kind {
@@ -729,7 +734,7 @@ func TestGeneratedControlledRetainedHistoryUsesDistinctGraphs(t *testing.T) {
 			}
 		})
 	}
-	for _, damage := range []string{"changed last consumer", "missing last graph"} {
+	for _, damage := range []string{"changed last consumer", "missing last graph", "different slice owners"} {
 		t.Run(damage, func(t *testing.T) {
 			a, input := generatedControlledRetainedHistory(t, 8, damage)
 			if _, _, err := a.controlledSelectedSource(&input); err == nil {

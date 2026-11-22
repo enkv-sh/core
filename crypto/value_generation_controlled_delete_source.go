@@ -41,13 +41,14 @@ type controlledResult struct {
 }
 
 type controlledSourceView struct {
-	records    map[controlledRecordKey]contract.SupportRecord
-	attempts   map[contract.ID]contract.GeneratedAttemptRecord
-	results    map[contract.ID]controlledResult
-	vectors    *contract.SelectedGeneratorVectorIndex
-	graphs     map[contract.ID]controlledGraph
-	operations map[contract.ID]controlledGraph
-	consumers  map[contract.ID][]contract.GeneratorConsumer
+	sliceSnapshot contract.ID
+	records       map[controlledRecordKey]contract.SupportRecord
+	attempts      map[contract.ID]contract.GeneratedAttemptRecord
+	results       map[contract.ID]controlledResult
+	vectors       *contract.SelectedGeneratorVectorIndex
+	graphs        map[contract.ID]controlledGraph
+	operations    map[contract.ID]controlledGraph
+	consumers     map[contract.ID][]contract.GeneratorConsumer
 }
 
 func (a *generatedAdmission) newControlledSourceView(records []contract.SupportRecord) (*controlledSourceView, error) {
@@ -84,6 +85,7 @@ func (a *generatedAdmission) newControlledSourceView(records []contract.SupportR
 	if err != nil {
 		return nil, err
 	}
+	view.sliceSnapshot = slicesIndex.snapshot
 	for _, location := range slicesIndex.graphs {
 		if _, duplicate := view.graphs[location.ContentID]; duplicate {
 			return nil, contract.ErrRecord
@@ -118,8 +120,12 @@ func (a *generatedAdmission) controlledGraphFromView(view *controlledSourceView,
 	return graph.bundle, nil
 }
 
-func newControlledGeneratedSliceIndex(domain, snapshot contract.ID, records []contract.SupportRecord) (*controlledGeneratedSliceIndex, error) {
-	index := &controlledGeneratedSliceIndex{domain: domain, snapshot: snapshot,
+func (a *generatedAdmission) controlledSliceIndex(records []contract.SupportRecord) (*controlledGeneratedSliceIndex, error) {
+	domain := a.request.Context.DomainID
+	if _, err := contract.DecodeRef(a.request.Context.PredecessorRootRef[:], contract.CanonicalSchema); err != nil {
+		return nil, err
+	}
+	index := &controlledGeneratedSliceIndex{domain: domain,
 		locations: make(map[contract.GeneratorSliceLocation][]contract.SupportRecord), fragments: make(map[contract.ID][]contract.SupportRecord)}
 	for _, row := range records {
 		switch row.Kind {
@@ -131,6 +137,12 @@ func newControlledGeneratedSliceIndex(domain, snapshot contract.ID, records []co
 			if carrier.VectorKind != contract.GeneratorVectorSlices {
 				continue
 			}
+			// A preserving transition can select a new Root while retaining
+			// the authenticated Slice directory under its previous owner.
+			if carrier.DomainID != domain || !index.snapshot.IsZero() && index.snapshot != carrier.OwnerID {
+				return nil, contract.ErrRecord
+			}
+			index.snapshot = carrier.OwnerID
 			location, err := contract.InspectGeneratorSliceLocation(carrier.Row)
 			if err != nil {
 				return nil, err
@@ -147,6 +159,9 @@ func newControlledGeneratedSliceIndex(domain, snapshot contract.ID, records []co
 			index.fragments[fragment.BlobID] = append(index.fragments[fragment.BlobID], row)
 		}
 	}
+	if index.snapshot.IsZero() {
+		return nil, contract.ErrRecord
+	}
 	return index, nil
 }
 
@@ -155,14 +170,6 @@ func (i *controlledGeneratedSliceIndex) inspect(location contract.GeneratorSlice
 	records = append(records, i.locations[location]...)
 	records = append(records, i.fragments[location.BlobID]...)
 	return contract.InspectGeneratedImmutableSlice(i.domain, i.snapshot, records, location, limit)
-}
-
-func (a *generatedAdmission) controlledSliceIndex(records []contract.SupportRecord) (*controlledGeneratedSliceIndex, error) {
-	ref, err := contract.DecodeRef(a.request.Context.PredecessorRootRef[:], contract.CanonicalSchema)
-	if err != nil {
-		return nil, err
-	}
-	return newControlledGeneratedSliceIndex(a.request.Context.DomainID, ref.Object, records)
 }
 
 func (a *generatedAdmission) controlledSelectedGraph(records []contract.SupportRecord, id contract.ID, claimed []byte) (contract.GeneratorPlanBundle, error) {
@@ -313,11 +320,7 @@ func (a *generatedAdmission) controlledSelectedSource(input *contract.GeneratedC
 	var progress [][]byte
 	acks := make(map[contract.ID]contract.GeneratorProgress)
 	contradiction := false
-	ref, err := contract.DecodeRef(a.request.Context.PredecessorRootRef[:], contract.CanonicalSchema)
-	if err != nil {
-		return fail()
-	}
-	createPrefix, err := contract.InspectGeneratedSelectedCreateAncestry(source.DomainID, ref.Object, input.BeforeRecords, source)
+	createPrefix, err := contract.InspectGeneratedSelectedCreateAncestry(source.DomainID, view.sliceSnapshot, input.BeforeRecords, source)
 	if err != nil {
 		return fail()
 	}
