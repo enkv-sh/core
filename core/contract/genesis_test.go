@@ -397,6 +397,20 @@ func TestGenesisDescriptorRejectsEveryControlBindingPairCollision(t *testing.T) 
 }
 
 // full_only: false
+func TestGenesisKeepsRecoveryRoleSeparateFromOrdinaryRecipients(t *testing.T) {
+	d := genesisDescriptorFixture(t, true)
+	if _, err := EncodeGenesisDescriptorCore(d); err != nil {
+		t.Fatal("independent Recovery role", err)
+	}
+	for _, recipient := range d.Recipients {
+		d.Recovery.RoleID = recipient.RecipientID
+		if _, err := EncodeGenesisDescriptorCore(d); err == nil {
+			t.Fatal("genesis accepted a recipient ID for the Recovery role")
+		}
+	}
+}
+
+// full_only: false
 func TestGenesisDescriptorRejectsAmbiguousGCPRecoveryParent(t *testing.T) {
 	d := genesisDescriptorFixture(t, true)
 	for i := range d.Recipients {
