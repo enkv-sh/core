@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"math"
+	"slices"
 	"sync"
 
 	"enkv.sh/core/contract"
@@ -14,13 +15,14 @@ import (
 // public part. It contains no private admission, plaintext, or Store reach.
 // Its backing transfers from one attempt at Commit and is released by Close.
 type ReconstructionProjection struct {
-	mu            sync.Mutex
-	parts         []reconstructionProjectionPart
-	signingAnchor []byte
-	provenance    reconstructionProjectionProvenance
-	sliceSnapshot contract.ID
-	slices        contract.GeneratorDescriptor
-	closed        bool
+	mu              sync.Mutex
+	parts           []reconstructionProjectionPart
+	signingAnchor   []byte
+	provenance      reconstructionProjectionProvenance
+	pendingRegistry contract.ID
+	sliceSnapshot   contract.ID
+	slices          contract.GeneratorDescriptor
+	closed          bool
 }
 
 // ReconstructionPartKind names one exact selected part in a complete owned
@@ -86,6 +88,46 @@ func (p *ReconstructionProjection) CopyGeneratedIntent(ctx context.Context, dige
 	if p.closed || p.sliceSnapshot.IsZero() || ctx.Err() != nil {
 		return nil, ErrLocalAuthorityAdmission
 	}
+	body, err := p.generatedSliceLocked(ctx, contract.GeneratorContentIntent, digest, contract.GeneratorIntentMaxLength)
+	if err != nil {
+		return nil, err
+	}
+	return bytes.Clone(body), nil
+}
+
+// CopyPendingRecipientCreations returns only recipients awaiting first selection
+// in the authenticated active apply. They carry preparation facts for a surviving
+// declaration. Current recipients come from the selected recipient pages.
+func (p *ReconstructionProjection) CopyPendingRecipientCreations(ctx context.Context) ([]contract.ApplyRecipientInput, error) {
+	if p == nil || ctx == nil {
+		return nil, ErrLocalAuthorityAdmission
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.closed || p.provenance.domain.IsZero() || ctx.Err() != nil {
+		return nil, ErrLocalAuthorityAdmission
+	}
+	if p.pendingRegistry.IsZero() {
+		return nil, nil
+	}
+	body, err := p.generatedSliceLocked(ctx, contract.GeneratorContentRecipientRegistry, p.pendingRegistry, contract.GeneratedRecipientRegistryMaxLength)
+	if err != nil {
+		return nil, err
+	}
+	image, err := contract.DecodeGeneratedRecipientRegistryImage(body)
+	if err != nil || image.DomainID != p.provenance.domain || image.OperationID != p.pendingRegistry {
+		return nil, contract.ErrRecord
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	return slices.DeleteFunc(image.Recipients, func(row contract.ApplyRecipientInput) bool {
+		return !slices.Contains(image.InitiallyAbsent, row.Recipient.RecipientID)
+	}), nil
+}
+
+// A contiguous slice borrows projection backing until the caller releases the lock.
+func (p *ReconstructionProjection) generatedSliceLocked(ctx context.Context, kind uint8, id contract.ID, limit uint32) ([]byte, error) {
 	var location contract.GeneratorSliceLocation
 	var selected contract.SupportRecord
 	found := false
@@ -107,10 +149,10 @@ func (p *ReconstructionProjection) CopyGeneratedIntent(ctx context.Context, dige
 		if err != nil {
 			return nil, err
 		}
-		if candidate.ContentKind != contract.GeneratorContentIntent || candidate.ContentID != digest {
+		if candidate.ContentKind != kind || candidate.ContentID != id {
 			continue
 		}
-		if found || candidate.Length > contract.GeneratorIntentMaxLength {
+		if found || candidate.Length > limit {
 			return nil, contract.ErrRecord
 		}
 		location, found = candidate, true
@@ -140,14 +182,14 @@ func (p *ReconstructionProjection) CopyGeneratedIntent(ctx context.Context, dige
 		}
 		rows = append(rows, contract.SupportRecord{Kind: part.supportKind, RecordID: part.recordID, Body: part.body})
 	}
-	body, err := contract.InspectGeneratedImmutableSlice(p.provenance.domain, p.sliceSnapshot, rows, location, contract.GeneratorIntentMaxLength)
+	body, err := contract.InspectGeneratedImmutableSlice(p.provenance.domain, p.sliceSnapshot, rows, location, limit)
 	if err != nil {
 		return nil, err
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	return bytes.Clone(body), nil
+	return body, nil
 }
 
 // ReconstructionProvenance identifies the exact selected HEAD and snapshot.
@@ -233,6 +275,7 @@ func (p *ReconstructionProjection) Close() {
 	clear(p.signingAnchor)
 	p.signingAnchor = nil
 	p.provenance = reconstructionProjectionProvenance{}
+	p.pendingRegistry = contract.ID{}
 	p.sliceSnapshot, p.slices = contract.ID{}, contract.GeneratorDescriptor{}
 	p.closed = true
 }

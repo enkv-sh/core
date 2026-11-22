@@ -55,7 +55,13 @@ func reconstructOneProjection(ctx context.Context, input reconstructionInputs) (
 	if result.Outcome != 0 {
 		return nil, result
 	}
-	complete, result := completePublicSelection(ctx, basis, nil)
+	var pendingRegistry contract.ID
+	complete, result := completePublicSelection(ctx, basis, func(_ context.Context, work *generatedSelection) error {
+		if work.registry != nil && len(work.registry.InitiallyAbsent) != 0 && !generatedSelectionAnchored(work) {
+			pendingRegistry = work.registry.OperationID
+		}
+		return nil
+	})
 	if result.Outcome != 0 {
 		return nil, result
 	}
@@ -91,6 +97,7 @@ func reconstructOneProjection(ctx context.Context, input reconstructionInputs) (
 	if projection == nil {
 		return nil, refused(AdmissionInvalid)
 	}
+	projection.pendingRegistry = pendingRegistry
 	return projection, observed
 }
 

@@ -3,7 +3,10 @@ package core
 import (
 	"bytes"
 	"context"
+	"reflect"
+	"slices"
 	"testing"
+	"time"
 
 	"enkv.sh/core/contract"
 )
@@ -84,5 +87,84 @@ func TestReconstructionProjectionCopiesCurrentAndRetainedIntent(t *testing.T) {
 	}
 	if _, err := projection.CopyGeneratedIntent(t.Context(), old.Generated.IntentDigest); err == nil {
 		t.Fatal("closed projection intent accepted")
+	}
+}
+
+// full_only: false
+func TestReconstructionPendingRecipientFollowsOriginalApply(t *testing.T) {
+	for _, checkpoint := range []string{"reserved", "recorded"} {
+		t.Run(checkpoint, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+			defer cancel()
+			f := newInstalledApplyTestFixture(t, ctx, contract.GCP, true)
+			process, effects := installedGeneratedRetirementProcess(t, "acknowledged")
+			f.env.GeneratedProcess = process
+			desired := installedApplyPreparedRecipient(t, f.selected, "recover original pending reader")
+			pending := desired[slices.IndexFunc(desired, func(row contract.ApplyRecipientInput) bool { return row.Creation != nil })]
+			input := installedGeneratedRetirementEntries(process, f.selected.admission.recipient, 0, "retained")
+			input[0].Recipients = append(input[0].Recipients, pending.Recipient.RecipientID)
+			slices.SortFunc(input[0].Recipients, compareGeneratedIDs)
+			callbacks := installedGeneratedRetirementCallbacks(t, f, process)
+			store := requireAdmittedMemoryStore(t, f.env.Store)
+			if checkpoint == "reserved" {
+				priorCAS := store.cas
+				store.casMode = "lost-after"
+				store.readHook = func(key string, result contract.ReadResult) contract.ReadResult {
+					if key == store.desc.HeadKey && store.cas > priorCAS {
+						return contract.ReadResult{Status: contract.ReadUnavailable, Reason: contract.ReasonTransport}
+					}
+					return result
+				}
+			} else {
+				callbacks.AdmitFinal = func(context.Context, contract.CryptoGeneratedCompareRequest, contract.ControlCore, contract.GeneratedFinalInput, time.Time) (*InstalledGeneratedCustody, error) {
+					return nil, contract.ErrRecord
+				}
+			}
+			engine := installedGeneratedTestEngine(t, ctx, f, f.selected, input, desired, callbacks)
+			stopped := engine.Apply(ctx, testID("recipient creation before "+checkpoint), input)
+			engine.Close()
+			store.casMode, store.readHook = "", nil
+			cold := f.open(t, ctx)
+			if stopped.OperationID.IsZero() || cold.root.Generated.ActiveOwner != stopped.OperationID || cold.recipientRecord(pending.Recipient.RecipientID) != nil {
+				t.Fatal("pending reader was selected or lost its active parent", stopped.Result)
+			}
+			projection := reconstructProjectionFixture(t, f.env, cold, store)
+			rows, err := projection.CopyPendingRecipientCreations(ctx)
+			if err != nil || !reflect.DeepEqual(rows, []contract.ApplyRecipientInput{pending}) {
+				t.Fatal("reconstruction lost the accepted first binding or creation proof", err)
+			}
+			rows[0].Recipient.CurrentBinding.SPKI[0] ^= 1
+			next, err := projection.CopyPendingRecipientCreations(ctx)
+			if err != nil || !reflect.DeepEqual(next, []contract.ApplyRecipientInput{pending}) {
+				t.Fatal("reconstruction lent its proof bytes to the caller", err)
+			}
+			projection.Close()
+			if _, err := projection.CopyPendingRecipientCreations(ctx); err == nil {
+				t.Fatal("closed projection released creation material")
+			}
+			if checkpoint == "reserved" {
+				candidate, result := prepareTestEndSelectedWork(t, cold, ctx, stopped.OperationID, f.env.Trust)
+				if candidate == nil || result.Outcome != ObservedCurrent || cold.Select(ctx, candidate).Outcome != ObservedCurrent {
+					t.Fatal("could not end original reservation", result)
+				}
+			} else {
+				continued := installedGeneratedRetirementEngine(t, ctx, f, cold, installedGeneratedRetirementCallbacks(t, f, process))
+				result := continued.Continue(ctx, testID("continue reconstructed original"), stopped.OperationID)
+				continued.Close()
+				if result.Result.Outcome != ObservedCurrent || result.RequestIdentity != stopped.RequestIdentity {
+					t.Fatal("original operation did not complete", result.Result)
+				}
+			}
+			closed := f.open(t, ctx)
+			creates, deletes := effects()
+			if !closed.root.Generated.ActiveOwner.IsZero() || (closed.recipientRecord(pending.Recipient.RecipientID) != nil) != (checkpoint == "recorded") ||
+				creates != boolInt(checkpoint == "recorded") || len(deletes) != 0 {
+				t.Fatal("closing work changed recipient access or provider effects", creates, deletes)
+			}
+			remaining, err := reconstructProjectionFixture(t, f.env, closed, store).CopyPendingRecipientCreations(ctx)
+			if err != nil || len(remaining) != 0 {
+				t.Fatal("finished work restored an obsolete first binding", err)
+			}
+		})
 	}
 }

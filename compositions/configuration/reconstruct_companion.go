@@ -45,11 +45,25 @@ func MergeReconstructedCompanion(ctx context.Context, source, recovered *Model) 
 	}
 	for i := range source.Recipients {
 		row := &source.Recipients[i]
-		at := slices.IndexFunc(recovered.Recipients, func(current Recipient) bool { return current.ID == row.ID })
-		if row.ID.IsZero() || at < 0 {
-			return nil, spanDiagnostic(source, row.EditableSpan, "recipients", "missing-prepared-recipient", nil)
+		match := func(candidate Recipient) bool { return !row.ID.IsZero() && candidate.ID == row.ID }
+		var current Recipient
+		if at := slices.IndexFunc(recovered.Recipients, match); at >= 0 {
+			current = recovered.Recipients[at]
+		} else {
+			at := slices.IndexFunc(recovered.GeneratedRecipients, func(candidate Recipient) bool {
+				return candidate.Creation != nil && match(candidate)
+			})
+			if at < 0 {
+				return nil, spanDiagnostic(source, row.EditableSpan, "recipients", "missing-prepared-recipient", nil)
+			}
+			current = recovered.GeneratedRecipients[at]
+			id, err := contract.RecipientCreationID(recovered.DomainID, current.Creation.Snapshot, current.Creation.Nonce)
+			binding, incarnation, bindingErr := contract.RecipientInitialBindingIDs(recovered.DomainID, row.ID)
+			if err != nil || bindingErr != nil || id != row.ID || current.Encryption.Binding.ID != binding ||
+				current.Encryption.Binding.Incarnation != incarnation || current.Encryption.Binding.Serial != 1 {
+				return nil, spanDiagnostic(source, row.EditableSpan, "recipients", "missing-prepared-recipient", nil)
+			}
 		}
-		current := recovered.Recipients[at]
 		if row.Selector != current.Encryption.Selector {
 			return nil, spanDiagnostic(source, row.SelectorSpan, "recipients.item.encryption_key", "prepare-selected-key", nil)
 		}

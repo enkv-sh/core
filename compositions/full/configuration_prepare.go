@@ -313,6 +313,16 @@ func prepareReconstructionOutput(ctx context.Context, request PrepareRequest, re
 		return result.failPhase(ctx, errors.Join(ErrPrepare, err), "delivery-failed", "delivery")
 	}
 	model, err := reconstructionConfigurationOwned(ctx, projection, basis, ReconstructionConfigurationOptions{Name: r.Name, FileID: fileID})
+	if err == nil && source != nil && len(source.Recipients) != 0 {
+		var pending []contract.ApplyRecipientInput
+		pending, err = projection.CopyPendingRecipientCreations(ctx)
+		for _, row := range pending {
+			model.GeneratedRecipients = append(model.GeneratedRecipients, configuration.Recipient{
+				ID: row.Recipient.RecipientID, Encryption: reconstructionEncryptionKey(*row.Recipient.CurrentBinding),
+				Creation: &configuration.Creation{Snapshot: row.Creation.Snapshot, Nonce: row.Creation.Nonce},
+			})
+		}
+	}
 	projection.Close()
 	if err != nil {
 		return result.failPhase(ctx, err, "state-invalid", "recovery")

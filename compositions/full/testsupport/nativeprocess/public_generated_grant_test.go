@@ -3,9 +3,11 @@ package nativeprocess
 import (
 	"bytes"
 	"encoding/hex"
+	"encoding/json"
 	"maps"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"enkv.sh/core/contract"
@@ -193,4 +195,81 @@ func runGeneratedGrantHistory(t *testing.T, cloud *nativeGeneratedServer, binari
 		t.Fatal("successor did not carry selected grant pages forward")
 	}
 	read()
+}
+
+// full_only: false
+func TestPublicPrepareRecoversPendingRecipientBeforeGeneratedFinal(t *testing.T) {
+	cloud := newNativeGeneratedServer(t)
+	binaries := buildNativeGeneratedExecutables(t, cloud.server.URL+"/client/v4")
+	s := newWorkflowServer(t, "gcp", true)
+	s.childRequestLimit = 1024
+	source := nativeGeneratedInitialize(t, s, binaries.cli, true)
+	added := workflowRun(t, s, binaries.cli, "change", observer.Policy{RecipientKEK: s.selector(5)}, nil,
+		"recipients", "add", "--source", source, "--source-format", "json", "--recipient", "new-reader", "--mode", "create",
+		"--display-name", "New reader", "--encryption-key", s.selector(5), "--json")
+	if added.code != 0 {
+		t.Fatal("could not prepare the new recipient", added.summary)
+	}
+	nativeGeneratedDeclaration(t, source, nativeGeneratedAccountA, "manual", 0, true)
+	nativePublicationSource(t, source, func(editable map[string]any) {
+		editable["entries"].(map[string]any)["generated"].(map[string]any)["recipients"] = []string{"new-reader"}
+	})
+	before := workflowReadPair(t, source)
+	recipient := func(pair workflowPair) map[string]any {
+		t.Helper()
+		var image struct{ Recipients map[string]map[string]any }
+		if json.Unmarshal(pair.generated, &image) != nil || image.Recipients["new-reader"]["creation"] == nil {
+			t.Fatal("companion lacks the new recipient's preparation")
+		}
+		return image.Recipients["new-reader"]
+	}
+	want := recipient(before)
+	var id contract.ID
+	raw, err := hex.DecodeString(want["id"].(string))
+	if err != nil || len(raw) != len(id) {
+		t.Fatal("invalid prepared recipient ID")
+	}
+	copy(id[:], raw)
+	s.mu.Lock()
+	s.rejectHeadBody = func(body []byte) bool {
+		head, err := format.DecodeHead(body)
+		return err == nil && head.Generator != nil && head.Generator.Purpose == contract.GeneratorAuthorityFinal
+	}
+	s.mu.Unlock()
+	nativeGeneratedOutcome(t, nativeGeneratedRun(t, s, binaries, source, nativeGeneratedBearerA, "apply", false), "contention", 3)
+	s.mu.Lock()
+	s.rejectHeadBody = nil
+	s.mu.Unlock()
+	checkpoint, selected := workflowHead(t, s)
+	root := workflowRoot(t, s, checkpoint)
+	if checkpoint.Generator == nil || checkpoint.Generator.Purpose != contract.GeneratorAuthorityFinalPreparation || root.Generated.ActiveOwner.IsZero() ||
+		nativeLifecycleRecipients(t, s, root)[id].CurrentBinding != nil {
+		t.Fatal("expected an active apply before first recipient selection")
+	}
+	events, created := cloud.snapshot()
+	if len(events) != 1 || created != 1 {
+		t.Fatal("expected one original create")
+	}
+	if err := os.Remove(filepath.Join(filepath.Dir(source), before.reference)); err != nil {
+		t.Fatal(err)
+	}
+	child := workflowRunEnvironment(t, s, binaries.cli, "authority", observer.Policy{}, nil, nativeGeneratedEnvironment(t, binaries, source),
+		nativePrepareArgs(s, source, "prod", "--normal-signing-key", s.selector(1))...)
+	recovered := nativePrepareDecode(t, child, "reconstruction", true)
+	nativePrepareReadOnly(t, child)
+	after := workflowReadPair(t, source)
+	_, observed := workflowHead(t, s)
+	if recovered.Recovery.Head != workflowDigest(selected.body) || !bytes.Equal(before.editable, after.editable) ||
+		!reflect.DeepEqual(want, recipient(after)) || !bytes.Equal(selected.body, observed.body) || selected.etag != observed.etag {
+		t.Fatal("prepare changed the source, selected state or accepted first binding")
+	}
+	operation := root.Generated.ActiveOwner
+	nativeGeneratedOutcome(t, nativeGeneratedRun(t, s, binaries, source, "", "apply", false, "--operation", hex.EncodeToString(operation[:])), "success", 0)
+	final, _ := workflowHead(t, s)
+	registry := nativeLifecycleRecipients(t, s, workflowRoot(t, s, final))
+	afterEvents, afterCreated := cloud.snapshot()
+	if final.Generator == nil || final.Generator.OperationID != operation || final.Generator.Purpose != contract.GeneratorAuthorityFinal ||
+		registry[id].CurrentBinding == nil || registry[id].CurrentBinding.KeySelector != s.selector(5) || len(afterEvents) != len(events) || afterCreated != created {
+		t.Fatal("cold continuation changed the original create or did not select the prepared recipient")
+	}
 }

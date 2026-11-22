@@ -3,6 +3,8 @@
 package configuration
 
 import (
+	"bytes"
+	"encoding/hex"
 	"errors"
 	"os"
 	"reflect"
@@ -72,6 +74,77 @@ func TestCompanionMergeQualifiesRecipientSourceIdentity(t *testing.T) {
 			}
 			if readSource(t, path) != body {
 				t.Fatal("recipient merge changed surviving source bytes")
+			}
+		})
+	}
+}
+
+// full_only: false
+func TestCompanionMergeRestoresAcceptedRecipientCreation(t *testing.T) {
+	for _, variant := range []string{"exact", "wrong nonce", "wrong first binding", "missing proof"} {
+		t.Run(variant, func(t *testing.T) {
+			path, _, original, _ := companionReconstructionSource(t, YAML, false)
+			recovered := reconstructionModel(t, "recovered")
+			creation := Creation{Snapshot: contract.ID{1}, Nonce: contract.ID{2}}
+			id, err := contract.RecipientCreationID(recovered.DomainID, creation.Snapshot, creation.Nonce)
+			if err != nil {
+				t.Fatal(err)
+			}
+			key := kmsKey(preparationMaterial(t).Encryption)
+			key.Binding.ID, key.Binding.Incarnation, err = contract.RecipientInitialBindingIDs(recovered.DomainID, id)
+			if err != nil {
+				t.Fatal(err)
+			}
+			key.Binding.Serial = 1
+			recovered.GeneratedRecipients = []Recipient{{ID: id, Encryption: key, Creation: &creation}}
+			switch variant {
+			case "wrong nonce":
+				recovered.GeneratedRecipients[0].Creation = &Creation{Snapshot: creation.Snapshot, Nonce: contract.ID{3}}
+			case "wrong first binding":
+				recovered.GeneratedRecipients[0].Encryption.Binding.ID = contract.ID{4}
+			case "missing proof":
+				recovered.GeneratedRecipients[0].Creation = nil
+			}
+			row := `{"id":"` + hex.EncodeToString(id[:]) + `","display_name":"New label","encryption_key":"` + key.Selector + `"}`
+			body := strings.Replace(original, `recipients: {}`, `recipients: {"new-reader":`+row+`}`, 1)
+			if err := os.WriteFile(path, []byte(body), 0600); err != nil {
+				t.Fatal(err)
+			}
+			out, source, err := BeginCompanionReconstruction(t.Context(), path, YAML)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer closeSourceOwner(t, out)
+			merged, err := MergeReconstructedCompanion(t.Context(), source, recovered)
+			if variant != "exact" {
+				if err == nil || merged != nil || readSource(t, path) != body {
+					t.Fatal("invalid creation facts restored the companion")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal("accepted creation could not restore its local record", err)
+			}
+			if _, err := out.Stage(t.Context(), merged); err != nil {
+				t.Fatal("could not stage restored recipient", err)
+			}
+			if delivery, err := out.Commit(t.Context()); err != nil || delivery == nil {
+				t.Fatal("could not deliver restored recipient", err)
+			}
+			closeSourceOwner(t, out)
+			pair, err := Capture(t.Context(), path, YAML)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer pair.Close()
+			restored, err := ParseForAcceptedWork(t.Context(), pair)
+			if err != nil || len(restored.Recipients) != 1 {
+				t.Fatal("fresh accepted-work invocation could not read the pair", err)
+			}
+			got := restored.Recipients[0]
+			if got.ID != id || got.Reference != "new-reader" || got.DisplayName != "New label" ||
+				got.Encryption.Selector != key.Selector || got.Encryption.Binding != key.Binding || !bytes.Equal(got.Encryption.PublicKey, key.PublicKey) || got.Creation == nil || *got.Creation != creation || readSource(t, path) != body {
+				t.Fatal("restoration changed preparation or source")
 			}
 		})
 	}
