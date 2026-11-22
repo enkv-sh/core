@@ -84,6 +84,23 @@ func TestRetainedLocalLookupKeepsAcceptedAAfterCurrentB(t *testing.T) {
 	if _, err := restarted.ResolveRetained(t.Context(), family.ExecutorID, check); !errors.Is(err, ErrInvalid) {
 		t.Fatal("corrupt pointer guessed bytes", err)
 	}
+	// The old locator is unreadable. A new installation must recover A from
+	// its independent artifact even when the offered current build is B.
+	fresh := catalog.coordinator(t)
+	if installed, err := fresh.RestoreRetainedLocal(t.Context(), filepath.Join(two.output, "builds", two.identity.String()), one.identity, check); !errors.Is(err, ErrIdentity) || installed != nil {
+		t.Fatal("different local build supplied the retained identity", err)
+	}
+	if installed, err := fresh.ResolveRetained(t.Context(), family.ExecutorID, check); !errors.Is(err, ErrMissing) || installed != nil {
+		t.Fatal("declined build published a retained locator", err)
+	}
+	exact, err := fresh.RestoreRetainedLocal(t.Context(), filepath.Join(one.output, "builds", one.identity.String()), one.identity, check)
+	if err != nil || exact.Identity() != one.identity || exact.Executable() == first.Executable() {
+		t.Fatal("fresh installation did not restore the independent original", err)
+	}
+	executable, err := os.ReadFile(exact.Executable())
+	if err != nil || artifact.Hash(executable) != one.metadata.Executable.SHA256 {
+		t.Fatal("restored executable differs from the accepted digest", err)
+	}
 	if catalog.count() != 0 {
 		t.Fatal("local retained lookup contacted service")
 	}
