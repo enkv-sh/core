@@ -60,6 +60,13 @@ func TestMixedApplyKeepsAnExistingOwnerOfTheSuppliedSecret(t *testing.T) {
 		t.Fatal("mixed apply did not finish with one create", out.Result, creates, deletes)
 	}
 	cold := f.open(t, ctx)
+	for _, wanted := range input {
+		_, entry := observeCurrentValueEntry(t, cold, wanted.Name)
+		payload, err := contract.InspectCanonicalPayload(entry.ValueBytes)
+		if err != nil || entry.ValueSource != wanted.ValueSource || payload.CryptoSupportID != cold.root.CurrentAccess.Core.CryptoSupportID {
+			t.Fatal("selected secret lost the Crypto support ID of its control", wanted.Name, err)
+		}
+	}
 	current := sessionConsumerSelection(t, cold, authority, secret.Name)
 	material := "original-current-material"
 	if current.Entry.ValueState != original.ValueState {
