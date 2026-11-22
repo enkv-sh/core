@@ -160,6 +160,24 @@ func packedFragments(t testing.TB, blob ID, length int) []contract.SupportRecord
 }
 
 // full_only: false
+func TestReceiptIndexGrowthFitsBesideMaximumFragment(t *testing.T) {
+	peer := RequiredSupportGroup{Class: AuxiliaryFragmentSupport, Owner: fid(1), Records: packedFragments(t, fid(1), (1<<20)-256)}
+	for _, receipts := range []int{1, 128, 256, 511, 512} {
+		// Three framed ID vectors and one schema. Each retained ID appears twice.
+		size := 26 + 2*(4+32)*receipts
+		index := RequiredSupportGroup{Class: AuxiliaryFragmentSupport, Owner: fid(2), Records: packedFragments(t, fid(2), size)}
+		pages, err := PackRequiredSupportRows(fid(3), []RequiredSupportGroup{index, peer}, 255)
+		if err != nil || len(pages) != 1 || len(pages[0]) != 2 {
+			t.Fatalf("%d receipts did not share the last page with their peer: %v", receipts, err)
+		}
+		page, err := EncodeRequiredSupportPage(RequiredSupportPage{Domain: fid(3), Object: fid(4), Records: pages[0]})
+		if err != nil || len(page) != 75+2*(37+86)+(1<<20)-256+size {
+			t.Fatalf("%d receipts: encoded page length %d, error %v", receipts, len(page), err)
+		}
+	}
+}
+
+// full_only: false
 func TestRequiredSupportPackingReservesWholeGroupsAndChildLimit(t *testing.T) {
 	_, first := packedReceipt(t, fid(20))
 	_, second := packedReceipt(t, fid(21))
