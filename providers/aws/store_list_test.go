@@ -65,6 +65,46 @@ func listReply(c StoreConfig, keys []string, cursor, next string) string {
 }
 
 // full_only: false
+func TestStoreListPageCanRestartACompleteListing(t *testing.T) {
+	c := testStoreConfig()
+	prefix := c.Prefix + "/" + hex.EncodeToString(c.Domain[:]) + "/"
+	keys := []string{prefix + "first", prefix + "second", prefix + "third"}
+	var requests []string
+	open := func() *Store {
+		t.Helper()
+		store, err := newStore(c, roundTripFunc(func(r *http.Request) (*http.Response, error) {
+			cursor := r.URL.Query().Get("continuation-token")
+			requests = append(requests, cursor)
+			switch cursor {
+			case "":
+				return response(200, listReply(c, keys[:2], cursor, "page-two"), nil), nil
+			case "page-two":
+				return response(200, listReply(c, keys[2:], cursor, ""), nil), nil
+			default:
+				t.Fatalf("unexpected cursor %q", cursor)
+				return nil, nil
+			}
+		}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return store
+	}
+	partial := open().ListPage(t.Context(), "")
+	if partial.Status != contract.ListPageOK || partial.NextCursor != "page-two" {
+		t.Fatal("first listing did not offer its continuation", partial)
+	}
+	fresh := open()
+	first := fresh.ListPage(t.Context(), "")
+	last := fresh.ListPage(t.Context(), first.NextCursor)
+	if first.Status != contract.ListPageOK || last.Status != contract.ListPageOK || last.NextCursor != "" ||
+		!reflect.DeepEqual(first.Keys, keys[:2]) || !reflect.DeepEqual(last.Keys, keys[2:]) ||
+		!reflect.DeepEqual(requests, []string{"", "", "page-two"}) {
+		t.Fatal("fresh listing lost a page or sent an extra request", first, last, requests)
+	}
+}
+
+// full_only: false
 func TestStoreListPageAcceptsCompleteBoundedPages(t *testing.T) {
 	c := testStoreConfig()
 	prefix := c.Prefix + "/" + hex.EncodeToString(c.Domain[:]) + "/"
