@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"slices"
 	"unicode/utf8"
 
 	"enkv.sh/core/contract"
@@ -21,7 +22,19 @@ type writer struct {
 	err error
 }
 
-func start(tag byte) writer     { return writer{b: []byte{'E', 'N', 'K', 'V', tag, 0, byte(Version)}} }
+// Every HEAD uses the selected-grant revision, including genesis and successors
+// with no grants. The published beta admits only revision 11.
+const grantFormatVersion uint16 = 12
+
+func startVersion(tag byte, version uint16) writer {
+	return writer{b: []byte{'E', 'N', 'K', 'V', tag, byte(version >> 8), byte(version)}}
+}
+func start(tag byte) writer {
+	if tag == byte(HeadKind) {
+		return startVersion(tag, grantFormatVersion)
+	}
+	return startVersion(tag, Version)
+}
 func (w *writer) u8(n byte)     { w.b = append(w.b, n) }
 func (w *writer) u16(n uint16)  { w.b = binary.BigEndian.AppendUint16(w.b, n) }
 func (w *writer) u32(n uint32)  { w.b = binary.BigEndian.AppendUint32(w.b, n) }
@@ -124,6 +137,14 @@ func begin(b []byte, tag byte, max int) *reader {
 		r.bad = true
 	}
 	return r
+}
+
+// Only grant-bearing roots and signed cores have a second layout.
+func beginGrantFrame(b []byte, tag byte, max int) (*reader, bool) {
+	if len(b) >= 7 && bytes.Equal(b[:7], startVersion(tag, grantFormatVersion).b) {
+		return &reader{b: b, off: 7, bad: len(b) > max}, true
+	}
+	return begin(b, tag, max), false
 }
 func idsValid(ids ...ID) bool {
 	for _, id := range ids {
@@ -470,6 +491,23 @@ func rootValid(p Root) bool {
 	if len(recipients) == 0 || count != p.ChildCount || size != p.ChildEncodedBytes || p.CurrentAccess.Core.DomainID != p.Domain || p.CurrentAccess.Core.AccessRecordsDescriptor.Count != p.AccessRecordCount {
 		return false
 	}
+	if len(p.GrantPages) > MaxGrantPages {
+		return false
+	}
+	lastPage := -1
+	for _, ref := range p.GrantPages {
+		if !refValid(ref) || ref.Kind != AccessKind || ref.Domain != p.Domain || int(ref.Index) <= lastPage || ref.Object == p.Snapshot {
+			return false
+		}
+		logical, ok := slices.BinarySearchFunc(p.CurrentAccess.Core.AccessPageRefs, ref.Index, func(r Ref, index uint16) int {
+			return int(r.Index) - int(index)
+		})
+		if !ok || ref.Object != grantBaseObject(p.Domain, p.CurrentAccess.Core.AccessPageRefs[logical].Object) ||
+			slices.Contains(objects[:count], ref.Object) || ref.Length != p.CurrentAccess.Core.AccessPageRefs[logical].Length {
+			return false
+		}
+		lastPage = int(ref.Index)
+	}
 	rd, err := contract.RecipientRefsDescriptor(contract.RecipientRefsProjection{DomainID: p.Domain, Refs: recipients})
 	if err != nil || rd != p.CurrentAccess.Core.RecipientRefsDescriptor {
 		return false
@@ -498,6 +536,9 @@ func EncodeRoot(p Root) ([]byte, error) {
 		return nil, ErrFormat
 	}
 	w := start(byte(RootKind))
+	if len(p.GrantPages) != 0 {
+		w = startVersion(byte(RootKind), grantFormatVersion)
+	}
 	w.id(p.Domain)
 	w.id(p.Snapshot)
 	w.id(p.Transition)
@@ -555,13 +596,19 @@ func EncodeRoot(p Root) ([]byte, error) {
 	if err != nil {
 		return nil, ErrFormat
 	}
+	if len(p.GrantPages) != 0 {
+		w.u16(uint16(len(p.GrantPages)))
+		for _, ref := range p.GrantPages {
+			w.ref(ref)
+		}
+	}
 	if len(w.b) > MaxRoot {
 		return nil, ErrFormat
 	}
 	return w.result()
 }
 func DecodeRoot(b []byte) (Root, error) {
-	r := begin(b, byte(RootKind), MaxRoot)
+	r, grants := beginGrantFrame(b, byte(RootKind), MaxRoot)
 	p := Root{Domain: r.id(), Snapshot: r.id(), Transition: r.id()}
 	for _, table := range [][]*Ref{p.ValueEntryPages[:], p.Recipients[:]} {
 		for i := range table {
@@ -637,6 +684,16 @@ func DecodeRoot(b []byte) (Root, error) {
 	if err != nil {
 		return Root{}, ErrFormat
 	}
+	if grants {
+		n := int(r.u16())
+		if n == 0 || n > MaxGrantPages || r.remaining() != n*contract.RefLength {
+			return Root{}, ErrFormat
+		}
+		p.GrantPages = make([]Ref, n)
+		for i := range p.GrantPages {
+			p.GrantPages[i] = r.ref()
+		}
+	}
 	if !r.end() {
 		return Root{}, ErrFormat
 	}
@@ -661,7 +718,7 @@ func headCoreFieldsValid(p HeadCore) bool {
 	case SuccessorHead:
 		return idsValid(p.PreviousRevision, p.PreviousDigest) && p.PreviousToken.Valid()
 	case GenesisHead:
-		return p.Epoch == 1 && p.PreviousRevision.IsZero() && p.PreviousDigest.IsZero() && p.PreviousToken == (contract.Token{})
+		return p.Epoch == 1 && p.PreviousRevision.IsZero() && p.PreviousDigest.IsZero() && p.PreviousToken == (contract.Token{}) && p.GrantDigest.IsZero()
 	default:
 		return false
 	}
@@ -681,6 +738,9 @@ func EncodeHeadCore(p HeadCore) ([]byte, error) {
 // root is already encoded by the owning actual or typed digest-plan writer.
 func encodeHeadCoreFields(p HeadCore, root []byte) ([]byte, error) {
 	w := start(coreTag)
+	if !p.GrantDigest.IsZero() {
+		w = startVersion(coreTag, grantFormatVersion)
+	}
 	w.u8(p.Form)
 	w.id(p.Domain)
 	w.id(p.Revision)
@@ -697,10 +757,13 @@ func encodeHeadCoreFields(p HeadCore, root []byte) ([]byte, error) {
 	w.id(p.Interpretation)
 	w.u64(p.Epoch)
 	w.u32(p.Unsupported)
+	if !p.GrantDigest.IsZero() {
+		w.id(p.GrantDigest)
+	}
 	return w.result()
 }
 func DecodeHeadCore(b []byte) (HeadCore, error) {
-	r := begin(b, coreTag, contract.SuccessorHeadCoreMaxLength)
+	r, grants := beginGrantFrame(b, coreTag, contract.GrantHeadCoreMaxLength)
 	p := HeadCore{Form: r.u8(), Domain: r.id(), Revision: r.id()}
 	switch p.Form {
 	case SuccessorHead:
@@ -719,6 +782,12 @@ func DecodeHeadCore(b []byte) (HeadCore, error) {
 	p.Interpretation = r.id()
 	p.Epoch = r.u64()
 	p.Unsupported = r.u32()
+	if grants {
+		p.GrantDigest = r.id()
+		if p.GrantDigest.IsZero() {
+			return HeadCore{}, ErrFormat
+		}
+	}
 	if !r.end() || !headCoreValid(p) {
 		return HeadCore{}, ErrFormat
 	}
@@ -732,7 +801,8 @@ func conditionalPlanFieldsValid(p ConditionalPlan) bool {
 		return p.HeadCoreLength == 349
 	}
 	token, ok := p.Condition.Token()
-	return ok && token.Family == p.Family && p.HeadCoreLength >= contract.SuccessorHeadCoreMinLength && p.HeadCoreLength <= contract.SuccessorHeadCoreMaxLength
+	return ok && token.Family == p.Family && (p.HeadCoreLength >= contract.SuccessorHeadCoreMinLength && p.HeadCoreLength <= contract.SuccessorHeadCoreMaxLength ||
+		p.HeadCoreLength == uint32(contract.SuccessorHeadCoreMinLength-1+len(token.Value)+len(ID{})))
 }
 func conditionalPlanValid(p ConditionalPlan) bool {
 	return !p.HeadCore.IsZero() && conditionalPlanFieldsValid(p)

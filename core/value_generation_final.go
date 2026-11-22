@@ -627,7 +627,7 @@ func (s *StateSession) deriveGeneratedFinalWithObservation(ctx context.Context, 
 	}
 	defer validated.clearOwnedSupplied()
 	bySlot, suppliedBySlot := validated.generated, validated.supplied
-	next := *s
+	next := s.successorState()
 	next.cache, next.accessLocations, next.valueReaders = nil, nil, nil
 	next.root.Snapshot, err = contract.GeneratorPhaseSnapshotID(phaseID)
 	if err != nil {

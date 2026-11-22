@@ -401,6 +401,17 @@ func workflowRunDeclaredEnvironment(t *testing.T, s *workflowServer, binary, pha
 	if ctx.Err() != nil || stdout.overflow || stderr.overflow {
 		t.Fatal("public process exceeded finite bounds")
 	}
+	if policy.Fault == "exit-after-head-write" {
+		progress, err := observer.ReadProgress(record)
+		if code != 86 || stdout.Len() != 0 || err != nil || len(progress.Events) == 0 {
+			t.Fatal("expected abrupt exit at the selected HEAD", code, err)
+		}
+		last := progress.Events[len(progress.Events)-1]
+		if last.Kind != "http-return" || last.Operation != "head-write" || !last.Sent || last.Status < 200 || last.Status >= 300 {
+			t.Fatal("child did not stop during its HEAD write", last.Kind, last.Operation)
+		}
+		return workflowChild{code: code, capture: progress, summary: s.summary(phase)}
+	}
 	capture, err := observer.ReadCapture(record)
 	if err != nil {
 		commandName := "unknown"

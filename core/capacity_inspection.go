@@ -222,7 +222,16 @@ func capacityEncodedUsage(selected *publicSelection) (CapacityEncodedUsage, erro
 			}
 		}
 	}
-	for _, refs := range [][]format.Ref{root.CurrentAccess.Core.AccessPageRefs, append([]format.Ref{root.AdministrativeIndex}, root.AdministrativeIndexShards...), root.RequiredSupport} {
+	access := slices.Clone(root.CurrentAccess.Core.AccessPageRefs)
+	for i, ref := range access {
+		for _, base := range root.GrantPages {
+			if base.Index == ref.Index {
+				access[i] = base
+				break
+			}
+		}
+	}
+	for _, refs := range [][]format.Ref{access, append([]format.Ref{root.AdministrativeIndex}, root.AdministrativeIndexShards...), root.RequiredSupport} {
 		for _, ref := range refs {
 			if err := addRef(ref); err != nil {
 				return CapacityEncodedUsage{}, err

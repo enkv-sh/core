@@ -168,7 +168,7 @@ func (plan *publicationPlan) preparePublicationClose(ctx context.Context, s *Sta
 	if err != nil {
 		return nil, refused(AdmissionInvalid)
 	}
-	next := *s
+	next := s.successorState()
 	next.root.Snapshot, next.root.Transition = identities.snapshot, identities.transition
 	c := &Candidate{session: s}
 	if err := s.materializePublicationRewriteConstruction(ctx, &next, c, construction, identities.supportPages[:pages]); err != nil {

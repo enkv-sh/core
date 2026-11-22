@@ -685,6 +685,7 @@ func (s *StateSession) deriveSuccessor(ctx context.Context, c *Comparison, p tra
 	next := &StateSession{admission: s.admission, store: s.store, root: s.root, adminIndex: s.adminIndex, recipient: s.recipient,
 		recipients: s.recipients, pages: s.pages, accessFacts: s.accessFacts, support: s.support, supportFacts: s.supportFacts, fragmentFacts: s.fragmentFacts, publicationFacts: s.publicationFacts}
 	next.head.Core.Revision = p.revision
+	next.root.GrantPages = nil
 	next.root.Snapshot, next.root.Transition = p.snapshot, p.transition
 	next.root.ValueEntryCount = uint32(len(c.desiredEntries))
 	next.root.RawBytes = 0
@@ -783,6 +784,7 @@ func (s *StateSession) deriveSuccessor(ctx context.Context, c *Comparison, p tra
 }
 func (s *StateSession) successorCore(p transitionPlan) format.HeadCore {
 	h := s.head.Core
+	h.GrantDigest = contract.ID{}
 	h.Form = format.SuccessorHead
 	h.Revision = p.revision
 	h.PreviousRevision = s.head.Core.Revision
@@ -846,8 +848,18 @@ func (a lifecycleAuthority) subject() contract.LifecycleSubject {
 	return contract.LifecycleSubject{OperationKind: c.OperationKind, Operation: c.Operation, Request: c.Request, Recipient: c.Recipient, KeyBinding: c.KeyBinding, Fingerprint: c.Fingerprint, BindingVersion: c.BindingVersion, IdentityPlan: c.IdentityPlan, BeforeValueEntryCount: c.BeforeValueEntryCount, AfterValueEntryCount: c.AfterValueEntryCount, BeforeSecretCount: c.BeforeSecretCount, AfterSecretCount: c.AfterSecretCount, BeforeRawBytes: c.BeforeRawBytes, AfterRawBytes: c.AfterRawBytes, BeforeAccessRoot: c.BeforeAccessRoot, AfterAccessRoot: c.AfterAccessRoot, BeforeMembershipCount: c.BeforeMembershipCount, AfterMembershipCount: c.AfterMembershipCount, Normal: a.normal.Section, Grant: contract.GrantSection{Grants: grantCommitment(c.Domain, a.grant.Rows)}, Exclusion: contract.ExclusionSection{Exclusions: exclusionCommitment(c.Domain, a.exclusion.Rows), Retirements: a.exclusion.Retirements}}
 }
 
-func (s *StateSession) encodeSuccessorChildren(next *StateSession, p transitionPlan, supportImages ...[]objectImage) (*Candidate, Result) {
+func (s *StateSession) encodeSuccessorChildren(next *StateSession, p transitionPlan, comparison *Comparison, supportImages ...[]objectImage) (*Candidate, Result) {
 	candidate := &Candidate{session: s}
+	next.root.GrantPages = nil
+	var grants map[contract.ID][]contract.ID
+	var grantCount int
+	if comparison != nil {
+		var err error
+		grants, grantCount, err = comparison.existingSecretGrants(p)
+		if err != nil {
+			return nil, installedApplyPreparationFailure(err)
+		}
+	}
 	for i, id := range p.recipientPages {
 		if id.IsZero() {
 			continue
@@ -889,7 +901,28 @@ func (s *StateSession) encodeSuccessorChildren(next *StateSession, p transitionP
 		if err != nil || format.CheckReference(ref, body) != nil {
 			return nil, refused(InvalidReference)
 		}
+		if grantCount != 0 {
+			base, rows, err := format.SplitGrantPage(*next.access[ref.Index], grants)
+			if err != nil {
+				return nil, refused(InvalidRelation)
+			}
+			if len(rows) != 0 {
+				body, err = format.EncodeAccessPage(base)
+				if err != nil {
+					return nil, refused(InvalidFormat)
+				}
+				ref, err = format.Reference(format.AccessKind, base.Domain, base.Object, base.Index, body)
+				if err != nil {
+					return nil, refused(InvalidReference)
+				}
+				next.root.GrantPages = append(next.root.GrantPages, ref)
+				candidate.head.GrantWraps = append(candidate.head.GrantWraps, rows...)
+			}
+		}
 		candidate.objects = append(candidate.objects, objectImage{ref: ref, body: body})
+	}
+	if len(candidate.head.GrantWraps) != grantCount*format.GrantWrapLength {
+		return nil, refused(InvalidRelation)
 	}
 	if len(supportImages) > 1 {
 		return nil, refused(AdmissionInvalid)
@@ -923,8 +956,8 @@ func (s *StateSession) encodeSuccessorChildren(next *StateSession, p transitionP
 }
 
 // encodeSuccessor finishes the complete immutable image before Store or Trust effects.
-func (s *StateSession) encodeSuccessor(ctx context.Context, next *StateSession, p transitionPlan, authority lifecycleAuthority, supportImages ...[]objectImage) (*Candidate, Result) {
-	candidate, result := s.encodeSuccessorChildren(next, p, supportImages...)
+func (s *StateSession) encodeSuccessor(ctx context.Context, next *StateSession, p transitionPlan, authority lifecycleAuthority, comparison *Comparison, supportImages ...[]objectImage) (*Candidate, Result) {
+	candidate, result := s.encodeSuccessorChildren(next, p, comparison, supportImages...)
 	if candidate == nil {
 		return nil, result
 	}
@@ -996,6 +1029,9 @@ func (s *StateSession) encodeSuccessor(ctx context.Context, next *StateSession, 
 	candidate.objects = append(candidate.objects, objectImage{ref: rootRef, body: rootBody})
 	h := s.successorCore(p)
 	h.Root = rootRef
+	if len(candidate.head.GrantWraps) != 0 {
+		h.GrantDigest = contract.Hash(candidate.head.GrantWraps)
+	}
 	coreBody, err := format.EncodeHeadCore(h)
 	if err != nil {
 		return nil, refused(InvalidFormat)
@@ -1011,7 +1047,7 @@ func (s *StateSession) encodeSuccessor(ctx context.Context, next *StateSession, 
 	if _, err := contract.NewLifecycleRequest(subject); err != nil {
 		return nil, refused(InvalidProof)
 	}
-	candidate.head = format.Head{Core: h, K1: bytes.Clone(s.head.K1), K3: bytes.Clone(s.head.K3), AuthKind: format.LifecycleAuth, Subject: subject}
+	candidate.head = format.Head{Core: h, K1: bytes.Clone(s.head.K1), K3: bytes.Clone(s.head.K3), AuthKind: format.LifecycleAuth, Subject: subject, GrantWraps: candidate.head.GrantWraps}
 	next.head = candidate.head
 	if !next.validLifecycleSelection() {
 		return nil, refused(InvalidProof)
@@ -1079,9 +1115,9 @@ func (s *StateSession) prepare(ctx context.Context, c *Comparison, permit *Admit
 			return nil, refused(AdmissionInvalid)
 		}
 		if c.support != nil || c.outputChanged {
-			candidate, res = s.encodeSuccessor(ctx, next, permit.plan, authority, c.normalSupportObjects)
+			candidate, res = s.encodeSuccessor(ctx, next, permit.plan, authority, c, c.normalSupportObjects)
 		} else {
-			candidate, res = s.encodeSuccessor(ctx, next, permit.plan, authority)
+			candidate, res = s.encodeSuccessor(ctx, next, permit.plan, authority, c)
 		}
 		if candidate == nil {
 			return nil, res
@@ -1220,6 +1256,9 @@ func (s *StateSession) selectCandidate(ctx context.Context, candidate *Candidate
 		return nil, refused(AdmissionInvalid)
 	} else if candidate.head.AuthKind == format.AdministrativeAuth {
 		administrativeObservation = true
+	}
+	if result := s.persistSelectedGrantPages(ctx); result.Outcome != 0 {
+		return nil, result
 	}
 	candidate.used = true
 	firstSend := candidate.firstSend.take()

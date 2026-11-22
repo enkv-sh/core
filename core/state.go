@@ -89,6 +89,7 @@ type StateSession struct {
 	recipients                     [contract.MaxRecipientPages]*format.RecipientPage
 	access                         [contract.MaxChildPages]*format.AccessPage
 	accessFacts                    map[format.Ref]*format.AccessPage
+	grantSources                   map[format.Ref]format.GrantPageSource
 	support                        []format.RequiredSupportPageView
 	supportFacts                   []selectedSupportPageFacts
 	fragmentFacts                  map[format.FragmentLocation]selectedFragmentFact
@@ -348,7 +349,13 @@ func (s *StateSession) readImageFromHead(ctx context.Context, current authentica
 	if administrative {
 		mode = selectedAdministrativePartial
 	}
-	image, result := scanSelectedImage(ctx, s.selectedObjectReader(), root, retainObjects, mode, s.selectedImage())
+	reader := s.selectedObjectReader()
+	reader.grantSources, err = root.GrantSources(h)
+	if err != nil {
+		return nil, failure(IntegrityFailure, InvalidReference)
+	}
+	n.grantSources = reader.grantSources
+	image, result := scanSelectedImage(ctx, reader, root, retainObjects, mode, s.selectedImage())
 	if result.Outcome != 0 {
 		return nil, result
 	}

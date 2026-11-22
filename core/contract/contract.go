@@ -133,6 +133,7 @@ const MaxPublicKey = 256
 const (
 	SuccessorHeadCoreMinLength = 418 + 1
 	SuccessorHeadCoreMaxLength = 418 + maxTokenValue
+	GrantHeadCoreMaxLength     = SuccessorHeadCoreMaxLength + 32
 )
 
 // SignRequest has no arbitrary-message or arbitrary-digest constructor.

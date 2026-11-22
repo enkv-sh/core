@@ -260,7 +260,7 @@ func nativeProcessLoad() (nativeProcessPolicy, error) {
 			nativeProcessState.err = nativeProcessRefused
 			return
 		}
-		if p.Fault != "" && p.Fault != "lose-head-reply" && p.Fault != "head-contention" && p.Fault != "lose-head-reply-and-observation" && p.Fault != "cancel-private-return" && p.Fault != "local-edit-unknown" {
+		if p.Fault != "" && p.Fault != "lose-head-reply" && p.Fault != "head-contention" && p.Fault != "exit-after-head-write" && p.Fault != "lose-head-reply-and-observation" && p.Fault != "cancel-private-return" && p.Fault != "local-edit-unknown" {
 			nativeProcessState.err = nativeProcessRefused
 			return
 		}
@@ -719,6 +719,7 @@ func nativeProcessTransportFailure(err error) string {
 
 func nativeProcessRoundTrip(next http.RoundTripper, r *http.Request, role string) (response *http.Response, err error) {
 	dispatched := false
+	exitAfterRecording := false
 	var returned *nativeProcessEvent
 	defer func() {
 		// A synthetic response or local refusal never transfers request ownership.
@@ -744,6 +745,8 @@ func nativeProcessRoundTrip(next http.RoundTripper, r *http.Request, role string
 			}
 			response = nil
 			err = errors.Join(err, nativeProcessRefused)
+		} else if exitAfterRecording {
+			os.Exit(86)
 		}
 	}()
 	p, err := nativeProcessLoad()
@@ -890,6 +893,9 @@ func nativeProcessRoundTrip(next http.RoundTripper, r *http.Request, role string
 		}
 		returned.PermissionDenied = nativeProcessKMSDenied(body, response.Header, awsKMS)
 		response.Body = &nativeProcessBody{Reader: bytes.NewReader(body), body: body}
+	}
+	if fault && p.Fault == "exit-after-head-write" && p.LocalAddress != "" && response.StatusCode >= 200 && response.StatusCode < 300 {
+		exitAfterRecording = true
 	}
 	if fault && (p.Fault == "lose-head-reply" || p.Fault == "lose-head-reply-and-observation") && response.StatusCode >= 200 && response.StatusCode < 300 {
 		if p.Fault == "lose-head-reply-and-observation" {

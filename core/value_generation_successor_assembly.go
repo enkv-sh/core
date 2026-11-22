@@ -9,7 +9,7 @@ import (
 )
 
 func (s *StateSession) beginGeneratedSuccessor(plan transitionPlan) (StateSession, *Candidate, contract.IdentityPlan) {
-	next := *s
+	next := s.successorState()
 	next.cache, next.accessLocations, next.valueReaders = nil, nil, nil
 	next.root.Snapshot, next.root.Transition = plan.snapshot, plan.transition
 	identity := contract.IdentityPlan{Operation: plan.operation, Transition: plan.transition,

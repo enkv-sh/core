@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"enkv.sh/core/contract"
+	"enkv.sh/core/format"
 )
 
 type gcDeletePermission struct {
@@ -37,7 +38,9 @@ type gcRawWriteFact struct {
 	Result    contract.WriteResult
 }
 
-const gcCreateCallLimit = 4 * 3 * (contract.MaxChildPages + 1)
+// Only the first of the four GC selections can follow a granting HEAD.
+// Each immutable page, including an activated grant page, permits three tries.
+const gcCreateCallLimit = 3 * (4*(contract.MaxChildPages+1) + format.MaxGrantPages)
 
 func gcNormalizeWriteResult(v contract.WriteResult) (contract.WriteResult, bool) {
 	valid := false

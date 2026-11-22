@@ -83,6 +83,7 @@ func gcMarkSelected(image *selectedImage, generated *generatedSelection, store c
 		}
 	}
 	refs = append(refs, root.CurrentAccess.Core.AccessPageRefs...)
+	refs = append(refs, root.GrantPages...)
 	refs = append(refs, root.AdministrativeIndex)
 	refs = append(refs, root.AdministrativeIndexShards...)
 	refs = append(refs, root.RequiredSupport...)

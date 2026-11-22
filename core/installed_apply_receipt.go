@@ -278,7 +278,7 @@ func (s *StateSession) reserveInstalledApplyReceipt(ctx context.Context, c *Comp
 	if err != nil {
 		return err
 	}
-	projected := *s
+	projected := s.successorState()
 	projected.root.Snapshot, projected.root.Transition = p.snapshot, p.transition
 	if err := projected.installApplyRecipientPages(c, p); err != nil {
 		return err

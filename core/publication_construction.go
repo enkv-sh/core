@@ -214,6 +214,7 @@ func (in *publicationConstruction) begin(ctx context.Context, s *StateSession, n
 		return contract.ErrRecord
 	}
 	expected := s.root
+	expected.GrantPages = nil
 	expected.Snapshot, expected.Transition = next.root.Snapshot, next.root.Transition
 	want, err := publicationRootDigest(expected)
 	if err != nil {

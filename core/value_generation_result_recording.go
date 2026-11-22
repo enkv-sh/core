@@ -172,7 +172,7 @@ func (s *StateSession) deriveGeneratedRecord(ctx context.Context, plan *generate
 	if err != nil {
 		return nil, fmt.Errorf("generated record rows: %w", err)
 	}
-	next := *s
+	next := s.successorState()
 	next.cache, next.accessLocations, next.valueReaders = nil, nil, nil
 	next.root.Snapshot, err = contract.GeneratorPhaseSnapshotID(phaseID)
 	if err != nil {

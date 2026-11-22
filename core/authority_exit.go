@@ -321,9 +321,8 @@ func (s *StateSession) deriveEndWorkCandidate(ctx context.Context, groupID contr
 	if err != nil {
 		return nil, nil, fmt.Errorf("end selected work: removedAdministrativeSupport: %w", err)
 	}
-	next := *s
+	next := s.successorState()
 	next.cache, next.accessLocations, next.valueReaders = nil, nil, nil
-	next.root = s.root
 	accessImages, err := s.endWorkAccessSuccessor(&next, retainedAccess, ids.operation, ids.transition)
 	if err != nil {
 		return nil, nil, fmt.Errorf("end selected work: endWorkAccessSuccessor: %w", err)

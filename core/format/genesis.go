@@ -194,7 +194,8 @@ func (p GenesisPlanCore) ConditionalPlanDigest() ID {
 }
 func EncodeHead(p Head) ([]byte, error) {
 	core, err := EncodeHeadCore(p.Core)
-	if err != nil || !signatureValid(p.K1) || !signatureValid(p.AuthorizationSignature) {
+	if err != nil || !signatureValid(p.K1) || !signatureValid(p.AuthorizationSignature) ||
+		!grantBodyMatches(p.Core, p.GrantWraps) || len(p.GrantWraps) != 0 && !grantHeadAllowed(p) {
 		return nil, ErrFormat
 	}
 	if p.AuthKind != GCAuth && p.GC != nil {
@@ -345,14 +346,15 @@ func EncodeHead(p Head) ([]byte, error) {
 	default:
 		return nil, ErrFormat
 	}
-	if len(w.b) > contract.MaxHeadLength {
+	if len(w.b) > contract.MaxHeadLength-len(p.GrantWraps) {
 		return nil, ErrFormat
 	}
+	w.b = append(w.b, p.GrantWraps...)
 	return w.result()
 }
 func DecodeHead(b []byte) (Head, error) {
 	r := begin(b, byte(HeadKind), contract.MaxHeadLength)
-	coreBytes := r.blob(contract.SuccessorHeadCoreMaxLength)
+	coreBytes := r.blob(contract.GrantHeadCoreMaxLength)
 	k1 := r.blob(contract.MaxSignature)
 	k3 := r.blob(contract.MaxSignature)
 	kind := r.u8()
@@ -410,6 +412,10 @@ func DecodeHead(b []byte) (Head, error) {
 	default:
 		return Head{}, ErrFormat
 	}
+	var grants []byte
+	if kind == LifecycleAuth || kind == GeneratorAuth {
+		grants = r.take(r.remaining())
+	}
 	if !r.end() || !signatureValid(k1) || !signatureValid(authorizationSignature) {
 		return Head{}, ErrFormat
 	}
@@ -417,6 +423,12 @@ func DecodeHead(b []byte) (Head, error) {
 	p.Core, err = DecodeHeadCore(coreBytes)
 	if err != nil {
 		return Head{}, err
+	}
+	if !grantBodyMatches(p.Core, grants) {
+		return Head{}, ErrFormat
+	}
+	if len(grants) != 0 {
+		p.GrantWraps = bytes.Clone(grants)
 	}
 	p.K1 = bytes.Clone(k1)
 	p.K3 = bytes.Clone(k3)
@@ -468,7 +480,7 @@ func DecodeHead(b []byte) (Head, error) {
 			return Head{}, ErrFormat
 		}
 		p.Generator = &s
-		if !generatorHeadRelations(p, coreBytes) {
+		if !generatorHeadRelations(p, coreBytes) || len(grants) != 0 && !grantHeadAllowed(p) {
 			return Head{}, ErrFormat
 		}
 		return p, nil
@@ -497,7 +509,8 @@ func DecodeHead(b []byte) (Head, error) {
 		if err != nil {
 			return Head{}, ErrFormat
 		}
-		if p.Subject.HeadCore != contract.Hash(coreBytes) || p.Subject.HeadCoreLength != uint32(len(coreBytes)) {
+		if p.Subject.HeadCore != contract.Hash(coreBytes) || p.Subject.HeadCoreLength != uint32(len(coreBytes)) ||
+			len(grants) != 0 && !grantHeadAllowed(p) {
 			return Head{}, ErrFormat
 		}
 		condition, err := contract.MatchHeadCondition(p.Core.PreviousToken)

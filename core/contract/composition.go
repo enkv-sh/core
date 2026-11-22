@@ -10,7 +10,7 @@ import (
 
 const CoreVersion = "v0.0.0"
 const EngineVersion = "state-session/v9"
-const FormatVersion = "canonical-state/v13"
+const FormatVersion = "canonical-state/v14"
 const ComponentContractVersion = "store-trust-crypto/v9"
 const CryptoVersion = "supplied-secret/v4"
 const CryptoProfile = "rsa3072-oaep-sha256-aes256gcm-hmacsha256/v2"

@@ -223,7 +223,7 @@ func (s *StateSession) deriveGeneratedSuccessorCandidate(ctx context.Context, g 
 func (s *StateSession) deriveGeneratedPhaseCandidate(ctx context.Context, g *generatedSelection, plan *generatedSuccessorReservationPlan,
 	x contract.GeneratorAttemptTemplate, phaseID contract.ID, rows []contract.SupportRecord, locations []contract.GeneratorSliceLocation,
 	sliceDescriptor contract.GeneratorDescriptor) (*generatedReservation, error) {
-	next := *s
+	next := s.successorState()
 	next.cache, next.accessLocations, next.valueReaders = nil, nil, nil
 	var err error
 	next.root.Snapshot, err = contract.GeneratorPhaseSnapshotID(phaseID)

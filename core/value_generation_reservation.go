@@ -73,7 +73,7 @@ func (s *StateSession) deriveGeneratedReservation(ctx context.Context, input gen
 	if err != nil {
 		return nil, err
 	}
-	next := *s
+	next := s.successorState()
 	next.cache, next.accessLocations, next.valueReaders = nil, nil, nil
 	deletion, deleteOnly, err := s.generatedDeleteReservationSelection(ctx, input.graph, prior)
 	if err != nil {

@@ -382,7 +382,7 @@ func preservesReplacementWraps(before, after contract.AccessRecord, target contr
 }
 
 func (s *StateSession) replacementSuccessor(intent contract.RecipientReplacementIntent, p transitionPlan, after map[materialIdentity]contract.AccessRecord) (*StateSession, bool) {
-	next := *s
+	next := s.successorState()
 	next.head.AuthKind = format.LifecycleAuth
 	next.root.Snapshot = p.snapshot
 	next.root.Transition = p.transition

@@ -140,11 +140,22 @@ func (v GeneratorAuthoritySubject) validate() error {
 		v.BeforePhase == 0 && v.Purpose != GeneratorAuthorityReservation {
 		return ErrRecord
 	}
-	if v.HeadCoreLength > SuccessorHeadCoreMaxLength || v.ConditionalLength > SuccessorHeadCoreMaxLength-265 {
+	maxCore := uint32(SuccessorHeadCoreMaxLength)
+	grantedFinal := v.Purpose == GeneratorAuthorityFinal && v.RequiredAuthoritySet&GeneratorAuthorityGrant != 0
+	if grantedFinal {
+		maxCore = GrantHeadCoreMaxLength
+	}
+	if v.HeadCoreLength > maxCore || v.ConditionalLength > SuccessorHeadCoreMaxLength-265 {
 		return ErrRecordCapacity
 	}
-	if v.HeadCoreLength < SuccessorHeadCoreMinLength ||
-		v.ConditionalLength != v.HeadCoreLength-266 && v.ConditionalLength != v.HeadCoreLength-265 {
+	// The optional grant digest changes the signed core only. The conditional
+	// request still contains the same token and one fixed-size core hash.
+	coreLength := v.HeadCoreLength
+	if grantedFinal && (coreLength == v.ConditionalLength+266+32 || coreLength == v.ConditionalLength+265+32) {
+		coreLength -= 32
+	}
+	if coreLength < SuccessorHeadCoreMinLength || coreLength > SuccessorHeadCoreMaxLength ||
+		v.ConditionalLength != coreLength-266 && v.ConditionalLength != coreLength-265 {
 		return ErrRecord
 	}
 	// The subject has no provider tag. Its owning HEAD codec verifies which

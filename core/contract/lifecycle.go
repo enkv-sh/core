@@ -183,6 +183,10 @@ func lifecycleValid(s LifecycleSubject) bool {
 }
 
 func lifecycleFieldsValid(s LifecycleSubject) bool {
+	maxCore := uint32(SuccessorHeadCoreMaxLength)
+	if s.OperationKind == OperationApplyDeclaration && s.Grant.Grants.Count != 0 {
+		maxCore = GrantHeadCoreMaxLength
+	}
 	switch s.OperationKind {
 	case OperationApplyDeclaration, OperationRemoveSecretValueEntryAccess, OperationRotateRecipientKeyBinding, OperationRetireRecipientIdentity, OperationEnvelopeRekey:
 	default:
@@ -192,7 +196,7 @@ func lifecycleFieldsValid(s LifecycleSubject) bool {
 	if !publicIDsValid(s.Operation, s.Request, s.Recipient, s.KeyBinding, s.Fingerprint,
 		s.IdentityPlan.Digest, s.Normal.Intent.Digest, s.Normal.PublicState.Digest,
 		s.Normal.Union.Digest, s.Grant.Grants.Digest, s.Exclusion.Exclusions.Digest, s.Exclusion.Retirements.Digest) ||
-		s.BindingVersion == 0 || s.HeadCoreLength < SuccessorHeadCoreMinLength || s.HeadCoreLength > SuccessorHeadCoreMaxLength ||
+		s.BindingVersion == 0 || s.HeadCoreLength < SuccessorHeadCoreMinLength || s.HeadCoreLength > maxCore ||
 		!lifecycleSideValid(s.BeforeValueEntryCount, s.BeforeSecretCount, s.BeforeRawBytes, s.BeforeMembershipCount) ||
 		!lifecycleSideValid(s.AfterValueEntryCount, s.AfterSecretCount, s.AfterRawBytes, s.AfterMembershipCount) {
 		return false

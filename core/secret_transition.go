@@ -37,6 +37,9 @@ func (s *StateSession) prepareCompared(ctx context.Context, c *Comparison, p tra
 	if c == nil || c.session != s || c.operation == nil || c.operation.terminal || !c.preparedPlan.Digest.IsZero() {
 		return refused(AdmissionInvalid)
 	}
+	if _, _, err := c.existingSecretGrants(p); err != nil {
+		return installedApplyPreparationFailure(err)
+	}
 	if err := s.validPlan(ctx, c, p); err != nil {
 		if readFailure, ok := selectedReadResult(err); ok {
 			return readFailure

@@ -43,7 +43,7 @@ func (s *StateSession) encodeLifecycleReceiptCandidate(ctx context.Context, c *C
 		return fail(err)
 	}
 	defer func() { next.normalReceiptSlices = nil }()
-	children, result := s.encodeSuccessorChildren(next, p)
+	children, result := s.encodeSuccessorChildren(next, p, c)
 	if children == nil {
 		return nil, result
 	}
@@ -71,6 +71,9 @@ func (s *StateSession) encodeLifecycleReceiptCandidate(ctx context.Context, c *C
 		return fail(err)
 	}
 	h := s.successorCore(p)
+	if len(children.head.GrantWraps) != 0 {
+		h.GrantDigest = contract.Hash(children.head.GrantWraps)
+	}
 	h.Root = contract.Ref{Kind: format.RootKind, Format: format.Version, Domain: s.root.Domain, Object: p.snapshot, Index: 0, Length: uint32(len(root))}
 	head, err := format.EncodeHeadPlan(format.HeadPlan(h))
 	if err != nil {
@@ -101,7 +104,7 @@ func (s *StateSession) encodeLifecycleReceiptCandidate(ctx context.Context, c *C
 	if err != nil {
 		return fail(err)
 	}
-	candidate, result := s.encodeSuccessor(ctx, next, p, authority, actual.objects)
+	candidate, result := s.encodeSuccessor(ctx, next, p, authority, c, actual.objects)
 	if candidate == nil {
 		return nil, result
 	}

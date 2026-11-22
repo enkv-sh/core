@@ -139,7 +139,7 @@ func (s *StateSession) projectedRecipientReplacementRoot(ctx context.Context, p 
 	if err != nil {
 		return format.Root{}, err
 	}
-	next := *s
+	next := s.successorState()
 	next.root.Snapshot, next.root.Transition = p.snapshot, p.transition
 	storage.install(&next)
 	if err := s.installAdministrativeIndex(ctx, &next, &Candidate{session: s}, &delta.NewReceipt); err != nil {

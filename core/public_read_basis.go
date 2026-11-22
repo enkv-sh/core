@@ -58,8 +58,12 @@ func bindPublicReadBasis(ctx context.Context, anchor anchoredPublicCandidate, so
 	if checked.Token.Family != d.Family || checked.Token != anchor.headToken || !bytes.Equal(checked.Body, anchor.headBody) {
 		return empty, failure(Contention, DifferentSelection)
 	}
+	sources, err := root.GrantSources(h)
+	if err != nil {
+		return empty, failure(IntegrityFailure, InvalidReference)
+	}
 	return publicReadBasis{anchor: anchor, reader: selectedObjectReader{
-		domain: config.DomainID, descriptor: d, source: source,
+		domain: config.DomainID, descriptor: d, source: source, grantSources: sources,
 	}}, Result{}
 }
 

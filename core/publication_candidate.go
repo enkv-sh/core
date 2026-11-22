@@ -376,7 +376,7 @@ func (plan *publicationPlan) preparePublicationReservation(ctx context.Context, 
 		return nil, nil, refused(CapacityExceeded)
 	}
 	pages := construction.pageCount()
-	next := *s
+	next := s.successorState()
 	next.root.Snapshot, next.root.Transition = identities.snapshot, identities.transition
 	c := &Candidate{session: s}
 	if err := s.materializePublicationReservationConstruction(ctx, &next, c, construction, identities.supportPages[:pages]); err != nil {

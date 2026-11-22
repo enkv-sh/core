@@ -113,8 +113,7 @@ func (s *StateSession) prepareGCPhase(ctx context.Context, plan contract.GCPlan,
 	if !gcFreshPhaseIdentities(ids, plan.OperationID, plan.Targets) {
 		return nil, refused(InvalidRelation)
 	}
-	next := *s
-	next.root = s.root
+	next := s.successorState()
 	next.root.RequiredSupport = slices.Clone(s.root.RequiredSupport)
 	next.support = slices.Clone(s.support)
 	next.root.Snapshot, next.root.Transition = ids.snapshot, ids.transition
@@ -297,6 +296,10 @@ func gcCandidateReady(s *StateSession, c *Candidate) bool {
 func (s *StateSession) selectGCCandidate(ctx context.Context, c *Candidate) gcPhaseResult {
 	out := gcPhaseResult{state: s, result: refused(AdmissionInvalid)}
 	if ctx == nil || !gcCandidateReady(s, c) || !s.admission.valid(s.store) {
+		return out
+	}
+	if result := s.persistSelectedGrantPages(ctx); result.Outcome != 0 {
+		out.result, out.notSelected = result, true
 		return out
 	}
 	c.used = true

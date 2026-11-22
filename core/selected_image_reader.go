@@ -120,7 +120,13 @@ func scanSelectedImage(ctx context.Context, reader selectedObjectReader, root fo
 	var actualAccessRecords, actualOrdinaryWraps, actualRecoveryWraps uint32
 	for _, ref := range root.CurrentAccess.Core.AccessPageRefs {
 		page := reader.accessFacts[ref]
-		if page == nil {
+		if source, split := reader.grantSources[ref]; split {
+			var result Result
+			page, _, result = reader.readGrantPage(ctx, ref, source)
+			if result.Outcome != 0 {
+				return selectedImage{}, result
+			}
+		} else if page == nil {
 			body, _, result := reader.readBorrowed(ctx, ref)
 			if result.Outcome != 0 {
 				return selectedImage{}, result

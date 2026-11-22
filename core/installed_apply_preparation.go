@@ -5,15 +5,17 @@ import (
 	"sync"
 
 	"enkv.sh/core/contract"
+	"enkv.sh/core/format"
 )
 
 const generatedInvocationStepLimit = contract.GeneratorMaxCreateLineages*3*3 + contract.GeneratorMaxCreateLineages*3 + 2
 
 // ApplyPreparationCountLimit covers the existing finite generated driver: two
 // candidate preparations and two result records per step, two initial candidates
-// and the original result set. Each candidate writes at most its selected child
-// pages and one root. It does not grant additional operation steps or writes.
-const ApplyPreparationCountLimit uint64 = (2*generatedInvocationStepLimit+2)*(contract.MaxChildPages+1) + 2*generatedInvocationStepLimit + contract.GeneratorMaxCreateLineages
+// and the original result set. A candidate prepares its children and root.
+// Both the entry HEAD and the invocation's own granting HEAD can require
+// materialization of already selected access pages before a successor.
+const ApplyPreparationCountLimit uint64 = (2*generatedInvocationStepLimit+2)*(contract.MaxChildPages+1) + 2*generatedInvocationStepLimit + contract.GeneratorMaxCreateLineages + 2*format.MaxGrantPages
 
 // ApplyPreparationFacts counts logical immutable persistence episodes in one
 // invocation. Acknowledgement and exact-byte verification are independent; each

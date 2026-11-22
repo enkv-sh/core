@@ -88,7 +88,7 @@ func TestOrdinarySuccessorEncodingPreservesCapacityAndStoreFailure(t *testing.T)
 		if !errors.Is(err, contract.ErrRecordCapacity) || err == contract.ErrRecordCapacity {
 			t.Fatalf("fixture did not produce wrapped capacity: %v", err)
 		}
-		candidate, result := state.encodeSuccessor(t.Context(), &next, transitionPlan{}, lifecycleAuthority{})
+		candidate, result := state.encodeSuccessor(t.Context(), &next, transitionPlan{}, lifecycleAuthority{}, nil)
 		if candidate != nil || result != refused(CapacityExceeded) {
 			t.Fatalf("result=%+v", result)
 		}
@@ -100,7 +100,7 @@ func TestOrdinarySuccessorEncodingPreservesCapacityAndStoreFailure(t *testing.T)
 			next.support = slices.Clone(state.support)
 			next.support[0].Records = slices.Clone(state.support[0].Records)
 			next.support[0].Records[0].Body = make([]byte, length)
-			candidate, result := state.encodeSuccessor(t.Context(), &next, transitionPlan{}, lifecycleAuthority{})
+			candidate, result := state.encodeSuccessor(t.Context(), &next, transitionPlan{}, lifecycleAuthority{}, nil)
 			if candidate != nil || result != refused(InvalidRelation) {
 				t.Fatalf("result=%+v", result)
 			}
@@ -122,7 +122,7 @@ func TestOrdinarySuccessorEncodingPreservesCapacityAndStoreFailure(t *testing.T)
 			t.Fatalf("fixture read=%+v typed=%t calls=%d error=%v", got, typed, store.calls, err)
 		}
 		store.calls = 0
-		candidate, result := state.encodeSuccessor(t.Context(), &next, transitionPlan{}, lifecycleAuthority{})
+		candidate, result := state.encodeSuccessor(t.Context(), &next, transitionPlan{}, lifecycleAuthority{}, nil)
 		if candidate != nil || result != want || store.calls != 1 {
 			t.Fatalf("result=%+v calls=%d", result, store.calls)
 		}

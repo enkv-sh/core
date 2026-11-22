@@ -62,6 +62,7 @@ type Root struct {
 	ValueEntryPages                                           [contract.MaxValueEntryPages]*Ref
 	Recipients                                                [contract.MaxRecipientPages]*Ref
 	CurrentAccess                                             contract.CurrentAccessSection
+	GrantPages                                                []Ref
 	AdministrativeIndex                                       Ref
 	AdministrativeIndexShards                                 []Ref
 	WarningBits                                               uint8
@@ -85,6 +86,7 @@ type HeadCore struct {
 	PreviousRevision, PreviousDigest                  ID
 	PreviousToken                                     contract.Token
 	Root                                              Ref
+	GrantDigest                                       ID
 	Store, Trust, Coordinate, NonBody, Interpretation ID
 	Epoch                                             uint64
 	Unsupported                                       uint32
@@ -126,4 +128,5 @@ type Head struct {
 	OutputClose            *contract.OutputCloseSubject
 	GC                     *contract.GCSubject
 	AuthorizationSignature []byte
+	GrantWraps             []byte
 }

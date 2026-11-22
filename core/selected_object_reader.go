@@ -27,6 +27,7 @@ type selectedObjectReader struct {
 	source                         selectedObjectSource
 	cache                          map[format.Ref][]byte
 	accessFacts                    map[format.Ref]*format.AccessPage
+	grantSources                   map[format.Ref]format.GrantPageSource
 	replacementRead                bool
 	cachedAdministrativeIndexFacts *selectedAdministrativeIndexFacts
 }
@@ -36,7 +37,7 @@ func (s *StateSession) selectedObjectReader() selectedObjectReader {
 		return selectedObjectReader{}
 	}
 	return selectedObjectReader{domain: s.admission.domain, descriptor: s.admission.store,
-		source: admittedObjectSource{session: s}, cache: s.cache, accessFacts: s.accessFacts, replacementRead: s.replacementRead, cachedAdministrativeIndexFacts: s.cachedAdministrativeIndexFacts}
+		source: admittedObjectSource{session: s}, cache: s.cache, accessFacts: s.accessFacts, grantSources: s.grantSources, replacementRead: s.replacementRead, cachedAdministrativeIndexFacts: s.cachedAdministrativeIndexFacts}
 }
 
 // readBorrowed checks the exact selected reference. A caller must finish using
@@ -44,6 +45,10 @@ func (s *StateSession) selectedObjectReader() selectedObjectReader {
 // after inspection needs its own backing. The boolean identifies owned bytes
 // from an authenticated cache or canonical encoding; false borrows Store bytes.
 func (r selectedObjectReader) readBorrowed(ctx context.Context, ref format.Ref) ([]byte, bool, Result) {
+	if split, ok := r.grantSources[ref]; ok {
+		_, body, result := r.readGrantPage(ctx, ref, split)
+		return body, true, result
+	}
 	if ref.Domain == r.domain {
 		if body, ok := r.cache[ref]; ok {
 			return body, true, Result{}
@@ -86,6 +91,23 @@ func (r selectedObjectReader) readBorrowed(ctx context.Context, ref format.Ref) 
 		return nil, false, failure(IntegrityFailure, InvalidReference)
 	}
 	return read.Body, false, Result{}
+}
+
+func (r selectedObjectReader) readGrantPage(ctx context.Context, ref format.Ref, source format.GrantPageSource) (*format.AccessPage, []byte, Result) {
+	r.grantSources = nil
+	raw, _, result := r.readBorrowed(ctx, source.Base)
+	if result.Outcome != 0 {
+		return nil, nil, result
+	}
+	base, err := format.DecodeAccessPage(raw)
+	if err != nil {
+		return nil, nil, failure(IntegrityFailure, InvalidFormat)
+	}
+	page, body, err := format.RestoreGrantPage(ref, base, source.Rows)
+	if err != nil {
+		return nil, nil, failure(IntegrityFailure, InvalidReference)
+	}
+	return &page, body, Result{}
 }
 
 func (r selectedObjectReader) readOwned(ctx context.Context, ref format.Ref) ([]byte, Result) {

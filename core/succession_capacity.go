@@ -21,7 +21,7 @@ func successionPublicOperation(kind uint8) uint16 {
 // and counts, so its request-identity hole has the final encoded length.
 
 func (s *StateSession) projectedSuccessionRoot(ctx context.Context, q contract.SuccessionRequestCore, p transitionPlan, subjects contract.GeneratorDescriptor) (format.Root, error) {
-	next := *s
+	next := s.successorState()
 	next.root.Snapshot, next.root.Transition = p.snapshot, p.transition
 	if signerOnlyRecovery(q) {
 		// The signer-only path preserves every support and index commitment.

@@ -182,7 +182,7 @@ func (s *StateSession) deriveSuccession(ctx context.Context, request contract.Su
 	if err := s.successionRequestValid(ctx, request, p); err != nil {
 		return nil, nil, err
 	}
-	next := *s
+	next := s.successorState()
 	next.head = format.Head{Core: s.successorCore(p), AuthKind: format.SuccessionAuth}
 	next.head.Core.Epoch = request.ProposedAfterControl.NormalSigning.Binding.Epoch
 	next.head.Core.Trust = request.ProposedAfterControl.NormalSigning.Binding.Trust
