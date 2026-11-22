@@ -317,6 +317,14 @@ func runGeneratedWholeSetScenario(t testing.TB, ctx context.Context, env fixture
 		assertGeneratedReceiptOrder(t, ctx, selected, beforeReceipts.Order)
 
 		keys.RetireGenerated()
+		if largeCount != 0 {
+			previous := selected
+			selected, res = Open(ctx, f.admission, r.env.Store)
+			if selected == nil || res.Outcome != ObservedCurrent || !bytes.Equal(selected.body, previous.body) ||
+				selected.root.Generated.ActiveOwner.IsZero() || selected.root.Generated.ActiveOwner != previous.root.Generated.ActiveOwner {
+				t.Fatal("cold Final lost the selected source set", res)
+			}
+		}
 		finalContext := generatedPlanInputFixture(t, selected).context
 		finalContext.AdmissionID, finalContext.SessionID = testID("generated final admission"), testID("generated final session")
 		finalPlan, err := selected.generatedFinalRequest(t.Context(), finalContext)
