@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	manifestsdk "enkv.sh/sdk/manifest-generator"
+	"strings"
 	"testing"
 	"time"
 
@@ -238,6 +239,55 @@ func opaqueManifestFixture(t *testing.T, mode string) (*ReaderEngine, publicSele
 		}
 	}
 	return e, selection, f, env
+}
+
+// full_only: false
+func TestPublicationReservesSpaceForAssignedLocator(t *testing.T) {
+	_, _, f, _ := opaqueManifestFixture(t, "no-birth")
+	locator := strings.Repeat("l", 1024)
+	var coordinateID contract.ID
+	var promised uint64
+	private := newPublicationControlledPrivate()
+	private.configureOwner = func(owner *publicationControlledOwner) {
+		owner.resource, owner.consumerLocator = "created-resource", locator
+		owner.onSend = func() {
+			pending, result := Open(t.Context(), f.admission, f.store)
+			if pending == nil {
+				t.Fatal("open selected reservation", result)
+			}
+			relation, err := selectedPublicationRelation(pending.selectedImage())
+			if err != nil || len(relation.coordinates) != 1 {
+				t.Fatal("selected publication coordinate", err)
+			}
+			plan, err := pending.planPublicationRewrite(t.Context(), pending.adminIndex)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for id, coordinate := range relation.coordinates {
+				coordinateID = id
+				body, err := contract.EncodePublicationCoordinate(coordinate)
+				promised = plan.widths[generatedRecordKey{contract.PublicationCoordinateSupportKind, id}]
+				if err != nil || !coordinate.LocatorRequiresCreation || coordinate.DeletionConsumerLocator != "" || promised != uint64(37+len(body)+1024) {
+					t.Fatal("pending coordinate did not reserve its assigned locator", promised, err)
+				}
+			}
+		}
+	}
+	input := publicationInput{names: []string{"TOKEN"}, acting: f.session.admission.recipient, deadline: time.Now().Add(30 * time.Second)}
+	publicationEnginePlan(t, f, input, private).execute(t.Context(), private.callbacks(), publicationEngineCurrent(f))
+	cold, result := Open(t.Context(), f.admission, f.store)
+	if cold == nil {
+		t.Fatal("reopen after receiving the assigned locator", result)
+	}
+	relation, err := selectedPublicationRelation(cold.selectedImage())
+	if err != nil || coordinateID.IsZero() || len(private.owners) != 1 || private.owners[0].sent != 1 {
+		t.Fatal("assigned locator did not finish one send", err)
+	}
+	coordinate := relation.coordinates[coordinateID]
+	body, err := contract.EncodePublicationCoordinate(coordinate)
+	if err != nil || coordinate.DeletionConsumerLocator != locator || uint64(37+len(body)) != promised {
+		t.Fatal("selected locator width differs from its reservation", len(body), promised, err)
+	}
 }
 
 // full_only: false

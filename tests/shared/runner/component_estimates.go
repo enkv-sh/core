@@ -1175,7 +1175,6 @@ var componentEstimates = map[string]float64{
 	"TestPublicationBodyBackedProofUsesSelectedPhysicalOrdinals":                                  1,
 	"TestPublicationCandidateConstructionKeepsPredecessorProofFacts":                              1,
 	"TestPublicationCoordinateDispositionKeepsExactHistoricalFacts":                               1,
-	"TestPublicationEndWorkRebindsUncertainCoordinateOnExactMarkerExit":                           1,
 	"TestPublicationEndWorkRefusesMissingAuthority":                                               1,
 	"TestQualifiedPublicationBirthCannotEndAsDisposableWork":                                      1,
 	"TestRandomizedProofsKeepSemanticWinner":                                                      1,
