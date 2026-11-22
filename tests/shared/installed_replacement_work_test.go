@@ -10,7 +10,84 @@ import (
 
 	"enkv.sh/core/contract"
 	"enkv.sh/core/format"
+	"enkv.sh/crypto/testsupport/custody"
 )
+
+// full_only: false
+func TestInstalledRecipientReplacementWaitsForActiveGeneratedWork(t *testing.T) {
+	for _, sameKey := range []bool{false, true} {
+		t.Run(map[bool]string{false: "changed-key", true: "same-key"}[sameKey], func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+			defer cancel()
+			h := newInstalledReplacementFixture(t, contract.GCP, ReplacementTargetRecipient, 0, 1, ReplacementMaterialAuthority, sameKey)
+			source := h.fixture.session
+			declaration, canonical := generatedCurrentDeclaration(t, source)
+			input := generatedPlanInputForGenerations(t, source, testID("parent before key replacement"), []string{"generated"}, defaultGeneratedFixtureProfile(), declaration...)
+			prior, _ := preparePrivateGeneratedReservation(t, h.env, source, input, canonical)
+			recorded, _, _, _ := selectActualGeneratedPacketRecord(t, h.env, source, prior, custody.StandardValue, true, nil)
+			active := retainedReaderColdOpen(t, recorded, h.env.Store)
+			owner := input.graph.Header.OperationID
+			if active.root.Generated.ActiveOwner != owner || active.root.Generated.ActivePhase.IsZero() {
+				t.Fatal("expected a recorded result in an active generated operation")
+			}
+			before := active.recipientRecord(h.recipient).CurrentBinding
+			current := checkOccupiedRecipientReplacement(t, ctx, h, active)
+			deadline, _ := ctx.Deadline()
+			finalContext, err := installedGeneratedContext(current, deadline)
+			if err != nil {
+				t.Fatal(err)
+			}
+			plan, err := current.generatedFinalRequest(ctx, finalContext)
+			if err != nil {
+				t.Fatal(err)
+			}
+			current, final := preparePrivateGeneratedFinal(t, h.env, current, plan)
+			closed, observed := current.selectCandidate(ctx, final.reservation.candidate)
+			h.keys.RetireGenerated()
+			if closed == nil || observed.Outcome != ObservedCurrent || !closed.root.Generated.ActiveOwner.IsZero() {
+				t.Fatal("original work failed to reach Final", observed)
+			}
+			e := h.engine(t)
+			replaced := e.Replace(ctx, testID("fresh replacement after Final"))
+			e.Close()
+			if replaced.Result.Outcome != ObservedCurrent || len(replaced.Receipt) == 0 || h.delivered != 1 {
+				t.Fatal("fresh replacement after the slot closed", replaced.Result)
+			}
+			after := retainedReaderColdOpen(t, closed, h.env.Store).recipientRecord(h.recipient).CurrentBinding
+			if after.BindingID == before.BindingID || len(h.output.Recipients) == 0 || h.output.Recipients[0].RecipientID != h.recipient ||
+				!kmsBindingEqual(*after, h.output.Recipients[0].Encryption) {
+				t.Fatal("replacement did not deliver the selected fresh binding")
+			}
+		})
+	}
+}
+
+func checkOccupiedRecipientReplacement(t *testing.T, ctx context.Context, h *installedReplacementFixture, active *StateSession) *StateSession {
+	t.Helper()
+	store := requireAdmittedMemoryStore(t, h.env.Store)
+	signs, creates, cas := h.env.Trust.(*fixtureTrust).signs, store.creates, store.cas
+	publicCalls, privateCalls := h.keys.Calls()
+	resolve := h.installation.ResolvePublicGoal
+	reachedResolver := false
+	h.installation.ResolvePublicGoal = func(context.Context, ReplacementPublicRequest) (ReplacementPublicGoal, error) {
+		reachedResolver = true
+		return ReplacementPublicGoal{}, contract.ErrRecord
+	}
+	e := h.engine(t)
+	refusal := e.Replace(ctx, testID("ordinary replacement with active parent"))
+	e.Close()
+	h.installation.ResolvePublicGoal = resolve
+	current := retainedReaderColdOpen(t, active, h.env.Store)
+	publicAfter, privateAfter := h.keys.Calls()
+	if reachedResolver || refusal.Result != refused(InvalidRelation) ||
+		len(refusal.Receipt) != 0 || h.delivered != 0 || h.signerFactories != 0 || h.custodyFactories != 0 ||
+		store.creates != creates || store.cas != cas || h.env.Trust.(*fixtureTrust).signs != signs || publicCalls != publicAfter || privateCalls != privateAfter ||
+		!bytes.Equal(active.body, current.body) || active.token != current.token || current.root.Generated.ActiveOwner != active.root.Generated.ActiveOwner ||
+		!reflect.DeepEqual(active.recipientRecord(h.recipient).CurrentBinding, current.recipientRecord(h.recipient).CurrentBinding) {
+		t.Fatal("occupied recipient replacement reached its resolver or changed selected work", refusal.Result)
+	}
+	return current
+}
 
 // full_only: false
 func TestInstalledReplacementPreservesCompleteOccupiedGeneratedWork(t *testing.T) {

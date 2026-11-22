@@ -260,6 +260,10 @@ func (e *installedReplacement) replaceAdmitted(ctx context.Context, id contract.
 		return out
 	}
 	if e.target == ReplacementTargetRecipient {
+		if !s.root.Generated.ActiveOwner.IsZero() {
+			out.Result = refused(InvalidRelation)
+			return out
+		}
 		r := s.recipientRecord(e.recipient)
 		if r == nil || r.Status != contract.CurrentRecipient || r.CurrentBinding == nil || e.recipient == s.admission.recipient || !kmsBindingEqual(*r.CurrentBinding, i.CapturedRecipients[e.recipientRow].Encryption) {
 			return out

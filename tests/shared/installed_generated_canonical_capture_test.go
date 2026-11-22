@@ -18,8 +18,7 @@ func TestInstalledGeneratedAnchoredCanonicalSelectionSurvivesLaterStops(t *testi
 			process, effects := installedGeneratedRetirementProcess(t, "acknowledged")
 			f := newInstalledApplyTestFixture(t, ctx, contract.GCP, true)
 			f.env.GeneratedProcess = process
-			generation := &contract.GeneratorDeclaredGeneration{Schema: contract.GeneratorDeclaredGenerationSchema, LifecycleMode: contract.GeneratorLifecycleManaged, Epoch: 0, RetirementMode: contract.GeneratedRetirementManual, ConfigContractID: process.Implementation.ConfigContractID, ResourceContractID: hermeticCloudflareResourceContractID(), CompletionClass: contract.GeneratedCompletionAcknowledged, Intent: bytes.Clone(process.Intent)}
-			input := []ApplyEntryInput{{Name: "healthy", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, Recipients: []contract.ID{f.selected.admission.recipient}, InputBytes: []byte("unchanged supplied sibling")}, {Name: "generated", ValueSource: contract.Generated, ConfidentialityClass: contract.Secret, Recipients: []contract.ID{f.selected.admission.recipient}, Generated: generation}}
+			input := installedGeneratedRetirementEntries(process, f.selected.admission.recipient, 0, "unchanged supplied sibling")
 			initialEngine := installedGeneratedTestEngine(t, ctx, f, f.selected, input, currentApplyRecipients(f.selected.registry()), installedGeneratedRetirementCallbacks(t, f, process))
 			initial := initialEngine.Apply(ctx, testID(stop+" canonical initial"), input)
 			initialEngine.Close()
@@ -27,7 +26,7 @@ func TestInstalledGeneratedAnchoredCanonicalSelectionSurvivesLaterStops(t *testi
 				t.Fatal("initial generation not selected", initial.Result)
 			}
 			before := f.open(t, ctx)
-			generation.Epoch, generation.RetirementMode = 1, contract.GeneratedRetirementAuto
+			input[0].Generated.Epoch, input[0].Generated.RetirementMode = 1, contract.GeneratedRetirementAuto
 			callbacks := installedGeneratedRetirementCallbacks(t, f, process)
 			producer := callbacks.AdmitProducer
 			store, ok := underlyingAdmittedMemoryStore(f.env.Store)
@@ -81,6 +80,11 @@ func TestInstalledGeneratedAnchoredCanonicalSelectionSurvivesLaterStops(t *testi
 					t.Fatal("preparation replaced actual first-B selection", got.Result)
 				}
 				cold := f.open(t, ctx)
+				if got.OperationID.IsZero() || cold.root.Generated.ActiveOwner != got.OperationID {
+					t.Fatal("expected automatic retirement to retain the selected owner")
+				}
+				h := installedReplacementForCurrent(t, f.env, &environmentFixture{admission: f.admitted, session: cold}, ReplacementTargetRecipient, 0, 1, ReplacementMaterialAuthority, true)
+				cold = checkOccupiedRecipientReplacement(t, ctx, h, cold)
 				coldCallbacks := installedGeneratedRetirementCallbacks(t, f, process)
 				coldCallbacks.AdmitProducer = func(context.Context, contract.CryptoGeneratedCompareRequest, contract.ControlCore, contract.GeneratedProducerInput, contract.GeneratorImplementation, time.Time) (*InstalledGeneratedProducerCustody, error) {
 					return nil, contract.ErrRecord

@@ -38,13 +38,20 @@ type installedReplacementFixture struct {
 func newInstalledReplacementFixture(t *testing.T, family contract.Family, target ReplacementTarget, mask, approval uint8, material ReplacementMaterialSource, equalRecipient ...bool) *installedReplacementFixture {
 	t.Helper()
 	ctx := context.Background()
-	env, keys := genesisEnvironment(t, family, true)
+	env, _ := genesisEnvironment(t, family, true)
 	run := newScenarioRun(t, ctx, env)
 	f := newEnvironmentFixture(t, ctx, run.env, nil, false)
 	reader := fixtureID(env.Domain, "reader")
 	recipients := []contract.ID{f.session.admission.recipient, reader}
 	slices.SortFunc(recipients, func(a, b contract.ID) int { return bytes.Compare(a[:], b[:]) })
 	run.suppliedSelection(f, []ApplyEntryInput{sharingSecret(t, env, "installed replacement shared material", recipients)})
+	return installedReplacementForCurrent(t, env, f, target, mask, approval, material, equalRecipient...)
+}
+
+func installedReplacementForCurrent(t *testing.T, env fixtureEnvironment, f *environmentFixture, target ReplacementTarget, mask, approval uint8, material ReplacementMaterialSource, equalRecipient ...bool) *installedReplacementFixture {
+	t.Helper()
+	family, keys := env.Store.Descriptor().Family, env.Custody
+	reader := fixtureID(env.Domain, "reader")
 	h := &installedReplacementFixture{env: env, fixture: f, keys: keys, target: target, recipient: reader, goal: RoleReplacementGoal{ApprovalRole: approval, MaterialSource: material}, public: ReplacementPublicGoal{Provider: family}}
 	before := currentControlOf(f.session)
 	if mask&(contract.SuccessionChangeNormalSigner|contract.SuccessionChangeRecoverySigner) != 0 {
