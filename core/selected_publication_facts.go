@@ -72,6 +72,28 @@ func (s *StateSession) publicationRecord(row contract.SupportRecord) (selectedPu
 	return s.selectedImage().publicationRecord(row)
 }
 
+// The initial reservation replays the exact physical page encoding. Restore
+// only its released publication bodies and keep the selected image immutable.
+func (s *selectedImage) publicationReplayBody(page, slot int) ([]byte, error) {
+	row := contract.SupportRecord(s.support[page].Records[slot])
+	fact, err := publicationRecordWithFacts(s.root.Domain, row, s.publicationFacts)
+	if err != nil || page >= len(s.supportFacts) || page >= len(s.root.RequiredSupport) {
+		return nil, contract.ErrRecord
+	}
+	selected := s.supportFacts[page]
+	if selected.ref != s.root.RequiredSupport[page] || slot >= len(selected.rows) || selected.rows[slot] != fact.digest {
+		return nil, contract.ErrRecord
+	}
+	encoded, err := fact.body()
+	if err != nil || len(encoded) == cap(encoded) {
+		return encoded, err
+	}
+	// Across all replayed rows this backing fits the released image bytes.
+	body := make([]byte, len(encoded))
+	copy(body, encoded)
+	return body, nil
+}
+
 func (r selectedPublicationRecord) body() ([]byte, error) {
 	var body []byte
 	var err error

@@ -630,6 +630,13 @@ func (s *selectedGeneratedProof) generatedInitialIdentity(g *generatedSelection)
 		parentPage := false
 		for j, row := range page.Records {
 			p.Records[j] = contract.SupportRecord(row)
+			if row.Body == nil && publicationSupportKind(row.Kind) {
+				body, err := s.publicationReplayBody(i, j)
+				if err != nil {
+					return format.GeneratorInitialIdentity{}, err
+				}
+				p.Records[j].Body = body
+			}
 			if row.Kind == contract.GeneratedParentSupportKind && row.RecordID == parent.OperationID {
 				parentPage = true
 				p.Records[j].Body = planned[contract.SupportRecordOverhead:]

@@ -172,12 +172,29 @@ func TestCompleteSelectedPublicationRetainsFactsWithoutEncodedBodies(t *testing.
 			}
 			for i, page := range image.support {
 				publication := false
-				for _, row := range page.Records {
+				for j, row := range page.Records {
 					if row.Kind == contract.PublicationCoordinateSupportKind || row.Kind == contract.PublicationMarkerSupportKind {
 						publication = true
 						if len(row.Body) != 0 {
 							t.Errorf("selected publication retains encoded row kind %d (%d bytes)", row.Kind, len(row.Body))
 						}
+						body, err := image.publicationReplayBody(i, j)
+						if err != nil || len(body) != cap(body) || !bytes.Equal(body, state.support[i].Records[j].Body) {
+							t.Fatal("reservation replay changed the physical record or retained excess backing", err)
+						}
+						key := generatedRecordKey{row.Kind, row.RecordID}
+						fact := image.publicationFacts[key]
+						delete(image.publicationFacts, key)
+						if _, err := image.publicationReplayBody(i, j); err == nil {
+							t.Fatal("reservation replay accepted a missing publication fact")
+						}
+						image.publicationFacts[key] = fact
+						digest := image.supportFacts[i].rows[j]
+						image.supportFacts[i].rows[j] = contract.SupportRecordDigest{}
+						if _, err := image.publicationReplayBody(i, j); err == nil {
+							t.Fatal("reservation replay accepted a different authenticated row")
+						}
+						image.supportFacts[i].rows[j] = digest
 					}
 				}
 				if publication && len(image.cache[image.root.RequiredSupport[i]]) != 0 {
