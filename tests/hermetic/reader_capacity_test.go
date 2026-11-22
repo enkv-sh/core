@@ -186,7 +186,7 @@ func TestReaderJointMaximumAuthenticatedOperations(t *testing.T) {
 		e.validator = readerCapacityValidator(t, selected)
 		request := contract.Hash([]byte("joint maximum comparison"))
 		readerCapacityComparison(t, e.Compare(ctx, request, input), selected, request, nil)
-		if source.closes != 1 || !slices.Equal(candidate.calls, []string{"HEAD", "configuration", "root"}) || e.activeDone != nil {
+		if source.closes != 1 || !slices.Equal(candidate.calls, []string{"HEAD", "root"}) || e.activeDone != nil {
 			t.Fatal("maximum comparison did not settle its exact read invocation")
 		}
 	})

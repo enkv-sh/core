@@ -418,6 +418,9 @@ func TestMaterializationSelectionBoundsThreeImagesFourObservationsAndPublicHEADC
 			}
 			candidateHEADs := 0
 			for _, call := range candidate.calls {
+				if call == "configuration" {
+					t.Fatal("ordinary materialization requested the recovery helper")
+				}
 				if call == "HEAD" || call == "guarded HEAD" {
 					candidateHEADs++
 				}

@@ -79,6 +79,13 @@ func TestAnchoredPublicCandidateBindsOneLocationAndSelection(t *testing.T) {
 		t.Fatal("public candidate was not anchored to its fixed GETs", result, probe.calls, qualifier.calls)
 	}
 	probe = candidateProbeForSelected(t, env, f.session)
+	probe.configuration = contract.ReadResult{Status: contract.ReadUnavailable, Reason: contract.ReasonAccess}
+	qualifier = &candidateQualifierProbe{}
+	if _, result := anchorPublicCandidate(ctx, probe, env.Domain, qualifier, nil); result.Outcome != EvidenceUnavailable ||
+		result.StoreReason != contract.ReasonAccess || qualifier.calls != 0 || !slices.Equal(probe.calls, []string{"HEAD", "configuration"}) {
+		t.Fatal("reconstruction continued without its required helper", result, probe.calls)
+	}
+	probe = candidateProbeForSelected(t, env, f.session)
 	probe.location.Bucket = "other-valid-bucket"
 	qualifier = &candidateQualifierProbe{}
 	if _, result := anchorPublicCandidate(ctx, probe, env.Domain, qualifier, nil); result.Outcome != IntegrityFailure ||

@@ -243,9 +243,13 @@ func TestPlanningUsesOneAuthenticatedObservation(t *testing.T) {
 				publicCalls, _ = keys.Calls()
 				return env.Custody.NewPlanningCustody(c, q)
 			}
-			planner, _, opened := installedPlanningFixture(t, env, f.session, public, private, factory)
+			planner, candidate, opened := installedPlanningFixture(t, env, f.session, public, private, factory)
+			candidate.configuration = contract.ReadResult{Status: contract.ReadUnavailable, Reason: contract.ReasonAccess}
 			source = opened
 			got := planner.Plan(ctx, fixtureID(env.Domain, "planning request"), public, private, contract.PlanningOptions{Purpose: contract.PlanningEquality})
+			if slices.Contains(candidate.calls, "configuration") {
+				t.Fatal("ordinary plan requested the recovery helper")
+			}
 			if got.StateResult != contract.ReaderSuccess || got.Verdict != contract.ComparisonMatch || !got.PrivateComplete || got.Observation == nil || got.Observation.SnapshotID != observed || f.session.root.Snapshot == observed ||
 				len(got.PrivateEntries) != 1 || got.PrivateEntries[0].Relation != contract.PlanningEqual || calls != 1 {
 				t.Fatalf("fixed planning observation failed: state=%s verdict=%s operation=%t observation=%t private_rows=%d complete=%t factory_calls=%d diagnostics=%+v",

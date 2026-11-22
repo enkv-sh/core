@@ -130,6 +130,16 @@ func checkGCLifecycleAfterClose(t *testing.T, ctx context.Context, env fixtureEn
 		signs != trust.signs || creates != store.creates || cas != store.cas || len(store.deleteCalls) != 0 {
 		t.Fatal("occupied GC lost its predecessor, progress or effect rights", refused.Result, err)
 	}
+	helper, err := contract.StoreConfigurationKey(store.StoreConfiguration())
+	if err != nil {
+		t.Fatal(err)
+	}
+	store.readHook = func(key string, read contract.ReadResult) contract.ReadResult {
+		if key == helper {
+			return contract.ReadResult{Status: contract.ReadUnavailable, Reason: contract.ReasonAccess}
+		}
+		return read
+	}
 	collector := gcInterleavingEngine(t, current, store, keys, env.Trust)
 	closed := collector.Continue(ctx, GCContinueRequest{RequestNonce: testID("continue selected GC"), OperationID: plan.OperationID})
 	if err := collector.Close(); err != nil {
@@ -137,6 +147,9 @@ func checkGCLifecycleAfterClose(t *testing.T, ctx context.Context, env fixtureEn
 	}
 	if closed.StateResult != "success" || closed.Payload == nil || !closed.Payload.Closed || len(store.deleteCalls) != 1 {
 		t.Fatal("original GC could not finish", closed.Result)
+	}
+	if store.readCounts[helper] != 0 {
+		t.Fatal("GC requested the recovery helper", store.readCounts[helper])
 	}
 	available := retainedReaderColdOpen(t, current, store)
 	if !available.root.ActiveGC.IsZero() {

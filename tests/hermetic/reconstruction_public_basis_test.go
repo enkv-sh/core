@@ -131,7 +131,9 @@ func TestReconstructedObservationAuthenticatesGenesisAndOrdinaryAdvance(t *testi
 				}
 				assertReconstructedBasisRead(t, ctx, env, f.session, basis)
 				projection.Close()
-				run.suppliedSelection(f, []ApplyEntryInput{{Name: "later", Recipients: []contract.ID{f.session.admission.recipient}, ValueSource: format.Supplied, ConfidentialityClass: format.Plain, InputBytes: []byte("ordinary advance")}})
+				run.suppliedSelection(f, []ApplyEntryInput{{Name: "later", Recipients: []contract.ID{f.session.admission.recipient},
+					ValueSource: format.Supplied, ConfidentialityClass: format.Plain, InputEncoding: contract.InputEncodingRaw,
+					OutputEncoding: contract.OutputEncodingRaw, InputBytes: []byte("ordinary advance")}})
 				if f.session.head.AuthKind != format.LifecycleAuth {
 					t.Fatal("ordinary progression fixture changed")
 				}

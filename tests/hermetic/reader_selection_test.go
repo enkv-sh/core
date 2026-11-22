@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"testing"
 	"time"
 
@@ -57,7 +58,8 @@ func TestReaderAuthenticatesIndependentGenesisWithoutEnrollment(t *testing.T) {
 				defer cancel()
 				env, _ := genesisEnvironment(t, family, recovery)
 				f := newEnvironmentFixture(t, ctx, env, nil, false)
-				e, _, source := readerEngineFixture(t, env, f.session)
+				e, candidate, source := readerEngineFixture(t, env, f.session)
+				candidate.configuration = contract.ReadResult{Status: contract.ReadUnavailable, Reason: contract.ReasonAccess}
 				inv := readerInvocationFixture(t, e, ctx)
 				store := env.Store.(*memoryStore)
 				creates, cas := store.creates, store.cas
@@ -72,10 +74,31 @@ func TestReaderAuthenticatesIndependentGenesisWithoutEnrollment(t *testing.T) {
 					t.Fatal("Reader wrote state")
 				}
 				inv.Close()
-				if source.closes != 1 {
-					t.Fatal("selected reader not closed once", source.closes)
+				if source.closes != 1 || slices.Contains(candidate.calls, "configuration") {
+					t.Fatal("ordinary read used the recovery helper or failed to close", candidate.calls, source.closes)
 				}
 			})
+		}
+	}
+}
+
+// full_only: false
+func TestOrdinaryReaderRequiresTheExactLocalStoreSettings(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
+	defer cancel()
+	env, _ := genesisEnvironment(t, contract.AWS, false)
+	f := newEnvironmentFixture(t, ctx, env, nil, false)
+	for _, owner := range []string{"", "111111111111"} {
+		e, candidate, source := readerEngineFixture(t, env, f.session)
+		if owner == candidate.location.ExpectedOwner {
+			t.Fatal("expected a different AWS account")
+		}
+		candidate.location.ExpectedOwner = owner
+		inv := readerInvocationFixture(t, e, ctx)
+		_, result := inv.loadPublicSelection(ctx, contract.ReaderCompareOperation, inv.admission.request, nil)
+		inv.Close()
+		if result.Outcome == 0 || result.diagnostic != contract.ReasonStoreBasisInvalid || slices.Contains(candidate.calls, "configuration") || source.reads != 0 {
+			t.Fatal("ordinary read accepted incomplete or different local ownership", result, candidate.calls)
 		}
 	}
 }

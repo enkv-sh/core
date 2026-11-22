@@ -175,7 +175,14 @@ func (i *readerInvocation) loadPublicReadBasis(ctx context.Context, operation st
 	if basis.control.Recovery != nil {
 		recovery = readerSigningQualifier{binding: basis.control.Recovery.Signing}
 	}
-	anchor, result := anchorPublicCandidate(ctx, e.candidate, i.admission.domain, normal, recovery)
+	configBody, err := contract.EncodeStoreConfiguration(contract.StoreConfiguration{
+		Provider: location.Provider, ConstructionProfile: contract.StoreConstructionProfile, DomainID: i.admission.domain,
+		Region: location.Region, Bucket: location.Bucket, PrefixBeforeHEAD: location.PrefixBeforeHEAD, ExpectedOwner: location.ExpectedOwner,
+	})
+	if err != nil {
+		return empty, readerRefusal(contract.ReasonStoreBasisInvalid)
+	}
+	anchor, result := anchorConfiguredCandidate(ctx, e.candidate, i.admission.domain, normal, recovery, configBody)
 	if reason := i.admission.failure(ctx, operation, request); reason != "" {
 		return empty, readerRefusal(reason)
 	}

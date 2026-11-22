@@ -47,6 +47,13 @@ func candidateReadFailure(read contract.ReadResult, head bool) Result {
 // no caller may pair an unrelated asserted location with those bytes.
 func anchorPublicCandidate(ctx context.Context, source candidateReadSource, expectedDomain contract.ID,
 	normal, recovery candidateSigningQualifier) (anchoredPublicCandidate, Result) {
+	return anchorConfiguredCandidate(ctx, source, expectedDomain, normal, recovery, nil)
+}
+
+// Reconstruction reads the helper when the installed configuration is absent.
+// Ordinary readers supply its exact canonical bytes from their local settings.
+func anchorConfiguredCandidate(ctx context.Context, source candidateReadSource, expectedDomain contract.ID,
+	normal, recovery candidateSigningQualifier, configBody []byte) (anchoredPublicCandidate, Result) {
 	var empty anchoredPublicCandidate
 	if ctx == nil || ctx.Err() != nil || source == nil || normal == nil && recovery == nil {
 		return empty, refused(AdmissionInvalid)
@@ -69,19 +76,24 @@ func anchorPublicCandidate(ctx context.Context, source candidateReadSource, expe
 	if !expectedDomain.IsZero() && h.Core.Domain != expectedDomain {
 		return anchoredPublicCandidate{failureReason: contract.ReasonDomainBasisInvalid}, failure(IntegrityFailure, ConstructionMismatch)
 	}
-	configr := readCandidateConfiguration(ctx, source, h.Core.Domain, h.Core.Store)
-	if configr.Status != contract.ReadOK {
-		return empty, candidateReadFailure(configr, false)
-	}
-	if configr.Token.Family != location.Provider {
+	if configBody == nil {
+		configr := readCandidateConfiguration(ctx, source, h.Core.Domain, h.Core.Store)
+		if configr.Status != contract.ReadOK {
+			return empty, candidateReadFailure(configr, false)
+		}
+		if configr.Token.Family != location.Provider {
+			return empty, failure(IntegrityFailure, ConstructionMismatch)
+		}
+		configBody = configr.Body
+	} else if contract.Hash(configBody) != h.Core.Store {
 		return empty, failure(IntegrityFailure, ConstructionMismatch)
 	}
-	configuration, err := contract.DecodeStoreConfiguration(configr.Body)
+	configuration, err := contract.DecodeStoreConfiguration(configBody)
 	if err != nil {
 		return empty, failure(IntegrityFailure, InvalidFormat)
 	}
 	canonical, err := contract.EncodeStoreConfiguration(configuration)
-	if err != nil || !bytes.Equal(canonical, configr.Body) || configuration.DomainID != h.Core.Domain ||
+	if err != nil || !bytes.Equal(canonical, configBody) || configuration.DomainID != h.Core.Domain ||
 		configuration.Provider != location.Provider || configuration.Region != location.Region ||
 		configuration.Bucket != location.Bucket || configuration.PrefixBeforeHEAD != location.PrefixBeforeHEAD ||
 		location.ExpectedOwner != "" && configuration.ExpectedOwner != location.ExpectedOwner {
@@ -125,7 +137,7 @@ func anchorPublicCandidate(ctx context.Context, source candidateReadSource, expe
 		}
 	}
 	deadline, _ := ctx.Deadline()
-	return anchoredPublicCandidate{location: location, configuration: configuration, configBody: configr.Body,
+	return anchoredPublicCandidate{location: location, configuration: configuration, configBody: configBody,
 		head: h, headBody: headr.Body, headToken: headr.Token, root: root, rootBody: rootr.Body, anchor: anchor,
 		deadline: deadline, done: ctx.Done()}, Result{}
 }

@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	genericjson "enkv.sh/plugins/manifest-generators/generic-json"
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 
@@ -117,9 +118,17 @@ func TestReaderManifestCallableAuthenticatedEmptyArtifact(t *testing.T) {
 	f := newEnvironmentFixture(t, ctx, env, nil, false)
 	engine, candidate, source := readerEngineFixture(t, env, f.session)
 	target := f.session.admission.recipient
+	candidate.configuration = contract.ReadResult{Status: contract.ReadUnavailable, Reason: contract.ReasonAccess}
 	got := engine.Manifest(ctx, contract.ID{1}, hermeticManifestRequest(contract.ManifestRequest{TargetMode: manifestsdk.ExactRecipient, EntryMode: manifestsdk.ExactNames, TargetRecipientID: target, EntryNames: []string{}}))
-	if got.StateResult != contract.ReaderSuccess || got.Payload == nil || got.Artifact == nil || !bytes.Contains(got.Artifact, []byte(`"entries":[]`)) || len(candidate.calls) == 0 || source.closes != 1 {
-		t.Fatalf("empty authenticated artifact %+v", got)
+	if slices.Contains(candidate.calls, "configuration") {
+		t.Fatal("ordinary manifest requested the recovery helper")
+	}
+	if got.StateResult != contract.ReaderSuccess || got.Payload == nil || got.Artifact == nil || len(candidate.calls) == 0 || source.closes != 1 {
+		t.Fatal("empty manifest did not authenticate", got.StateResult, candidate.calls, source.closes)
+	}
+	var doc readerCapacityJSONManifest
+	if err := json.Unmarshal(got.Artifact, &doc); err != nil || doc.Entries == nil || len(doc.Entries) != 0 {
+		t.Fatal("expected an empty JSON entry array", err)
 	}
 	if len(got.Payload.IncludedEntries) != 0 || got.Payload.IncludedEntries == nil {
 		t.Fatal("empty selection or issuer")
