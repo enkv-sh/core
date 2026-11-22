@@ -286,6 +286,81 @@ func nativeExtensionGeneratorB(t *testing.T, incompatible bool) (artifact.LocalP
 	return nativeExtensionBuildAuthor(t, directory)
 }
 
+// full_only: false
+func TestPublicNativeRetirementAfterLocalCacheLoss(t *testing.T) {
+	cli, _ := workflowBuildExecutables(t, false)
+	// The test runner uses GOFLAGS for its own overlays. The independent
+	// plugin builder accepts only its declared compiler inputs.
+	t.Setenv("GOFLAGS", "")
+	build, metadata := nativeExtensionBuildAuthor(t, nativeExtensionCopyExample(t, "local-token-generator"))
+	identity, err := metadata.Identity()
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := newNativeExtensionCase(t, cli, []artifact.LocalPlugin{build})
+	credential := []string{"ENKV_EXAMPLE_TOKEN=" + nativeExtensionBearer}
+	apply := func() workflowChild {
+		return f.run(t, "apply", false, credential, "apply", "--source", f.path, "--source-format", "json", "--json")
+	}
+	subject := "consumer"
+	f.declare(t, 0, "manual", &subject, false)
+	nativeExtensionGeneratedOutcome(t, apply(), "success", 0)
+	f.declare(t, 1, "manual", &subject, false)
+	nativeExtensionGeneratedOutcome(t, apply(), "retirement-pending", 3)
+	head, root, _ := f.selected(t)
+	duties := nativeExtensionDutyRecords(t, f.store, root)
+	if len(duties) != 1 {
+		t.Fatal("one accepted duty required")
+	}
+	retire := func() workflowChild {
+		return f.run(t, "apply", false, credential, "generated", "retire", "--source", f.path, "--source-format", "json", "--duty", nativeExtensionID(duties[0].DutyID), "--json")
+	}
+	config := filepath.Join(f.plugins.home, ".config")
+	if runtime.GOOS == "darwin" {
+		config = filepath.Join(f.plugins.home, "Library", "Application Support")
+	}
+	cached := filepath.Join(config, "enkv", "installation", "builds", identity.String())
+	if err := os.Chmod(cached, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(cached, "plugin")); err != nil {
+		t.Fatal(err)
+	}
+	nativeExtensionGeneratedOutcome(t, retire(), "unavailable", 3)
+	retry := apply()
+	switch retry.code {
+	case 0:
+		nativeExtensionGeneratedOutcome(t, retry, "no-op", 0)
+	case 2, 3:
+		var refusal struct {
+			State  string `json:"state_result"`
+			Commit bool   `json:"commit_may_have_occurred"`
+		}
+		if json.Unmarshal(retry.out, &refusal) != nil || refusal.Commit || refusal.State != "refused" && refusal.State != "unavailable" {
+			t.Fatal("same-cache restoration lost its preselection refusal", retry.code, refusal.State)
+		}
+	default:
+		t.Fatal("unexpected same-cache restoration exit", retry.code)
+	}
+	t.Logf("same-cache restoration exit=%d", retry.code)
+	f.plugins = newNativePluginFixture(t, build)
+	nativeExtensionGeneratedOutcome(t, apply(), "no-op", 0)
+	reopened, current, _ := f.selected(t)
+	if !reflect.DeepEqual(head, reopened) || !reflect.DeepEqual(duties, nativeExtensionDutyRecords(t, f.store, current)) || f.service.Counts() != (testservice.Counts{Tokens: 2, TokenCreates: 2}) {
+		t.Fatal("restoring the local build changed the domain or called the provider")
+	}
+	// Successful retirement conditionally deletes its result inbox in the local Store.
+	f.store.gcListPrefix = f.store.prefix + "/" + nativeExtensionID(root.Domain) + "/result/"
+	retired := nativeExtensionGeneratedOutcome(t, retire(), "success", 0)
+	_, current, _ = f.selected(t)
+	if len(retired.Effects) != 1 || retired.Effects[0].Target.ResourceID != nativeExtensionID(duties[0].ResourceID) ||
+		retired.Effects[0].Facts.ExecutorID != nativeExtensionID(duties[0].ExecutorID) || len(nativeExtensionDutyRecords(t, f.store, current)) != 0 ||
+		f.service.Counts() != (testservice.Counts{Tokens: 1, TokenCreates: 2, TokenRetires: 1}) {
+		t.Fatal("fresh installation did not complete the original retirement exactly once")
+	}
+	f.finish(t, len(f.children), "consumer/t1", "consumer/t2")
+}
+
 func nativeExtensionGeneratorContinuity(t *testing.T, cli string, builds []artifact.LocalPlugin) {
 	f := newNativeExtensionCase(t, cli, builds)
 	subject := "consumer"
