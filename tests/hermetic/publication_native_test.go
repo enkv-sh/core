@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"enkv.sh/core/contract"
+	"enkv.sh/core/format"
 	"enkv.sh/crypto/testsupport/custody"
 	"enkv.sh/telemetry"
 )
@@ -283,6 +284,7 @@ func TestPublicationNativeValuePolicyAndDeletion(t *testing.T) {
 	before := publicationEngineReopen(t, f)
 	env.FreshCurrent(t, f.admission, f.session)
 	f.session = selectAdmittedOutputConfiguration(t, ctx, f.session, env, env.Custody, entries, &outputApplyInput{})
+	lifecycle := f.session
 	input.names = nil
 	for _, entry := range create.output.Entries {
 		input.deletes = append(input.deletes, entry.CoordinateID)
@@ -306,6 +308,158 @@ func TestPublicationNativeValuePolicyAndDeletion(t *testing.T) {
 		if row.BindingState != contract.PublicationBindingRetired || !row.ActiveBindingIncarnationID.IsZero() || row.DeletionTargetRowDigest != old.DeletionTargetRowDigest || row.LastDeleteAckAttemptID != entry.Actions[0].AttemptID || row.PossibleRemoteObject != 1 {
 			t.Fatalf("retained deletion relation binding=%d deletion=%x ack=%x residue=%d", row.BindingState, row.DeletionTargetRowDigest, row.LastDeleteAckAttemptID, row.PossibleRemoteObject)
 		}
+	}
+
+	// Both coordinates share a mandatory partition. Release the three
+	// references for only one of them, starting each exit with optional
+	// marker bodies unopened. The other coordinate keeps its Create proof.
+	target := create.output.Entries[0].CoordinateID
+	birth := create.output.Entries[0].Actions[0].AttemptID
+	other := create.output.Entries[1].Actions[0].AttemptID
+	// A successful DELETE keeps its qualified owner. Seed a later acknowledged
+	// Create for the same slot so only the older owned actions need the first
+	// proof. The fixture persists a signed image and opens it from the store.
+	coordinate := after.coordinates[target]
+	if coordinate.OwnedBirthAttemptID != birth {
+		t.Fatal("DELETE lost its current birth")
+	}
+	replacement := after.markers[birth]
+	replacement.AttemptID = fixtureID(env.Domain, "later Create")
+	replacement.Evidence.SafeResourceID = "later-created-instance"
+	coordinate.LastAdmissionOrdinal++
+	replacement.AdmissionOrdinal = coordinate.LastAdmissionOrdinal
+	coordinate.OwnedBirthAttemptID = replacement.AttemptID
+	var err error
+	coordinate.OwnedInstanceDigest, err = contract.PublicationOwnedInstanceDigest(env.Domain, target, replacement.Projection.BindingIncarnationID,
+		replacement.Projection.EntryIncarnationID, replacement.Projection.TargetRowDigest, replacement.AttemptID, replacement.Evidence.SafeResourceID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	coordinate.LastValueDigest, err = contract.PublicationSelectedValueDigest(env.Domain, replacement.Projection.ValueBasisDigest, replacement.AttemptID, coordinate.OwnedInstanceDigest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	coordinate.LastValueAckAttemptID, coordinate.LastValueAckIncarnationID, coordinate.LastValueAckOrdinal = replacement.AttemptID, replacement.PublicationIncarnationID, replacement.AdmissionOrdinal
+	after.markers[replacement.AttemptID], after.coordinates[target] = replacement, coordinate
+	rows, err := publicationRows(after)
+	if err != nil {
+		t.Fatal(err)
+	}
+	env, f.session = publicationJointSelectedImage(t, env, lifecycle, f.session, rows, f.session.adminIndex.PublicationOrder, 0, 0, "historical Create proof")
+	f.store = env.Store.(*memoryStore)
+	f.admission = OpenContext{admission: &f.session.admission}
+	for i, operation := range []publicationOperationResult{value, policy, deletion} {
+		pos := -1
+		for j, entry := range operation.output.Entries {
+			if entry.CoordinateID == target {
+				pos = j
+				break
+			}
+		}
+		if pos < 0 {
+			t.Fatal("missing owned action")
+		}
+		missing := make(map[string]bool)
+		for _, page := range f.session.adminIndex.Pages {
+			if !page.ReadRequired && !page.Spans[0].Mandatory {
+				missing[mustKey(t, f.store.desc.Prefix, page.Ref)] = true
+			}
+		}
+		if len(missing) == 0 {
+			t.Fatal("missing optional marker partition")
+		}
+		f.store.readHook = func(key string, read contract.ReadResult) contract.ReadResult {
+			if missing[key] {
+				return contract.ReadResult{Status: contract.ReadMissing}
+			}
+			return read
+		}
+		admin, result := openAdministrative(ctx, f.admission, f.store)
+		if admin == nil {
+			t.Fatal("open for marker exit", result)
+		}
+		targetMarker := operation.output.Entries[pos].Actions[0].AttemptID
+		work, ended, err := admin.administrativeWorkClosure(targetMarker)
+		if err != nil {
+			t.Fatal("project marker exit", err)
+		}
+		addedPages, addedIndexBytes, err := admin.endWorkPublicationRewriteAllowance(work, ended)
+		wantPages := uint64(0)
+		if i == 2 {
+			wantPages = 1
+		}
+		if err != nil || addedPages != wantPages || addedIndexBytes != 108*wantPages {
+			t.Fatal("proof partition reservation", i, addedPages, addedIndexBytes, err)
+		}
+		if err := admin.reserveFirstEndWork(ctx); err != nil {
+			t.Fatal("first exit capacity", err)
+		}
+		issueTestEndWorkInvocation(t, admin)
+		previewer := AuthoritySession{state: admin, mode: LocalAuthorityPreview}
+		preview, result := previewer.Preview(ctx, targetMarker)
+		if result.Outcome != ObservedCurrent {
+			t.Fatal("preview marker exit", result)
+		}
+		executor := AuthoritySession{state: admin, mode: LocalAuthorityEnd, trust: env.Trust}
+		outcome := executor.End(ctx, preview)
+		f.store.readHook = nil
+		if outcome.Result.Outcome != ObservedCurrent {
+			t.Fatal("apply marker exit preview", outcome.Result)
+		}
+		selection := publicationEngineReopen(t, f)
+		if uint32(preview.AfterChildCount) != f.session.root.ChildCount || preview.AfterChildBytes != f.session.root.ChildEncodedBytes {
+			t.Fatal("preview charges differ from selected root")
+		}
+		if _, ok := selection.markers[birth]; !ok {
+			t.Fatal("historical Create missing")
+		}
+		proofs := map[contract.ID]bool{}
+		for _, page := range f.session.adminIndex.Pages {
+			logical := 0
+			for _, span := range page.Spans {
+				if span.Mandatory != page.Spans[0].Mandatory {
+					t.Fatal("mixed successor page", page.Ref.Index)
+				}
+				for _, owner := range span.GroupIndexes {
+					group := f.session.adminIndex.Groups[owner]
+					if group.GroupID == birth && (span.Count != 1 || group.ChargedPages != 1 ||
+						group.ChargedBytes != uint64(contract.SupportRecordOverhead)+uint64(page.Rows[logical].BodyLength)) {
+						t.Fatal("historical Create charge disagrees with selected row")
+					}
+					if group.OwnerKind == format.AdministrativePublicationMarker && span.Mandatory {
+						proofs[group.GroupID] = true
+					}
+				}
+				logical += int(span.Count)
+			}
+		}
+		want := map[contract.ID]bool{other: true, replacement.AttemptID: true}
+		if i < 2 {
+			want[birth] = true
+		}
+		if !reflect.DeepEqual(proofs, want) {
+			t.Fatalf("required Create proofs after exit %d: got %v want %v", i, proofs, want)
+		}
+	}
+	entries = append(entries, ApplyEntryInput{Name: "unrelated", Recipients: []contract.ID{f.session.admission.recipient},
+		ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, InputBytes: []byte("after last proof"),
+		InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw})
+	parent = admitSuppliedComparison(t, f.session, env.Custody, entries)
+	comparison, state = f.session.Compare(ctx, entries, parent)
+	if comparison == nil {
+		t.Fatal("disjoint ordinary comparison", state)
+	}
+	candidate, state = f.session.Prepare(ctx, comparison, admit(t, f.session, comparison), env.Trust)
+	if candidate == nil {
+		t.Fatal("disjoint ordinary preparation", state)
+	}
+	env.Custody.RetireApply()
+	if result := f.session.Select(ctx, candidate); result.Outcome != ObservedCurrent {
+		t.Fatal("disjoint ordinary selection", result)
+	}
+	selection := publicationEngineReopen(t, f)
+	if _, present := selection.markers[birth]; !present || len(f.session.root.Names) != len(entries) {
+		t.Fatal("disjoint ordinary selection lost the historical Create or new value")
 	}
 }
 

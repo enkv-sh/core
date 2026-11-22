@@ -390,11 +390,11 @@ func validatePublicationIndexRelation(image *selectedImage, selected selectedPub
 			}
 			slices.Sort(related)
 			if group.PublicationIncarnationID != marker.PublicationIncarnationID || group.AdmissionOrdinal != marker.AdmissionOrdinal || group.OwnerID != marker.CoordinateID || group.TargetID != marker.CoordinateID ||
-				!slices.Equal(group.RelatedGroupIndexes, related) ||
+				!slices.Equal(group.RelatedGroupIndexes, related) || group.ReferencesOwnedBirth != !marker.Projection.OwnedBirthAttemptID.IsZero() ||
 				owned[group.GroupID].group != uint16(i) {
 				return contract.ErrRecord
 			}
-			if requiredBirths[marker.AttemptID] && !owned[group.GroupID].mandatory {
+			if requiredBirths[marker.AttemptID] != owned[group.GroupID].mandatory {
 				return contract.ErrRecord
 			}
 		}
@@ -492,6 +492,32 @@ func (s *StateSession) publicationLoadedRowsForDisposition() (map[generatedRecor
 	return owners, loaded, nil
 }
 
+// The group set can be a successor subset of the supplied coordinates.
+func publicationRequiredBirths(groups []format.AdministrativeGroup, coordinates map[contract.ID]contract.PublicationCoordinate) (map[contract.ID]bool, error) {
+	required := make(map[contract.ID]bool)
+	for _, group := range groups {
+		switch group.OwnerKind {
+		case format.AdministrativePublicationCoordinate:
+			coordinate, present := coordinates[group.GroupID]
+			if !present {
+				return nil, contract.ErrRecord
+			}
+			if coordinate.OwnerState == contract.PublicationOwnerQualified {
+				required[coordinate.OwnedBirthAttemptID] = true
+			}
+		case format.AdministrativePublicationMarker:
+			if group.ReferencesOwnedBirth {
+				id, valid := group.PublicationReference(groups)
+				if !valid {
+					return nil, contract.ErrRecord
+				}
+				required[id] = true
+			}
+		}
+	}
+	return required, nil
+}
+
 func (s *StateSession) publicationCoordinatesForDisposition() (map[contract.ID]contract.PublicationCoordinate, error) {
 	coordinates := make(map[contract.ID]contract.PublicationCoordinate)
 	havePublication := false
@@ -533,6 +559,37 @@ func (s *StateSession) publicationCoordinatesForDisposition() (map[contract.ID]c
 			return nil, contract.ErrRecord
 		}
 		coordinates[group.GroupID] = *coordinate
+	}
+	required, err := publicationRequiredBirths(s.adminIndex.Groups, coordinates)
+	if err != nil {
+		return nil, err
+	}
+	for _, group := range s.adminIndex.Groups {
+		if group.OwnerKind != format.AdministrativePublicationMarker {
+			continue
+		}
+		key := generatedRecordKey{kind: contract.PublicationMarkerSupportKind, id: group.GroupID}
+		owner, present := owners[key]
+		if !present || len(owner.groups) != 1 || owner.groups[0] != group.GroupID || owner.mandatory != required[group.GroupID] {
+			return nil, contract.ErrRecord
+		}
+		related, valid := group.PublicationReference(s.adminIndex.Groups)
+		if !valid {
+			return nil, contract.ErrRecord
+		}
+		if row, readable := loaded[key]; readable {
+			marker := row.marker
+			if marker == nil || marker.CoordinateID != group.OwnerID || group.ReferencesOwnedBirth != !marker.Projection.OwnedBirthAttemptID.IsZero() {
+				return nil, contract.ErrRecord
+			}
+			want := marker.Projection.OwnedBirthAttemptID
+			if marker.Projection.Action == contract.PublicationDeleteReservedSlot {
+				want = marker.Projection.UncertainCreateAttemptID
+			}
+			if related != want {
+				return nil, contract.ErrRecord
+			}
+		}
 	}
 	uncertainProofs := make(map[contract.ID]bool)
 	for _, group := range s.adminIndex.Groups {

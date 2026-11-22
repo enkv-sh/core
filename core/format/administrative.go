@@ -21,6 +21,12 @@ const administrativeGroupMinimumLength = 247
 const administrativeBaseLength = contract.RequiredSupportPageHeaderLength + 32 + 6 + 2
 const administrativePageLength = 108
 const administrativeSpanLength = 7
+const (
+	administrativeProofReferences                    = 5
+	administrativeProofReferencesWithMaterials       = 6
+	ownedBirthReferenceFlag                    uint8 = 2
+)
+
 const administrativeRowSummaryLength = 37
 const administrativeLogicalMaxLength = contract.MaxChildPages * contract.MaxRequiredSupportPageLength
 
@@ -32,6 +38,7 @@ type AdministrativeGroup struct {
 	OwnerKind, DutyKind, EffectEntryCeiling uint8
 	SelectedEvidenceSummary                 uint16
 	DestructiveEffect, UncertainCreateProof uint8
+	ReferencesOwnedBirth                    bool
 	Affected, Dependencies, Disposable      contract.GeneratorDescriptor
 	ChargedPages                            uint16
 	ChargedBytes                            uint64
@@ -39,6 +46,37 @@ type AdministrativeGroup struct {
 	PublicationIncarnationID                ID
 	AdmissionOrdinal                        uint64
 	GC                                      *contract.GCProgress
+}
+
+// Each marker has one coordinate edge. Its optional second edge names the
+// Create involved in an owned action or a reserved-slot deletion.
+func (marker AdministrativeGroup) PublicationReference(groups []AdministrativeGroup) (ID, bool) {
+	var related ID
+	var haveCoordinate bool
+	for _, i := range marker.RelatedGroupIndexes {
+		if int(i) >= len(groups) {
+			return ID{}, false
+		}
+		group := groups[i]
+		switch group.OwnerKind {
+		case AdministrativePublicationCoordinate:
+			if haveCoordinate || group.GroupID != marker.OwnerID {
+				return ID{}, false
+			}
+			haveCoordinate = true
+		case AdministrativePublicationMarker:
+			if !related.IsZero() || group.OwnerID != marker.OwnerID {
+				return ID{}, false
+			}
+			related = group.GroupID
+		default:
+			return ID{}, false
+		}
+	}
+	if !haveCoordinate || marker.ReferencesOwnedBirth && related.IsZero() {
+		return ID{}, false
+	}
+	return related, true
 }
 
 // AdministrativeSpan selects a contiguous ordinal range in the immutable
@@ -150,11 +188,16 @@ func administrativeIndexValid(v AdministrativeIndex) bool {
 				group.OwnerKind != AdministrativeGeneratedDuty && group.DutyKind != 0) ||
 			group.DestructiveEffect > 1 || group.UncertainCreateProof > 1 ||
 			group.DestructiveEffect != 0 && group.OwnerKind > AdministrativeInboxRelease ||
-			group.UncertainCreateProof != 0 && group.OwnerKind != AdministrativePublicationMarker ||
+			(group.UncertainCreateProof != 0 || group.ReferencesOwnedBirth) && group.OwnerKind != AdministrativePublicationMarker ||
 			group.EffectEntryCeiling > 1 || !group.Affected.Valid() || !group.Dependencies.Valid() || !group.Disposable.Valid() ||
 			group.ChargedPages > contract.MaxChildPages || len(group.RelatedGroupIndexes) > 0xffff ||
 			i > 0 && bytes.Compare(v.Groups[i-1].GroupID[:], group.GroupID[:]) >= 0 {
 			return false
+		}
+		if group.ReferencesOwnedBirth {
+			if _, valid := group.PublicationReference(v.Groups); !valid || group.UncertainCreateProof != 0 {
+				return false
+			}
 		}
 		for j, related := range group.RelatedGroupIndexes {
 			if int(related) >= len(v.Groups) || int(related) == i || j > 0 && group.RelatedGroupIndexes[j-1] >= related {
@@ -323,9 +366,9 @@ func EncodeAdministrativeIndex(v AdministrativeIndex) ([]byte, error) {
 	w.u16(0xffff)
 	explicitMaterials := v.HasRetainedMaterialIDs()
 	if explicitMaterials {
-		w.u16(4)
+		w.u16(administrativeProofReferencesWithMaterials)
 	} else {
-		w.u16(3)
+		w.u16(administrativeProofReferences)
 	}
 	w.u16(uint16(len(v.Groups)))
 	w.u16(uint16(len(v.Pages)))
@@ -338,7 +381,11 @@ func EncodeAdministrativeIndex(v AdministrativeIndex) ([]byte, error) {
 		w.u8(group.EffectEntryCeiling)
 		w.u16(group.SelectedEvidenceSummary)
 		w.u8(group.DestructiveEffect)
-		w.u8(group.UncertainCreateProof)
+		flags := group.UncertainCreateProof
+		if group.ReferencesOwnedBirth {
+			flags |= ownedBirthReferenceFlag
+		}
+		w.u8(flags)
 		for _, descriptor := range []contract.GeneratorDescriptor{group.Affected, group.Dependencies, group.Disposable} {
 			var err error
 			w.b, err = contract.AppendGeneratorDescriptor(w.b, descriptor)
@@ -435,7 +482,7 @@ func decodeAdministrativeIndex(r administrativeDecodeReader, length int) (Admini
 		return AdministrativeIndex{}, ErrFormat
 	}
 	marker := r.u16()
-	if marker != 3 && marker != 4 {
+	if marker != administrativeProofReferences && marker != administrativeProofReferencesWithMaterials {
 		return AdministrativeIndex{}, ErrFormat
 	}
 	groups, pages := int(r.u16()), int(r.u16())
@@ -445,7 +492,13 @@ func decodeAdministrativeIndex(r administrativeDecodeReader, length int) (Admini
 	}
 	v.Groups = make([]AdministrativeGroup, groups)
 	for i := range v.Groups {
-		group := AdministrativeGroup{OwnerKind: r.u8(), DutyKind: r.u8(), GroupID: r.id(), OwnerID: r.id(), TargetID: r.id(), EffectEntryCeiling: r.u8(), SelectedEvidenceSummary: r.u16(), DestructiveEffect: r.u8(), UncertainCreateProof: r.u8()}
+		group := AdministrativeGroup{OwnerKind: r.u8(), DutyKind: r.u8(), GroupID: r.id(), OwnerID: r.id(), TargetID: r.id(), EffectEntryCeiling: r.u8(), SelectedEvidenceSummary: r.u16(), DestructiveEffect: r.u8()}
+		flags := r.u8()
+		if flags&^(1|ownedBirthReferenceFlag) != 0 {
+			return AdministrativeIndex{}, ErrFormat
+		}
+		group.UncertainCreateProof = flags & 1
+		group.ReferencesOwnedBirth = flags&ownedBirthReferenceFlag != 0
 		for _, descriptor := range []*contract.GeneratorDescriptor{&group.Affected, &group.Dependencies, &group.Disposable} {
 			var err error
 			*descriptor, err = contract.DecodeGeneratorDescriptor(r.take(contract.GeneratorDescriptorLength))
@@ -525,7 +578,7 @@ func decodeAdministrativeIndex(r administrativeDecodeReader, length int) (Admini
 			page.Rows = make([]AdministrativeRowSummary, selected)
 			for j := range page.Rows {
 				row := AdministrativeRowSummary{Kind: r.u8(), RecordID: r.id(), BodyLength: r.u32()}
-				if marker == 4 && row.Kind == contract.RetainedCanonicalSupportKind {
+				if marker == administrativeProofReferencesWithMaterials && row.Kind == contract.RetainedCanonicalSupportKind {
 					material := r.id()
 					if material.IsZero() {
 						return AdministrativeIndex{}, ErrFormat
@@ -560,7 +613,7 @@ func decodeAdministrativeIndex(r administrativeDecodeReader, length int) (Admini
 		}
 		v.PublicationOrder[i] = row
 	}
-	if !r.end() || !v.Valid() || (marker == 4) != v.HasRetainedMaterialIDs() {
+	if !r.end() || !v.Valid() || (marker == administrativeProofReferencesWithMaterials) != v.HasRetainedMaterialIDs() {
 		return AdministrativeIndex{}, ErrFormat
 	}
 	return v, nil

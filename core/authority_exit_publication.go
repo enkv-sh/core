@@ -122,6 +122,91 @@ func (s *StateSession) endWorkPublicationCoordinateChanges(index format.Administ
 	return changed, nil
 }
 
+// Before disposition, a required Create can share an immutable page with
+// other mandatory rows. If a peer still requires the page, move only the
+// newly optional proofs. Their old physical ordinals remain unselected.
+func (s *StateSession) endWorkPublicationSplits(index format.AdministrativeIndex) map[format.Ref]map[uint16]bool {
+	required := make(map[contract.ID]bool)
+	for _, page := range s.adminIndex.Pages {
+		logical := 0
+		for _, span := range page.Spans {
+			if !page.ReadRequired && span.Mandatory && span.Count == 1 && page.Rows[logical].Kind == contract.PublicationMarkerSupportKind {
+				required[page.Rows[logical].RecordID] = true
+			}
+			logical += int(span.Count)
+		}
+	}
+	if len(required) == 0 {
+		return nil
+	}
+	splits := make(map[format.Ref]map[uint16]bool)
+	for _, page := range index.Pages {
+		if page.ReadRequired || !slices.ContainsFunc(page.Spans, func(span format.AdministrativeSpan) bool { return span.Mandatory }) {
+			continue
+		}
+		logical := 0
+		for _, span := range page.Spans {
+			if !span.Mandatory && span.Count == 1 && page.Rows[logical].Kind == contract.PublicationMarkerSupportKind && required[page.Rows[logical].RecordID] {
+				if splits[page.Ref] == nil {
+					splits[page.Ref] = make(map[uint16]bool)
+				}
+				splits[page.Ref][span.First] = true
+			}
+			logical += int(span.Count)
+		}
+	}
+	return splits
+}
+
+func endWorkPublicationObject(domain contract.ID, ids endWorkIDs, prior format.Ref, label string, used map[contract.ID]bool) (contract.ID, error) {
+	preimage := append([]byte(label), domain[:]...)
+	preimage = append(preimage, ids.operation[:]...)
+	preimage = append(preimage, prior.Digest[:]...)
+	preimage = binary.BigEndian.AppendUint16(preimage, prior.Index)
+	object := contract.Hash(preimage)
+	if used[object] || object == ids.operation || object == ids.transition || object == ids.snapshot || object == ids.revision ||
+		object == ids.receipts || object == ids.receiptIndex || object == administrativeIndexObject(domain, ids.snapshot) {
+		return contract.ID{}, contract.ErrRecord
+	}
+	used[object] = true
+	return object, nil
+}
+
+func splitEndWorkBirths(page format.AdministrativePage, move map[uint16]bool, physical format.RequiredSupportPageView,
+	object contract.ID, pageIndex uint16) (format.AdministrativePage, format.AdministrativePage, objectImage, format.RequiredSupportPageView, error) {
+	kept := format.AdministrativePage{Ref: page.Ref}
+	var optional format.AdministrativePage
+	var rows []contract.SupportRecord
+	logical := 0
+	for _, span := range page.Spans {
+		summaries := page.Rows[logical : logical+int(span.Count)]
+		logical += int(span.Count)
+		if !move[span.First] {
+			kept.Rows = append(kept.Rows, summaries...)
+			kept.Spans = append(kept.Spans, span)
+			continue
+		}
+		if span.Count != 1 || span.Mandatory || int(span.First) >= len(physical.Records) {
+			return kept, optional, objectImage{}, format.RequiredSupportPageView{}, contract.ErrRecord
+		}
+		row := contract.SupportRecord(physical.Records[span.First])
+		if row.Kind != contract.PublicationMarkerSupportKind || !summaries[0].MatchesRecord(row) {
+			return kept, optional, objectImage{}, format.RequiredSupportPageView{}, contract.ErrRecord
+		}
+		span.First = uint16(len(rows))
+		rows = append(rows, row)
+		optional.Rows = append(optional.Rows, summaries[0])
+		optional.Spans = append(optional.Spans, span)
+	}
+	ref, _, body, err := endWorkSupportPage(physical.Domain, object, pageIndex, rows, nil)
+	if err != nil {
+		return kept, optional, objectImage{}, format.RequiredSupportPageView{}, err
+	}
+	view, err := format.InspectRequiredSupportPage(body)
+	optional.Ref = ref
+	return kept, optional, objectImage{ref: ref, body: body}, view, err
+}
+
 // Replace a changed coordinate's entire physical page at the same Index.
 // Unselected bytes and every retained peer keep their physical ordinals.
 func (s *StateSession) rebindEndWorkPublication(ctx context.Context, index *format.AdministrativeIndex,
@@ -135,7 +220,11 @@ func (s *StateSession) rebindEndWorkPublication(ctx context.Context, index *form
 		return nil, nil, err
 	}
 	changed, err := s.endWorkPublicationCoordinateChanges(*index, ended, coordinates)
-	if err != nil || len(changed) == 0 {
+	if err != nil {
+		return nil, nil, err
+	}
+	splits := s.endWorkPublicationSplits(*index)
+	if len(changed) == 0 && len(splits) == 0 {
 		return nil, nil, err
 	}
 	used := s.signerOnlyClosureIDs()
@@ -146,7 +235,8 @@ func (s *StateSession) rebindEndWorkPublication(ctx context.Context, index *form
 	views := make(map[format.Ref]format.RequiredSupportPageView)
 	for i, page := range index.Pages {
 		changes := changed[page.Ref]
-		if len(changes) == 0 {
+		move := splits[page.Ref]
+		if len(changes) == 0 && len(move) == 0 {
 			continue
 		}
 		if ctx == nil || ctx.Err() != nil {
@@ -162,6 +252,26 @@ func (s *StateSession) rebindEndWorkPublication(ctx context.Context, index *form
 		physical, err := format.InspectRequiredSupportPage(body)
 		if err != nil || physical.Domain != s.root.Domain || physical.Object != page.Ref.Object || physical.Index != page.Ref.Index {
 			return nil, nil, selectedReadFailure(failure(IntegrityFailure, InvalidReference))
+		}
+		if len(move) != 0 {
+			free, _, err := endWorkFreePageIndexes(*index)
+			if err != nil {
+				return nil, nil, err
+			}
+			object, err := endWorkPublicationObject(s.root.Domain, ids, page.Ref, "ENKV/end-work-publication-births/v1\x00", used)
+			if err != nil {
+				return nil, nil, err
+			}
+			kept, optional, image, view, err := splitEndWorkBirths(page, move, physical, object, free)
+			if err != nil {
+				return nil, nil, err
+			}
+			index.Pages[i], page = kept, kept
+			index.Pages = append(index.Pages, optional)
+			images[optional.Ref], views[optional.Ref] = image, view
+			if len(changes) == 0 {
+				continue
+			}
 		}
 		for ordinal := range changes {
 			if int(ordinal) >= len(physical.Records) {
@@ -188,16 +298,10 @@ func (s *StateSession) rebindEndWorkPublication(ctx context.Context, index *form
 				copy(rows[ordinal].Body, encoded)
 			}
 		}
-		preimage := append([]byte("ENKV/end-work-publication-page/v1\x00"), s.root.Domain[:]...)
-		preimage = append(preimage, ids.operation[:]...)
-		preimage = append(preimage, page.Ref.Digest[:]...)
-		preimage = binary.BigEndian.AppendUint16(preimage, page.Ref.Index)
-		object := contract.Hash(preimage)
-		if used[object] || object == ids.operation || object == ids.transition || object == ids.snapshot || object == ids.revision ||
-			object == ids.receipts || object == ids.receiptIndex || object == administrativeIndexObject(s.root.Domain, ids.snapshot) {
-			return nil, nil, contract.ErrRecord
+		object, err := endWorkPublicationObject(s.root.Domain, ids, page.Ref, "ENKV/end-work-publication-page/v1\x00", used)
+		if err != nil {
+			return nil, nil, err
 		}
-		used[object] = true
 		ref, _, image, err := endWorkSupportPage(s.root.Domain, object, page.Ref.Index, rows, nil)
 		if err != nil || ref.Length != page.Ref.Length {
 			return nil, nil, contract.ErrRecord
@@ -232,18 +336,22 @@ func (s *StateSession) rebindEndWorkPublication(ctx context.Context, index *form
 	if ctx.Err() != nil {
 		return nil, nil, selectedReadFailure(failure(EvidenceUnavailable, ReadUnavailable))
 	}
+	slices.SortFunc(index.Pages, func(a, b format.AdministrativePage) int { return int(a.Ref.Index) - int(b.Ref.Index) })
 	if !index.Valid() {
 		return nil, nil, contract.ErrRecord
 	}
 	return images, views, nil
 }
 
-// Fixed-width coordinate changes replace exact physical pages one for one.
+// Coordinate replacement is one for one. Each mixed page adds one optional carrier.
 func (s *StateSession) endWorkPublicationRewriteAllowance(index format.AdministrativeIndex, ended []format.AdministrativeGroup) (uint64, uint64, error) {
 	coordinates, err := s.publicationCoordinatesForDisposition()
 	if err != nil {
 		return 0, 0, err
 	}
-	_, err = s.endWorkPublicationCoordinateChanges(index, ended, coordinates)
-	return 0, 0, err
+	if _, err = s.endWorkPublicationCoordinateChanges(index, ended, coordinates); err != nil {
+		return 0, 0, err
+	}
+	pages := uint64(len(s.endWorkPublicationSplits(index)))
+	return pages, 108 * pages, nil
 }

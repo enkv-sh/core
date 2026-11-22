@@ -53,6 +53,16 @@ func TestAdministrativeIndexCanonicalSharedPageAndBounds(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// The first group starts at byte 113. Its two exposure bytes follow
+	// owner/duty kind, three IDs, the ceiling and a two-byte evidence mask.
+	const proofFlags = 113 + 2 + 3*32 + 1 + 2 + 1
+	for _, flags := range []byte{2, 4, 128} {
+		invalid := bytes.Clone(body)
+		invalid[proofFlags] = flags
+		if _, err := DecodeAdministrativeIndex(invalid); err == nil {
+			t.Fatalf("generated group accepted publication flags %x", flags)
+		}
+	}
 	const expectedLength = 115 + 2*247 + 108 + 2*(7+2) + 2*37
 	if len(body) != expectedLength {
 		t.Fatalf("administrative index framing: got %d want %d", len(body), expectedLength)
@@ -62,7 +72,7 @@ func TestAdministrativeIndexCanonicalSharedPageAndBounds(t *testing.T) {
 	}
 	// Independently assembled schema-11 field bytes (ENKV tag/version, two fixed
 	// groups, one shared Ref and two ordinal spans) hash to this fixed vector.
-	if got := fmt.Sprintf("%x", sha256.Sum256(body)); got != "d2b57267c85947d170caf4cb3167e604425d76bcde87bc40fc433e6e0f0a0ba4" {
+	if got := fmt.Sprintf("%x", sha256.Sum256(body)); got != "ad39cfc93c0717a9e5f92e829c1dda400f2acbadd23eeff4526f48997cf1e1f7" {
 		t.Fatal("administrative index field order changed", got)
 	}
 	withDependency := index

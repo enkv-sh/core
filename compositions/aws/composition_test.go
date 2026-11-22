@@ -141,7 +141,7 @@ func TestClosedRegistries(t *testing.T) {
 			{Family: contract.AWS, Kind: contract.TrustComponentKind, Class: awsprovider.TrustClass, Module: "enkv.sh/providers/aws", Version: contract.CoreVersion},
 		}
 		wantConstructions := []contract.ConstructionClass{{Family: contract.AWS, Kind: contract.StoreComponentKind, Class: awsprovider.StoreClass}, {Family: contract.AWS, Kind: contract.TrustComponentKind, Class: awsprovider.TrustClass}}
-		if m.Identity != contract.Hash([]byte("enkv/composition/aws/v1")) || m.Core != contract.CoreVersion || m.Engine != "state-session/v9" || m.Format != "canonical-state/v14" || m.ComponentContract != "store-trust-crypto/v9" || m.Crypto != "supplied-secret/v4" || m.CryptoProfile != "rsa3072-oaep-sha256-aes256gcm-hmacsha256/v2" || !reflect.DeepEqual(m.Components, wantComponents) || !reflect.DeepEqual(m.Constructions, wantConstructions) {
+		if m.Identity != contract.Hash([]byte("enkv/composition/aws/v1")) || m.Core != contract.CoreVersion || m.Engine != "state-session/v9" || m.Format != "canonical-state/v15" || m.ComponentContract != "store-trust-crypto/v9" || m.Crypto != "supplied-secret/v4" || m.CryptoProfile != "rsa3072-oaep-sha256-aes256gcm-hmacsha256/v2" || !reflect.DeepEqual(m.Components, wantComponents) || !reflect.DeepEqual(m.Constructions, wantConstructions) {
 			t.Fatalf("manifest drift: %+v", m)
 		}
 		if len(m.Verifiers) != 1 || m.Verifiers[0].Family != contract.AWS || m.Verifiers[0].Class != awsprovider.VerifierClass || m.Verifiers[0].Parse == nil {

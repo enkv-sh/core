@@ -124,7 +124,7 @@ func samePublicationWork(a, b format.AdministrativeIndex) bool {
 		if left.GroupID != right.GroupID || left.OwnerID != right.OwnerID || left.TargetID != right.TargetID ||
 			left.OwnerKind != right.OwnerKind || left.DutyKind != right.DutyKind || left.EffectEntryCeiling != right.EffectEntryCeiling ||
 			left.SelectedEvidenceSummary != right.SelectedEvidenceSummary || left.DestructiveEffect != right.DestructiveEffect ||
-			left.UncertainCreateProof != right.UncertainCreateProof || left.Affected != right.Affected ||
+			left.UncertainCreateProof != right.UncertainCreateProof || left.ReferencesOwnedBirth != right.ReferencesOwnedBirth || left.Affected != right.Affected ||
 			left.Dependencies != right.Dependencies || left.Disposable != right.Disposable ||
 			left.ChargedPages != right.ChargedPages || left.ChargedBytes != right.ChargedBytes ||
 			left.PublicationIncarnationID != right.PublicationIncarnationID || left.AdmissionOrdinal != right.AdmissionOrdinal || !format.SameGCProgress(left.GC, right.GC) ||
@@ -341,6 +341,7 @@ func publicationRewritePlanFromFacts(ctx context.Context, domain contract.ID, in
 						if marker == nil || marker.DomainID != domain || marker.AttemptID != row.RecordID || marker.CoordinateID != group.OwnerID ||
 							marker.PublicationIncarnationID != group.PublicationIncarnationID || marker.AdmissionOrdinal != group.AdmissionOrdinal ||
 							publicationMarkerEvidence(*marker) != group.SelectedEvidenceSummary ||
+							group.ReferencesOwnedBirth != !marker.Projection.OwnedBirthAttemptID.IsZero() ||
 							group.UncertainCreateProof != boolByte(publicationMarkerProvesUncertainCreate(*marker, coordinates[group.OwnerID])) {
 							return nil, contract.ErrRecord
 						}

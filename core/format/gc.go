@@ -18,7 +18,7 @@ func GCGroupValid(group AdministrativeGroup) bool {
 	if group.OwnerKind != AdministrativeGC {
 		return group.GC == nil
 	}
-	return group.GC != nil && group.GC.Valid() && group.Affected == (contract.GeneratorDescriptor{Digest: group.GC.TargetsDescriptor.Digest, Length: group.GC.TargetsDescriptor.Length, Count: group.GC.TargetsDescriptor.Count}) && group.SelectedEvidenceSummary == group.GC.EvidenceSummary() && group.EffectEntryCeiling == group.GC.EffectEntryCeiling() && group.GroupID == group.OwnerID && group.GroupID == group.TargetID && group.DutyKind == 0 && group.DestructiveEffect == 0 && group.UncertainCreateProof == 0 && group.PublicationIncarnationID.IsZero() && group.AdmissionOrdinal == 0
+	return group.GC != nil && group.GC.Valid() && group.Affected == (contract.GeneratorDescriptor{Digest: group.GC.TargetsDescriptor.Digest, Length: group.GC.TargetsDescriptor.Length, Count: group.GC.TargetsDescriptor.Count}) && group.SelectedEvidenceSummary == group.GC.EvidenceSummary() && group.EffectEntryCeiling == group.GC.EffectEntryCeiling() && group.GroupID == group.OwnerID && group.GroupID == group.TargetID && group.DutyKind == 0 && group.DestructiveEffect == 0 && group.UncertainCreateProof == 0 && !group.ReferencesOwnedBirth && group.PublicationIncarnationID.IsZero() && group.AdmissionOrdinal == 0
 }
 func (group AdministrativeGroup) Own() AdministrativeGroup {
 	if group.RelatedGroupIndexes != nil {

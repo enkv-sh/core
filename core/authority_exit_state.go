@@ -136,11 +136,9 @@ func (s *StateSession) administrativeWorkDispositionScope(groupID contract.ID, i
 		}
 	}
 	var scope []format.AdministrativeGroup
-	endedByID := make(map[contract.ID]bool, len(s.adminIndex.Groups))
 	for i, group := range s.adminIndex.Groups {
 		if ended[i] {
 			scope = append(scope, group)
-			endedByID[group.GroupID] = true
 		}
 	}
 	for i, page := range s.adminIndex.Pages {
@@ -180,6 +178,10 @@ func (s *StateSession) administrativeWorkDispositionScope(groupID contract.ID, i
 			next.Groups[i].RelatedGroupIndexes[j] = mapped
 		}
 	}
+	requiredBirths, err := publicationRequiredBirths(next.Groups, publicationCoordinates)
+	if err != nil {
+		return format.AdministrativeIndex{}, nil, err
+	}
 	pages, ownershipChanged, err := s.administrativeDispositionPages()
 	if err != nil {
 		return format.AdministrativeIndex{}, nil, err
@@ -197,34 +199,20 @@ func (s *StateSession) administrativeWorkDispositionScope(groupID contract.ID, i
 					retained.GroupIndexes = append(retained.GroupIndexes, mapped)
 				}
 			}
-			if retained.Mandatory && len(retained.GroupIndexes) == 0 && len(span.GroupIndexes) == 1 &&
-				ended[span.GroupIndexes[0]] && span.Count == 1 && !page.ReadRequired {
+			if !page.ReadRequired && span.Count == 1 && len(span.GroupIndexes) == 1 {
 				group := s.adminIndex.Groups[span.GroupIndexes[0]]
-				if rowOffset >= len(page.Rows) {
-					return format.AdministrativeIndex{}, nil, contract.ErrRecord
-				}
-				switch group.OwnerKind {
-				case format.AdministrativePublicationCoordinate:
-					if page.Rows[rowOffset].RecordID != group.GroupID {
+				row := page.Rows[rowOffset]
+				switch row.Kind {
+				case contract.PublicationCoordinateSupportKind:
+					if group.OwnerKind != format.AdministrativePublicationCoordinate || row.RecordID != group.GroupID {
 						return format.AdministrativeIndex{}, nil, contract.ErrRecord
 					}
-					coordinate, present := publicationCoordinates[group.GroupID]
-					if present && coordinate.BindingState == contract.PublicationBindingRetired &&
-						page.Rows[rowOffset].Kind == contract.PublicationCoordinateSupportKind {
-						retained.Mandatory = false
-					}
-				case format.AdministrativePublicationMarker:
-					if page.Rows[rowOffset].RecordID != group.GroupID {
+					retained.Mandatory = len(retained.GroupIndexes) != 0
+				case contract.PublicationMarkerSupportKind:
+					if group.OwnerKind != format.AdministrativePublicationMarker || row.RecordID != group.GroupID {
 						return format.AdministrativeIndex{}, nil, contract.ErrRecord
 					}
-					if page.Rows[rowOffset].Kind == contract.PublicationMarkerSupportKind {
-						coordinate, present := publicationCoordinates[group.OwnerID]
-						if !present || coordinate.OwnerState != contract.PublicationOwnerQualified ||
-							coordinate.OwnedBirthAttemptID != group.GroupID ||
-							endedByID[group.OwnerID] {
-							retained.Mandatory = false
-						}
-					}
+					retained.Mandatory = requiredBirths[group.GroupID]
 				}
 			}
 			if retained.Mandatory || len(retained.GroupIndexes) != 0 {

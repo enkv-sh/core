@@ -279,7 +279,7 @@ var componentEstimates = map[string]float64{
 	"TestPublicationNativeLostProcessReopensWithoutSend":     4,
 	"TestPublicationNativeSelectedCreate":                    5,
 	"TestPublicationNativeSeparateValuesAndNoOp":             9,
-	"TestPublicationNativeValuePolicyAndDeletion":            32,
+	"TestPublicationNativeValuePolicyAndDeletion":            37,
 
 	"TestPublicationTelemetryDisabledAndAcknowledged":                 1,
 	"TestPublicationTelemetryLaterRefusalKeepsTerminalFailure":        2,

@@ -591,6 +591,33 @@ func TestReservedSlotDeleteDependsOnExactUncertainCreate(t *testing.T) {
 	if _, err := selectedPublicationRelation(&broken); err == nil {
 		t.Fatal("reserved delete without exact uncertain-create dependency accepted")
 	}
+	// A delayed Create acknowledgement can outlive its reservation edge.
+	// The same ID on a reserved-slot delete supplies no ownership proof.
+	uncertain.State = contract.PublicationAcknowledged
+	uncertain.Evidence.Class, uncertain.Evidence.NormalizedStatus = contract.PublicationRequestAcknowledged, 201
+	uncertain.Evidence.SafeResourceID, uncertain.Evidence.ConsumerLocator = "late-resource", "locator"
+	coordinate.OwnerState = contract.PublicationOwnerNone
+	rows = append(publicationRelationRows(t, coordinate, uncertain), rows[2])
+	late := publicationSelectedImageFromRows(t, domain, rows)
+	if _, err := selectedPublicationRelation(&late); err != nil {
+		t.Fatal("late acknowledgement with reserved edge", err)
+	}
+	partial := StateSession{root: late.root, support: late.support, adminIndex: late.adminIndex}
+	if _, err := partial.publicationCoordinatesForDisposition(); err != nil {
+		t.Fatal("reserved edge required a Create proof", err)
+	}
+	for i, group := range late.adminIndex.Groups {
+		if group.GroupID == reserved.AttemptID {
+			late.adminIndex.Groups[i].ReferencesOwnedBirth = true
+		}
+	}
+	if _, err := selectedPublicationRelation(&late); err == nil {
+		t.Fatal("reserved edge admitted as owned")
+	}
+	if _, err := partial.publicationCoordinatesForDisposition(); err == nil {
+		t.Fatal("partial reader accepted reserved edge as owned")
+	}
+
 }
 
 // full_only: false
@@ -643,6 +670,31 @@ func TestRetainedOwnedActionKeepsBirthThroughActiveReadd(t *testing.T) {
 	if _, err := selectedPublicationRelation(&mutated); err == nil {
 		t.Fatal("old birth proof made optional while its owned action remains")
 	}
+
+	// After the coordinate releases ownership, the action is the last
+	// reference that requires this acknowledged Create as a birth proof.
+	coordinate.OwnerState = contract.PublicationOwnerNone
+	coordinate.OwnedBirthAttemptID, coordinate.OwnedInstanceDigest = contract.ID{}, contract.ID{}
+	rows = append(publicationRelationRows(t, coordinate, oldBirth), rows[2])
+	image = publicationSelectedImageFromRows(t, domain, rows)
+	state := &StateSession{root: image.root, adminIndex: image.adminIndex, support: image.support}
+	work, _, err := state.administrativeWorkClosure(oldAction.AttemptID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, page := range work.Pages {
+		for _, span := range page.Spans {
+			for _, owner := range span.GroupIndexes {
+				if work.Groups[owner].GroupID == oldBirth.AttemptID {
+					if span.Mandatory {
+						t.Fatal("last owned action ended but its birth still requires a read")
+					}
+					return
+				}
+			}
+		}
+	}
+	t.Fatal("historical Create disappeared with its last owned action")
 }
 
 // These fixtures use one fixed incarnation. Cross-incarnation tests supply

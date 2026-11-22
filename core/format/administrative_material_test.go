@@ -25,18 +25,25 @@ func TestAdministrativeCanonicalMaterialAssociationPreservesHistoricalEncoding(t
 		t.Fatal(err)
 	}
 	const marker = 7 + 32*3 + 4
+	for _, prior := range []uint16{3, 4} {
+		old := bytes.Clone(legacy)
+		binary.BigEndian.PutUint16(old[marker:], prior)
+		if _, err := DecodeAdministrativeIndex(old); err == nil {
+			t.Fatalf("accepted old administrative marker %d", prior)
+		}
+	}
 	const firstRow = 113 + 108 + 7
-	if binary.BigEndian.Uint16(legacy[marker:]) != 3 || len(legacy) != firstRow+3*37+2 {
+	if binary.BigEndian.Uint16(legacy[marker:]) != 5 || len(legacy) != firstRow+3*37+2 {
 		t.Fatal("historical framing changed")
 	}
 	index.Pages[0].Rows[1].MaterialID = fid(6)
 	body, err := EncodeAdministrativeIndex(index)
-	if err != nil || len(body) != len(legacy)+64 || binary.BigEndian.Uint16(body[marker:]) != 4 {
+	if err != nil || len(body) != len(legacy)+64 || binary.BigEndian.Uint16(body[marker:]) != 6 {
 		t.Fatal("explicit association framing", err)
 	}
-	// Independently insert the two effective material IDs into marker-3 bytes.
+	// Independently insert the two effective material IDs into marker-5 bytes.
 	want := append([]byte(nil), legacy[:firstRow]...)
-	binary.BigEndian.PutUint16(want[marker:], 4)
+	binary.BigEndian.PutUint16(want[marker:], 6)
 	for i := range 3 {
 		want = append(want, legacy[firstRow+i*37:firstRow+(i+1)*37]...)
 		if i < 2 {
@@ -73,7 +80,7 @@ func TestAdministrativeCanonicalMaterialAssociationPreservesHistoricalEncoding(t
 	implicitSecond := fid(7)
 	copy(bad[firstRow+69+37:firstRow+69+69], implicitSecond[:])
 	if _, err := DecodeAdministrativeIndex(bad); err == nil {
-		t.Fatal("marker four without a distinct material association admitted")
+		t.Fatal("marker six without a distinct material association admitted")
 	}
 	index.Pages[0].Rows[1].MaterialID = ID{}
 	restored, err := EncodeAdministrativeIndex(index)

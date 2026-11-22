@@ -42,6 +42,46 @@ func endWorkSelectedSpanExpansion(index format.AdministrativeIndex) uint64 {
 	return added
 }
 
+// Before an exit target is selected, count each mandatory page that can
+// retain a mandatory peer while a referenced Create moves to an optional page.
+func endWorkBirthSplitBound(index format.AdministrativeIndex) (pages, framedBytes uint64) {
+	dependent := make(map[contract.ID]bool)
+	for _, group := range index.Groups {
+		if group.ReferencesOwnedBirth {
+			for _, i := range group.RelatedGroupIndexes {
+				if birth := index.Groups[i]; birth.OwnerKind == format.AdministrativePublicationMarker {
+					dependent[birth.GroupID] = true
+				}
+			}
+		}
+	}
+	if len(dependent) == 0 {
+		return
+	}
+	for _, page := range index.Pages {
+		if page.ReadRequired || len(page.Spans) < 2 {
+			continue
+		}
+		logical, mandatory := 0, 0
+		var bytes uint64
+		for _, span := range page.Spans {
+			if span.Mandatory {
+				mandatory++
+				row := page.Rows[logical]
+				if span.Count == 1 && row.Kind == contract.PublicationMarkerSupportKind && dependent[row.RecordID] {
+					bytes += uint64(contract.SupportRecordOverhead) + uint64(row.BodyLength)
+				}
+			}
+			logical += int(span.Count)
+		}
+		if mandatory > 1 && bytes != 0 {
+			pages++
+			framedBytes += bytes
+		}
+	}
+	return
+}
+
 // The current index is already authenticated. Only future row/owner growth and
 // possible span splitting are added; historical GC extensions stay in its
 // measured logical length.
@@ -146,7 +186,8 @@ func selectedFirstExitCapacity(ctx context.Context, image *selectedImage, rootDi
 		intentBytes = logical + fragments*generatedFragmentCharge + intentPages*contract.RequiredSupportPageHeaderLength
 		intentIndex = 115*intentPages + 37*fragments + 2*fragments*uint64(len(image.adminIndex.Groups))
 	}
-	publicationPages := uint64(max(publication.pageDelta, 0))
+	splitPages, splitBytes := endWorkBirthSplitBound(image.adminIndex)
+	publicationPages := uint64(max(publication.pageDelta, 0)) + splitPages
 	index += endWorkMaximumReceiptIndexBytes + endWorkSelectedSpanExpansion(image.adminIndex) + 108*publicationPages + intentIndex
 	shards := capacityCeiling(index, uint64(format.AdministrativeIndexShardPayloadLimit))
 	beforeShards := uint64(1 + len(image.root.AdministrativeIndexShards))
@@ -157,7 +198,7 @@ func selectedFirstExitCapacity(ctx context.Context, image *selectedImage, rootDi
 		oldIndexBytes += uint64(ref.Length)
 	}
 	indexBytes := index + shards*uint64(contract.MaxRequiredSupportPageLength-format.AdministrativeIndexShardPayloadLimit)
-	bound.ChildEncodedBytes = image.root.ChildEncodedBytes - oldIndexBytes + indexBytes + intentBytes + 2*contract.MaxRequiredSupportPageLength + publication.framedBytes + publicationPages*contract.RequiredSupportPageHeaderLength
+	bound.ChildEncodedBytes = image.root.ChildEncodedBytes - oldIndexBytes + indexBytes + intentBytes + 2*contract.MaxRequiredSupportPageLength + publication.framedBytes + splitBytes + publicationPages*contract.RequiredSupportPageHeaderLength
 	bound.RootBytes = rootBytes + uint64(contract.RefLength)*(bound.ChildPages-min(bound.ChildPages, uint64(image.root.ChildCount)))
 	bound.Status = capacitySufficient
 	if bound.ChildPages > bound.ChildPageLimit || bound.RootBytes > bound.RootByteLimit {
@@ -340,7 +381,8 @@ func (s *StateSession) reserveFirstEndWorkPublication(ctx context.Context, sourc
 		return err
 	}
 	coordinateLocal := publicationExitsAreCoordinateLocal(s.adminIndex, coordinates)
-	publicationPages := max(publication.pageDelta, 0)
+	splitPages, _ := endWorkBirthSplitBound(s.adminIndex)
+	publicationPages := max(publication.pageDelta, 0) + int64(splitPages)
 	publicationIndexBytes := uint64(108 * publicationPages)
 	// Most states have ample room. This is a page-space shortcut only. Ordinary
 	// writers build groups from selected typed owner rows; an EndWork successor

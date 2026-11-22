@@ -226,7 +226,8 @@ func administrativePublicationCoordinateGroup(v contract.PublicationCoordinate) 
 
 func administrativePublicationMarkerGroup(v contract.PublicationMarker) format.AdministrativeGroup {
 	return format.AdministrativeGroup{GroupID: v.AttemptID, OwnerID: v.CoordinateID, TargetID: v.CoordinateID,
-		OwnerKind: format.AdministrativePublicationMarker, PublicationIncarnationID: v.PublicationIncarnationID, AdmissionOrdinal: v.AdmissionOrdinal,
+		ReferencesOwnedBirth: !v.Projection.OwnedBirthAttemptID.IsZero(),
+		OwnerKind:            format.AdministrativePublicationMarker, PublicationIncarnationID: v.PublicationIncarnationID, AdmissionOrdinal: v.AdmissionOrdinal,
 		Affected:           administrativeDescriptor("publication-marker", v.CoordinateID[:], v.AttemptID[:], v.ProjectionCommitment[:]),
 		Dependencies:       administrativeDescriptor("publication-marker-dependencies", v.BlockerDigest[:]),
 		EffectEntryCeiling: boolByte(v.Evidence.Entry == contract.PublicationMayHaveEnteredEntry)}
