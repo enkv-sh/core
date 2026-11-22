@@ -50,7 +50,7 @@ func TestPublicV4OutputAdmissionPacksExactDeclarationAtJointCapacity(t *testing.
 	}
 	implementation := process.Implementation
 	meta := &contract.GeneratorDeclaredGeneration{Schema: contract.GeneratorDeclaredGenerationSchema, Epoch: 0, RetirementMode: contract.GeneratedRetirementManual, CompletionClass: contract.GeneratedCompletionAcknowledged, Intent: bytes.Clone(process.Intent), ConfigContractID: implementation.ConfigContractID, ResourceContractID: hermeticCloudflareResourceContractID(), LifecycleMode: contract.GeneratorLifecycleManaged}
-	input := []ApplyEntryInput{{Name: "generated", ValueSource: contract.Generated, ConfidentialityClass: contract.Secret, Recipients: []contract.ID{authority}, Generated: meta}, plain}
+	input := []ApplyEntryInput{{Name: "generated", ValueSource: contract.Generated, ConfidentialityClass: contract.Secret, Recipients: []contract.ID{authority}, Generated: meta, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw}, plain}
 	// The generic policy record is schema3 plus two blob32 fields. Its
 	// independently sized opaque body carries the remaining requested bytes.
 	policyOfLength := func(length int) contract.OutputPolicy {
@@ -187,6 +187,12 @@ func TestPublicV4OutputAdmissionPacksExactDeclarationAtJointCapacity(t *testing.
 	if err != nil || shape.outputSupport == nil || shape.outputSupport.configuration.MaxCount != 33 || shape.outputSupport.configuration.MaxPages != 17 || shape.outputSupport.configuration.MaxFramedBytes != uint64(len(image)+33*115) || shape.outputSupport.coordinates.MaxCount != 1 {
 		t.Fatal("canonical/coordinate support not charged by actual v4 admission", err)
 	}
+	target := large.bindings[0].targets[0].target
+	// A fresh coordinate has 648 fixed bytes, two populated strings and a 37-byte support record header.
+	newCoordinateWidth := uint64(648 + len(target.ServiceContractID) + len(target.CanonicalTarget) + 37)
+	if shape.outputSupport.coordinates.MaxFramedBytes != newCoordinateWidth || shape.outputSupport.coordinates.MaxPages != 1 {
+		t.Fatal("admission did not reserve the exact fresh coordinate", shape.outputSupport.coordinates)
+	}
 	shape.DeclarationBytes, shape.RegistryBytes = uint64(len(largePlan.input.declaration)), uint64(len(largePlan.input.registryImage))
 	shards, err := f.selected.generatedAdministrativeShardReserve(shape)
 	if err != nil || shards == 0 {
@@ -241,6 +247,7 @@ func TestPublicV4OutputAdmissionPacksExactDeclarationAtJointCapacity(t *testing.
 	if err != nil || graph.Request.Schema != 4 || f.selected.root.Generated.ActiveOwner != stopped.OperationID {
 		t.Fatal("exact v4 parent was not actually packed/selected", err, stopped.Result)
 	}
+	remaining := continuationTestBound(t, f.selected).Remaining
 	want = wantConfiguration(graph, large)
 	expectedImage, err := contract.EncodeOutputConfiguration(want)
 	if err != nil {
@@ -319,7 +326,7 @@ func TestPublicV4OutputAdmissionPacksExactDeclarationAtJointCapacity(t *testing.
 			}
 		}
 	}
-	if actualMarkers != markerBytes || actualCoordinates <= coordinateBytes {
+	if actualMarkers != markerBytes || actualCoordinates != coordinateBytes+newCoordinateWidth {
 		t.Fatal("Final discarded joint backlog charge or new coordinate", actualMarkers, markerBytes, actualCoordinates, coordinateBytes)
 	}
 	if creates, deletes := effects(); creates != 1 || deletes != 0 {
@@ -328,4 +335,18 @@ func TestPublicV4OutputAdmissionPacksExactDeclarationAtJointCapacity(t *testing.
 	if cold.root.ChildCount > 254 || len(cold.root.AdministrativeIndexShards)+1 > int(shards) {
 		t.Fatal("actual packed index/children exceeded admitted reservation", cold.root.ChildCount, shards)
 	}
+	report, err := publicCapacityBound(remaining)
+	if err != nil {
+		t.Fatal("public remaining-capacity report", err)
+	}
+	t.Run(report.Status, func(t *testing.T) {
+		switch remaining.Status {
+		case capacitySufficient:
+			continuationTestCandidateWithin(t, cold, remaining)
+		case capacityNotEstablished:
+			// The report gives no numeric guarantee in this case.
+		default:
+			t.Fatal("unrecognized remaining-capacity outcome for active generated work", remaining.Status)
+		}
+	})
 }
