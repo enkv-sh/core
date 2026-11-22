@@ -396,6 +396,95 @@ func TestNativeFailureStatusRequiresCompleteJoinedDisposal(t *testing.T) {
 }
 
 // full_only: false
+func TestLocalEnvironmentRefusalRequiresJoinedStatus(t *testing.T) {
+	for _, tc := range []struct{ name, mode string }{
+		{"buffered command refusal", "command-refusal"}, {"joined refusal", "execution-failure"}, {"trailing status", "execution-failure-trailing"},
+		{"wrong id", "execution-failure-foreign"}, {"short status", "execution-failure-short"},
+		{"disposal", "execution-failure"}, {"managed", "execution-failure"}, {"successful return", "success"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			launcher, command, _ := testLauncher(t, tc.mode, []byte("fixture-input"))
+			if tc.name != "managed" {
+				command.LifecycleMode = protocol.LifecycleNone
+				command.ResourceContractID = protocol.ID{}
+				intent, err := protocol.EncodeIntent(protocol.Intent{Schema: 1, LifecycleMode: protocol.LifecycleNone, ConfigContractID: protocol.ID(launcher.config.Artifact.ConfigContractID), Settings: []byte("{}")})
+				if err != nil {
+					t.Fatal(err)
+				}
+				command.Intent = intent
+				command.IntentDigest = generatorIntentDigestForTest(intent)
+			}
+			reader, writer, err := os.Pipe()
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer reader.Close()
+			// The fixture reports a transport failure independently of delivery.
+			launcher.writeEnvironment = func(w io.Writer, frame protocol.Frame) error {
+				if tc.name == "buffered command refusal" {
+					// The child's result EOF follows its status write and exit.
+					// Inject the refusal before transferring any environment bytes.
+					if err := reader.SetReadDeadline(time.Now().Add(10 * time.Second)); err != nil {
+						return err
+					}
+					if err := protocol.RequireEOF(reader); err != nil {
+						return err
+					}
+				} else if err := protocol.WriteFrame(w, frame); err != nil {
+					return err
+				}
+				return unix.EPIPE
+			}
+			if tc.name == "disposal" {
+				refuseLaunchRemoval(launcher, errors.New("fixture removal refusal"))
+			}
+			run, err := launcher.Start(t.Context(), command, writer)
+			if tc.name == "managed" {
+				if run != nil || !errors.Is(err, unix.EPIPE) || ProvesNotStarted(command, err) {
+					t.Fatal("managed start changed effect evidence", err)
+				}
+				return
+			}
+			if err != nil || run == nil {
+				t.Fatal("missing local run", err)
+			}
+			received, err := io.Copy(io.Discard, reader)
+			if err != nil || (received != 0) != (tc.name == "successful return") {
+				t.Fatal("unexpected fixture result", received, err)
+			}
+			status, joined := run.Wait(t.Context())
+			if status != (protocol.Status{}) || !errors.Is(joined, unix.EPIPE) || !errors.Is(joined, ErrCredential) || run.Cancel() != joined {
+				t.Fatal("incomplete environment lost its cause or published ordinary completion", status, joined)
+			}
+			got, ok := JoinedLocalRefusal(command, run.CommandID(), joined)
+			want := protocol.Status{}
+			switch tc.name {
+			case "joined refusal":
+				want = protocol.Status{Stage: 3, Category: 2}
+			case "buffered command refusal":
+				want = protocol.Status{Stage: protocol.StatusStageCommand, Category: protocol.StatusUnavailable}
+			}
+			if ok != (want != (protocol.Status{})) || got != want {
+				t.Fatal("unexpected checked refusal", got, ok)
+			}
+			other := command
+			other.AttemptID[0] ^= 1
+			for _, check := range []struct {
+				original protocol.Command
+				id       protocol.ID
+				cause    error
+			}{
+				{other, run.CommandID(), joined}, {command, protocol.ID{}, joined}, {command, run.CommandID(), errors.Join(joined, ErrAdmission)},
+			} {
+				if _, ok := JoinedLocalRefusal(check.original, check.id, check.cause); ok {
+					t.Fatal("refusal qualified for another receiver")
+				}
+			}
+		})
+	}
+}
+
+// full_only: false
 func TestCanceledWaitRetainsContextAndRemovalCauses(t *testing.T) {
 	for _, expired := range []bool{false, true} {
 		t.Run(map[bool]string{false: "canceled", true: "expired"}[expired], func(t *testing.T) {

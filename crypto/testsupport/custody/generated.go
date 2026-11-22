@@ -215,9 +215,10 @@ const GeneratedTerminalFailure uint8 = 4
 const GeneratedConfirmedNoEffect uint8 = 5
 
 type GeneratedProcessConfig struct {
-	ArtifactPath         string
-	Artifact             contract.GeneratorImplementation
-	Metadata, Dependency []byte
+	ReportEnvironmentPipeClosed func()
+	ArtifactPath                string
+	Artifact                    contract.GeneratorImplementation
+	Metadata, Dependency        []byte
 }
 
 func generatedProcessHostConfig(config GeneratedProcessConfig, preparation contract.GeneratedProducerPreparation) (generatorhost.Config, error) {

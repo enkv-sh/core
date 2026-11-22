@@ -42,14 +42,18 @@ func TestInstalledLocalGeneratorJoinedEntropyFailureHasNoRemoteOwner(t *testing.
 		{"failure CAS lost-before", "failure CAS lost-before", unavailable, contract.GeneratorFailureUnavailable},
 		{"failure CAS lost-after", "failure CAS lost-after", unavailable, contract.GeneratorFailureUnavailable},
 		{"result pipe unavailable", "failure CAS lost-after", unavailable, contract.GeneratorFailureUnavailable},
+		{"environment pipe closed", "failure CAS lost-after", invalid, contract.GeneratorFailureInvalid},
 		{"invalid callback", "none", invalid, contract.GeneratorFailureInvalid},
 		{"cancelled callback", "none", cancelled, contract.GeneratorFailureCancelled},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			author, fault := tc.author, tc.fault
-			var allocations atomic.Int32
+			var pipeFaults atomic.Int32
+			resumeAfterPipeFailure := tc.name == "result pipe unavailable" || tc.name == "environment pipe closed"
 			if tc.name == "result pipe unavailable" {
-				author.refuseResultPipe = func() { allocations.Add(1) }
+				author.refuseResultPipe = func() { pipeFaults.Add(1) }
+			} else if tc.name == "environment pipe closed" {
+				author.config.ReportEnvironmentPipeClosed = func() { pipeFaults.Add(1) }
 			}
 			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
 			defer cancel()
@@ -59,7 +63,7 @@ func TestInstalledLocalGeneratorJoinedEntropyFailureHasNoRemoteOwner(t *testing.
 			if !ok {
 				t.Fatal("actual admitted trust observer unavailable")
 			}
-			if author.refuseResultPipe != nil {
+			if resumeAfterPipeFailure {
 				initial := []ApplyEntryInput{{Name: "prior", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain,
 					Recipients: []contract.ID{f.selected.admission.recipient}, InputBytes: []byte("previous"),
 					InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw}}
@@ -211,7 +215,7 @@ func TestInstalledLocalGeneratorJoinedEntropyFailureHasNoRemoteOwner(t *testing.
 					t.Fatal("cold failure readback does not match actual selected CAS outcome")
 				}
 			}
-			if author.refuseResultPipe != nil {
+			if resumeAfterPipeFailure {
 				resumed := installedLocalEngine(t, readctx, f, cold, input, author, &admissions)
 				final := resumed.Continue(readctx, testID("resume local pipe failure"), got.OperationID)
 				resumed.Close()
@@ -220,8 +224,8 @@ func TestInstalledLocalGeneratorJoinedEntropyFailureHasNoRemoteOwner(t *testing.
 				if err != nil || final.Result.Outcome != ObservedCurrent || final.OperationID != got.OperationID || receipt.OperationID != got.OperationID ||
 					receipt.StateResult != contract.ReceiptStateEffectTerminalFailure || receipt.CanonicalOutcome != contract.ReceiptCanonicalNotSelected ||
 					receipt.EffectSummary != contract.ReceiptEffectFailed || receipt.SummaryCounts[contract.ReceiptSummaryFailureCount] != 1 ||
-					!after.root.Generated.ActiveOwner.IsZero() || len(after.root.Names) != len(beforeEntries) || admissions != 1 || allocations.Load() != 1 {
-					t.Fatal("recorded pipe refusal did not finalize on cold continuation", final.Result, admissions, allocations.Load(), err)
+					!after.root.Generated.ActiveOwner.IsZero() || len(after.root.Names) != len(beforeEntries) || admissions != 1 || pipeFaults.Load() != 1 {
+					t.Fatal("recorded pipe refusal did not finalize on cold continuation", final.Result, admissions, pipeFaults.Load(), err)
 				}
 				retained, read := after.MutationReceipt(readctx, final.OperationID)
 				if read.Outcome != ObservedCurrent || !bytes.Equal(retained, final.Receipt) {

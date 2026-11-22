@@ -88,6 +88,13 @@ func main() {
 	if err != nil || protocol.RequireEOF(control) != nil {
 		os.Exit(28)
 	}
+	if mode == "command-refusal" {
+		body, err := protocol.EncodeStatus(protocol.Status{Stage: protocol.StatusStageCommand, Category: protocol.StatusUnavailable})
+		if err != nil || protocol.WriteFrame(status, protocol.Frame{Kind: protocol.KindStatus, CommandID: frame.CommandID, Body: body}) != nil {
+			os.Exit(32)
+		}
+		os.Exit(29)
+	}
 	if mode == "hold-credential" {
 		retainEndpoint(credential)
 	}
@@ -124,8 +131,10 @@ func main() {
 	}
 	token := sha256.Sum256(append([]byte("hermetic token\x00"), command.ResultID[:]...))
 	facts := command.NewFacts(protocol.DispositionCompleteCreate, protocol.ReasonNone)
-	facts.Target = []byte("hermetic-account")
-	facts.ResourceData = []byte(hex.EncodeToString(token[:16]))
+	if command.LifecycleMode == protocol.LifecycleManaged {
+		facts.Target = []byte("hermetic-account")
+		facts.ResourceData = []byte(hex.EncodeToString(token[:16]))
+	}
 	if mode == "deadline-cap" {
 		facts.ProviderFacts = binary.BigEndian.AppendUint64(nil, command.DeadlineUnixMillis)
 	}
@@ -197,9 +206,17 @@ func main() {
 		os.Exit(34)
 	}
 	resultCommand := helloFrame.CommandID
-	if mode == "execution-failure" || mode == "execution-failure-trailing" {
+	switch mode {
+	case "execution-failure", "execution-failure-trailing", "execution-failure-foreign", "execution-failure-short":
 		body, _ := protocol.EncodeStatus(protocol.Status{Stage: 3, Category: 2})
-		if protocol.WriteFrame(status, protocol.Frame{Kind: protocol.KindStatus, CommandID: helloFrame.CommandID, Body: body}) != nil {
+		statusID := helloFrame.CommandID
+		if mode == "execution-failure-foreign" {
+			statusID[0] ^= 1
+		}
+		if mode == "execution-failure-short" {
+			body = body[:1]
+		}
+		if protocol.WriteFrame(status, protocol.Frame{Kind: protocol.KindStatus, CommandID: statusID, Body: body}) != nil {
 			os.Exit(32)
 		}
 		if mode == "execution-failure-trailing" {

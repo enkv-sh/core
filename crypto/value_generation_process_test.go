@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"os/exec"
 	"reflect"
@@ -106,6 +107,32 @@ func (launcher telemetryProcessLauncher) Start(_ context.Context, _ protocol.Com
 		return nil, err
 	}
 	return telemetryProcessRun{commandID: launcher.commandID, status: launcher.status, noStatus: launcher.noStatus, waitErr: launcher.waitErr, waits: launcher.waits}, nil
+}
+
+// full_only: false
+func TestLocalEnvironmentRefusalRequiresEmptyResultAndLiveAuthority(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		readErr  error
+		code     contract.CryptoResultCode
+		category generatedFailureCategory
+		settled  bool
+	}{
+		{"empty", io.EOF, contract.CryptoCustodyUnavailable, generatedFailureInvalid, true},
+		{"complete result", nil, contract.CryptoCustodyUnavailable, generatedFailureProtocol, false},
+		{"partial result", io.ErrUnexpectedEOF, contract.CryptoCustodyUnavailable, generatedFailureProtocol, false},
+		{"reader close failed", errors.Join(io.EOF, os.ErrClosed), contract.CryptoCustodyUnavailable, generatedFailureProtocol, false},
+		{"cancelled", io.EOF, contract.CryptoCancelled, generatedFailureCancelled, false},
+		{"expired", io.EOF, contract.CryptoExpired, generatedFailureExpired, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			out := localEnvironmentRefusal(protocol.Status{Stage: protocol.StatusStageCommand, Category: protocol.StatusInvalid}, tc.readErr, tc.code)
+			if out.settled != tc.settled || out.category != tc.category || out.effect != generatedEffectUnknown ||
+				len(out.Secret) != 0 || !reflect.DeepEqual(out.Facts, contract.GeneratorSafeFacts{}) {
+				t.Fatal("unexpected local handoff outcome", tc.code, out.category, out.settled)
+			}
+		})
+	}
 }
 
 // full_only: false

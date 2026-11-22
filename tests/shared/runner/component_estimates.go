@@ -56,7 +56,7 @@ var componentEstimates = map[string]float64{
 	"TestInstalledLocalGeneratorMixedFinalPreservesActualCFClosure":                       11,
 	"TestInstalledLocalNoEffectFinalReleasesDomain":                                       2,
 	"TestInstalledLocalUnknownFinalReleasesDomain":                                        10,
-	"TestInstalledLocalGeneratorJoinedEntropyFailureHasNoRemoteOwner":                     9,
+	"TestInstalledLocalGeneratorJoinedEntropyFailureHasNoRemoteOwner":                     11,
 	"TestManifestPreparationHasClosedReturnsAndRechecksOriginalAdmission":                 2,
 	"TestInstalledReceiptMandatoryLossSourceChangesAndCanceledReadersDiscloseNothing":     1,
 	"TestInstalledReceiptReadsAllKindsInRecordedOrderWithOriginalBytesAndGETOnly":         1,

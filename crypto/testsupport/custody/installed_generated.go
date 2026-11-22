@@ -132,6 +132,9 @@ func (f *Fixture) NewInstalledGeneratedProducer(ctx context.Context, q contract.
 	if err != nil {
 		return nil, err
 	}
+	if config.ReportEnvironmentPipeClosed != nil {
+		generatorhost.TestReportEnvironmentPipeClosed(launcher, config.ReportEnvironmentPipeClosed)
+	}
 	var process generatorhost.Launcher = launcher
 	if len(observeCompletion) != 0 && observeCompletion[0] != nil {
 		process = observedInstalledGeneratedLauncher{Launcher: launcher, observe: observeCompletion[0]}

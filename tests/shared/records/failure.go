@@ -616,6 +616,7 @@ type TestSourceOverlay struct{ Source, Target, Owner string }
 
 func TestAdmissionOverlays() []TestSourceOverlay {
 	return []TestSourceOverlay{
+		{"tests/generatorhost/environment.go", "compositions/generatorhost/zz_test_environment.go", "generator host"},
 		{"tests/crypto/admission.go", "crypto/zz_test_admission.go", "Crypto"},
 		{"tests/gcp/admission.go", "providers/gcp/zz_test_admission.go", "GCP"},
 		{"tests/gcpcredentials/admission.go", "providers/gcp/credentials/zz_test_admission.go", "GCP credentials"},

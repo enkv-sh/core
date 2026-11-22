@@ -57,12 +57,7 @@ func ProvesNotStarted(command protocol.Command, err error) bool {
 	if !ok || failure == nil || !failure.notStarted {
 		return false
 	}
-	body, encodeErr := protocol.EncodeCommand(command)
-	if encodeErr != nil {
-		return false
-	}
-	defer clear(body[:cap(body)])
-	return failure.commandBinding == sha256.Sum256(body)
+	return failure.matchesCommand(command)
 }
 
 // PreservesCompletion accepts only this host's sole-removal qualification for
@@ -73,6 +68,23 @@ func PreservesCompletion(original protocol.Command, command protocol.ID, status 
 		status != (protocol.Status{Stage: protocol.StatusStageReturn, Category: protocol.StatusOK}) {
 		return false
 	}
+	return failure.matchesCommand(original)
+}
+
+// JoinedLocalRefusal returns the command-stage status from a fully disposed
+// local run whose environment writer encountered a closed pipe. The receiver
+// must still establish that its own result stream was empty and settled.
+func JoinedLocalRefusal(original protocol.Command, command protocol.ID, err error) (protocol.Status, bool) {
+	failure, ok := err.(*checkedHostFailure)
+	if !ok || failure == nil || command.IsZero() || failure.command != command ||
+		original.LifecycleMode != protocol.LifecycleNone || original.Action != protocol.ActionCreate ||
+		failure.status.Stage != protocol.StatusStageCommand || !failure.matchesCommand(original) {
+		return protocol.Status{}, false
+	}
+	return failure.status, true
+}
+
+func (failure *checkedHostFailure) matchesCommand(original protocol.Command) bool {
 	body, encodeErr := protocol.EncodeCommand(original)
 	if encodeErr != nil {
 		return false
@@ -98,8 +110,9 @@ type Config struct {
 	Artifact     contract.GeneratorImplementation
 }
 
-// Run owns a started child until Wait or Cancel completes. The caller must
-// drain or close its result reader and then settle the run on every path.
+// Run owns a started child until Wait or Cancel completes. The caller drains
+// or closes its result reader before settling the run. Wait can report a
+// local environment write refusal together with the joined process outcome.
 type Run interface {
 	CommandID() protocol.ID
 	// Wait returns a status only after its complete stream and native disposal
@@ -133,6 +146,7 @@ type NativeLauncher struct {
 	afterSourceCopy  func()
 	afterSourceCheck func()
 	removeLaunchDir  func(string) error
+	writeEnvironment func(io.Writer, protocol.Frame) error
 }
 
 // NewNative checks the installation, native tuple and executable build facts
@@ -170,7 +184,7 @@ func newNative(config Config, requireInstalled bool) (*NativeLauncher, error) {
 		return nil, ErrAdmission
 	}
 	config.Artifact.CredentialRoute = append([]byte(nil), config.Artifact.CredentialRoute...)
-	return &NativeLauncher{config: config, commandSent: make(chan struct{})}, nil
+	return &NativeLauncher{config: config, commandSent: make(chan struct{}), writeEnvironment: protocol.WriteFrame}, nil
 }
 
 func verifyArtifactBuildInfo(ctx context.Context, path string, installed *Installation) (resultErr error) {
@@ -348,10 +362,11 @@ func (l *NativeLauncher) start(ctx context.Context, command protocol.Command, se
 	}
 	defer func() { clear(commandBody[:cap(commandBody)]) }()
 	transferred = true
-	return l.startExchange(ctx, protocol.KindCommand, command.DeadlineUnixMillis, commandBody, ownedWriter, true)
+	return l.startExchange(ctx, protocol.KindCommand, command.DeadlineUnixMillis, commandBody, ownedWriter, command.LifecycleMode == protocol.LifecycleNone && command.Action == protocol.ActionCreate)
 }
 
-func (l *NativeLauncher) startExchange(ctx context.Context, kind uint8, deadlineMillis uint64, commandBody []byte, secretWriter *ownedEndpoint, effect bool) (result Run, resultErr error) {
+func (l *NativeLauncher) startExchange(ctx context.Context, kind uint8, deadlineMillis uint64, commandBody []byte, secretWriter *ownedEndpoint, localCreate bool) (result Run, resultErr error) {
+	effect := kind == protocol.KindCommand
 	setup := &nativeSetup{resultWriter: secretWriter}
 	consumed, notStarted := false, true
 	if l != nil {
@@ -518,7 +533,19 @@ func (l *NativeLauncher) startExchange(ctx context.Context, kind uint8, deadline
 		}
 		run.credential = inputs
 		if err == nil {
-			err = protocol.WriteFrame(setup.credentialWrite, protocol.Frame{Kind: protocol.KindEnvironment, CommandID: commandID, Body: inputs})
+			err = l.writeEnvironment(setup.credentialWrite, protocol.Frame{Kind: protocol.KindEnvironment, CommandID: commandID, Body: inputs})
+			if localCreate && errors.Is(err, unix.EPIPE) {
+				refusal := errors.Join(ErrCredential, err)
+				finishHostCall(send, refusal)
+				if closeErr := setup.credentialWrite.release(); closeErr != nil {
+					return nil, abort(errors.Join(refusal, closeErr))
+				}
+				setup.credentialWrite = nil
+				// Let the receiver drain the result before Wait joins the child.
+				// The original deadline still owns all remaining endpoints.
+				run.environmentErr = refusal
+				return run, nil
+			}
 		}
 		if err != nil {
 			refusal := errors.Join(ErrCredential, err)
@@ -559,6 +586,7 @@ type nativeRun struct {
 	stage             *artifactStage
 	command           protocol.ID
 	commandBinding    [32]byte
+	environmentErr    error
 	cmd               *nativeChild
 	status            *ownedEndpoint
 	launchDir         string
@@ -617,14 +645,18 @@ func (r *nativeRun) finish() {
 		if r.stopContext != nil {
 			r.stopContext()
 		}
-		if readErr == nil && closeErr == nil && lifetimeErr == nil && r.cmd.ProcessState != nil && cleanupErr == nil && removalErr == nil {
+		disposed := readErr == nil && closeErr == nil && killErr == nil && lifetimeErr == nil && r.cmd.ProcessState != nil && cleanupErr == nil && removalErr == nil
+		if disposed && r.environmentErr == nil {
 			r.result = result
 		}
 		if waitErr != nil {
 			waitErr = errors.Join(ErrProcess, waitErr)
 		}
-		r.err = errors.Join(readErr, closeErr, waitErr, killErr, removalErr, cleanupErr, lifetimeErr)
-		if removalErr != nil && readErr == nil && closeErr == nil && waitErr == nil && killErr == nil && cleanupErr == nil && lifetimeErr == nil &&
+		r.err = errors.Join(r.environmentErr, readErr, closeErr, waitErr, killErr, removalErr, cleanupErr, lifetimeErr)
+		if disposed && r.environmentErr != nil && r.cmd.ProcessState.Exited() && result.Stage == protocol.StatusStageCommand {
+			r.err = &checkedHostFailure{commandBinding: r.commandBinding, command: r.command, status: result, cause: r.err}
+		}
+		if r.environmentErr == nil && removalErr != nil && readErr == nil && closeErr == nil && waitErr == nil && killErr == nil && cleanupErr == nil && lifetimeErr == nil &&
 			r.cmd.ProcessState != nil && r.cmd.ProcessState.Success() && r.commandBinding != ([32]byte{}) && result == (protocol.Status{Stage: protocol.StatusStageReturn, Category: protocol.StatusOK}) {
 			r.result = result
 			r.err = &checkedHostFailure{commandBinding: r.commandBinding, command: r.command, status: result, cause: r.err}

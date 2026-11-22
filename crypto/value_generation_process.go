@@ -125,6 +125,11 @@ func invokeGeneratedProcessOwned(openPipe generatedResultPipe, ctx context.Conte
 	// Even an unreadable result must settle the child before its command
 	// backing is cleared or a local failure status is used.
 	status, waitErr := run.Wait(processContext)
+	if refusal, ok := generatorhost.JoinedLocalRefusal(processCommand, commandID, waitErr); ok {
+		clear(body)
+		code := processResultCode(ctx, deadline)
+		return localEnvironmentRefusal(refusal, readErr, code), code
+	}
 	completeWithCleanupFailure := waitErr != nil && generatorhost.PreservesCompletion(processCommand, commandID, status, waitErr)
 	local := command.LifecycleMode == contract.GeneratorLifecycleNone
 	if local {
@@ -190,6 +195,20 @@ func invokeGeneratedProcessOwned(openPipe generatedResultPipe, ctx context.Conte
 	out.executableCleanupFailed = completeWithCleanupFailure
 	clear(body)
 	return out, contract.CryptoSuccess
+}
+
+func localEnvironmentRefusal(status wire.Status, readErr error, code contract.CryptoResultCode) generatedProducerReturn {
+	out := generatedProducerReturn{effect: generatedEffectUnknown, stage: generatedFailureStatus, category: generatedCategoryForCode(code)}
+	if code != contract.CryptoCustodyUnavailable {
+		return out
+	}
+	if readErr != io.EOF || !generatedLocalFailureStatus(status) {
+		out.stage, out.category = generatedFailureResultRead, generatedFailureProtocol
+		return out
+	}
+	out.settled = true
+	out.category = generatedCategoryForStatus(status)
+	return out
 }
 
 func generatedLocalFailureStatus(status wire.Status) bool {

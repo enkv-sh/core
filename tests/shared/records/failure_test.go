@@ -652,6 +652,7 @@ func TestFailureSourceMappingUsesExactQualifiedPaths(t *testing.T) {
 		allowed        bool
 	}{
 		{"enkv.sh/crypto@v0.0.0/zz_test_admission.go", "tests/crypto/admission.go", true},
+		{"enkv.sh/compositions/generatorhost@v0.0.0/zz_test_environment.go", "tests/generatorhost/environment.go", true},
 		{"enkv.sh/crypto@v0.0.0/zz_test_private_test.go", "tests/crypto/private_test.go", true},
 		{"enkv.sh/core/zz_test_private_test.go", "tests/crypto/private_test.go", false},
 		{"enkv.sh/compositions/full@v0.0.0/zz_test_admission.go", "tests/full/admission.go", true},
