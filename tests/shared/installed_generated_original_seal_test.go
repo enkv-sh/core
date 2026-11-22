@@ -64,6 +64,7 @@ func TestInstalledGeneratedApplyChecksOriginalSealedSecretBeforeCreate(t *testin
 					ConfigContractID: process.Implementation.ConfigContractID, ResourceContractID: hermeticCloudflareResourceContractID(),
 					CompletionClass: contract.GeneratedCompletionAcknowledged, Intent: bytes.Clone(process.Intent)}
 				input := []ApplyEntryInput{{Name: "generated", Recipients: []contract.ID{authority}, ValueSource: contract.Generated,
+					InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw,
 					ConfidentialityClass: contract.Secret, Generated: &generation}, proposed}
 				callbacks := installedGeneratedTestCallbacks(t, f, process)
 				reservationCalls := 0
