@@ -13,7 +13,7 @@ func TestInstalledRecipientRetirementUsesAuthenticatedSparsePredecessorSlot(t *t
 	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
 	f := newInstalledApplyTestFixture(t, ctx, contract.AWS, false)
-	input := []ApplyEntryInput{{Name: "plain", Recipients: []contract.ID{f.selected.admission.recipient}, ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, InputBytes: []byte("ordinary predecessor")}}
+	input := []ApplyEntryInput{{Name: "plain", InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, Recipients: []contract.ID{f.selected.admission.recipient}, ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, InputBytes: []byte("ordinary predecessor")}}
 	setup := f.engine(t, f.selected, input, nil)
 	if result := setup.Apply(ctx, fixtureID(f.env.Domain, "sparse ordinary predecessor"), input); result.Result.Outcome != ObservedCurrent {
 		t.Fatal(result.Result)
@@ -34,7 +34,10 @@ func TestInstalledRecipientRetirementUsesAuthenticatedSparsePredecessorSlot(t *t
 			t.Fatal("physical predecessor slot/row changed at custody")
 		}
 	})
-	if result.Result.Outcome != ObservedCurrent || !called || f.open(t, ctx).recipientRecord(reader) != nil {
+	closed := f.open(t, ctx)
+	remainingSlot, remaining := closed.selectedRecipientSlot(selected.admission.recipient)
+	if result.Result.Outcome != ObservedCurrent || !called || closed.recipientRecord(reader) != nil ||
+		closed.root.RecipientCount != 1 || remaining == nil || remainingSlot != 0 {
 		t.Fatal("actual sparse retirement did not select", result.Result)
 	}
 }

@@ -156,7 +156,7 @@ var componentEstimates = map[string]float64{
 	"TestInstalledRecipientRetirementRefreshesGeneratedMembershipAndPreservesParkedWork": 4,
 	"TestInstalledApplyPreservedRetirementDutyKeepsSuccessfulReceipt":                    2,
 	"TestInstalledApplyRegistryAndGeneratedGrantPreserveParkedRetainedWork":              3,
-	"TestInstalledApplyUnassignedCreationDisplayAndRepeatSurviveColdOpen":                5,
+	"TestInstalledApplyUnassignedCreationDisplayAndRepeatSurviveColdOpen":                4,
 	"TestInstalledGeneratedSecretRekeyPreservesParkedRetainedWork":                       3,
 	"TestInstalledGeneratedTerminalApplyOwnsFactsBeforeSelectionReturns":                 2,
 	"TestInstalledGeneratedPassiveContinuationDoesNotOwnEarlierSelection":                4,
