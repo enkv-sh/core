@@ -32,6 +32,10 @@ func (o *InstalledGeneratedOwner) InvokeProducer(ctx context.Context, locator, a
 	return o.owner.InvokeProducer(ctx, locator, authority)
 }
 
+func (o *InstalledGeneratedOwner) RefuseResultPipe(observe func()) {
+	privatecrypto.TestRefuseGeneratedResultPipe(o.runtime, observe)
+}
+
 func (o *InstalledGeneratedOwner) Close() {
 	if o != nil {
 		o.once.Do(func() { o.owner.Close(); o.runtime.Close() })

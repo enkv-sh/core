@@ -763,7 +763,7 @@ func (r *Runtime) invokeGeneratedProducerAdmission(ctx context.Context, id, loca
 
 	if owner.process != nil {
 		var code contract.CryptoResultCode
-		returned, code = invokeGeneratedProcess(owner.ctx, owner.process, owner.command, owner.intent)
+		returned, code = invokeGeneratedProcess(r.openResultPipe, owner.ctx, owner.process, owner.command, owner.intent)
 		out.executableCleanupFailed = returned.executableCleanupFailed
 		settled = returned.settled
 		if code != contract.CryptoSuccess {

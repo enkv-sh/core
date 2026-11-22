@@ -149,7 +149,7 @@ func TestGeneratedLocalProcessFailureDistinguishesEmptyAndTruncatedResult(t *tes
 			waits := 0
 			launcher := telemetryProcessLauncher{implementation: contract.GeneratorImplementation{Schema: 2}, commandID: commandID,
 				omitResult: tc.raw == nil, rawResult: tc.raw, status: tc.status, noStatus: tc.status == (protocol.Status{}), waitErr: tc.waitErr, waits: &waits}
-			out, code := invokeGeneratedProcess(context.Background(), launcher, command, []byte{0, 1})
+			out, code := invokeGeneratedProcess(os.Pipe, context.Background(), launcher, command, []byte{0, 1})
 			if code != contract.CryptoCustodyUnavailable || out.stage != tc.stage || out.category != tc.category || waits != 1 || len(out.Secret) != 0 || !reflect.DeepEqual(out.Facts, contract.GeneratorSafeFacts{}) {
 				t.Fatal("local intake lost its exact joined failure", code, out.stage, out.category, waits)
 			}
@@ -209,7 +209,7 @@ func TestGeneratedProcessTelemetryRetainsObservedProviderOutcome(t *testing.T) {
 				if enabled {
 					ctx = telemetry.WithCapability(ctx, telemetry.NewCapability(nil, recorder))
 				}
-				out, code := invokeGeneratedProcess(ctx, launcher, command, []byte("Private_intent_sentinel"))
+				out, code := invokeGeneratedProcess(os.Pipe, ctx, launcher, command, []byte("Private_intent_sentinel"))
 				if code != contract.CryptoSuccess || out.Facts.Disposition != test.disposition || out.Facts.Reason != test.reason ||
 					!bytes.Equal(out.Facts.ProviderFacts, facts.ProviderFacts) || !bytes.Equal(out.Secret, result.Value) {
 					t.Fatal("telemetry changed the returned provider observation")
@@ -259,7 +259,7 @@ func TestGeneratedProcessTelemetryRetainsObservedProviderOutcome(t *testing.T) {
 			}
 			recorder := telemetry.NewRecorder()
 			ctx := telemetry.WithCapability(context.Background(), telemetry.NewCapability(nil, recorder))
-			out, code := invokeGeneratedProcess(ctx, launcher, command, nil)
+			out, code := invokeGeneratedProcess(os.Pipe, ctx, launcher, command, nil)
 			if code != contract.CryptoCustodyUnavailable || out.Facts.Disposition != 0 || len(out.Secret) != 0 {
 				t.Fatal("unbound process response was accepted")
 			}
@@ -310,7 +310,7 @@ func TestGeneratedProcessTelemetryCoversRefusalAndResultIntake(t *testing.T) {
 				launcher.startFailure = errors.New("private-error-sentinel")
 			}
 			command := generatedProcessFixtureCommand(t, contract.GeneratorLifecycleManaged, contract.GeneratorActionCreate)
-			out, code := invokeGeneratedProcess(ctx, launcher, command, []byte("private-intent-sentinel"))
+			out, code := invokeGeneratedProcess(os.Pipe, ctx, launcher, command, []byte("private-intent-sentinel"))
 			if code != contract.CryptoCustodyUnavailable {
 				t.Fatalf("process refusal changed: %v", code)
 			}
@@ -397,7 +397,7 @@ func TestGeneratedProcessFailureGateAndEffect(t *testing.T) {
 			launcher := tc.launcher
 			launcher.commandID = sha256.Sum256([]byte("command"))
 			launcher.waits = &waits
-			out, code := invokeGeneratedProcess(context.Background(), launcher, command, nil)
+			out, code := invokeGeneratedProcess(os.Pipe, context.Background(), launcher, command, nil)
 			if code != contract.CryptoCustodyUnavailable || out.stage != tc.stage || out.category != tc.category ||
 				out.effect != generatedEffectUnknown || !reflect.DeepEqual(out.Facts, contract.GeneratorSafeFacts{}) || len(out.Secret) != 0 || waits != 1 {
 				t.Fatalf("failure gate or join changed: code=%v stage=%q category=%q effect=%q waits=%d", code, out.stage, out.category, out.effect, waits)
@@ -423,7 +423,7 @@ func TestGeneratedProcessFailureGateAndEffect(t *testing.T) {
 				waits := 0
 				launcher := telemetryProcessLauncher{commandID: sha256.Sum256([]byte("complete create command")), resultBody: body,
 					waitErr: &os.PathError{Op: "remove", Path: "private-generated-cleanup-path", Err: errors.New("private-generated-cleanup-error")}, waits: &waits}
-				out, code := invokeGeneratedProcess(ctx, launcher, command, []byte("private complete-create intent"))
+				out, code := invokeGeneratedProcess(os.Pipe, ctx, launcher, command, []byte("private complete-create intent"))
 				records := recorder.Drain(make([]telemetry.DiagnosticRecord, 0, 16))
 				t.Logf("complete_create=true status_success=true waits=%d code=%v stage=%q category=%q effect=%q secret_returned=%t", waits, code, out.stage, out.category, out.effect, len(out.Secret) != 0)
 				if code != contract.CryptoCustodyUnavailable || out.stage != generatedFailureWait || out.category != generatedFailureUnavailable ||
@@ -461,7 +461,7 @@ func TestGeneratedProcessFailureGateAndEffect(t *testing.T) {
 		}
 	})
 	command.DeadlineUnixMillis = uint64(time.Now().Add(-time.Second).UnixMilli())
-	out, code := invokeGeneratedProcess(context.Background(), telemetryProcessLauncher{}, command, nil)
+	out, code := invokeGeneratedProcess(os.Pipe, context.Background(), telemetryProcessLauncher{}, command, nil)
 	if code != contract.CryptoExpired || out.stage != generatedFailureDeadline || out.category != generatedFailureExpired || out.effect != generatedEffectNoSend {
 		t.Fatal("pre-start deadline did not retain proved no-send")
 	}
@@ -533,7 +533,7 @@ func TestGeneratedResultIntakeCancellationOwnsReader(t *testing.T) {
 				}
 			})
 			go func() {
-				out, code := invokeGeneratedProcessOwned(ctx, launcher, command, command.Intent)
+				out, code := invokeGeneratedProcessOwned(os.Pipe, ctx, launcher, command, command.Intent)
 				done <- result{out, code}
 			}()
 			select {
@@ -608,11 +608,45 @@ func TestGeneratedResultPipeHelper(t *testing.T) {
 }
 
 // full_only: false
+func TestGeneratedPipeRefusalSettlesOnlyLiveLocalWork(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		mode    contract.GeneratorLifecycleMode
+		cancel  bool
+		code    contract.CryptoResultCode
+		settled bool
+	}{
+		{"local", contract.GeneratorLifecycleNone, false, contract.CryptoCustodyUnavailable, true},
+		{"managed", contract.GeneratorLifecycleManaged, false, contract.CryptoCustodyUnavailable, false},
+		{"cancelled local", contract.GeneratorLifecycleNone, true, contract.CryptoCancelled, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			command := generatedProcessFixtureCommand(t, tc.mode, contract.GeneratorActionCreate)
+			open := func() (*os.File, *os.File, error) {
+				if tc.cancel {
+					cancel()
+				}
+				return nil, nil, os.ErrPermission
+			}
+			// The embedded nil launcher panics if Start is ever called.
+			launcher := struct{ generatorhost.Launcher }{}
+			out, code := invokeGeneratedProcess(open, ctx, launcher, command, nil)
+			if code != tc.code || out.category != generatedCategoryForCode(tc.code) || out.stage != generatedFailurePipe ||
+				out.effect != generatedEffectNoSend || out.settled != tc.settled || len(out.Secret) != 0 {
+				t.Fatal("unexpected result-pipe refusal", code, out.stage, out.category, out.effect, out.settled)
+			}
+		})
+	}
+}
+
+// full_only: false
 func TestGeneratedStartFailureWithReturnedRunAlwaysJoinsWithoutQualification(t *testing.T) {
 	command := generatedProcessFixtureCommand(t, contract.GeneratorLifecycleManaged, contract.GeneratorActionCreate)
 	cancels := 0
 	launcher := telemetryProcessLauncher{startFailure: &os.PathError{Op: "start", Path: "private", Err: os.ErrNotExist}, startRun: telemetryProcessRun{cancels: &cancels}}
-	out, code := invokeGeneratedProcess(t.Context(), launcher, command, nil)
+	out, code := invokeGeneratedProcess(os.Pipe, t.Context(), launcher, command, nil)
 	if code != contract.CryptoCustodyUnavailable || cancels != 1 || out.effect != generatedEffectUnknown || out.executableCleanupFailed || out.settled || len(out.Secret) != 0 || !reflect.DeepEqual(out.Facts, contract.GeneratorSafeFacts{}) {
 		t.Fatal("failed Start did not join its returned owner or fabricated host proof")
 	}

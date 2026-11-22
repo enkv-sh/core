@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"os"
 	"sync"
 
 	"enkv.sh/core/contract"
@@ -12,6 +13,7 @@ import (
 var ErrAdmission = errors.New("private admission refused")
 
 type Runtime struct {
+	openResultPipe  generatedResultPipe
 	mu              sync.Mutex
 	id              contract.ID
 	family          contract.Family
@@ -38,7 +40,7 @@ func New(family contract.Family, routes []KeyAccess) (*Runtime, error) {
 	if !family.Valid() || len(routes) > contract.CryptoMaxRecipients+1 {
 		return nil, ErrAdmission
 	}
-	r := &Runtime{family: family, routes: make(map[contract.ID]KeyAccess, len(routes)), generatedInputs: new(generatedInputOwner)}
+	r := &Runtime{openResultPipe: os.Pipe, family: family, routes: make(map[contract.ID]KeyAccess, len(routes)), generatedInputs: new(generatedInputOwner)}
 	for _, route := range routes {
 		if route == nil || route.Family() != family || route.CredentialRoute().IsZero() {
 			return nil, ErrAdmission

@@ -18,7 +18,8 @@ import (
 )
 
 type installedLocalAuthor struct {
-	config custody.GeneratedProcessConfig
+	config           custody.GeneratedProcessConfig
+	refuseResultPipe func()
 }
 
 func installedLocalPublicRoot(t testing.TB) string {
@@ -147,6 +148,9 @@ func installedLocalEngineWithRecipients(t testing.TB, ctx context.Context, f ins
 			base, err := wrap("producer", owner, err)
 			if err != nil {
 				return nil, err
+			}
+			if author.refuseResultPipe != nil {
+				owner.RefuseResultPipe(author.refuseResultPipe)
 			}
 			failure := f.keys.InstalledGeneratedLocalFailure(owner)
 			producer := &InstalledGeneratedProducerCustody{InstalledGeneratedCustody: *base, InvokeProducer: owner.InvokeProducer}

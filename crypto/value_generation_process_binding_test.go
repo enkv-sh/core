@@ -2,6 +2,7 @@ package crypto
 
 import (
 	"context"
+	"os"
 	"reflect"
 	"testing"
 
@@ -38,7 +39,7 @@ func TestGeneratedNativeFactsBindCompleteAdmittedCommand(t *testing.T) {
 			defer clear(body)
 			waits := 0
 			launcher := telemetryProcessLauncher{commandID: protocol.ID(consumerID("binding command")), resultBody: body, status: protocol.Status{Stage: protocol.StatusStageReturn, Category: protocol.StatusOK}, waits: &waits}
-			out, code := invokeGeneratedProcess(context.Background(), launcher, command, command.Intent)
+			out, code := invokeGeneratedProcess(os.Pipe, context.Background(), launcher, command, command.Intent)
 			defer clear(out.Secret)
 			if name == "exact" {
 				if code != contract.CryptoSuccess || len(out.Secret) != len(value) || waits != 1 {

@@ -63,11 +63,11 @@ func (r *Runtime) invokeGeneratedProducer(ctx context.Context, id, locator, auth
 	return out
 }
 
-func invokeGeneratedProcess(ctx context.Context, launcher generatorhost.Launcher, command contract.GeneratedProducerCommand, intent []byte) (generatedProducerReturn, contract.CryptoResultCode) {
+func invokeGeneratedProcess(openPipe generatedResultPipe, ctx context.Context, launcher generatorhost.Launcher, command contract.GeneratedProducerCommand, intent []byte) (generatedProducerReturn, contract.CryptoResultCode) {
 	call := telemetry.StartWithDetails(ctx, telemetry.ProviderCrypto, telemetry.OpCryptoGeneratedProcess,
 		generatedAttemptDetails(command.AttemptID))
 	ctx = telemetry.CallContext(ctx, call)
-	out, code := invokeGeneratedProcessOwned(ctx, launcher, command, intent)
+	out, code := invokeGeneratedProcessOwned(openPipe, ctx, launcher, command, intent)
 	if code != contract.CryptoSuccess || out.Facts.Disposition != contract.GeneratorDispositionOwnedUnusableCreate && out.Facts.Disposition != contract.GeneratorDispositionUnknown {
 		finishCryptoCall(call, code)
 		return out, code

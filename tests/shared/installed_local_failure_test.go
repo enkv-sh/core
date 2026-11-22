@@ -41,11 +41,16 @@ func TestInstalledLocalGeneratorJoinedEntropyFailureHasNoRemoteOwner(t *testing.
 		{"cancel after failure claim", "cancel after failure claim", unavailable, contract.GeneratorFailureUnavailable},
 		{"failure CAS lost-before", "failure CAS lost-before", unavailable, contract.GeneratorFailureUnavailable},
 		{"failure CAS lost-after", "failure CAS lost-after", unavailable, contract.GeneratorFailureUnavailable},
+		{"result pipe unavailable", "failure CAS lost-after", unavailable, contract.GeneratorFailureUnavailable},
 		{"invalid callback", "none", invalid, contract.GeneratorFailureInvalid},
 		{"cancelled callback", "none", cancelled, contract.GeneratorFailureCancelled},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			author, fault := tc.author, tc.fault
+			var allocations atomic.Int32
+			if tc.name == "result pipe unavailable" {
+				author.refuseResultPipe = func() { allocations.Add(1) }
+			}
 			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
 			defer cancel()
 			f := newInstalledApplyTestFixture(t, ctx, contract.GCP, false)
@@ -53,6 +58,18 @@ func TestInstalledLocalGeneratorJoinedEntropyFailureHasNoRemoteOwner(t *testing.
 			trust, ok := underlyingAdmittedFixtureTrust(f.env.Trust)
 			if !ok {
 				t.Fatal("actual admitted trust observer unavailable")
+			}
+			if author.refuseResultPipe != nil {
+				initial := []ApplyEntryInput{{Name: "prior", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain,
+					Recipients: []contract.ID{f.selected.admission.recipient}, InputBytes: []byte("previous"),
+					InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw}}
+				engine := f.engine(t, f.selected, initial, nil)
+				before := engine.Apply(ctx, testID("before result pipe failure"), initial)
+				engine.Close()
+				if before.Result.Outcome != ObservedCurrent {
+					t.Fatal("select predecessor", before.Result)
+				}
+				f.selected = f.open(t, ctx)
 			}
 			beforeEntries := make(map[uint16]contract.ID)
 			for _, row := range f.selected.root.Names {
@@ -192,6 +209,38 @@ func TestInstalledLocalGeneratorJoinedEntropyFailureHasNoRemoteOwner(t *testing.
 				}
 				if a.record.State != wantState || wantState == contract.GeneratedEffectFailedTerminal && a.record.FailureReason != tc.reason {
 					t.Fatal("cold failure readback does not match actual selected CAS outcome")
+				}
+			}
+			if author.refuseResultPipe != nil {
+				resumed := installedLocalEngine(t, readctx, f, cold, input, author, &admissions)
+				final := resumed.Continue(readctx, testID("resume local pipe failure"), got.OperationID)
+				resumed.Close()
+				after := f.open(t, readctx)
+				receipt, err := contract.InspectCompactMutationReceipt(final.Receipt)
+				if err != nil || final.Result.Outcome != ObservedCurrent || final.OperationID != got.OperationID || receipt.OperationID != got.OperationID ||
+					receipt.StateResult != contract.ReceiptStateEffectTerminalFailure || receipt.CanonicalOutcome != contract.ReceiptCanonicalNotSelected ||
+					receipt.EffectSummary != contract.ReceiptEffectFailed || receipt.SummaryCounts[contract.ReceiptSummaryFailureCount] != 1 ||
+					!after.root.Generated.ActiveOwner.IsZero() || len(after.root.Names) != len(beforeEntries) || admissions != 1 || allocations.Load() != 1 {
+					t.Fatal("recorded pipe refusal did not finalize on cold continuation", final.Result, admissions, allocations.Load(), err)
+				}
+				retained, read := after.MutationReceipt(readctx, final.OperationID)
+				if read.Outcome != ObservedCurrent || !bytes.Equal(retained, final.Receipt) {
+					t.Fatal("cold receipt differs from the completed operation", read)
+				}
+				for _, row := range after.root.Names {
+					digest, err := contract.PublicValueEntryDigest(f.env.Domain, row.Slot, *after.valueEntry(row.Slot))
+					if err != nil || digest != beforeEntries[row.Slot] {
+						t.Fatal("cold Final changed an existing entry", err)
+					}
+				}
+				nextInput := []ApplyEntryInput{{Name: "next", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain,
+					Recipients: []contract.ID{after.admission.recipient}, InputBytes: []byte("next"),
+					InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw}}
+				next := f.engine(t, after, nextInput, nil)
+				progress := next.Apply(readctx, testID("after result pipe refusal"), nextInput)
+				next.Close()
+				if progress.Result.Outcome != ObservedCurrent || len(progress.Receipt) == 0 {
+					t.Fatal("domain did not accept the next mutation", progress.Result)
 				}
 			}
 			purpose13 := 0

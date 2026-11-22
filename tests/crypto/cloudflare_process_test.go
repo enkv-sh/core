@@ -238,7 +238,7 @@ func TestCloudflareTaggedProcessCrossesHostAndCryptoOnce(t *testing.T) {
 			test.scenario.method, test.scenario.path, test.scenario.request = http.MethodPost, createPath, requestBody
 			before := serverState.set(test.scenario)
 			command := cloudflareProcessCommand(implementation, intent)
-			returned, code := invokeGeneratedProcess(context.Background(), cloudflareProcessLauncher(t, path, installed), command, intent)
+			returned, code := invokeGeneratedProcess(os.Pipe, context.Background(), cloudflareProcessLauncher(t, path, installed), command, intent)
 			defer clear(returned.Secret)
 			if code != contract.CryptoSuccess || returned.Facts.Disposition != test.disposition || returned.Facts.Reason != test.reason ||
 				returned.Facts.ResourceContractID != command.ResourceContractID || returned.Facts.LifecycleMode != command.LifecycleMode || returned.Facts.RequestDigest != command.RequestDigest || returned.Facts.IntentDigest != command.IntentDigest ||
@@ -263,7 +263,7 @@ func TestCloudflareTaggedProcessCrossesHostAndCryptoOnce(t *testing.T) {
 	t.Run("delete acknowledgement", func(t *testing.T) {
 		beforeCreate := serverState.set(cloudflareProcessScenario{body: complete, method: http.MethodPost, path: createPath, request: requestBody})
 		create := cloudflareProcessCommand(implementation, intent)
-		original, code := invokeGeneratedProcess(context.Background(), cloudflareProcessLauncher(t, path, installed), create, intent)
+		original, code := invokeGeneratedProcess(os.Pipe, context.Background(), cloudflareProcessLauncher(t, path, installed), create, intent)
 		defer clear(original.Secret)
 		if code != contract.CryptoSuccess || original.Facts.Disposition != 1 || original.Facts.Reason != 0 || string(original.Secret) != cloudflareSecret ||
 			!bytes.Equal(original.Facts.Target, []byte(cloudflareAccount)) || !bytes.Equal(original.Facts.ResourceData, []byte(cloudflareTokenID)) || serverState.requests.Load() != beforeCreate+1 {
@@ -288,7 +288,7 @@ func TestCloudflareTaggedProcessCrossesHostAndCryptoOnce(t *testing.T) {
 			t.Fatal(err)
 		}
 		command.RequestDigest = cloudflareRequestDigest(2, intent, target)
-		returned, code := invokeGeneratedProcess(context.Background(), cloudflareProcessLauncher(t, path, installed), command, intent)
+		returned, code := invokeGeneratedProcess(os.Pipe, context.Background(), cloudflareProcessLauncher(t, path, installed), command, intent)
 		defer clear(returned.Secret)
 		if code != contract.CryptoSuccess || returned.Facts.Disposition != 4 || returned.Facts.Reason != 0 ||
 			!bytes.Equal(returned.Facts.Target, []byte(cloudflareAccount)) || !bytes.Equal(returned.Facts.ResourceData, []byte(cloudflareTokenID)) ||
@@ -301,7 +301,7 @@ func TestCloudflareTaggedProcessCrossesHostAndCryptoOnce(t *testing.T) {
 		before := serverState.set(cloudflareProcessScenario{body: complete, method: http.MethodPost, path: createPath, request: requestBody})
 		command := cloudflareProcessCommand(implementation, intent)
 		launcher := changedCloudflareRequestLauncher{cloudflareProcessLauncher(t, path, installed)}
-		returned, code := invokeGeneratedProcess(context.Background(), launcher, command, intent)
+		returned, code := invokeGeneratedProcess(os.Pipe, context.Background(), launcher, command, intent)
 		defer clear(returned.Secret)
 		if code == contract.CryptoSuccess || !reflect.DeepEqual(returned.Facts, contract.GeneratorSafeFacts{}) || len(returned.Secret) != 0 || serverState.requests.Load() != before+1 {
 			t.Fatal("changed request digest became an accepted result or repeated the provider request", code, returned.Facts)
@@ -312,7 +312,7 @@ func TestCloudflareTaggedProcessCrossesHostAndCryptoOnce(t *testing.T) {
 		before := serverState.set(cloudflareProcessScenario{body: complete, method: http.MethodPost, path: createPath, request: requestBody})
 		command := cloudflareProcessCommand(implementation, intent)
 		command.IntentDigest[0] ^= 1
-		returned, code := invokeGeneratedProcess(context.Background(), cloudflareProcessLauncher(t, path, installed), command, intent)
+		returned, code := invokeGeneratedProcess(os.Pipe, context.Background(), cloudflareProcessLauncher(t, path, installed), command, intent)
 		defer clear(returned.Secret)
 		if code == contract.CryptoSuccess || !reflect.DeepEqual(returned.Facts, contract.GeneratorSafeFacts{}) || len(returned.Secret) != 0 || serverState.requests.Load() != before {
 			t.Fatal("changed intent digest reached provider or became a result", code, returned.Facts)

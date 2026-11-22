@@ -16,7 +16,9 @@ import (
 	"enkv.sh/telemetry"
 )
 
-func invokeGeneratedProcessOwned(ctx context.Context, launcher generatorhost.Launcher, command contract.GeneratedProducerCommand, intent []byte) (out generatedProducerReturn, code contract.CryptoResultCode) {
+type generatedResultPipe func() (*os.File, *os.File, error)
+
+func invokeGeneratedProcessOwned(openPipe generatedResultPipe, ctx context.Context, launcher generatorhost.Launcher, command contract.GeneratedProducerCommand, intent []byte) (out generatedProducerReturn, code contract.CryptoResultCode) {
 	out.effect = generatedEffectNoSend
 	if ctx == nil || launcher == nil {
 		out.stage, out.category = generatedFailureEntry, generatedFailureInvalid
@@ -53,10 +55,13 @@ func invokeGeneratedProcessOwned(ctx context.Context, launcher generatorhost.Lau
 		out.stage, out.category = generatedFailureDeadline, generatedCategoryForCode(code)
 		return out, code
 	}
-	reader, writer, err := os.Pipe()
+	reader, writer, err := openPipe()
 	if err != nil {
-		out.stage, out.category = generatedFailurePipe, generatedFailureUnavailable
-		return out, contract.CryptoCustodyUnavailable
+		code := processResultCode(ctx, deadline)
+		out.stage, out.category = generatedFailurePipe, generatedCategoryForCode(code)
+		// The result pipe is acquired before Start. No child or result exists to join.
+		out.settled = command.LifecycleMode == contract.GeneratorLifecycleNone && code == contract.CryptoCustodyUnavailable
+		return out, code
 	}
 	var readerCloseErr error
 	closeReader := sync.OnceFunc(func() { readerCloseErr = reader.Close() })

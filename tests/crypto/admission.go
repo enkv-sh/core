@@ -9,6 +9,7 @@ import (
 	"crypto/subtle"
 	"crypto/x509"
 	"io"
+	"os"
 	"time"
 
 	"enkv.sh/core/contract"
@@ -88,6 +89,14 @@ func TestAdmitGeneratedOriginalVerification(r *Runtime, q contract.CryptoGenerat
 
 func TestBindGeneratedCandidate(r *Runtime, ctx context.Context, id contract.ID, candidate TestGeneratedCandidate) contract.CryptoResultCode {
 	return r.bindGeneratedCandidate(ctx, id, candidate)
+}
+
+// TestRefuseGeneratedResultPipe installs a fault on a new, unpublished producer fork.
+func TestRefuseGeneratedResultPipe(r *Runtime, observe func()) {
+	r.openResultPipe = func() (*os.File, *os.File, error) {
+		observe()
+		return nil, nil, ErrAdmission
+	}
 }
 
 func TestRetireGenerated(r *Runtime) { r.retireGenerated() }
