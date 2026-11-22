@@ -19,6 +19,24 @@ func stockFixtureLiteral(provider string) StockPluginFixture {
 
 // full_only: false
 func TestStockPluginFixtureRequiresExactReusableScope(t *testing.T) {
+	t.Run("retained-version-proof", func(t *testing.T) {
+		f := stockFixtureLiteral("aws")
+		f.Purpose = "stock-plugin-retirement-proof"
+		f.Bucket = "enkv-123456789012-pa-0123456789abcdef0123456789abcdef"
+		if f.Validate() != nil {
+			t.Fatal("dedicated AWS retirement fixture refused")
+		}
+		for _, other := range []StockPluginFixture{stockFixtureLiteral("gcp"), stockFixtureLiteral("aws")} {
+			other.Purpose = f.Purpose
+			if other.Validate() == nil {
+				t.Fatal("version proof accepted outside its dedicated AWS bucket")
+			}
+		}
+		f.Account = "210987654321"
+		if f.Validate() == nil {
+			t.Fatal("another account acquired the version proof fixture")
+		}
+	})
 	for _, provider := range []string{"aws", "gcp"} {
 		t.Run(provider, func(t *testing.T) {
 			good := stockFixtureLiteral(provider)

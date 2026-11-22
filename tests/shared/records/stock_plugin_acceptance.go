@@ -12,6 +12,7 @@ import (
 	"enkv.sh/sdk/artifact/credentialroute"
 )
 
+const StockRetirementProofPurpose = "stock-plugin-retirement-proof"
 const StockPluginScenario = "public-configuration.plugin-contracts/plugin_contracts"
 const StockPluginEvidenceVersion uint16 = 1
 const MaximumStockPluginEvidenceBytes = 256 << 10
@@ -36,9 +37,18 @@ type StockPluginFixture struct {
 var stockFixtureLabel = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$`)
 
 func (v StockPluginFixture) Validate() error {
-	if v.Schema != 1 || v.Purpose != "stock-plugin-acceptance" || !validHex(v.FixtureID, 16) ||
+	if v.Schema != 1 || !validHex(v.FixtureID, 16) ||
 		!stockFixtureLabel.MatchString(v.Bucket) || !strings.HasSuffix(v.Bucket, "-pa-"+v.FixtureID) ||
 		v.Region == "" || len(v.Region) > 64 || strings.ContainsAny(v.Region, "/\\\x00 \t\n") {
+		return errRecord
+	}
+	switch v.Purpose {
+	case StockRetirementProofPurpose:
+		if v.Provider != "aws" || v.Bucket != "enkv-"+v.Account+"-pa-"+v.FixtureID {
+			return errRecord
+		}
+	case "stock-plugin-acceptance":
+	default:
 		return errRecord
 	}
 	switch v.Provider {

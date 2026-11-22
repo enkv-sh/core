@@ -54,6 +54,16 @@ func TestStockPluginFixtureEnvironmentRefusesOwnerAndCredentialRouteDrift(t *tes
 			if err := validateEnvironment(&good, root); err != nil {
 				t.Fatal("correct explicit fixture environment refused", err)
 			}
+			if provider == "aws" {
+				proof := load()
+				f := proof.PluginAcceptance
+				f.Purpose = records.StockRetirementProofPurpose
+				f.Bucket = "enkv-" + f.Account + "-pa-" + f.FixtureID
+				proof.Resource.Settings["bucket"] = f.Bucket
+				if err := validateEnvironment(&proof, root); err != nil {
+					t.Fatal("retirement proof fixture refused at packet preparation", err)
+				}
+			}
 			for _, damage := range []struct {
 				name   string
 				change func(*environmentFile)

@@ -47,7 +47,7 @@ func stockAWSFixture(input liveRunInput) (records.StockPluginFixture, error) {
 		return records.StockPluginFixture{}, errInventory
 	}
 	f, s := input.PublicConfiguration.Stock.Fixture, input.Settings
-	if f.Validate() != nil || f.Provider != "aws" || s.Provider != f.Provider || s.Bucket != f.Bucket ||
+	if f.Validate() != nil || f.Purpose != "stock-plugin-acceptance" || f.Provider != "aws" || s.Provider != f.Provider || s.Bucket != f.Bucket ||
 		s.Account != f.Account || s.Region != f.Region || input.RecoveryMode != "enabled" ||
 		!records.ValidRunID(input.RunID) || !strings.HasPrefix(input.Prefix, "enkv-test/"+input.RunID+"/") ||
 		!slices.Equal(input.Scenarios, []string{records.StockPluginScenario}) {
