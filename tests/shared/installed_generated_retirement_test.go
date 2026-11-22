@@ -136,11 +136,42 @@ func installedGeneratedRetirementEngine(t testing.TB, ctx context.Context, f ins
 	return installedGeneratedTestEngine(t, ctx, f, selected, input, currentApplyRecipients(selected.registry()), callbacks)
 }
 
+func checkInstalledDeleteRequiresAdoption(t *testing.T, ctx context.Context, f installedApplyTestFixture, selected *StateSession, effects func() (int, []string), run func(*InstalledApply) PublicApplyResult) {
+	t.Helper()
+	callbacks := installedGeneratedRetirementCallbacks(t, f, f.env.GeneratedProcess)
+	callbacks.AdmitAdoption = nil
+	reservations := 0
+	callbacks.AdmitReservation = func(context.Context, contract.CryptoGeneratedCompareRequest, contract.ControlCore, contract.GeneratedReservationInput, time.Time) (*InstalledGeneratedCustody, error) {
+		reservations++
+		return nil, contract.ErrRecord
+	}
+	store := requireAdmittedMemoryStore(t, f.env.Store)
+	trust, ok := underlyingAdmittedFixtureTrust(f.env.Trust)
+	if !ok {
+		t.Fatal("missing admitted trust observer")
+	}
+	beforeHEAD := bytes.Clone(store.objects[store.desc.HeadKey].Body)
+	beforeCreates, beforeCAS, beforeSigns := store.creates, store.cas, trust.signs
+	beforeCalls, beforeDeletes := effects()
+	engine := installedGeneratedRetirementEngine(t, ctx, f, selected, callbacks)
+	out := run(engine)
+	engine.Close()
+	afterCalls, afterDeletes := effects()
+	if out.Result != refused(AdmissionInvalid) || out.Generated != nil || out.Cleanup != nil || len(out.Receipt) != 0 ||
+		reservations != 0 || store.creates != beforeCreates || store.cas != beforeCAS || trust.signs != beforeSigns ||
+		beforeCalls != afterCalls || !reflect.DeepEqual(beforeDeletes, afterDeletes) || !bytes.Equal(store.objects[store.desc.HeadKey].Body, beforeHEAD) {
+		t.Fatal("missing adoption reached deletion admission or changed selected state", out.Result, reservations, store.creates-beforeCreates, store.cas-beforeCAS)
+	}
+}
+
 // full_only: false
 func TestInstalledGeneratedRetirementAcknowledgesOnlyExactOldTarget(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
 	defer cancel()
 	f, selected, current, effects := installedGeneratedRetirementFixture(t, ctx, "acknowledged")
+	checkInstalledDeleteRequiresAdoption(t, ctx, f, selected, effects, func(engine *InstalledApply) PublicApplyResult {
+		return engine.RetireGenerated(ctx, testID("retirement without result adoption"), GeneratedRetirementRequest{DutyID: current.Generated.RetiringDutyID})
+	})
 	callbacks := installedGeneratedRetirementCallbacks(t, f, f.env.GeneratedProcess)
 	engine := installedGeneratedRetirementEngine(t, ctx, f, selected, callbacks)
 	result := engine.RetireGenerated(ctx, testID("exact old generated retirement"), GeneratedRetirementRequest{DutyID: current.Generated.RetiringDutyID})

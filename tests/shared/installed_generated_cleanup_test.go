@@ -701,6 +701,9 @@ func TestInstalledGeneratedCleanupUsesOneFencedDeleteTargetAndContinuationCannot
 		t.Fatal("exact qualified risk acceptance", accepted.Result)
 	}
 	selected = f.open(t, ctx)
+	checkInstalledDeleteRequiresAdoption(t, ctx, f, selected, effects, func(engine *InstalledApply) PublicApplyResult {
+		return engine.CleanupGenerated(ctx, testID("cleanup without result adoption"))
+	})
 	callbacks := installedGeneratedRetirementCallbacks(t, f, f.env.GeneratedProcess)
 	cleaner := installedGeneratedRetirementEngine(t, ctx, f, selected, callbacks)
 	got := cleaner.CleanupGenerated(ctx, generatedVectorID(243))

@@ -12,7 +12,7 @@ import (
 
 func (s *StateSession) prepareInstalledGeneratedDelete(ctx context.Context, i ApplyInstallation, plan *generatedPlan, deadline time.Time, capture func(*generatedReservation, contract.ID) error) (*generatedPreparation, *InstalledGeneratedProducerCustody, Result) {
 	if plan == nil || plan.phase == nil || i.Generated == nil || i.Generated.AdmitReservation == nil ||
-		i.Generated.AdmitProducer == nil || i.Generated.RequestDigest == nil || len(plan.input.graph.Lineages) != 1 {
+		i.Generated.AdmitProducer == nil || i.Generated.AdmitAdoption == nil || i.Generated.RequestDigest == nil || len(plan.input.graph.Lineages) != 1 {
 		return nil, nil, refused(AdmissionInvalid)
 	}
 	work, err := s.selectedGeneratedWork(ctx)
