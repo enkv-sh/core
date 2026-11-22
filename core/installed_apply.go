@@ -16,6 +16,7 @@ import (
 // control is checked against the authenticated current selection. The desired
 // registry is a separately admitted proposal, never key replacement authority.
 type ApplyInstallation struct {
+	retirementReturn         contract.RetirementReturnProof
 	Maintenance              *MaintenanceInstallation
 	ExpectedDomain           contract.ID
 	ExpectedStore            contract.Descriptor

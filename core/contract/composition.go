@@ -10,14 +10,14 @@ import (
 
 const CoreVersion = "v0.0.0"
 const EngineVersion = "state-session/v9"
-const FormatVersion = "canonical-state/v15"
+const FormatVersion = "canonical-state/v16"
 const ComponentContractVersion = "store-trust-crypto/v9"
 const CryptoVersion = "supplied-secret/v4"
 const CryptoProfile = "rsa3072-oaep-sha256-aes256gcm-hmacsha256/v2"
 
 // Static metadata changes invalidate admission even when persisted structures
 // retain their schema number. These constants describe the selected assembly.
-const supportMetadata = "go=1.27.0\x00crypto=" + CryptoVersion + "\x00profile=" + CryptoProfile + "\x00rsa=3072,e65537,oaep-sha256,mgf1-sha256,label-empty\x00value=aes256-gcm,key32,nonce12,tag16\x00key-check=hmac-sha256\x00packets=value-key-v2,genesis-kek-probe-v1\x00aws-sdk=1.39.0,kms=1.45.2,smithy=1.23.0\x00gcp-api=0.222.0,auth=0.14.1\x00selectors=aws-exact-key-arn,gcp-exact-crypto-key-version\x00fallback=none"
+const supportMetadata = "go=1.27.0\x00crypto=" + CryptoVersion + "\x00profile=" + CryptoProfile + "\x00rsa=3072,e65537,oaep-sha256,mgf1-sha256,label-empty\x00value=aes256-gcm,key32,nonce12,tag16\x00key-check=hmac-sha256\x00packets=value-key-v2,genesis-kek-probe-v1\x00aws-sdk=1.39.0,kms=1.45.2,smithy=1.23.0\x00gcp-api=0.222.0,auth=0.14.1\x00selectors=aws-exact-key-arn,gcp-exact-crypto-key-version\x00fallback=none\x00retirement-return=p256-sha256-v1"
 
 func CryptoSupportID() ID { return Hash([]byte("ENKV/CRYPTO-SUPPORT/v2\x00" + supportMetadata)) }
 func CompatibilityID() ID {

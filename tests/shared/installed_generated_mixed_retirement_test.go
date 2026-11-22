@@ -65,7 +65,7 @@ func TestInstalledGeneratedRetirementKeepsMixedCurrentValues(t *testing.T) {
 		t.Fatal(err)
 	}
 	deadline, _ := ctx.Deadline()
-	plan, err := selected.installedGeneratedRetirementPlan(ctx, engine.installation, work, current.Generated.RetiringDutyID, deadline)
+	plan, err := selected.installedGeneratedRetirementPlan(ctx, engine.installation, work, current.Generated.RetiringDutyID, testID("private retirement proposal nonce"), deadline)
 	if err != nil {
 		t.Fatal("installed retirement plan refused current mixed set", err)
 	}

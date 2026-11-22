@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"path"
 	"reflect"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -316,6 +317,216 @@ func TestInstalledGeneratedRetirementContinuesLateOriginalWithoutAnotherSend(t *
 			if result.Result.Outcome != ObservedCurrent || result.Generated == nil || result.Generated.StateResult != "success" || result.OperationID != stopped.OperationID ||
 				creates != 2 || !reflect.DeepEqual(deletes, []string{"00000000000000000000000000000001"}) {
 				t.Fatal("cold retirement did not close only its original target", result, creates, deletes)
+			}
+		})
+	}
+}
+
+// full_only: false
+func TestInstalledActiveRetirementAcceptsSavedUnknownAfterParkingFailure(t *testing.T) {
+	for _, cut := range []string{"parking-cas", "parking-sign", "parking-read", "signer-replaced", "journal-unavailable", "journal-and-parking-unavailable"} {
+		t.Run(cut, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+			defer cancel()
+			f, selected, current, effects := installedGeneratedRetirementFixture(t, ctx, "unknown")
+			base := requireAdmittedMemoryStore(t, f.env.Store)
+			trust, ok := underlyingAdmittedFixtureTrust(f.env.Trust)
+			if !ok {
+				t.Fatal("fixture trust")
+			}
+			var terminalKey, noteKey string
+			store := &applyPreparationTestStore{Store: base, memory: base, read: base.Read, create: base.Create}
+			f.env.Store = store
+			callbacks := installedGeneratedRetirementCallbacks(t, f, f.env.GeneratedProcess)
+			admit := callbacks.AdmitProducer
+			var original contract.ID
+			callbacks.AdmitProducer = func(c context.Context, q contract.CryptoGeneratedCompareRequest, control contract.ControlCore, in contract.GeneratedProducerInput, row contract.GeneratorImplementation, deadline time.Time) (*InstalledGeneratedProducerCustody, error) {
+				owner, err := admit(c, q, control, in, row, deadline)
+				if err != nil {
+					return nil, err
+				}
+				invoke := owner.InvokeProducer
+				owner.InvokeProducer = func(c context.Context, locator, authority contract.ID) contract.GeneratedProducerResult {
+					result := invoke(c, locator, authority)
+					if result.Code != contract.CryptoSuccess || result.Facts.Disposition != contract.GeneratorDispositionUnknown || len(result.Record) != 0 {
+						t.Fatal("fixture did not return qualified bodyless Unknown")
+					}
+					original = in.Expected.Template.AttemptID
+					terminalKey, err = format.GeneratedResultKey(base.desc.Prefix, f.env.Domain, in.Expected.Template.InboxID)
+					if err != nil {
+						t.Fatal(err)
+					}
+					coordinate, err := contract.GeneratorRetirementAmbiguityID(in.Expected.Template.InboxID)
+					if err != nil {
+						t.Fatal(err)
+					}
+					noteKey, err = format.GeneratedResultKey(base.desc.Prefix, f.env.Domain, coordinate)
+					if err != nil {
+						t.Fatal(err)
+					}
+					switch cut {
+					case "parking-sign":
+						trust.corrupt = true
+					case "parking-read":
+						store.read = func(ctx context.Context, key string, limit uint32) contract.ReadResult {
+							if key == terminalKey {
+								return contract.ReadResult{Status: contract.ReadUnavailable, Reason: contract.ReasonAccess}
+							}
+							return base.Read(ctx, key, limit)
+						}
+					case "parking-cas", "signer-replaced":
+						base.casMode = "lost-before"
+					case "journal-unavailable", "journal-and-parking-unavailable":
+						if cut == "journal-and-parking-unavailable" {
+							base.casMode = "lost-before"
+						}
+						store.create = func(ctx context.Context, key string, body []byte) contract.WriteResult {
+							if key == noteKey {
+								return contract.WriteResult{Status: contract.WriteRefused, Reason: contract.ReasonAccess, NotSent: true}
+							}
+							return base.Create(ctx, key, body)
+						}
+					}
+					return result
+				}
+				return owner, nil
+			}
+			first := installedGeneratedRetirementEngine(t, ctx, f, selected, callbacks)
+			duty := current.Generated.RetiringDutyID
+			stopped := first.RetireGenerated(ctx, testID("retirement parking failed"), GeneratedRetirementRequest{DutyID: duty})
+			first.Close()
+			base.casMode = ""
+			store.read, store.create = base.Read, base.Create
+			trust.corrupt = false
+			cold := f.open(t, ctx)
+			if cut == "journal-unavailable" {
+				if stopped.Generated == nil || stopped.Generated.StateResult != "effect-unknown" || !cold.root.Generated.ActiveOwner.IsZero() || len(stopped.Diagnostics) == 0 {
+					t.Fatal("unavailable note blocked ordinary parking or hid Store failure", stopped.Result.Outcome)
+				}
+				_, del := effects()
+				if len(del) != 1 {
+					t.Fatal("parking sent another DELETE")
+				}
+				return
+			}
+			if original.IsZero() || stopped.OperationID.IsZero() || cold.root.Generated.ActiveOwner != stopped.OperationID {
+				t.Fatal("fixture lost active retirement")
+			}
+			if _, found, failure := cold.readGeneratedResult(ctx, original); found || failure.Outcome != 0 {
+				t.Fatal("Unknown occupied the terminal inbox")
+			}
+			if cut == "signer-replaced" {
+				env := syntheticAuthorityScenarioEnvironment(t, f.env)
+				actors := env.ReplacementActors(t, ctx, cold, 1, 1, contract.NormalSigningRole)
+				permit := admitAuthorityReplacement(t, cold, actors.Keys, actors.After, 1, contract.NormalSigningRole, 1, actors.Source)
+				candidate, prepared := cold.PrepareSuccession(ctx, permit, actors.Signers)
+				if candidate == nil || prepared.Outcome != ObservedCurrent {
+					t.Fatal("active retirement signer replacement", prepared)
+				}
+				f.admitted = deliverSuccessionBasis(t, candidate)
+				if result := cold.Select(ctx, candidate); result.Outcome != ObservedCurrent {
+					t.Fatal("select successor signer", result)
+				}
+				f.basis = f.admitted.admission.publicBasis()
+				cold = f.open(t, ctx)
+				actors.Activate(t, cold)
+				f.env.Trust = actors.Signers.NormalSuccessor
+			}
+			work := mustSelectedGeneratedWork(t, cold)
+			a := work.attempts[original]
+			reader := retirementEvidenceReader{cold.admission.store.Prefix, cold.storeRead}
+			if cut == "journal-and-parking-unavailable" {
+				recoverer := installedGeneratedRetirementEngine(t, ctx, f, cold, callbacks)
+				done := recoverer.AcceptGeneratedRetirementRisk(ctx, testID("missing origin evidence"), GeneratedRetirementRiskRequest{DutyID: duty, AttemptID: original})
+				recoverer.Close()
+				_, del := effects()
+				if done.Result.Outcome != AdmissionRefused || !bytes.Equal(f.open(t, ctx).body, cold.body) || len(del) != 1 {
+					t.Fatal("missing original became eligible")
+				}
+				return
+			}
+			saved, err := reader.load(ctx, work, a)
+			if err != nil || len(saved) == 0 {
+				t.Fatal("original evidence missing after parking failed", len(saved), err, stopped.Result, stopped.Diagnostics)
+			}
+			eligible, err := reader.activeRiskFacts(ctx, work, a)
+			if err != nil || !bytes.Equal(eligible, saved) {
+				t.Fatal("original evidence is ineligible", len(eligible), err)
+			}
+			if cut == "parking-cas" {
+				list, _ := installedGeneratedReaderFixture(t, f)
+				listed := list.List(ctx, testID("list saved active retirement"))
+				list.Close()
+				want := GeneratedNextAction{Command: "generated accept-retirement-risk", DutyID: duty, AttemptID: original}
+				if listed.View == nil || !slices.Contains(listed.View.NextActions, want) {
+					t.Fatal("GET-only list lost supported active risk action", listed.Result)
+				}
+				terminal := generatedRetirementResultFixture(t, cold, a, contract.GeneratorDispositionRetirementAcknowledged)
+				for _, packet := range [][]byte{terminal, {0}} {
+					store.read = func(ctx context.Context, key string, limit uint32) contract.ReadResult {
+						if key == terminalKey {
+							return contract.ReadResult{Status: contract.ReadOK, Body: packet}
+						}
+						return base.Read(ctx, key, limit)
+					}
+					seen, err := reader.activeRiskFacts(ctx, work, a)
+					if len(seen) != 0 || (err == nil) != bytes.Equal(packet, terminal) {
+						t.Fatal("terminal inbox precedence", len(seen), err)
+					}
+				}
+				store.read = func(ctx context.Context, key string, limit uint32) contract.ReadResult {
+					r := base.Read(ctx, key, limit)
+					if key == noteKey && r.Status == contract.ReadOK {
+						r.Body = bytes.Clone(r.Body)
+						r.Body[len(r.Body)-1] ^= 1
+					}
+					return r
+				}
+				invalid := installedGeneratedRetirementEngine(t, ctx, f, cold, callbacks)
+				refused := invalid.AcceptGeneratedRetirementRisk(ctx, testID("damaged retirement evidence"), GeneratedRetirementRiskRequest{DutyID: duty, AttemptID: original})
+				invalid.Close()
+				store.read = base.Read
+				if refused.Result.Outcome != IntegrityFailure || !bytes.Equal(f.open(t, ctx).body, cold.body) {
+					t.Fatal("damaged evidence released retirement")
+				}
+			}
+			if cut == "parking-read" {
+				cont := installedGeneratedRetirementEngine(t, ctx, f, cold, callbacks)
+				parked := cont.ContinueGeneratedRetirement(ctx, testID("continue saved retirement ambiguity"), GeneratedRetirementContinuationRequest{OperationID: stopped.OperationID})
+				cont.Close()
+				cold = f.open(t, ctx)
+				if !cold.root.Generated.ActiveOwner.IsZero() || parked.Generated == nil || parked.Generated.StateResult != "effect-unknown" {
+					t.Fatal("continue failed to park original Unknown", parked.Result.Outcome)
+				}
+			}
+			recoverer := installedGeneratedRetirementEngine(t, ctx, f, cold, installedGeneratedRetirementCallbacks(t, f, f.env.GeneratedProcess))
+			wrong := recoverer.AcceptGeneratedRetirementRisk(ctx, testID("another retirement attempt"), GeneratedRetirementRiskRequest{DutyID: duty, AttemptID: testID("unrelated attempt")})
+			if wrong.Result.Outcome != AdmissionRefused || !bytes.Equal(f.open(t, ctx).body, cold.body) {
+				t.Fatal("unrelated attempt affected retirement")
+			}
+			recoverer.Close()
+			recoverer = installedGeneratedRetirementEngine(t, ctx, f, cold, installedGeneratedRetirementCallbacks(t, f, f.env.GeneratedProcess))
+			done := recoverer.AcceptGeneratedRetirementRisk(ctx, testID("accept exact active retirement risk"), GeneratedRetirementRiskRequest{DutyID: duty, AttemptID: original})
+			recoverer.Close()
+			after := f.open(t, ctx)
+			creates, deletes := effects()
+			if done.Result.Outcome != ObservedCurrent || done.Generated == nil || done.Generated.StateResult != "possible-live-residue-accepted" || !done.Generated.Warnings.PossibleLiveResidue || len(done.Receipt) == 0 || !after.root.Generated.ActiveOwner.IsZero() || after.root.Generated.Hazards != 1 || creates != 2 || len(deletes) != 1 {
+				t.Fatal("restart lost the qualified Unknown", done.Result.Outcome, done.Result.Reason, after.root.Generated.Hazards, creates, len(deletes))
+			}
+			if cut == "parking-cas" {
+				closed := mustSelectedGeneratedWork(t, after)
+				marks, err := gcMarkSelected(closed.image, closed, after.admission.store)
+				id, coordErr := contract.GeneratorRetirementAmbiguityID(a.record.InboxID)
+				object := contract.StoreObjectIdentity{Namespace: contract.StoreResultObject, ObjectID: id}
+				note := base.Read(ctx, noteKey, contract.RetirementAmbiguityMaxLength)
+				_, marked := marks.objects[object]
+				if err != nil || coordErr != nil || marked || note.Status != contract.ReadOK || !gcObjectBytesValid(f.env.Domain, after.admission.store, object, note.Body) {
+					t.Fatal("released evidence is not eligible for ordinary GC", marked, err, coordErr)
+				}
+				object.ObjectID = a.record.InboxID
+				if gcObjectBytesValid(f.env.Domain, after.admission.store, object, note.Body) {
+					t.Fatal("GC confused evidence with the terminal inbox")
+				}
 			}
 		})
 	}

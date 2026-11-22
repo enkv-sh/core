@@ -410,3 +410,26 @@ func TestGCMarkingMixedGraphProtectsFutureLocalCreateInbox(t *testing.T) {
 		}
 	}
 }
+
+// full_only: false
+func TestGCProtectsActiveRetirementAmbiguityBeforeItExists(t *testing.T) {
+	active, attempt, duty, _ := generatedEnteredRetirementState(t, false)
+	coord, err := contract.GeneratorRetirementAmbiguityID(attempt.record.InboxID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	identity := contract.StoreObjectIdentity{Namespace: contract.StoreResultObject, ObjectID: coord}
+	key := gcObjectTestKey(t, active.admission.store, active.root.Domain, identity)
+	if r := active.store.Read(t.Context(), key, contract.StoreObjectLimit(identity)); r.Status != contract.ReadMissing {
+		t.Fatal("fixture contains retirement evidence", r.Status)
+	}
+	g := mustSelectedGeneratedWork(t, active)
+	marks, err := gcMarkSelected(g.image, g, active.admission.store)
+	fact, ok := marks.objects[identity]
+	if err != nil || !ok || fact.length != 0 || !fact.digest.IsZero() {
+		t.Fatal("missing protection for independent retirement evidence", ok, err)
+	}
+	if g.phase.FrontierAttemptID != attempt.record.AttemptID || attempt.record.OwnerID != duty.DutyID {
+		t.Fatal("wrong active retirement fixture")
+	}
+}

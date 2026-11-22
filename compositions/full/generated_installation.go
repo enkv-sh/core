@@ -264,7 +264,7 @@ func configurationGeneratedInstallation(ctx context.Context, config Config, runt
 		return nil, nil, ErrCell
 	}
 	credentials := generatorhost.NewInvocationCredentials(ctx)
-	i := &core.GeneratedApplyInstallation{ResolveImplementation: configurationGeneratedResolver(ctx, plugins), CheckCreateReadiness: configurationGeneratedCreateReadiness(plugins), CheckRetirementCompatibility: configurationGeneratedRetirementCompatibility(plugins), RequestDigest: configurationGeneratedRequestDigest}
+	i := &core.GeneratedApplyInstallation{NewRetirementReturnProof: enkvcrypto.NewRetirementReturnProof, ResolveImplementation: configurationGeneratedResolver(ctx, plugins), CheckCreateReadiness: configurationGeneratedCreateReadiness(plugins), CheckRetirementCompatibility: configurationGeneratedRetirementCompatibility(plugins), RequestDigest: configurationGeneratedRequestDigest}
 	i.AdmitVerification = func(ctx context.Context, q contract.CryptoGeneratedCompareRequest, control contract.ControlCore, input contract.GeneratedVerificationInput, deadline time.Time) (*core.InstalledGeneratedCustody, error) {
 		owner, err := enkvcrypto.NewGeneratedVerificationCustody(runtime, q, control,
 			enkvcrypto.GeneratedCustodyConstruction{RouteID: route, FileIdentity: fileIdentity}, input, deadline)

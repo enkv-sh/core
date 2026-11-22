@@ -125,7 +125,8 @@ var componentEstimates = map[string]float64{
 	"TestInstalledGeneratedCleanupReusesExactCheckpointBacking":                          4,
 	"TestInstalledGeneratedAnchoredCanonicalSelectionSurvivesLaterStops":                 8,
 	"TestInstalledGeneratedCleanupReflectsActualOriginalWithoutProducer":                 4,
-	"TestInstalledGeneratedRetirementRiskRequiresExactQualifiedAmbiguity":                22,
+	"TestInstalledActiveRetirementAcceptsSavedUnknownAfterParkingFailure":                30,
+	"TestInstalledGeneratedRetirementRiskRequiresExactQualifiedAmbiguity":                20,
 	"TestInstalledGeneratedRetirementContinuesLateOriginalWithoutAnotherSend":            10,
 	"TestInstalledGeneratedCleanupPreparationStopPreservesSelectedResult":                17,
 	"TestInstalledGeneratedCleanupCaptureRefusalPrecedesSigning":                         4,
@@ -1381,6 +1382,6 @@ var componentEstimates = map[string]float64{
 	"TestInstalledInspectionReadsCompleteSelectedClosureWithGETOnly":                    3,
 	"TestRecipientReplacementPreservesFullWindowsAndInheritedWarnings":                  2,
 	"TestManifestSelectionClassifiesBeforeSkippingLocator":                              2,
-	"TestInstalledGeneratedRetirementKeepsMixedCurrentValues":                           6,
+	"TestInstalledGeneratedRetirementKeepsMixedCurrentValues":                           7,
 	"TestInstalledGeneratedCurrentDeclarationKeepsActualHistoricalValue":                2,
 }

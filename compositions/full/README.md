@@ -523,8 +523,11 @@ does not permit another first send. A retained receipt is observation only.
 
 Inspect state, effect, warnings and remaining work separately. The official
 Cloudflare plugin reports `deletion-acknowledged`; invalidation is not confirmed. A successful frontier can
-coexist with older possible-live residue. Risk acceptance can refuse after process
-loss when qualified ambiguity evidence is unavailable. Ending administrative work
+coexist with older possible-live residue. After an interrupted standalone retirement, use `generated list`. If ENKV saved
+the original Unknown, the list can offer risk acceptance for that exact Duty and
+Attempt. Accepting releases the owner, retains the possible-live warning and
+sends no further DELETE. If neither record reached the Store, the owner can end
+the work through the administrative command. Ending administrative work
 does not prove provider cleanup.
 
 Library callers use `ApplyConfiguration` or `ApplyConfigurationFile`, the

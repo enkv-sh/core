@@ -101,6 +101,7 @@ func installedLocalEngineWithRecipients(t testing.TB, ctx context.Context, f ins
 		}, Close: owner.Close}, nil
 	}
 	callbacks := &GeneratedApplyInstallation{
+		NewRetirementReturnProof: f.keys.NewRetirementReturnProof,
 		ResolveImplementation: func(q GeneratedImplementationRequest) (contract.GeneratorImplementation, error) {
 			if remote != nil && q.ConfigContractID != row.ConfigContractID {
 				return remote.ResolveImplementation(q)

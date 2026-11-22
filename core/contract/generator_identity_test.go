@@ -115,3 +115,17 @@ func TestGeneratorLineagePreservesMemberNameRules(t *testing.T) {
 		}
 	}
 }
+
+// full_only: false
+func TestGeneratedRetirementAmbiguityCoordinate(t *testing.T) {
+	// Independent SHA-256 over the NUL-terminated label, big-endian u32(32)
+	// and 32 bytes of 0x44.
+	inbox := ID(bytes.Repeat([]byte{0x44}, 32))
+	got, err := GeneratorRetirementAmbiguityID(inbox)
+	if err != nil || hex.EncodeToString(got[:]) != "8078a84de6ce3af9b3beef1e2c813db521bc720e853c1a5fdd08d36e23a7ecc8" || got == inbox {
+		t.Fatal("retirement evidence coordinate", got, err)
+	}
+	if _, err := GeneratorRetirementAmbiguityID(ID{}); err == nil {
+		t.Fatal("accepted missing original inbox")
+	}
+}

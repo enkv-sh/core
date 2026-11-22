@@ -10,7 +10,7 @@ import (
 
 // A fresh retirement carries current values unchanged and fixes one selected
 // old resource. Local desired declarations supply no part of this graph.
-func (s *StateSession) installedGeneratedRetirementPlan(ctx context.Context, i ApplyInstallation, work *generatedSelection, dutyID contract.ID, deadline time.Time) (*generatedPlan, error) {
+func (s *StateSession) installedGeneratedRetirementPlan(ctx context.Context, i ApplyInstallation, work *generatedSelection, dutyID, nonce contract.ID, deadline time.Time) (*generatedPlan, error) {
 	if work == nil || work.parent != nil || i.Generated == nil || i.Generated.RequestDigest == nil {
 		return nil, contract.ErrRecord
 	}
@@ -54,12 +54,12 @@ func (s *StateSession) installedGeneratedRetirementPlan(ctx context.Context, i A
 	if err != nil {
 		return nil, err
 	}
-	var operation, nonce contract.ID
+	var operation contract.ID
 	if _, err := rand.Read(operation[:]); err != nil {
 		return nil, err
 	}
-	if _, err := rand.Read(nonce[:]); err != nil {
-		return nil, err
+	if nonce.IsZero() {
+		return nil, contract.ErrRecord
 	}
 	registry, err := contract.EncodeGeneratedRecipientRegistryImage(contract.GeneratedRecipientRegistryImage{
 		Schema: contract.GeneratedRecipientRegistrySchema, DomainID: s.root.Domain, OperationID: operation,

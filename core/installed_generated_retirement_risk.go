@@ -1,7 +1,6 @@
 package core
 
 import (
-	"bytes"
 	"context"
 
 	"enkv.sh/core/contract"
@@ -46,34 +45,14 @@ func (e *InstalledApply) acceptGeneratedRetirementRisk(ctx context.Context, requ
 		out.Result = installedApplyPreparationFailure(err)
 		return out
 	}
-	attempt, err := generatedListedRiskAttempt(work, duty)
+	reader := retirementEvidenceReader{s.admission.store.Prefix, s.storeRead}
+	attempt, ambiguity, err := reader.riskAttempt(ctx, work, duty, request.AttemptID)
 	if err != nil {
 		out.Result = installedApplyPreparationFailure(err)
 		return out
 	}
 	if attempt.IsZero() || attempt != request.AttemptID {
 		return out
-	}
-	var ambiguity []byte
-	if work.parent != nil {
-		if len(work.bundles) == 0 || work.bundles[0].Request.OperationKind != contract.OperationRetireGeneratedGeneration {
-			return out
-		}
-		actual := work.attempts[attempt]
-		facts, err := work.vectors.resolve(contract.GeneratedAttemptSupportKind, attempt, contract.GeneratorVectorFacts, actual.record.Facts)
-		if err != nil {
-			out.Result = installedApplyPreparationFailure(err)
-			return out
-		}
-		if len(facts) != 1 {
-			return out
-		}
-		evidence, err := contract.InspectGeneratorFactsRow(facts[0])
-		if err != nil {
-			out.Result = installedApplyPreparationFailure(err)
-			return out
-		}
-		ambiguity = bytes.Clone(evidence.Facts)
 	}
 	c, err := installedGeneratedContext(s, inv.deadline)
 	if err != nil {

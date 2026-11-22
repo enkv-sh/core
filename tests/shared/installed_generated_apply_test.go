@@ -495,6 +495,7 @@ func installedGeneratedTestCallbacks(t testing.TB, f installedApplyTestFixture, 
 		return &InstalledGeneratedCustody{Crypto: owner, BindCandidate: owner.BindCandidate, Close: owner.Close}, nil
 	}
 	return &GeneratedApplyInstallation{
+		NewRetirementReturnProof: f.keys.NewRetirementReturnProof,
 		CheckCreateReadiness: func(ctx context.Context, _ string, row contract.GeneratorImplementation, intent []byte) error {
 			if !reflect.DeepEqual(row, process.Implementation) || !bytes.Equal(intent, process.Intent) {
 				return contract.ErrRecord

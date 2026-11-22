@@ -15,6 +15,7 @@ import (
 // The private parent installs one bounded return path. It is not a process or
 // provider transport, and it never receives operation keys.
 type generatedProducerAdmissionInput struct {
+	retirementReturn      contract.RetirementReturnProof
 	Expected              contract.GeneratorResultExpectation
 	Preparation           contract.GeneratedProducerPreparation
 	Intent, OriginalFacts []byte
@@ -39,6 +40,7 @@ type generatedProducerReturn struct {
 }
 
 type generatedProducerOutput struct {
+	retirementAmbiguity      []byte
 	resultDeadlineUnixMillis uint64
 	Record                   []byte
 	Facts                    contract.GeneratorSafeFacts
@@ -109,18 +111,19 @@ const (
 // decision. It owns the transferred seed and return inputs independently of
 // ordinary session cancellation until the fixed command deadline or return.
 type generatedProducerReturnOwner struct {
-	expected    contract.GeneratorResultExpectation
-	command     contract.GeneratedProducerCommand
-	material    contract.OperationMaterialRecord
-	seed        []byte
-	intent      []byte
-	returnValue func(context.Context, contract.GeneratedProducerCommand, []byte) generatedProducerReturn
-	process     generatorhost.Launcher
-	probe       func(context.Context, contract.GeneratedProducerCommand) []byte
-	progress    [][]byte
-	ctx         context.Context
-	cancel      context.CancelFunc
-	done        chan struct{}
+	retirementProof *retirementReturnProof
+	expected        contract.GeneratorResultExpectation
+	command         contract.GeneratedProducerCommand
+	material        contract.OperationMaterialRecord
+	seed            []byte
+	intent          []byte
+	returnValue     func(context.Context, contract.GeneratedProducerCommand, []byte) generatedProducerReturn
+	process         generatorhost.Launcher
+	probe           func(context.Context, contract.GeneratedProducerCommand) []byte
+	progress        [][]byte
+	ctx             context.Context
+	cancel          context.CancelFunc
+	done            chan struct{}
 }
 
 func newGeneratedProducerReturnOwner(a *generatedAdmission, p *generatedProducer, command contract.GeneratedProducerCommand, caller context.Context) *generatedProducerReturnOwner {
@@ -128,15 +131,19 @@ func newGeneratedProducerReturnOwner(a *generatedAdmission, p *generatedProducer
 	deadline := time.UnixMilli(int64(command.DeadlineUnixMillis))
 	ctx, cancel := context.WithDeadline(context.Background(), deadline)
 	ctx = telemetry.PrivateContext(ctx, caller)
-	o := &generatedProducerReturnOwner{expected: p.expected, command: command, material: a.material,
+	o := &generatedProducerReturnOwner{retirementProof: p.retirementProof, expected: p.expected, command: command, material: a.material,
 		seed: a.seed, intent: p.intent, returnValue: p.returnValue, process: p.process, probe: p.probe,
 		progress: p.progress, ctx: ctx, cancel: cancel, done: make(chan struct{})}
-	a.seed, p.intent, p.originalFacts, p.progress = nil, nil, nil, nil
+	a.seed, p.intent, p.originalFacts, p.progress, p.retirementProof = nil, nil, nil, nil, nil
 	p.returnValue, p.process, p.probe = nil, nil, nil
 	return o
 }
 
 func (o *generatedProducerReturnOwner) finish(returned []byte) {
+	if o.retirementProof != nil {
+		o.retirementProof.Close()
+		o.retirementProof = nil
+	}
 	clear(returned[:cap(returned)])
 	clear(o.seed[:cap(o.seed)])
 	clear(o.intent[:cap(o.intent)])
@@ -168,6 +175,7 @@ func (o *generatedProducerReturnOwner) expired() bool {
 }
 
 type generatedProducer struct {
+	retirementProof    *retirementReturnProof
 	expected           contract.GeneratorResultExpectation
 	preparation        contract.GeneratedProducerPreparation
 	intent             []byte
@@ -389,7 +397,15 @@ func (a *generatedAdmission) admitProducer(input *generatedProducerAdmissionInpu
 		return false
 	}
 	ownerRecord.Body = bytes.Clone(ownerRecord.Body)
-	p := &generatedProducer{expected: input.Expected, preparation: c, intent: bytes.Clone(input.Intent), originalFacts: bytes.Clone(input.OriginalFacts), duty: d, ownerRecord: ownerRecord, ownerConsumers: ownerConsumers, attempt: v, returnValue: input.Return, process: input.Process}
+	var proof *retirementReturnProof
+	if input.retirementReturn != nil {
+		var ok bool
+		proof, ok = input.retirementReturn.(*retirementReturnProof)
+		if !ok || proof == nil || a.graph.Request.OperationKind != contract.OperationRetireGeneratedGeneration || x.Action != contract.GeneratorActionDelete || !proof.claim(a.graph.Request.CallerNonce) {
+			return false
+		}
+	}
+	p := &generatedProducer{retirementProof: proof, expected: input.Expected, preparation: c, intent: bytes.Clone(input.Intent), originalFacts: bytes.Clone(input.OriginalFacts), duty: d, ownerRecord: ownerRecord, ownerConsumers: ownerConsumers, attempt: v, returnValue: input.Return, process: input.Process}
 	p.probe = input.Probe
 	for _, row := range input.Progress {
 		p.progress = append(p.progress, bytes.Clone(row))
@@ -824,6 +840,18 @@ func (r *Runtime) invokeGeneratedProducerAdmission(ctx context.Context, id, loca
 		return out
 	}
 	if ownedFacts.Disposition == contract.GeneratorDispositionUnknown {
+		if owner.retirementProof != nil {
+			out.retirementAmbiguity, err = owner.retirementProof.seal(owner, factsBody)
+			if err != nil {
+				out.code = contract.CryptoCustodyUnavailable
+				out.stage, out.category = generatedFailureSeal, generatedFailureUnavailable
+				if owner.expired() {
+					out.code, out.category = contract.CryptoExpired, generatedFailureExpired
+				}
+				return out
+			}
+			out.resultDeadlineUnixMillis = owner.command.DeadlineUnixMillis
+		}
 		out.Facts = ownedFacts
 		out.code = contract.CryptoSuccess
 		out.stage, out.category = "", ""

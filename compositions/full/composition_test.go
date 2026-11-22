@@ -247,7 +247,7 @@ func TestNewPreservesMissingCryptoRefusal(t *testing.T) {
 func TestExactCellsAndIdenticalNeutralVersions(t *testing.T) {
 	_, config, _ := localConfigs(t)
 	m, a, g := CompatibilityManifest(), compositionaws.CompatibilityManifest(), compositiongcp.CompatibilityManifest()
-	if m.Engine != "state-session/v9" || m.Format != "canonical-state/v15" || m.ComponentContract != "store-trust-crypto/v9" || m.Crypto != "supplied-secret/v4" || m.CryptoProfile != "rsa3072-oaep-sha256-aes256gcm-hmacsha256/v2" {
+	if m.Engine != "state-session/v9" || m.Format != "canonical-state/v16" || m.ComponentContract != "store-trust-crypto/v9" || m.Crypto != "supplied-secret/v4" || m.CryptoProfile != "rsa3072-oaep-sha256-aes256gcm-hmacsha256/v2" {
 		t.Fatal("retired interpretation in full composition")
 	}
 	wantComponents := append(append([]contract.ComponentImplementation{}, a.Components...), g.Components...)

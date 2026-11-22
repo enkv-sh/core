@@ -88,7 +88,15 @@ func gcObjectBytesValid(domain contract.ID, store contract.Descriptor, object co
 		return err == nil
 	case contract.StoreResultObject:
 		result, err := contract.InspectGeneratedResultRecord(body)
-		if err != nil || result.Core.DomainID != domain {
+		if err != nil {
+			note, err := contract.InspectRetirementAmbiguity(body)
+			if err != nil || note.Domain != domain {
+				return false
+			}
+			id, err := contract.GeneratorRetirementAmbiguityID(note.Inbox)
+			return err == nil && id == object.ObjectID
+		}
+		if result.Core.DomainID != domain {
 			return false
 		}
 		inbox, err := contract.GeneratorInboxID(domain, result.Core.OperationID, result.Core.AttemptID, result.Core.ResultID)

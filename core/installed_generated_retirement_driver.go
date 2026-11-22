@@ -240,7 +240,14 @@ func (e *InstalledApply) driveInstalledGeneratedRetirement(ctx context.Context, 
 				continue
 			}
 			if len(ambiguity) == 0 {
-				return out
+				reader := retirementEvidenceReader{s.admission.store.Prefix, s.storeRead}
+				ambiguity, err = reader.load(ctx, work, a)
+				if err != nil {
+					return fail(installedApplyPreparationFailure(err))
+				}
+				if len(ambiguity) == 0 {
+					return out
+				}
 			}
 			plan, err := s.generatedRetirementAmbiguityPlan(ctx, a.record.OwnerID, ambiguity, c, false)
 			if err != nil {

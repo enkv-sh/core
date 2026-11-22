@@ -25,7 +25,7 @@ func TestGeneratedListIncludesReleasedCreateAndDeleteAttempts(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			view, err := projectGeneratedList(t.Context(), g)
+			view, err := projectGeneratedList(t.Context(), g, retirementEvidenceReader{})
 			if err != nil || len(view.Effects) != 1 || view.Effects[0].Record != original.record ||
 				view.Effects[0].Action != action || len(view.PendingReleases) != 1 || view.PendingReleases[0].PendingInboxReleaseRecord != release ||
 				len(view.NextActions) != 0 || view.PossibleGarbage != (state == contract.GeneratedReleaseUnknown) {
@@ -57,7 +57,7 @@ func TestGeneratedListKeepsDetachedRetirementTargetAndExactSelectors(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	view, err := projectGeneratedList(t.Context(), g)
+	view, err := projectGeneratedList(t.Context(), g, retirementEvidenceReader{})
 	if err != nil || len(view.CurrentGenerations) != 0 || len(view.Duties) != 1 || view.Duties[0].Target == nil ||
 		*view.Duties[0].Target != target || !view.Duties[0].GenerationID.IsZero() || view.Duties[0].RetirementMode != 0 {
 		t.Fatal("list substituted current metadata for detached old work", view, err)
@@ -70,7 +70,7 @@ func TestGeneratedListKeepsDetachedRetirementTargetAndExactSelectors(t *testing.
 		t.Fatal("list lost exact non-authoritative selectors", view.NextActions, want)
 	}
 	view.Duties[0].Target.Name = "changed returned name"
-	again, err := projectGeneratedList(context.Background(), g)
+	again, err := projectGeneratedList(context.Background(), g, retirementEvidenceReader{})
 	if err != nil || again.Duties[0].Target.Name != target.Name {
 		t.Fatal("list returned mutable selected target backing", err)
 	}

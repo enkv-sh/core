@@ -156,7 +156,7 @@ func (e *InstalledApply) applyGenerated(ctx context.Context, requestID contract.
 
 func (p *generatedPreparation) invokeInstalledProducer(ctx context.Context, owner *InstalledGeneratedProducerCustody, authority contract.ID) (contract.GeneratedProducerResult, Result) {
 	returned := owner.InvokeProducer(ctx, p.producerLocator, authority)
-	if returned.Code != contract.CryptoSuccess || len(returned.Record) == 0 {
+	if returned.Code != contract.CryptoSuccess || len(returned.Record) == 0 && len(returned.RetirementAmbiguity) == 0 {
 		return returned, Result{}
 	}
 	s := p.reservation.state
@@ -173,6 +173,12 @@ func (p *generatedPreparation) invokeInstalledProducer(ctx context.Context, owne
 		if ctx.Err() != nil {
 			return returned, failure(EvidenceUnavailable, ReadUnavailable)
 		}
+	}
+	if len(returned.RetirementAmbiguity) != 0 {
+		if len(returned.Record) != 0 || returned.ResultDeadlineUnixMillis == 0 {
+			return returned, refused(InvalidRelation)
+		}
+		return returned, s.persistRetirementAmbiguity(ctx, p.attempt, returned)
 	}
 	stored := s.persistGeneratedResult(ctx, generatedResultWrite{attempt: p.attempt, body: returned.Record})
 	return returned, stored
@@ -215,6 +221,7 @@ func (s *StateSession) installedGeneratedPrepareProducer(ctx context.Context, i 
 	if err != nil || digest != preparation.RequestDigest {
 		return nil, nil, refused(InvalidIntent)
 	}
+	input.RetirementReturn = i.retirementReturn
 	owner, err := i.Generated.AdmitProducer(ctx, q, currentControlOf(s), input, implementation, deadline)
 	if err != nil || owner == nil || !validInstalledGeneratedCustody(&owner.InstalledGeneratedCustody) || owner.InvokeProducer == nil {
 		if owner != nil && owner.Close != nil {

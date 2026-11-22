@@ -93,7 +93,23 @@ func (e *InstalledApply) retireGenerated(ctx context.Context, requestID contract
 		out.Result = installedApplyPreparationFailure(err)
 		return out
 	}
-	plan, err := s.installedGeneratedRetirementPlan(ctx, i, work, request.DutyID, inv.deadline)
+	if i.Generated == nil || i.Generated.NewRetirementReturnProof == nil {
+		return out
+	}
+	proof, err := i.Generated.NewRetirementReturnProof()
+	if proof != nil {
+		defer proof.Close()
+	}
+	if err != nil {
+		out.Result = installedApplyPreparationFailure(err)
+		return out
+	}
+	if proof == nil || proof.Commitment().IsZero() {
+		out.Result = refused(ConstructionMismatch)
+		return out
+	}
+	i.retirementReturn = proof
+	plan, err := s.installedGeneratedRetirementPlan(ctx, i, work, request.DutyID, proof.Commitment(), inv.deadline)
 	if err != nil {
 		out.Result = installedApplyPreparationFailure(err)
 		return out
@@ -125,13 +141,22 @@ func (e *InstalledApply) retireGenerated(ctx context.Context, requestID contract
 	owner.Close()
 	owner = nil
 	recordGeneratedSelection(ctx, &out, next, result, capture, &checkpoint)
-	if out.stopForResultPersistence(ctx, handoff.persistence) {
-		return out
+	if len(handoff.ambiguity) == 0 || handoff.persistence.Outcome == IntegrityFailure {
+		if out.stopForResultPersistence(ctx, handoff.persistence) {
+			return out
+		}
 	}
 	if next == nil || result.Outcome != ObservedCurrent {
 		return out
 	}
-	return e.driveInstalledGeneratedRetirement(ctx, out, next, i, inv.deadline, handoff.ambiguity, call, &checkpoint)
+	// An unavailable independent record does not prevent the ordinary signed
+	// parking transition from preserving the same live, qualified return.
+	priorDiagnostics := len(out.Diagnostics)
+	out = e.driveInstalledGeneratedRetirement(ctx, out, next, i, inv.deadline, handoff.ambiguity, call, &checkpoint)
+	if len(out.Diagnostics) == priorDiagnostics {
+		out.stopForResultPersistence(ctx, handoff.persistence)
+	}
+	return out
 }
 
 func (e *InstalledApply) ContinueGeneratedRetirement(ctx context.Context, requestID contract.ID, request GeneratedRetirementContinuationRequest) PublicApplyResult {

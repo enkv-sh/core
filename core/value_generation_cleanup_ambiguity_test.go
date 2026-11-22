@@ -553,7 +553,7 @@ func TestGeneratedCleanupIdentityConflictRetainsExactOwner(t *testing.T) {
 					!reflect.DeepEqual(generatedReceiptRows(active), generatedReceiptRows(closed)) {
 					t.Fatal("lost exact obligation or claimed closure", err)
 				}
-				list, err := projectGeneratedList(ctx, work)
+				list, err := projectGeneratedList(ctx, work, retirementEvidenceReader{})
 				if err != nil {
 					t.Fatal("list retained cleanup conflict", err)
 				}

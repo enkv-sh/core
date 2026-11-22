@@ -77,6 +77,15 @@ func GeneratorInboxID(domain, operation, attempt, result ID) (ID, error) {
 	return generatorDigest("inbox", w.b), nil
 }
 
+// GeneratorRetirementAmbiguityID locates the independent record for the
+// original retirement inbox. It is never the terminal result coordinate.
+func GeneratorRetirementAmbiguityID(inbox ID) (ID, error) {
+	if inbox.IsZero() {
+		return ID{}, ErrRecord
+	}
+	return generatorDigest("retirement-ambiguity", inbox[:]), nil
+}
+
 func GeneratorLineageID(domain, operation ID, name string, incarnation ID, epoch uint64, intent ID) (ID, error) {
 	if !publicIDsValid(domain, operation, incarnation, intent) || !utf8.ValidString(name) {
 		return ID{}, ErrRecord

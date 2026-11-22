@@ -265,6 +265,9 @@ func (p generatedPurposeState) clear() {
 			p.producer.returnOwner = nil
 		}
 		if producer := p.producer.producer; producer != nil {
+			if producer.retirementProof != nil {
+				producer.retirementProof.Close()
+			}
 			clear(producer.intent[:cap(producer.intent)])
 			clear(producer.originalFacts[:cap(producer.originalFacts)])
 			clear(producer.ownerRecord.Body[:cap(producer.ownerRecord.Body)])

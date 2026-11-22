@@ -77,9 +77,9 @@ type GeneratedListView struct {
 	PossibleGarbage                  bool
 }
 
-// The caller supplies facts already published by complete selected validation.
-// This projection reads no inbox, acquires no claim and retains no graph backing.
-func projectGeneratedList(ctx context.Context, g *generatedSelection) (GeneratedListView, error) {
+// The selected state supplies all work identities. Only an exact active standalone
+// retirement can require a separate evidence read for its next action.
+func projectGeneratedList(ctx context.Context, g *generatedSelection, evidence retirementEvidenceReader) (GeneratedListView, error) {
 	var out GeneratedListView
 	if ctx == nil || g == nil || g.image == nil || g.content == nil {
 		return out, contract.ErrRecord
@@ -224,7 +224,7 @@ func projectGeneratedList(ctx context.Context, g *generatedSelection) (Generated
 		if g.parent == nil && duty.Kind == contract.GeneratedDutyRetirement {
 			out.NextActions = append(out.NextActions, GeneratedNextAction{Command: "generated retire", DutyID: duty.DutyID})
 		}
-		attempt, err := generatedListedRiskAttempt(g, duty)
+		attempt, _, err := evidence.riskAttempt(ctx, g, duty, contract.ID{})
 		if err != nil {
 			return GeneratedListView{}, err
 		}
@@ -242,54 +242,67 @@ func projectGeneratedList(ctx context.Context, g *generatedSelection) (Generated
 	return out, nil
 }
 
-func generatedListedRiskAttempt(g *generatedSelection, duty contract.GeneratedDutyRecord) (contract.ID, error) {
+func (r retirementEvidenceReader) riskAttempt(ctx context.Context, g *generatedSelection, duty contract.GeneratedDutyRecord, requested contract.ID) (contract.ID, []byte, error) {
 	if duty.Kind != contract.GeneratedDutyRetirement || duty.Status != contract.GeneratedEffectUnknown && duty.Status != contract.GeneratedEffectTransmitted {
-		return contract.ID{}, nil
+		return contract.ID{}, nil, nil
 	}
 	rows, err := g.vectors.resolve(contract.GeneratedDutySupportKind, duty.DutyID, contract.GeneratorVectorHistory, duty.History)
 	if err != nil {
-		return contract.ID{}, err
+		return contract.ID{}, nil, err
 	}
 	if len(rows) == 0 {
-		return contract.ID{}, contract.ErrRecord
+		return contract.ID{}, nil, contract.ErrRecord
 	}
 	var latest contract.GeneratorHistory
 	for _, body := range rows {
 		latest, err = contract.InspectGeneratorHistory(body)
 		if err != nil {
-			return contract.ID{}, err
+			return contract.ID{}, nil, err
 		}
 		attempt, ok := g.attempts[latest.PredecessorAttemptID]
 		if !ok {
-			return contract.ID{}, contract.ErrRecord
+			return contract.ID{}, nil, contract.ErrRecord
 		}
 		contradiction, err := g.validateDeleteFacts(attempt)
 		if err != nil || contradiction {
-			return contract.ID{}, err
+			return contract.ID{}, nil, err
 		}
 	}
 	a := g.attempts[latest.PredecessorAttemptID]
 	if g.parent != nil && (g.phase == nil || g.parent.OperationID != a.record.OperationID || g.phase.FrontierAttemptID != a.record.AttemptID) ||
 		g.parent == nil && duty.Status != contract.GeneratedEffectUnknown {
-		return contract.ID{}, nil
+		return contract.ID{}, nil, nil
+	}
+	if !requested.IsZero() && requested != a.record.AttemptID {
+		return contract.ID{}, nil, nil
+	}
+	if g.parent != nil {
+		if a.record.State != contract.GeneratedEffectTransmitted || a.record.Stage != contract.GeneratedStageRetainedResult || len(a.result) != 0 || len(g.bundles) == 0 || g.bundles[0].Request.OperationKind != contract.OperationRetireGeneratedGeneration {
+			return contract.ID{}, nil, nil
+		}
+		facts, err := r.activeRiskFacts(ctx, g, a)
+		if err != nil || len(facts) == 0 {
+			return contract.ID{}, nil, err
+		}
+		return a.record.AttemptID, facts, nil
 	}
 	facts, err := g.vectors.resolve(contract.GeneratedAttemptSupportKind, a.record.AttemptID, contract.GeneratorVectorFacts, a.record.Facts)
 	if err != nil {
-		return contract.ID{}, err
+		return contract.ID{}, nil, err
 	}
 	if len(facts) != 1 {
-		return contract.ID{}, nil
+		return contract.ID{}, nil, nil
 	}
 	row, err := contract.InspectGeneratorFactsRow(facts[0])
 	if err != nil {
-		return contract.ID{}, err
+		return contract.ID{}, nil, err
 	}
 	evidence, err := contract.InspectGeneratorSafeFacts(row.Facts)
 	if err != nil {
-		return contract.ID{}, err
+		return contract.ID{}, nil, err
 	}
 	if evidence.Disposition != contract.GeneratorDispositionUnknown {
-		return contract.ID{}, nil
+		return contract.ID{}, nil, nil
 	}
-	return a.record.AttemptID, nil
+	return a.record.AttemptID, nil, nil
 }

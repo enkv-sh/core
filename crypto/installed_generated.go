@@ -102,7 +102,7 @@ func NewGeneratedProducerCustody(r *Runtime, q contract.CryptoGeneratedCompareRe
 		if err != nil {
 			return nil, err
 		}
-		producer := generatedProducerAdmissionInput{Expected: input.Expected, Preparation: input.Preparation, Intent: input.Intent, OriginalFacts: input.OriginalFacts, Duty: input.Duty, Source: input.Source, Attempt: input.Attempt, Consumers: input.Consumers, Progress: input.Progress, Process: launcher}
+		producer := generatedProducerAdmissionInput{retirementReturn: input.RetirementReturn, Expected: input.Expected, Preparation: input.Preparation, Intent: input.Intent, OriginalFacts: input.OriginalFacts, Duty: input.Duty, Source: input.Source, Attempt: input.Attempt, Consumers: input.Consumers, Progress: input.Progress, Process: launcher}
 		return r.admitGeneratedProducerOwned(q, generatedProducerPreparationAdmissionInput{Session: session, Plan: generatedInstalledPlan(input.Plan), Phase: input.Phase, Target: input.Target, Material: input.Custody.Material, SeedAccess: input.Custody.SeedAccess, SourceProtections: input.Custody.SourceProtections, Producer: producer, ControlledPredecessor: input.ControlledPredecessor}, deadline)
 	})
 }
@@ -202,7 +202,7 @@ func (c *GeneratedCustody) InvokeProducer(ctx context.Context, locator, authorit
 	call.Checkpoint(telemetry.DiagnosticPrivateCustody, telemetry.DiagnosticReasonNone)
 	out := c.runtime.invokeGeneratedProducerAdmission(telemetry.CallContext(ctx, call), c.admission.id, locator, authority, c.admission, c.localFailure)
 	code = out.code
-	return contract.GeneratedProducerResult{Record: out.Record, Facts: out.Facts, Code: code, ExecutableCleanupFailed: out.executableCleanupFailed, ResultDeadlineUnixMillis: out.resultDeadlineUnixMillis}
+	return contract.GeneratedProducerResult{RetirementAmbiguity: out.retirementAmbiguity, Record: out.Record, Facts: out.Facts, Code: code, ExecutableCleanupFailed: out.executableCleanupFailed, ResultDeadlineUnixMillis: out.resultDeadlineUnixMillis}
 }
 
 func (c *GeneratedCustody) Close() {

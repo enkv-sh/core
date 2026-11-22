@@ -10,7 +10,8 @@ import (
 // GeneratedApplyInstallation fixes the only producers and custody constructors
 // available to the installed coordinator. Public requests carry no callbacks.
 type GeneratedApplyInstallation struct {
-	ResolveImplementation func(GeneratedImplementationRequest) (contract.GeneratorImplementation, error)
+	NewRetirementReturnProof func() (contract.RetirementReturnProof, error)
+	ResolveImplementation    func(GeneratedImplementationRequest) (contract.GeneratorImplementation, error)
 	// CheckCreateReadiness checks exact intent through the selected current build before a new CREATE is admitted.
 	CheckCreateReadiness         func(context.Context, string, contract.GeneratorImplementation, []byte) error
 	CheckRetirementCompatibility func(context.Context, contract.GeneratorImplementation, []byte, contract.GeneratorSafeFacts, uint8) ([]byte, []byte, error)

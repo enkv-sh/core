@@ -116,6 +116,10 @@ func (f *Fixture) NewInstalledGeneratedFinal(q contract.CryptoGeneratedCompareRe
 		return privatecrypto.NewGeneratedFinalCustody(runtime, q, control, construction, input, deadline)
 	})
 }
+func (f *Fixture) NewRetirementReturnProof() (contract.RetirementReturnProof, error) {
+	return privatecrypto.NewRetirementReturnProof()
+}
+
 func (f *Fixture) NewInstalledGeneratedProducer(ctx context.Context, q contract.CryptoGeneratedCompareRequest, control contract.ControlCore, input contract.GeneratedProducerInput, config GeneratedProcessConfig, deadline time.Time, observeCompletion ...func(bool)) (*InstalledGeneratedOwner, error) {
 	if ctx == nil || ctx.Err() != nil {
 		return nil, privatecrypto.ErrAdmission

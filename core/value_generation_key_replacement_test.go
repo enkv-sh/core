@@ -34,10 +34,10 @@ func TestGeneratedReplacementIncludesEveryLiveSeedConsumer(t *testing.T) {
 
 // full_only: false
 func TestGeneratedReplacementDeduplicatesCurrentAndRetainedValue(t *testing.T) {
-	// Independent Python concatenation uses schema 11, canonical-state/v15,
+	// Independent Python concatenation uses schema 11, canonical-state/v16,
 	// canonical intent-v3, initial epoch0 and fixed CryptoSupport metadata. The
 	// alpha ValueCore is 327 bytes, its Duty consumer 132, and the vector 140.
-	want, err := hex.DecodeString("8b5da8e1a8307721e56c7a495d0661d8e94b11360491c7fb2e4c00e0455cbdca")
+	want, err := hex.DecodeString("b9331ec25e7fcce04105bcd8ea24248cb5020f03410243f50bc6790f7015569e")
 	if err != nil {
 		t.Fatal(err)
 	}

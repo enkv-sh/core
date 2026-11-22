@@ -44,6 +44,7 @@ type GeneratedReservationInput struct {
 }
 
 type GeneratedProducerInput struct {
+	RetirementReturn      RetirementReturnProof
 	Session               GeneratedSessionInput
 	Plan                  GeneratedPlanInput
 	Custody               GeneratedCustodyInput
@@ -63,7 +64,9 @@ type GeneratedProducerInput struct {
 // facts. ExecutableCleanupFailed reports the host-qualified local removal
 // failure separately; it grants no effect or replay authority.
 type GeneratedProducerResult struct {
-	// ResultDeadlineUnixMillis is the original issued command deadline for a sealed
+	// RetirementAmbiguity is a signed Unknown for one standalone retirement.
+	RetirementAmbiguity []byte
+	// ResultDeadlineUnixMillis is the original issued command deadline for a sealed or signed
 	// managed result. Zero keeps inbox persistence bound to the caller context.
 	ResultDeadlineUnixMillis uint64
 	Record                   []byte

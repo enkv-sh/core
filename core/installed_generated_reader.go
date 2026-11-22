@@ -80,7 +80,7 @@ func (e *InstalledGeneratedReader) list(ctx context.Context, requestID contract.
 	var view GeneratedListView
 	selected, failed := inv.loadPublicSelection(ctx, GeneratedListOperation, requestID, func(ctx context.Context, work *generatedSelection) error {
 		var err error
-		view, err = projectGeneratedList(ctx, work)
+		view, err = projectGeneratedList(ctx, work, retirementEvidenceReader{inv.admission.store.Prefix, inv.source.Read})
 		return err
 	})
 	if failed.Outcome != 0 {

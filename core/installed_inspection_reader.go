@@ -131,7 +131,7 @@ func (r *InstalledInspectionReader) Inspect(ctx context.Context, request DomainI
 	var generated GeneratedListView
 	selected, failed := inv.loadPublicSelection(ctx, InspectOperation, out.RequestIdentity, func(ctx context.Context, facts *generatedSelection) error {
 		var err error
-		generated, err = projectGeneratedList(ctx, facts)
+		generated, err = projectGeneratedList(ctx, facts, retirementEvidenceReader{inv.admission.store.Prefix, inv.source.Read})
 		return err
 	})
 	if failed.Outcome != 0 {

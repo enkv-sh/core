@@ -201,6 +201,15 @@ func gcMarkActiveGraph(marks *gcMarkSet, generated *generatedSelection) error {
 			if lineage.Purpose == contract.GeneratorLineageCleanup && !possibleResults[template.TargetSourceID] {
 				continue
 			}
+			if graph.Request.OperationKind == contract.OperationRetireGeneratedGeneration && lineage.Purpose == contract.GeneratorLineageRetirement {
+				id, err := contract.GeneratorRetirementAmbiguityID(template.InboxID)
+				if err != nil {
+					return err
+				}
+				if err := marks.addInbox(id, nil); err != nil {
+					return err
+				}
+			}
 			if err := marks.addInbox(template.InboxID, nil); err != nil {
 				return err
 			}
