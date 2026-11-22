@@ -11,6 +11,7 @@ var componentEstimates = map[string]float64{
 	"TestInstalledRemovalRefusesRejectedRetirementBeforeDuty":                             4,
 	"TestInstalledUnavailableRetirementKeepsIdentityUntilAuthorizedEnd":                   4,
 	"TestInstalledPlainEditPreservesTwoCurrentCreationProofs":                             3,
+	"TestGCAdministrativeEndingPreservesInstalledCurrentCreationProof":                    4,
 	"TestInstalledGeneratedInboxCleanupReopensOnlyNamedMapping":                           62,
 	"TestInstalledGeneratedInboxCleanupRefusesOccupiedGeneratedSlot":                      7,
 	"TestInstalledGeneratedInboxCleanupRefusesUnobservedAndLiveOriginal":                  12,
