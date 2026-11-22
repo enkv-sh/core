@@ -305,6 +305,26 @@ func TestPublicationRepublish(t *testing.T) {
 		if plan, r := s.planPublication(t.Context(), input, p.callbacks()); plan != nil || r.Reason != InvalidIntent || len(p.owners) != owners {
 			t.Fatal("stale blocker admitted", r)
 		}
+		entries := s.currentEntryInputs()
+		entries[0].InputBytes = []byte("new current value")
+		parent := admitSuppliedComparison(t, s, nil, entries)
+		comparison, r := s.Compare(t.Context(), entries, parent)
+		if comparison == nil {
+			t.Fatal("canonical comparison with an unknown marker", r)
+		}
+		candidate, r := s.Prepare(t.Context(), comparison, admit(t, s, comparison), f.trust)
+		if candidate == nil {
+			t.Fatal("canonical change with an unknown marker", r)
+		}
+		if selected := s.Select(t.Context(), candidate); selected.Outcome != ObservedCurrent {
+			t.Fatal("unknown marker blocked an independent value change", selected)
+		}
+		cold := publicationEngineReopen(t, f)
+		marker := first.output.Entries[0].Actions[0].AttemptID
+		if len(cold.markers) != 1 || cold.markers[marker].State != contract.PublicationUnknown ||
+			!f.session.root.Generated.ActiveOwner.IsZero() || len(p.owners) != owners {
+			t.Fatal("independent change cleared unresolved publication or entered another send")
+		}
 	})
 	t.Run("retains_old_unknown_after_new_ack", func(t *testing.T) {
 		f, input, p := publicationEngineFixture(t)
