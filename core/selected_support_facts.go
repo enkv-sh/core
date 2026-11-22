@@ -26,13 +26,22 @@ type selectedFragmentFact struct {
 	ref           format.Ref
 	row           contract.SupportRecordDigest
 	physical      uint16
-	logical       uint8
+	logical       uint16
 	blob          contract.ID
 	index, count  uint16
 	total         uint64
 	whole         contract.ID
 	offset        uint32
 	payloadLength uint32
+}
+
+// Only generated fragments use the two-slot directory. Output configuration
+// can occupy any selected row of a mixed support page.
+func (f selectedFragmentFact) generatedLocation() (format.FragmentLocation, bool) {
+	if f.row.Kind() != contract.GeneratedFragmentSupportKind || f.logical > 1 {
+		return format.FragmentLocation{}, false
+	}
+	return format.FragmentLocation{BlobID: f.blob, FragmentIndex: f.index, SupportPageIndex: f.ref.Index, RowSlot: uint8(f.logical)}, true
 }
 
 // A support Ref.Index is a physical coordinate, not its position in the
@@ -127,7 +136,7 @@ func (s *StateSession) withSelectedFragment(ctx context.Context, location format
 	fact, ok := s.fragmentFacts[location]
 	position, pageOK := s.selectedSupportPosition(fact.ref)
 	if !ok || fact.ref.Domain != s.root.Domain || fact.ref.Index != location.SupportPageIndex ||
-		fact.logical != location.RowSlot || fact.blob != location.BlobID || fact.index != location.FragmentIndex ||
+		fact.logical != uint16(location.RowSlot) || fact.blob != location.BlobID || fact.index != location.FragmentIndex ||
 		!pageOK || !slices.Contains(s.root.Generated.Fragments, location) {
 		return failure(IntegrityFailure, InvalidRelation), nil
 	}
@@ -136,7 +145,7 @@ func (s *StateSession) withSelectedFragment(ctx context.Context, location format
 		page.ordinals[fact.logical] != fact.physical {
 		return failure(IntegrityFailure, InvalidRelation), nil
 	}
-	return withAuthenticatedSupportRow(ctx, s.readObjectBorrowedUncached, s.root.Domain, page, uint16(fact.logical),
+	return withAuthenticatedSupportRow(ctx, s.readObjectBorrowedUncached, s.root.Domain, page, fact.logical,
 		func(row contract.SupportRecordView) error {
 			fragment, err := contract.InspectGeneratedFragment(row.Body)
 			if err != nil || row.Kind != contract.GeneratedFragmentSupportKind || !fact.matches(fragment) {

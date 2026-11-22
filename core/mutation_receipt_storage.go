@@ -42,13 +42,13 @@ func (s *StateSession) mutationReceiptLayout(ctx context.Context) (mutationRecei
 				var blob contract.ID
 				if row.Body == nil {
 					fact, present := selectedFragments[row.RecordID]
-					if !present || pagePosition >= len(s.supportFacts) || pagePosition >= len(s.root.RequiredSupport) ||
+					location, valid := fact.generatedLocation()
+					if !present || !valid || pagePosition >= len(s.supportFacts) || pagePosition >= len(s.root.RequiredSupport) ||
 						s.supportFacts[pagePosition].ref != fact.ref || s.root.RequiredSupport[pagePosition] != fact.ref ||
 						logical >= len(s.supportFacts[pagePosition].rows) || logical >= len(s.supportFacts[pagePosition].ordinals) ||
 						s.supportFacts[pagePosition].rows[logical] != fact.row ||
 						s.supportFacts[pagePosition].ordinals[logical] != fact.physical || int(fact.logical) != logical ||
-						!slices.Contains(s.root.Generated.Fragments, format.FragmentLocation{BlobID: fact.blob,
-							FragmentIndex: fact.index, SupportPageIndex: fact.ref.Index, RowSlot: fact.logical}) {
+						!slices.Contains(s.root.Generated.Fragments, location) {
 						return layout, contract.ErrRecord
 					}
 					blob = fact.blob
@@ -237,11 +237,10 @@ func (s *StateSession) encodeMutationReceiptLayout(ctx context.Context, p transi
 					continue
 				}
 				fact, ok := selectedFragments[row.RecordID]
-				if !ok || int(fact.ref.Index) != i {
+				location, valid := fact.generatedLocation()
+				if !ok || !valid || int(fact.ref.Index) != i {
 					return mutationReceiptStorage{}, contract.ErrRecord
 				}
-				location := format.FragmentLocation{BlobID: fact.blob, FragmentIndex: fact.index,
-					SupportPageIndex: fact.ref.Index, RowSlot: fact.logical}
 				result, readErr := s.withSelectedFragment(ctx, location, func(payload []byte) error {
 					body, encodeErr := contract.EncodeGeneratedFragment(contract.GeneratedFragment{
 						Schema: contract.GeneratorRecordSchema, BlobID: fact.blob, Index: fact.index,
@@ -426,7 +425,7 @@ func (out *mutationReceiptStorage) bindSupportFacts(s *StateSession, planned *pl
 				return contract.ErrRecord
 			}
 			fact = selectedFragmentFact{ref: factPage.ref, row: factPage.rows[location.RowSlot],
-				physical: factPage.ordinals[location.RowSlot], logical: location.RowSlot,
+				physical: factPage.ordinals[location.RowSlot], logical: uint16(location.RowSlot),
 				blob: fragment.BlobID, index: fragment.Index, count: fragment.Count,
 				total: fragment.TotalLength, whole: fragment.WholeDigest, offset: fragment.Offset,
 				payloadLength: uint32(len(fragment.Payload))}

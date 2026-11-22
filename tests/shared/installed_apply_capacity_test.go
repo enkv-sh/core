@@ -20,7 +20,7 @@ func installedApplyFullWindows(t *testing.T, ctx context.Context) (installedAppl
 	t.Helper()
 	f := newInstalledApplyTestFixture(t, ctx, contract.GCP, false)
 	f.env.Context = ctx
-	input := []ApplyEntryInput{{Name: "alpha", Recipients: []contract.ID{f.selected.admission.recipient},
+	input := []ApplyEntryInput{{Name: "alpha", InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, Recipients: []contract.ID{f.selected.admission.recipient},
 		ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, InputBytes: []byte("before")}}
 	first := f.engine(t, f.selected, input, nil)
 	result := first.Apply(ctx, fixtureID(f.env.Domain, "capacity first public apply"), input)
@@ -86,7 +86,7 @@ func TestInstalledApplyBothFullReceiptWindowsAppendAndNoop(t *testing.T) {
 	defer cancel()
 	f, before := installedApplyFullWindows(t, ctx)
 	store := requireAdmittedMemoryStore(t, f.env.Store)
-	input := []ApplyEntryInput{{Name: "alpha", Recipients: []contract.ID{f.selected.admission.recipient},
+	input := []ApplyEntryInput{{Name: "alpha", InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, Recipients: []contract.ID{f.selected.admission.recipient},
 		ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, InputBytes: []byte("before")}}
 	creates, cas, signs := store.creates, store.cas, f.env.Trust.(*fixtureTrust).signs
 	root, token := f.selected.head.Core.Root, f.selected.token

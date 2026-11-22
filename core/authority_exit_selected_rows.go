@@ -37,7 +37,7 @@ func (s *StateSession) administrativeSelectedFragmentFact(ref format.Ref, logica
 		fact, ok := s.fragmentFacts[location]
 		fragmentID, err := contract.GeneratorFragmentID(location.BlobID, location.FragmentIndex)
 		if seen || !ok || err != nil || fragmentID != id || fact.ref != ref || fact.row != want ||
-			fact.physical != physical || fact.logical != uint8(logical) ||
+			fact.physical != physical || fact.logical != logical ||
 			fact.blob != location.BlobID || fact.index != location.FragmentIndex {
 			return selectedFragmentFact{}, contract.ErrRecord
 		}

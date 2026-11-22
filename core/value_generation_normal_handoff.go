@@ -641,7 +641,7 @@ func (next *StateSession) plannedNormalSupportRows(c *Comparison) (contract.Gene
 		id, err := contract.GeneratorFragmentID(fact.blob, fact.index)
 		if err != nil || fact.row.Kind() != contract.GeneratedFragmentSupportKind || fact.row.RecordID() != id ||
 			location.BlobID != fact.blob || location.FragmentIndex != fact.index ||
-			location.SupportPageIndex != fact.ref.Index || location.RowSlot != fact.logical ||
+			location.SupportPageIndex != fact.ref.Index || uint16(location.RowSlot) != fact.logical ||
 			!slices.Contains(next.root.Generated.Fragments, location) {
 			return contract.GeneratedSupportRows{}, contract.ErrRecord
 		}
@@ -1241,12 +1241,11 @@ func matchingNormalSupportPage(s *StateSession, rows []contract.SupportRecord,
 			}
 			if row.Body == nil {
 				fragment, ok := fragments[row.RecordID]
+				location, generated := fragment.generatedLocation()
 				if !selected || !ok || !opaqueSupportKind(row.Kind) || old.Body != nil ||
 					fragment.ref != ref || fragment.row != facts[slot] || int(fragment.logical) != slot ||
 					fragment.physical != page.ordinals[slot] ||
-					row.Kind == contract.GeneratedFragmentSupportKind && !slices.Contains(s.root.Generated.Fragments, format.FragmentLocation{
-						BlobID: fragment.blob, FragmentIndex: fragment.index,
-						SupportPageIndex: ref.Index, RowSlot: fragment.logical}) {
+					row.Kind == contract.GeneratedFragmentSupportKind && (!generated || !slices.Contains(s.root.Generated.Fragments, location)) {
 					matched = false
 					break
 				}
@@ -1525,7 +1524,7 @@ func (next *StateSession) bindNormalGeneratedFragmentFacts(old map[contract.ID]s
 			return false
 		}
 		selected := selectedFragmentFact{ref: ref, row: fact, physical: pageFacts.ordinals[location.RowSlot],
-			logical: location.RowSlot, blob: location.BlobID, index: location.FragmentIndex}
+			logical: uint16(location.RowSlot), blob: location.BlobID, index: location.FragmentIndex}
 		if row.Body == nil {
 			prior, ok := old[row.RecordID]
 			if !ok || prior.ref != ref || prior.row != fact || prior.physical != selected.physical ||

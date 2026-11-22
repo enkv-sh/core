@@ -70,7 +70,7 @@ func (s *StateSession) administrativeCurrentIntentSelectionForEntries(ctx contex
 			position, found := s.selectedSupportPosition(fact.ref)
 			if !present || !found || position >= len(s.adminIndex.Pages) ||
 				fact.ref.Domain != s.root.Domain || fact.ref.Index != fragmentLocation.SupportPageIndex ||
-				fact.logical != fragmentLocation.RowSlot || fact.blob != fragmentLocation.BlobID ||
+				fact.logical != uint16(fragmentLocation.RowSlot) || fact.blob != fragmentLocation.BlobID ||
 				fact.index != fragmentLocation.FragmentIndex || s.adminIndex.Pages[position].Ref != fact.ref {
 				return nil, contract.ErrRecord
 			}

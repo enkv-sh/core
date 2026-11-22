@@ -47,7 +47,7 @@ func (s *selectedImage) workSupportDescriptor(rows []contract.SupportRecord) (co
 		id, err := contract.GeneratorFragmentID(fact.blob, fact.index)
 		if err != nil || fact.row.Kind() != contract.GeneratedFragmentSupportKind || fact.row.RecordID() != id ||
 			location.BlobID != fact.blob || location.FragmentIndex != fact.index ||
-			location.SupportPageIndex != fact.ref.Index || location.RowSlot != fact.logical {
+			location.SupportPageIndex != fact.ref.Index || uint16(location.RowSlot) != fact.logical {
 			return contract.GeneratorDescriptor{}, contract.ErrRecord
 		}
 		if _, duplicate := fragments[id]; duplicate {

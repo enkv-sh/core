@@ -74,7 +74,7 @@ func selectedSliceVerificationFixture(t testing.TB, blobs []generatedContentFixt
 			}
 			location := format.FragmentLocation{BlobID: fragment.BlobID, FragmentIndex: fragment.Index,
 				SupportPageIndex: page.Index, RowSlot: uint8(j)}
-			image.fragmentFacts[location] = selectedFragmentFact{ref: ref, row: digest, physical: uint16(j), logical: uint8(j),
+			image.fragmentFacts[location] = selectedFragmentFact{ref: ref, row: digest, physical: uint16(j), logical: uint16(j),
 				blob: fragment.BlobID, index: fragment.Index, count: fragment.Count, total: fragment.TotalLength,
 				whole: fragment.WholeDigest, offset: fragment.Offset, payloadLength: uint32(len(fragment.Payload))}
 			page.Records[j].Body = nil

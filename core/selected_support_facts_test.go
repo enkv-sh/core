@@ -194,7 +194,7 @@ func TestSelectedFragmentReadUsesPhysicalOrdinalAfterSparseExit(t *testing.T) {
 		for i, row := range rows {
 			loc := prior.root.Generated.Fragments[i]
 			digest := prior.supportFacts[0].rows[i]
-			prior.fragmentFacts[loc] = selectedFragmentFact{ref: ref, row: digest, physical: uint16(i), logical: uint8(i),
+			prior.fragmentFacts[loc] = selectedFragmentFact{ref: ref, row: digest, physical: uint16(i), logical: uint16(i),
 				blob: row.blob, count: 1, total: uint64(len(row.payload)), whole: contract.Hash(row.payload), payloadLength: uint32(len(row.payload))}
 		}
 		prior.adminIndex = format.AdministrativeIndex{Domain: domain, Object: generatedVectorID(27), SliceSnapshot: generatedVectorID(28),
@@ -330,13 +330,13 @@ func TestSelectedFragmentFactsByRecordPreservesBindings(t *testing.T) {
 	if err := output.bindPreservedOutputConfiguration(&boundOutput); err != nil {
 		t.Fatal(err)
 	}
-	outputID := selectedConversionLiteralID(t, "5abe180a7fe425259d49d3c8cfaedda15f0e5f47ee64457c4ce75c6ab29fd3bb")
+	outputID := selectedConversionLiteralID(t, "866eb44b7ce74938a14dcc641778806f895bc8ceb082eb11d821b8bbb6782452")
 	outputDigest, err := contract.InspectSupportRecordDigest(output.root.Domain, contract.SupportRecord(output.support[0].Records[0]))
 	if err != nil {
 		t.Fatal(err)
 	}
 	outputFact := selectedFragmentFact{ref: output.root.RequiredSupport[0], row: outputDigest,
-		blob: selectedConversionLiteralID(t, "b6ebf3ec634bccca8adc79b2475c1b952e135676f84ebd8828eae1d7a6394a16")}
+		blob: selectedConversionLiteralID(t, "aa90cb26367b88480ae43fd801e5a16f70c8f7c6a225410fd368da9736790c5f")}
 	for _, condition := range []string{"complete", "nil receiver", "zero receiver", "empty map", "missing second fact", "sparse physical ordinal",
 		"location blob", "location index", "fact blob", "fact index", "wrong record", "wrong kind", "zero blob", "index out of range", "duplicate identity",
 		"with output", "incomplete output"} {

@@ -116,7 +116,7 @@ func workDescriptorFixture(t *testing.T) (*StateSession, []contract.SupportRecor
 					t.Fatal(err)
 				}
 				location := format.FragmentLocation{BlobID: v.BlobID, FragmentIndex: v.Index, SupportPageIndex: physical, RowSlot: uint8(i)}
-				s.fragmentFacts[location] = selectedFragmentFact{ref: ref, row: fact, physical: uint16(i), logical: uint8(i), blob: v.BlobID, index: v.Index}
+				s.fragmentFacts[location] = selectedFragmentFact{ref: ref, row: fact, physical: uint16(i), logical: uint16(i), blob: v.BlobID, index: v.Index}
 			}
 		}
 		s.supportFacts = append(s.supportFacts, page)

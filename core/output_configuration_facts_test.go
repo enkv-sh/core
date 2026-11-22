@@ -16,8 +16,8 @@ func TestSelectedOutputFactsByRecordPreservesBindings(t *testing.T) {
 	if err := before.bindPreservedOutputConfiguration(&selected); err != nil {
 		t.Fatal(err)
 	}
-	configurationDigest := selectedConversionLiteralID(t, "b6ebf3ec634bccca8adc79b2475c1b952e135676f84ebd8828eae1d7a6394a16")
-	recordID := selectedConversionLiteralID(t, "5abe180a7fe425259d49d3c8cfaedda15f0e5f47ee64457c4ce75c6ab29fd3bb")
+	configurationDigest := selectedConversionLiteralID(t, "aa90cb26367b88480ae43fd801e5a16f70c8f7c6a225410fd368da9736790c5f")
+	recordID := selectedConversionLiteralID(t, "866eb44b7ce74938a14dcc641778806f895bc8ceb082eb11d821b8bbb6782452")
 	if before.root.OutputConfiguration.ConfigurationDigest != configurationDigest || before.support[0].Records[0].RecordID != recordID {
 		t.Fatal("empty configuration differs from independent metadata")
 	}
@@ -34,7 +34,7 @@ func TestSelectedOutputFactsByRecordPreservesBindings(t *testing.T) {
 	}
 	for _, condition := range []string{"complete", "body-backed without root proof", "bodyless", "nil receiver", "zero receiver",
 		"absent descriptor", "nil facts with exact proof", "empty facts with exact proof", "wrong ref", "extra facts page", "missing support page",
-		"missing ordinal", "extra ordinal", "duplicate identity", "logical index 255", "logical index 256", "incomplete proof", "wrong root proof",
+		"missing ordinal", "extra ordinal", "duplicate identity", "logical index 255", "logical index 256", "page framing ceiling", "impossible physical ordinal", "incomplete proof", "wrong root proof",
 		"sparse physical ordinal"} {
 		t.Run(condition, func(t *testing.T) {
 			state := selected
@@ -79,10 +79,13 @@ func TestSelectedOutputFactsByRecordPreservesBindings(t *testing.T) {
 				state.supportFacts[0].rows = append(state.supportFacts[0].rows, rowDigest)
 				state.supportFacts[0].ordinals = append(state.supportFacts[0].ordinals, 1)
 				wantError = true
-			case "logical index 255", "logical index 256":
+			case "logical index 255", "logical index 256", "page framing ceiling", "impossible physical ordinal":
 				logical := 255
-				if condition == "logical index 256" {
-					logical, wantError = 256, true
+				switch condition {
+				case "logical index 256", "impossible physical ordinal":
+					logical = 256
+				case "page framing ceiling":
+					logical = (contract.MaxRequiredSupportPageLength-contract.RequiredSupportPageHeaderLength)/contract.SupportRecordMinLength - 1
 				}
 				page := &state.supportFacts[0]
 				page.rows = make([]contract.SupportRecordDigest, logical+1)
@@ -92,8 +95,12 @@ func TestSelectedOutputFactsByRecordPreservesBindings(t *testing.T) {
 				}
 				page.rows[logical] = rowDigest
 				fact := wantFact
-				fact.logical, fact.physical = uint8(logical), uint16(logical)
+				fact.logical, fact.physical = uint16(logical), uint16(logical)
 				want[recordID] = fact
+				if condition == "impossible physical ordinal" {
+					page.ordinals[logical] = 0
+					wantError = true
+				}
 			case "incomplete proof", "wrong root proof":
 				state.support = selectedConversionBodylessSupport(state.support)
 				state.outputConfigurationRoot = contract.ID{}

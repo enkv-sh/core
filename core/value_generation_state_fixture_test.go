@@ -830,7 +830,7 @@ func generatedInstallFixtureSupportReader(t testing.TB, s *StateSession) {
 				if _, duplicate := fragments[location]; duplicate {
 					t.Fatal("duplicate selected fixture fragment")
 				}
-				fragments[location] = selectedFragmentFact{ref: ref, row: fact, physical: uint16(j), logical: uint8(j),
+				fragments[location] = selectedFragmentFact{ref: ref, row: fact, physical: uint16(j), logical: uint16(j),
 					blob: fragment.BlobID, index: fragment.Index, count: fragment.Count, total: fragment.TotalLength,
 					whole: fragment.WholeDigest, offset: fragment.Offset, payloadLength: uint32(len(fragment.Payload))}
 			}

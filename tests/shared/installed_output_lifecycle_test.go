@@ -564,7 +564,7 @@ func TestInstalledRetirementPreservesOutputSlicesAndRetainedWork(t *testing.T) {
 	for _, location := range fresh.root.Generated.Fragments {
 		id, err := contract.GeneratorFragmentID(location.BlobID, location.FragmentIndex)
 		fact, present := fresh.fragmentFacts[location]
-		if err != nil || !present || expectedKinds[id] != 0 || fact.ref.Index != location.SupportPageIndex || fact.logical != location.RowSlot || fragments[id] != fact {
+		if err != nil || !present || expectedKinds[id] != 0 || fact.ref.Index != location.SupportPageIndex || fact.logical != uint16(location.RowSlot) || fragments[id] != fact {
 			t.Fatal("generated fragment directory differs from exact selected locations and facts", err)
 		}
 		expectedKinds[id] = contract.GeneratedFragmentSupportKind

@@ -286,7 +286,7 @@ func generatedFragmentDirectoryWithSelectedFacts(pages []format.RequiredSupportP
 				fact, ok := facts[row.RecordID]
 				if !ok || i > 255 || fact.row.Kind() != row.Kind || fact.row.RecordID() != row.RecordID ||
 					fact.ref.Index != page.Index || fact.ref.Domain != page.Domain ||
-					fact.ref.Object != page.Object || fact.logical != uint8(i) {
+					fact.ref.Object != page.Object || int(fact.logical) != i {
 					return nil, contract.ErrRecord
 				}
 				directory = append(directory, format.FragmentLocation{BlobID: fact.blob, FragmentIndex: fact.index,

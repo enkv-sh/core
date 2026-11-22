@@ -188,7 +188,7 @@ func (s *StateSession) bindEndWorkSupportFactsInput(next *StateSession, images [
 			return contract.ErrRecord
 		}
 		fact := selectedFragmentFact{ref: pageFacts.ref, row: digest, physical: pageFacts.ordinals[location.RowSlot],
-			logical: location.RowSlot, blob: location.BlobID, index: location.FragmentIndex}
+			logical: uint16(location.RowSlot), blob: location.BlobID, index: location.FragmentIndex}
 		if row.Body == nil {
 			oldPosition, retained := prior[pageFacts.ref]
 			if !retained {
@@ -202,11 +202,11 @@ func (s *StateSession) bindEndWorkSupportFactsInput(next *StateSession, images [
 			oldLocation.RowSlot = uint8(oldLogical)
 			old, found := s.fragmentFacts[oldLocation]
 			if !found || old.ref != fact.ref || old.row != digest || old.physical != fact.physical ||
-				old.logical != uint8(oldLogical) || old.blob != fact.blob || old.index != fact.index {
+				int(old.logical) != oldLogical || old.blob != fact.blob || old.index != fact.index {
 				return contract.ErrRecord
 			}
 			fact = old
-			fact.logical = location.RowSlot
+			fact.logical = uint16(location.RowSlot)
 		} else {
 			fragment, err := contract.InspectGeneratedFragment(row.Body)
 			if err != nil || fragment.BlobID != location.BlobID || fragment.Index != location.FragmentIndex {

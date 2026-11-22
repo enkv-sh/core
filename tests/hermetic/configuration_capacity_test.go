@@ -1213,7 +1213,7 @@ func TestConfiguredGeneratedCapacityColdOpen(t *testing.T) {
 				}
 				location := format.FragmentLocation{BlobID: fragment.BlobID, SupportPageIndex: index, RowSlot: uint8(r)}
 				state.root.Generated.Fragments = append(state.root.Generated.Fragments, location)
-				state.fragmentFacts[location] = selectedFragmentFact{ref: ref, row: fact, physical: uint16(r), logical: uint8(r),
+				state.fragmentFacts[location] = selectedFragmentFact{ref: ref, row: fact, physical: uint16(r), logical: uint16(r),
 					blob: fragment.BlobID, count: 1, total: 1, whole: fragment.WholeDigest, payloadLength: 1}
 				facts.rows = append(facts.rows, fact)
 				facts.ordinals = append(facts.ordinals, uint16(r))

@@ -95,7 +95,7 @@ func (s *StateSession) preservedState(ctx context.Context, mask uint8, opaqueWor
 				return contract.DigestLength{}, contract.ErrRecord
 			}
 			result, readErr := withAuthenticatedSupportRow(ctx, s.readObjectBorrowedUncached, s.root.Domain, page,
-				uint16(fact.logical), func(view contract.SupportRecordView) error {
+				fact.logical, func(view contract.SupportRecordView) error {
 					inspected, err := contract.InspectSupportRecordDigest(s.root.Domain, contract.SupportRecord(view))
 					if err != nil || inspected != fact.row || view.Kind != row.Kind || view.RecordID != row.RecordID {
 						return contract.ErrRecord

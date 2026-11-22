@@ -396,7 +396,7 @@ func scanSelectedImage(ctx context.Context, reader selectedObjectReader, root fo
 					if _, duplicate := image.fragmentFacts[location]; duplicate {
 						return selectedImage{}, failure(IntegrityFailure, InvalidRelation)
 					}
-					image.fragmentFacts[location] = selectedFragmentFact{ref: ref, row: fact, physical: uint16(ordinal), logical: uint8(logical),
+					image.fragmentFacts[location] = selectedFragmentFact{ref: ref, row: fact, physical: uint16(ordinal), logical: uint16(logical),
 						blob: fragment.BlobID, index: fragment.Index, count: fragment.Count, total: fragment.TotalLength,
 						whole: fragment.WholeDigest, offset: fragment.Offset, payloadLength: uint32(len(fragment.Payload))}
 				}

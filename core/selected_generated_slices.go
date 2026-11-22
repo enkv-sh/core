@@ -70,7 +70,7 @@ func verifySelectedGeneratedSlices(ctx context.Context, image *selectedImage, re
 	for i, location := range image.root.Generated.Fragments {
 		fact, ok := image.fragmentFacts[location]
 		if !ok || fact.blob != location.BlobID || fact.index != location.FragmentIndex ||
-			fact.logical != location.RowSlot || fact.ref.Index != location.SupportPageIndex ||
+			fact.logical != uint16(location.RowSlot) || fact.ref.Index != location.SupportPageIndex ||
 			fact.count == 0 || fact.index >= fact.count || fact.whole.IsZero() {
 			return failure(IntegrityFailure, InvalidRelation)
 		}
@@ -155,7 +155,7 @@ func withSelectedFragmentFromImage(ctx context.Context, image *selectedImage, re
 	}
 	fact, ok := image.fragmentFacts[location]
 	if !ok || fact.ref.Domain != image.root.Domain || fact.ref.Index != location.SupportPageIndex ||
-		fact.logical != location.RowSlot || fact.blob != location.BlobID || fact.index != location.FragmentIndex ||
+		fact.logical != uint16(location.RowSlot) || fact.blob != location.BlobID || fact.index != location.FragmentIndex ||
 		!slices.Contains(image.root.Generated.Fragments, location) {
 		return failure(IntegrityFailure, InvalidRelation), nil
 	}
@@ -203,7 +203,7 @@ func withSelectedFragmentFromImage(ctx context.Context, image *selectedImage, re
 	return withAuthenticatedSupportRow(ctx, func(ctx context.Context, ref format.Ref) ([]byte, Result) {
 		body, _, result := reader.readBorrowed(ctx, ref)
 		return body, result
-	}, image.root.Domain, page, uint16(fact.logical), func(row contract.SupportRecordView) error {
+	}, image.root.Domain, page, fact.logical, func(row contract.SupportRecordView) error {
 		fragment, err := contract.InspectGeneratedFragment(row.Body)
 		if err != nil || row.Kind != contract.GeneratedFragmentSupportKind || !fact.matches(fragment) {
 			return contract.ErrRecord
@@ -360,7 +360,7 @@ func (s *StateSession) receiptSuccessorSlices(next *StateSession) ([]contract.Ge
 		fact, ok := next.fragmentFacts[location]
 		position, pageOK := pageByIndex[location.SupportPageIndex]
 		if !ok || !pageOK || fact.ref != next.root.RequiredSupport[position] ||
-			fact.blob != location.BlobID || fact.index != location.FragmentIndex || fact.logical != location.RowSlot ||
+			fact.blob != location.BlobID || fact.index != location.FragmentIndex || fact.logical != uint16(location.RowSlot) ||
 			int(location.RowSlot) >= len(next.supportFacts[position].rows) ||
 			fact.row != next.supportFacts[position].rows[location.RowSlot] ||
 			fact.physical != next.supportFacts[position].ordinals[location.RowSlot] ||

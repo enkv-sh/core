@@ -239,13 +239,15 @@ func (s *selectedImage) selectedOutputFactsByRecord() (map[contract.ID]selectedF
 			if row.Kind() != contract.OutputConfigurationSliceSupportKind {
 				continue
 			}
-			if logical > 255 {
+			// Selection can omit earlier physical rows. Its compact index
+			// cannot exceed the authenticated physical ordinal.
+			if logical > int(page.ordinals[logical]) {
 				return nil, contract.ErrRecord
 			}
 			if _, exists := out[row.RecordID()]; exists {
 				return nil, contract.ErrRecord
 			}
-			out[row.RecordID()] = selectedFragmentFact{ref: page.ref, row: row, physical: page.ordinals[logical], logical: uint8(logical), blob: s.root.OutputConfiguration.ConfigurationDigest}
+			out[row.RecordID()] = selectedFragmentFact{ref: page.ref, row: row, physical: page.ordinals[logical], logical: uint16(logical), blob: s.root.OutputConfiguration.ConfigurationDigest}
 		}
 	}
 	return out, nil
@@ -717,7 +719,7 @@ func (s *StateSession) readSelectedOutputSupportRow(ctx context.Context, id cont
 		return nil, contract.ErrRecord
 	}
 	var body []byte
-	result, err := withAuthenticatedSupportRow(ctx, s.readObjectBorrowedUncached, s.root.Domain, s.supportFacts[position], uint16(fact.logical), func(view contract.SupportRecordView) error {
+	result, err := withAuthenticatedSupportRow(ctx, s.readObjectBorrowedUncached, s.root.Domain, s.supportFacts[position], fact.logical, func(view contract.SupportRecordView) error {
 		if view.Kind != contract.OutputConfigurationSliceSupportKind || view.RecordID != id {
 			return contract.ErrRecord
 		}

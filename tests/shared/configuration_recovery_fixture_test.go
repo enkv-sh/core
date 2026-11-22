@@ -1621,7 +1621,7 @@ func publicationLossGeneratedFacts(t *testing.T, s *StateSession) publicationLos
 		if location.BlobID == indexBlob {
 			continue
 		}
-		if location.SupportPageIndex != fact.ref.Index || location.RowSlot != fact.logical || location.FragmentIndex != fact.index || location.BlobID != fact.blob {
+		if location.SupportPageIndex != fact.ref.Index || uint16(location.RowSlot) != fact.logical || location.FragmentIndex != fact.index || location.BlobID != fact.blob {
 			t.Fatal("publication loss preserved fragment location differs from authenticated backing")
 		}
 		row := publicationLossSupportFact{fact.row.Kind(), fact.row.RecordID(), fact.row.BodyDigest(), fact.row.BodyLength()}

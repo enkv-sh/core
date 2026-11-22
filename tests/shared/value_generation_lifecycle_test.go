@@ -1590,7 +1590,7 @@ func generatedSelectedFragmentRef(t testing.TB, selected *StateSession, location
 	t.Helper()
 	fact, found := selected.fragmentFacts[location]
 	position, pageOK := selected.selectedSupportPosition(fact.ref)
-	if !found || !pageOK || fact.ref.Index != location.SupportPageIndex || fact.logical != location.RowSlot ||
+	if !found || !pageOK || fact.ref.Index != location.SupportPageIndex || fact.logical != uint16(location.RowSlot) ||
 		fact.blob != location.BlobID || fact.index != location.FragmentIndex {
 		t.Fatal("selected fragment reference or directory")
 	}
