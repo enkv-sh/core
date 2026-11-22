@@ -19,7 +19,7 @@ import (
 
 type installedLocalAuthor struct {
 	config           custody.GeneratedProcessConfig
-	refuseResultPipe func()
+	refuseResultPipe *custody.GeneratedPipeFault
 }
 
 func installedLocalPublicRoot(t testing.TB) string {

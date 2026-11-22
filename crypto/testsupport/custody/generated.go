@@ -215,7 +215,7 @@ const GeneratedTerminalFailure uint8 = 4
 const GeneratedConfirmedNoEffect uint8 = 5
 
 type GeneratedProcessConfig struct {
-	ReportEnvironmentPipeClosed func()
+	ReportEnvironmentPipeClosed *GeneratedPipeFault
 	ArtifactPath                string
 	Artifact                    contract.GeneratorImplementation
 	Metadata, Dependency        []byte

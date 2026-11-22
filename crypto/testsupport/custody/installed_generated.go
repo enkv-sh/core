@@ -3,6 +3,7 @@ package custody
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"enkv.sh/compositions/generatorhost"
@@ -32,8 +33,14 @@ func (o *InstalledGeneratedOwner) InvokeProducer(ctx context.Context, locator, a
 	return o.owner.InvokeProducer(ctx, locator, authority)
 }
 
-func (o *InstalledGeneratedOwner) RefuseResultPipe(observe func()) {
-	privatecrypto.TestRefuseGeneratedResultPipe(o.runtime, observe)
+// GeneratedPipeFault records injections across the producer forks in one test.
+type GeneratedPipeFault struct{ calls atomic.Int32 }
+
+func (f *GeneratedPipeFault) Count() int32 { return f.calls.Load() }
+func (f *GeneratedPipeFault) record()      { f.calls.Add(1) }
+
+func (o *InstalledGeneratedOwner) RefuseResultPipe(fault *GeneratedPipeFault) {
+	privatecrypto.TestRefuseGeneratedResultPipe(o.runtime, fault.record)
 }
 
 func (o *InstalledGeneratedOwner) Close() {
@@ -137,7 +144,7 @@ func (f *Fixture) NewInstalledGeneratedProducer(ctx context.Context, q contract.
 		return nil, err
 	}
 	if config.ReportEnvironmentPipeClosed != nil {
-		generatorhost.TestReportEnvironmentPipeClosed(launcher, config.ReportEnvironmentPipeClosed)
+		generatorhost.TestReportEnvironmentPipeClosed(launcher, config.ReportEnvironmentPipeClosed.record)
 	}
 	var process generatorhost.Launcher = launcher
 	if len(observeCompletion) != 0 && observeCompletion[0] != nil {

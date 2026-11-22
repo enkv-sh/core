@@ -48,12 +48,12 @@ func TestInstalledLocalGeneratorJoinedEntropyFailureHasNoRemoteOwner(t *testing.
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			author, fault := tc.author, tc.fault
-			var pipeFaults atomic.Int32
+			var pipeFaults custody.GeneratedPipeFault
 			resumeAfterPipeFailure := tc.name == "result pipe unavailable" || tc.name == "environment pipe closed"
 			if tc.name == "result pipe unavailable" {
-				author.refuseResultPipe = func() { pipeFaults.Add(1) }
+				author.refuseResultPipe = &pipeFaults
 			} else if tc.name == "environment pipe closed" {
-				author.config.ReportEnvironmentPipeClosed = func() { pipeFaults.Add(1) }
+				author.config.ReportEnvironmentPipeClosed = &pipeFaults
 			}
 			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
 			defer cancel()
@@ -224,8 +224,8 @@ func TestInstalledLocalGeneratorJoinedEntropyFailureHasNoRemoteOwner(t *testing.
 				if err != nil || final.Result.Outcome != ObservedCurrent || final.OperationID != got.OperationID || receipt.OperationID != got.OperationID ||
 					receipt.StateResult != contract.ReceiptStateEffectTerminalFailure || receipt.CanonicalOutcome != contract.ReceiptCanonicalNotSelected ||
 					receipt.EffectSummary != contract.ReceiptEffectFailed || receipt.SummaryCounts[contract.ReceiptSummaryFailureCount] != 1 ||
-					!after.root.Generated.ActiveOwner.IsZero() || len(after.root.Names) != len(beforeEntries) || admissions != 1 || pipeFaults.Load() != 1 {
-					t.Fatal("recorded pipe refusal did not finalize on cold continuation", final.Result, admissions, pipeFaults.Load(), err)
+					!after.root.Generated.ActiveOwner.IsZero() || len(after.root.Names) != len(beforeEntries) || admissions != 1 || pipeFaults.Count() != 1 {
+					t.Fatal("recorded pipe refusal did not finalize on cold continuation", final.Result, admissions, pipeFaults.Count(), err)
 				}
 				retained, read := after.MutationReceipt(readctx, final.OperationID)
 				if read.Outcome != ObservedCurrent || !bytes.Equal(retained, final.Receipt) {
