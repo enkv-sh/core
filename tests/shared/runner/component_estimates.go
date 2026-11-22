@@ -685,7 +685,7 @@ var componentEstimates = map[string]float64{
 	"TestGeneratedFreshRetirementReservationClaimsAndSendsOnce":                                   5,
 	"TestGeneratedHistoryScenariosUseEveryCatalogStep":                                            72,
 	"TestGeneratedInboxReleaseRejectsChangedMapping":                                              4,
-	"TestGeneratedKeyRecoveryMatrixCoversEveryOccupiedOwner":                                      8,
+	"TestGeneratedKeyRecoveryMatrixCoversEveryOccupiedOwner":                                      9,
 	"TestGeneratedKeyReplacementBeforeFirstEntryPreservesOriginalProducer":                        18,
 	"TestGeneratedLateConfirmationBindsAlreadySelectedAck":                                        20,
 	"TestGeneratedLifecyclePreissuedPermitsConsumeOnePreparation":                                 8,
