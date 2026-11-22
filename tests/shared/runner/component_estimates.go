@@ -442,7 +442,6 @@ var componentEstimates = map[string]float64{
 	"TestCandidateReaderOwnsOnlyBoundedPublicBodies":                             1,
 	"TestCandidateReaderRefusesUnboundedOrUnboundReads":                          1,
 	"TestCandidateRecoveryOnlyAnchorUsesOnlyApplicableK3":                        1,
-	"TestCompleteReconstructionChecksFinalHEADWithNoSecrets":                     1,
 	"TestCompleteReconstructionUsesPrivateVerifyDiscard":                         1,
 	"TestGenesisHermeticReaderUsesIndependentConfiguration":                      1,
 	"TestGenesisSelectedConfigurationFactBindsExactLength":                       1,
