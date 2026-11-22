@@ -412,6 +412,9 @@ func readerDiagnostic(d contract.Diagnostic) (readerDiagnosticRecord, bool) {
 	if !validReaderReason(d.Reason) || d.Outcome != contract.DiagnosticUnable && d.Outcome != contract.DiagnosticDifference || len(d.Path) < 1 || len(d.Path) > 2 {
 		return r, false
 	}
+	if d.Reason == contract.ReasonImmutableConflict && !d.ImmutableConflictShape() {
+		return r, false
+	}
 	if d.Reason == contract.ReasonStaleSealedInputBinding && (d.Subject.Kind != contract.SubjectEntry || d.Outcome != contract.DiagnosticUnable || len(d.Path) != 1 || d.Path[0] != contract.FieldSource || d.SourceLocation != nil) {
 		return r, false
 	}
@@ -508,7 +511,7 @@ func validReaderField(field contract.DiagnosticField) bool {
 }
 func validReaderReason(reason contract.DiagnosticReason) bool {
 	switch reason {
-	case contract.ReasonExpectedEntryAbsent, contract.ReasonObservedEntryAbsent, contract.ReasonExpectedSettingAbsent, contract.ReasonObservedSettingAbsent, contract.ReasonFieldDiffers, contract.ReasonSetDiffers, contract.ReasonBytesDiffer, contract.ReasonPublicFactUnavailable, contract.ReasonInvalidInput, contract.ReasonMissingRequiredField, contract.ReasonDuplicateKey, contract.ReasonDuplicateMember, contract.ReasonUnresolvedReference, contract.ReasonInvalidUTF8, contract.ReasonLimitExceeded, contract.ReasonInvalidFieldCombination, contract.ReasonTrustBasisInvalid, contract.ReasonDomainBasisInvalid, contract.ReasonStoreBasisInvalid, contract.ReasonExpired, contract.ReasonCancelled, contract.ReasonUnsupportedSchema, contract.ReasonUnsupportedProfile, contract.ReasonHeadInvalid, contract.ReasonProofInvalid, contract.ReasonSelectedObjectInvalid, contract.ReasonSelectedRelationInvalid, contract.ReasonEvidenceUnavailable, contract.ReasonSelectedObjectUnavailable, contract.ReasonReadContention, contract.ReasonDiagnosticsIncomplete, contract.ReasonStaleSealedInputBinding, contract.ReasonTargetAbsent, contract.ReasonEntryAbsent, contract.ReasonDuplicateEntry, contract.ReasonTargetNotAuthorized, contract.ReasonLocatorUnusable:
+	case contract.ReasonExpectedEntryAbsent, contract.ReasonObservedEntryAbsent, contract.ReasonExpectedSettingAbsent, contract.ReasonObservedSettingAbsent, contract.ReasonFieldDiffers, contract.ReasonSetDiffers, contract.ReasonBytesDiffer, contract.ReasonPublicFactUnavailable, contract.ReasonInvalidInput, contract.ReasonMissingRequiredField, contract.ReasonDuplicateKey, contract.ReasonDuplicateMember, contract.ReasonUnresolvedReference, contract.ReasonInvalidUTF8, contract.ReasonLimitExceeded, contract.ReasonInvalidFieldCombination, contract.ReasonTrustBasisInvalid, contract.ReasonDomainBasisInvalid, contract.ReasonStoreBasisInvalid, contract.ReasonExpired, contract.ReasonCancelled, contract.ReasonUnsupportedSchema, contract.ReasonUnsupportedProfile, contract.ReasonHeadInvalid, contract.ReasonProofInvalid, contract.ReasonSelectedObjectInvalid, contract.ReasonSelectedRelationInvalid, contract.ReasonImmutableConflict, contract.ReasonEvidenceUnavailable, contract.ReasonSelectedObjectUnavailable, contract.ReasonReadContention, contract.ReasonDiagnosticsIncomplete, contract.ReasonStaleSealedInputBinding, contract.ReasonTargetAbsent, contract.ReasonEntryAbsent, contract.ReasonDuplicateEntry, contract.ReasonTargetNotAuthorized, contract.ReasonLocatorUnusable:
 		return true
 	}
 	return false

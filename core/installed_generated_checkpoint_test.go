@@ -8,6 +8,18 @@ import (
 )
 
 // full_only: false
+func TestGeneratedPersistenceStopKeepsConflictAfterCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	selected := Result{Outcome: ObservedCurrent, Evidence: AuthenticatedClosure}
+	out := PublicApplyResult{Result: selected}
+	if !out.stopForResultPersistence(ctx, failure(IntegrityFailure, ImmutableConflict)) || out.Result != selected ||
+		len(out.Diagnostics) != 1 || out.Diagnostics[0].Reason != contract.ReasonImmutableConflict || !out.Diagnostics[0].ImmutableConflictShape() {
+		t.Fatal("cancelled caller hid a confirmed Store conflict")
+	}
+}
+
+// full_only: false
 func TestGeneratedSelectionCheckpointPreservesSelectionAndClosedFailureReason(t *testing.T) {
 	actual := PublicApplyResult{OperationID: generatedVectorID(41), Result: Result{Outcome: ObservedCurrent, RequestedRevision: generatedVectorID(42), ObservedRevision: generatedVectorID(42), ObservedSnapshotID: generatedVectorID(43), Evidence: AuthenticatedClosure}, Generated: &GeneratedInvocationResult{OperationKind: contract.OperationApplyDeclaration}, Receipt: []byte{1}, WarningBits: 3}
 	var checkpoint generatedSelectionCheckpoint

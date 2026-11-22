@@ -97,32 +97,31 @@ func (e *InstalledApply) applyGenerated(ctx context.Context, requestID contract.
 		out.Result = installedApplyPreparationFailure(err)
 		return out
 	}
+	var persistence Result
 	if !candidate.bindFirstSend(producers[0], func(callctx context.Context, authority contract.ID) contract.CryptoResultCode {
 		// Every original has been independently prepared and claimed. All admitted
 		// children join before custody can close or an outcome can be returned.
 		returns := make([]struct {
 			code          contract.CryptoResultCode
 			cleanupFailed bool
+			persistence   Result
 		}, len(producers))
 		var joined sync.WaitGroup
 		for at, p := range producers {
 			joined.Add(1)
 			go func(at int, p *generatedPreparation) {
 				defer joined.Done()
-				returned := owners[at].InvokeProducer(callctx, p.producerLocator, authority)
+				returned, stored := p.invokeInstalledProducer(callctx, owners[at], authority)
 				returns[at].code = returned.Code
 				returns[at].cleanupFailed = returned.ExecutableCleanupFailed
-				if returned.Code == contract.CryptoSuccess && len(returned.Record) != 0 {
-					if persisted := prior.reservation.state.persistGeneratedResult(callctx, generatedResultWrite{attempt: p.attempt, body: returned.Record}); persisted.Outcome != 0 {
-						returns[at].code = contract.CryptoCustodyUnavailable
-					}
-				}
+				returns[at].persistence = stored
 			}(at, p)
 		}
 		joined.Wait()
 		cleanupFailed := false
 		for _, returned := range returns {
 			cleanupFailed = cleanupFailed || returned.cleanupFailed
+			persistence = firstGeneratedPersistenceFailure(persistence, returned.persistence)
 		}
 		if cleanupFailed {
 			out.AddCleanupDiagnostic()
@@ -146,10 +145,22 @@ func (e *InstalledApply) applyGenerated(ctx context.Context, requestID contract.
 		owner.Close()
 	}
 	owners = nil
+	if out.stopForResultPersistence(ctx, persistence) {
+		return out
+	}
 	if selected == nil || result.Outcome != ObservedCurrent {
 		return out
 	}
 	return e.driveGenerated(ctx, out, selected, i, deadline, &checkpoint, failures)
+}
+
+func (p *generatedPreparation) invokeInstalledProducer(ctx context.Context, owner *InstalledGeneratedProducerCustody, authority contract.ID) (contract.GeneratedProducerResult, Result) {
+	returned := owner.InvokeProducer(ctx, p.producerLocator, authority)
+	if returned.Code != contract.CryptoSuccess || len(returned.Record) == 0 {
+		return returned, Result{}
+	}
+	stored := p.reservation.state.persistGeneratedResult(ctx, generatedResultWrite{attempt: p.attempt, body: returned.Record})
+	return returned, stored
 }
 
 func (s *StateSession) installedGeneratedPrepareProducer(ctx context.Context, i ApplyInstallation, prior *generatedPreparation, attempt contract.ID, original bool, deadline time.Time, capture ...func(*generatedPreparation) error) (*generatedPreparation, *InstalledGeneratedProducerCustody, Result) {
@@ -429,20 +440,14 @@ func (e *InstalledApply) driveGenerated(ctx context.Context, out PublicApplyResu
 				owner.Close()
 				return fail(installedApplyPreparationFailure(err))
 			}
+			var persistence Result
 			if !p.reservation.candidate.bindFirstSend(p, func(callctx context.Context, authority contract.ID) contract.CryptoResultCode {
-				returned := owner.InvokeProducer(callctx, p.producerLocator, authority)
+				returned, stored := p.invokeInstalledProducer(callctx, owner, authority)
+				persistence = stored
 				if returned.ExecutableCleanupFailed {
 					out.AddCleanupDiagnostic()
 				}
-				if returned.Code != contract.CryptoSuccess {
-					return returned.Code
-				}
-				if len(returned.Record) != 0 {
-					if persisted := p.reservation.state.persistGeneratedResult(callctx, generatedResultWrite{attempt: p.attempt, body: returned.Record}); persisted.Outcome != 0 {
-						return contract.CryptoCustodyUnavailable
-					}
-				}
-				return contract.CryptoSuccess
+				return returned.Code
 			}) {
 				owner.Close()
 				return fail(refused(AdmissionInvalid))
@@ -450,6 +455,9 @@ func (e *InstalledApply) driveGenerated(ctx context.Context, out PublicApplyResu
 			next, result := s.selectObserved(ctx, p.reservation.candidate)
 			owner.Close()
 			recordGeneratedSelection(ctx, &out, next, result, capture, checkpoint)
+			if out.stopForResultPersistence(ctx, persistence) {
+				return out
+			}
 			if next == nil || result.Outcome != ObservedCurrent {
 				return out
 			}

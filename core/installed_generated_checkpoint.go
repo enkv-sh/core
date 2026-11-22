@@ -75,6 +75,27 @@ func (c *generatedSelectionCheckpoint) preparationFailure(ctx context.Context, o
 	return out
 }
 
+// The callbacks join before these results are folded in original plan order.
+func firstGeneratedPersistenceFailure(first, next Result) Result {
+	if first.Outcome == 0 || next.Outcome == IntegrityFailure && next.Reason == ImmutableConflict && first.Reason != ImmutableConflict {
+		return next
+	}
+	return first
+}
+
+func (out *PublicApplyResult) stopForResultPersistence(ctx context.Context, failure Result) bool {
+	if failure.Outcome == 0 {
+		return false
+	}
+	reason := generatedPreparationDiagnostic(ctx, failure)
+	if failure.Outcome == IntegrityFailure && failure.Reason == ImmutableConflict {
+		reason = contract.ReasonImmutableConflict
+	}
+	out.Diagnostics = append(out.Diagnostics, contract.Diagnostic{Subject: contract.DiagnosticSubject{Kind: contract.SubjectStore},
+		Path: []contract.DiagnosticField{contract.FieldPresence}, Outcome: contract.DiagnosticUnable, Reason: reason})
+	return true
+}
+
 func generatedPreparationDiagnostic(ctx context.Context, failure Result) contract.DiagnosticReason {
 	if ctx != nil {
 		if ctx.Err() == context.Canceled {

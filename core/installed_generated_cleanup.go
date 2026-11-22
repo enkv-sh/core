@@ -71,29 +71,8 @@ func (e *InstalledApply) cleanupGenerated(ctx context.Context, call *telemetry.C
 		out.Result = result
 		return out
 	}
-	var ambiguity []byte
-	if !p.reservation.candidate.bindFirstSend(p, func(callctx context.Context, authority contract.ID) contract.CryptoResultCode {
-		returned := owner.InvokeProducer(callctx, p.producerLocator, authority)
-		if returned.ExecutableCleanupFailed {
-			out.AddCleanupDiagnostic()
-		}
-		body, facts, code := returned.Record, returned.Facts, returned.Code
-		if code != contract.CryptoSuccess {
-			return code
-		}
-		if len(body) != 0 {
-			if result := p.reservation.state.persistGeneratedResult(callctx, generatedResultWrite{attempt: p.attempt, body: body}); result.Outcome != 0 {
-				return contract.CryptoCustodyUnavailable
-			}
-		} else if facts.Disposition == contract.GeneratorDispositionUnknown {
-			var err error
-			ambiguity, err = contract.EncodeGeneratorSafeFacts(facts)
-			if err != nil {
-				return contract.CryptoInvalidInput
-			}
-		}
-		return contract.CryptoSuccess
-	}) {
+	handoff := p.bindInstalledDelete(owner, &out)
+	if handoff == nil {
 		return out
 	}
 	call.Checkpoint(telemetry.DiagnosticCommitObservation, telemetry.DiagnosticReasonNone)
@@ -101,10 +80,13 @@ func (e *InstalledApply) cleanupGenerated(ctx context.Context, call *telemetry.C
 	owner.Close()
 	owner = nil
 	recordInstalledGeneratedCleanupSelection(ctx, &out, next, result, capture, &checkpoint)
+	if out.stopForResultPersistence(ctx, handoff.persistence) {
+		return out
+	}
 	if next == nil || result.Outcome != ObservedCurrent {
 		return out
 	}
-	return e.driveInstalledGeneratedCleanup(ctx, out, next, i, inv.deadline, ambiguity, call, &checkpoint)
+	return e.driveInstalledGeneratedCleanup(ctx, out, next, i, inv.deadline, handoff.ambiguity, call, &checkpoint)
 }
 
 func (e *InstalledApply) ContinueGeneratedCleanup(ctx context.Context, requestID contract.ID, request GeneratedCleanupContinuationRequest) PublicApplyResult {

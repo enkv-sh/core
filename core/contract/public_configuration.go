@@ -182,6 +182,7 @@ const (
 	ReasonHeadInvalid               DiagnosticReason      = "head-invalid"
 	ReasonProofInvalid              DiagnosticReason      = "proof-invalid"
 	ReasonSelectedObjectInvalid     DiagnosticReason      = "selected-object-invalid"
+	ReasonImmutableConflict         DiagnosticReason      = "immutable-conflict"
 	ReasonSelectedRelationInvalid   DiagnosticReason      = "selected-relation-invalid"
 	ReasonEvidenceUnavailable       DiagnosticReason      = "evidence-unavailable"
 	ReasonSelectedObjectUnavailable DiagnosticReason      = "selected-object-unavailable"
@@ -264,6 +265,13 @@ type Diagnostic struct {
 	Outcome        DiagnosticOutcome
 	Reason         DiagnosticReason
 	SourceLocation *SourceLocation
+}
+
+// ImmutableConflictShape checks the single Store diagnostic that can carry
+// an exact immutable-write conflict in a public mutation response.
+func (d Diagnostic) ImmutableConflictShape() bool {
+	return d.Subject == (DiagnosticSubject{Kind: SubjectStore}) && d.Outcome == DiagnosticUnable &&
+		len(d.Path) == 1 && d.Path[0] == FieldPresence && d.SourceLocation == nil
 }
 
 // OutputPolicyLength checks the same canonical policy fields without retaining

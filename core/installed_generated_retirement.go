@@ -116,29 +116,8 @@ func (e *InstalledApply) retireGenerated(ctx context.Context, requestID contract
 		return out
 	}
 	out.RequestIdentity = p.reservation.identity.RequestIdentityDigest
-	var ambiguity []byte
-	if !p.reservation.candidate.bindFirstSend(p, func(callctx context.Context, authority contract.ID) contract.CryptoResultCode {
-		returned := owner.InvokeProducer(callctx, p.producerLocator, authority)
-		if returned.ExecutableCleanupFailed {
-			out.AddCleanupDiagnostic()
-		}
-		body, facts, code := returned.Record, returned.Facts, returned.Code
-		if code != contract.CryptoSuccess {
-			return code
-		}
-		if len(body) != 0 {
-			if result := p.reservation.state.persistGeneratedResult(callctx, generatedResultWrite{attempt: p.attempt, body: body}); result.Outcome != 0 {
-				return contract.CryptoCustodyUnavailable
-			}
-		} else if facts.Disposition == contract.GeneratorDispositionUnknown {
-			var err error
-			ambiguity, err = contract.EncodeGeneratorSafeFacts(facts)
-			if err != nil {
-				return contract.CryptoInvalidInput
-			}
-		}
-		return contract.CryptoSuccess
-	}) {
+	handoff := p.bindInstalledDelete(owner, &out)
+	if handoff == nil {
 		return out
 	}
 	call.Checkpoint(telemetry.DiagnosticCommitObservation, telemetry.DiagnosticReasonNone)
@@ -146,10 +125,13 @@ func (e *InstalledApply) retireGenerated(ctx context.Context, requestID contract
 	owner.Close()
 	owner = nil
 	recordGeneratedSelection(ctx, &out, next, result, capture, &checkpoint)
+	if out.stopForResultPersistence(ctx, handoff.persistence) {
+		return out
+	}
 	if next == nil || result.Outcome != ObservedCurrent {
 		return out
 	}
-	return e.driveInstalledGeneratedRetirement(ctx, out, next, i, inv.deadline, ambiguity, call, &checkpoint)
+	return e.driveInstalledGeneratedRetirement(ctx, out, next, i, inv.deadline, handoff.ambiguity, call, &checkpoint)
 }
 
 func (e *InstalledApply) ContinueGeneratedRetirement(ctx context.Context, requestID contract.ID, request GeneratedRetirementContinuationRequest) PublicApplyResult {

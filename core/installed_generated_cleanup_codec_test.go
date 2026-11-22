@@ -87,6 +87,13 @@ func TestGeneratedCleanupSiblingRetainsPreparationInterruptionAndDeliveryDiagnos
 		{Subject: contract.DiagnosticSubject{Kind: contract.SubjectObservation}, Path: []contract.DiagnosticField{contract.FieldPresence}, Outcome: contract.DiagnosticUnable, Reason: contract.ReasonExpired},
 		{Subject: contract.DiagnosticSubject{Kind: contract.SubjectConfiguration}, Path: []contract.DiagnosticField{contract.FieldPresence}, Outcome: contract.DiagnosticUnable, Reason: contract.ReasonEvidenceUnavailable},
 	}
+	conflict := contract.Diagnostic{Subject: contract.DiagnosticSubject{Kind: contract.SubjectStore}, Path: []contract.DiagnosticField{contract.FieldPresence}, Outcome: contract.DiagnosticUnable, Reason: contract.ReasonImmutableConflict}
+	r.Diagnostics = append(r.Diagnostics, conflict)
+	other := conflict
+	other.Subject.Kind = contract.SubjectEntry
+	if cleanupDiagnosticValid(other) {
+		t.Fatal("non-Store subject claimed an immutable write conflict")
+	}
 	if err := RefreshGeneratedCleanupResult(&r); err != nil {
 		t.Fatal("complete cleanup result cannot commit its admissible diagnostic sequence", err)
 	}

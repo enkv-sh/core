@@ -21,11 +21,96 @@ import (
 )
 
 // full_only: false
+func TestInstalledParallelCreateReportsOneStoreFailureInPlanOrder(t *testing.T) {
+	for _, conflict := range []bool{false, true} {
+		t.Run(fmt.Sprintf("conflict-%t", conflict), func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+			defer cancel()
+			process, effects := installedGeneratedRetirementProcess(t, "acknowledged")
+			f := newInstalledApplyTestFixture(t, ctx, contract.GCP, true)
+			f.env.GeneratedProcess = process
+			first := installedGeneratedRetirementEntries(process, f.selected.admission.recipient, 0, "unused")[0]
+			second := first
+			first.Name, second.Name = "alpha", "beta"
+			input := []ApplyEntryInput{first, second}
+			base := requireAdmittedMemoryStore(t, f.env.Store)
+			store := &applyPreparationTestStore{Store: base, memory: base}
+			f.env.Store = store
+			callbacks := installedGeneratedRetirementCallbacks(t, f, process)
+			admit := callbacks.AdmitProducer
+			var keys []string
+			callbacks.AdmitProducer = func(ctx context.Context, q contract.CryptoGeneratedCompareRequest, control contract.ControlCore, in contract.GeneratedProducerInput, row contract.GeneratorImplementation, deadline time.Time) (*InstalledGeneratedProducerCustody, error) {
+				key, err := format.GeneratedResultKey(base.desc.Prefix, f.env.Domain, in.Expected.Template.InboxID)
+				if err != nil {
+					return nil, err
+				}
+				keys = append(keys, key)
+				return admit(ctx, q, control, in, row, deadline)
+			}
+			secondWrite := make(chan struct{})
+			store.create = func(ctx context.Context, key string, body []byte) contract.WriteResult {
+				if len(keys) == 2 {
+					switch key {
+					case keys[0]:
+						select {
+						case <-secondWrite:
+						case <-ctx.Done():
+							t.Error("second write did not join")
+						}
+						return contract.WriteResult{Status: contract.WriteRefused, Reason: contract.ReasonLimit, NotSent: true}
+					case keys[1]:
+						close(secondWrite)
+						if conflict {
+							return contract.WriteResult{Status: contract.WritePrecondition}
+						}
+						return contract.WriteResult{Status: contract.WriteRefused, Reason: contract.ReasonAccess, NotSent: true}
+					}
+				}
+				return base.Create(ctx, key, body)
+			}
+			store.read = func(ctx context.Context, key string, limit uint32) contract.ReadResult {
+				if conflict && len(keys) == 2 && key == keys[1] {
+					return contract.ReadResult{Status: contract.ReadOK, Body: []byte("different")}
+				}
+				return base.Read(ctx, key, limit)
+			}
+			engine := installedGeneratedTestEngine(t, ctx, f, f.selected, input, currentApplyRecipients(f.selected.registry()), callbacks)
+			got := engine.Apply(ctx, testID("two result writes"), input)
+			engine.Close()
+			cold := f.open(t, ctx)
+			work := mustSelectedGeneratedWork(t, cold)
+			want := contract.ReasonLimitExceeded
+			if conflict {
+				want = contract.ReasonImmutableConflict
+			}
+			var reasons []contract.DiagnosticReason
+			for _, d := range got.Diagnostics {
+				if d.Subject.Kind == contract.SubjectStore {
+					reasons = append(reasons, d.Reason)
+				}
+			}
+			creates, deletes := effects()
+			if len(reasons) != 1 || reasons[0] != want || len(keys) != 2 || len(work.attempts) != 2 || cold.root.Generated.ActiveOwner != got.OperationID ||
+				got.Result.Outcome != ObservedCurrent || len(got.Receipt) != 0 || creates != 2 || len(deletes) != 0 {
+				t.Fatal("parallel return lost the selection or Store summary", reasons, got.Result.Outcome, len(work.attempts), creates, len(deletes))
+			}
+			for _, a := range work.attempts {
+				if a.record.State != contract.GeneratedEffectTransmitted || len(a.result) != 0 {
+					t.Fatal("uncertain sibling acquired result evidence")
+				}
+			}
+		})
+	}
+}
+
+// full_only: false
 func TestInstalledManagedCreateRecoversAcrossStoreLoss(t *testing.T) {
-	for _, mode := range []string{"reservation-not-sent", "reservation-ack-lost", "result-ack-lost", "result-not-saved"} {
+	for _, mode := range []string{"reservation-not-sent", "reservation-ack-lost", "result-ack-lost", "result-not-saved", "result-conflict", "result-denied", "result-cancelled"} {
 		t.Run(mode, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
 			defer cancel()
+			applyctx, cancelApply := context.WithCancel(ctx)
+			defer cancelApply()
 			process, count := installedGeneratedRetirementProcess(t, "acknowledged")
 			f := newInstalledApplyTestFixture(t, ctx, contract.GCP, true)
 			f.env.GeneratedProcess = process
@@ -68,6 +153,17 @@ func TestInstalledManagedCreateRecoversAcrossStoreLoss(t *testing.T) {
 					return base.Create(ctx, key, body)
 				}
 				attemptedDigest = sha256.Sum256(body)
+				if mode == "result-conflict" {
+					invalidRead = true
+					return contract.WriteResult{Status: contract.WritePrecondition}
+				}
+				if mode == "result-denied" || mode == "result-cancelled" {
+					if mode == "result-cancelled" {
+						cancelApply()
+					}
+					denyRead = true
+					return contract.WriteResult{Status: contract.WriteRefused, Reason: contract.ReasonAccess, NotSent: true}
+				}
 				denyRead = true
 				if mode == "result-ack-lost" {
 					if result := base.Create(ctx, key, body); result.Status != contract.WriteAcknowledged {
@@ -90,9 +186,28 @@ func TestInstalledManagedCreateRecoversAcrossStoreLoss(t *testing.T) {
 				}
 			}
 			engine := installedGeneratedTestEngine(t, ctx, f, f.selected, input, currentApplyRecipients(f.selected.registry()), callbacks)
-			start := engine.Apply(ctx, testID(mode+" apply"), input)
+			start := engine.Apply(applyctx, testID(mode+" apply"), input)
 			engine.Close()
 			interruptWrite = false
+			if mode == "result-conflict" || mode == "result-denied" || mode == "result-cancelled" {
+				want := contract.ReasonImmutableConflict
+				if mode == "result-cancelled" {
+					want = contract.ReasonCancelled
+				}
+				if mode == "result-denied" {
+					want = contract.ReasonEvidenceUnavailable
+				}
+				matches := 0
+				for _, d := range start.Diagnostics {
+					if d.Subject.Kind == contract.SubjectStore && d.Reason == want {
+						matches++
+					}
+				}
+				if matches != 1 || start.Result.Outcome != ObservedCurrent || start.Result.Reason == CustodyUnavailable {
+					t.Fatal("selected reservation lost its Store stop", mode, matches, start.Result.Outcome, start.Result.Reason)
+				}
+				invalidRead, denyRead = false, true
+			}
 			base.casMode = ""
 			base.readHook = nil
 			cold := f.open(t, ctx)

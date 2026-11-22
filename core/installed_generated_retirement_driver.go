@@ -10,6 +10,33 @@ import (
 	"enkv.sh/telemetry"
 )
 
+type installedGeneratedDeleteReturn struct {
+	ambiguity   []byte
+	persistence Result
+}
+
+func (p *generatedPreparation) bindInstalledDelete(owner *InstalledGeneratedProducerCustody, out *PublicApplyResult) *installedGeneratedDeleteReturn {
+	handoff := new(installedGeneratedDeleteReturn)
+	if !p.reservation.candidate.bindFirstSend(p, func(ctx context.Context, authority contract.ID) contract.CryptoResultCode {
+		returned, persistence := p.invokeInstalledProducer(ctx, owner, authority)
+		handoff.persistence = persistence
+		if returned.ExecutableCleanupFailed {
+			out.AddCleanupDiagnostic()
+		}
+		if returned.Code == contract.CryptoSuccess && len(returned.Record) == 0 && returned.Facts.Disposition == contract.GeneratorDispositionUnknown {
+			var err error
+			handoff.ambiguity, err = contract.EncodeGeneratorSafeFacts(returned.Facts)
+			if err != nil {
+				return contract.CryptoInvalidInput
+			}
+		}
+		return returned.Code
+	}) {
+		return nil
+	}
+	return handoff
+}
+
 func (s *StateSession) prepareInstalledGeneratedDelete(ctx context.Context, i ApplyInstallation, plan *generatedPlan, deadline time.Time, capture func(*generatedReservation, contract.ID) error) (*generatedPreparation, *InstalledGeneratedProducerCustody, Result) {
 	if plan == nil || plan.phase == nil || i.Generated == nil || i.Generated.AdmitReservation == nil ||
 		i.Generated.AdmitProducer == nil || i.Generated.AdmitAdoption == nil || i.Generated.RequestDigest == nil || len(plan.input.graph.Lineages) != 1 {

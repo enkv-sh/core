@@ -9,6 +9,9 @@ func cleanupDiagnosticValid(d contract.Diagnostic) bool {
 	if !cleanupDiagnosticReason(d.Reason) || d.Outcome != contract.DiagnosticUnable && d.Outcome != contract.DiagnosticDifference || len(d.Path) < 1 || len(d.Path) > 2 {
 		return false
 	}
+	if d.Reason == contract.ReasonImmutableConflict && !d.ImmutableConflictShape() {
+		return false
+	}
 	if len(d.Path) == 2 && (d.Subject.Kind != contract.SubjectEntry || d.Path[0] != contract.FieldGenerated) {
 		return false
 	}
@@ -96,7 +99,7 @@ func cleanupDiagnosticField(field contract.DiagnosticField) bool {
 }
 func cleanupDiagnosticReason(reason contract.DiagnosticReason) bool {
 	switch reason {
-	case contract.ReasonExpectedEntryAbsent, contract.ReasonObservedEntryAbsent, contract.ReasonExpectedSettingAbsent, contract.ReasonObservedSettingAbsent, contract.ReasonFieldDiffers, contract.ReasonSetDiffers, contract.ReasonBytesDiffer, contract.ReasonPublicFactUnavailable, contract.ReasonInvalidInput, contract.ReasonMissingRequiredField, contract.ReasonDuplicateKey, contract.ReasonDuplicateMember, contract.ReasonUnresolvedReference, contract.ReasonInvalidUTF8, contract.ReasonLimitExceeded, contract.ReasonInvalidFieldCombination, contract.ReasonTrustBasisInvalid, contract.ReasonDomainBasisInvalid, contract.ReasonStoreBasisInvalid, contract.ReasonExpired, contract.ReasonCancelled, contract.ReasonUnsupportedSchema, contract.ReasonUnsupportedProfile, contract.ReasonHeadInvalid, contract.ReasonProofInvalid, contract.ReasonSelectedObjectInvalid, contract.ReasonSelectedRelationInvalid, contract.ReasonEvidenceUnavailable, contract.ReasonSelectedObjectUnavailable, contract.ReasonReadContention, contract.ReasonDiagnosticsIncomplete, contract.ReasonTargetAbsent, contract.ReasonEntryAbsent, contract.ReasonDuplicateEntry, contract.ReasonTargetNotAuthorized, contract.ReasonLocatorUnusable:
+	case contract.ReasonExpectedEntryAbsent, contract.ReasonObservedEntryAbsent, contract.ReasonExpectedSettingAbsent, contract.ReasonObservedSettingAbsent, contract.ReasonFieldDiffers, contract.ReasonSetDiffers, contract.ReasonBytesDiffer, contract.ReasonPublicFactUnavailable, contract.ReasonInvalidInput, contract.ReasonMissingRequiredField, contract.ReasonDuplicateKey, contract.ReasonDuplicateMember, contract.ReasonUnresolvedReference, contract.ReasonInvalidUTF8, contract.ReasonLimitExceeded, contract.ReasonInvalidFieldCombination, contract.ReasonTrustBasisInvalid, contract.ReasonDomainBasisInvalid, contract.ReasonStoreBasisInvalid, contract.ReasonExpired, contract.ReasonCancelled, contract.ReasonUnsupportedSchema, contract.ReasonUnsupportedProfile, contract.ReasonHeadInvalid, contract.ReasonProofInvalid, contract.ReasonSelectedObjectInvalid, contract.ReasonSelectedRelationInvalid, contract.ReasonImmutableConflict, contract.ReasonEvidenceUnavailable, contract.ReasonSelectedObjectUnavailable, contract.ReasonReadContention, contract.ReasonDiagnosticsIncomplete, contract.ReasonTargetAbsent, contract.ReasonEntryAbsent, contract.ReasonDuplicateEntry, contract.ReasonTargetNotAuthorized, contract.ReasonLocatorUnusable:
 		return true
 	}
 	return false

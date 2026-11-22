@@ -8,12 +8,13 @@ package main
 // Omitted, failed, partial and unobserved roots keep prior or provisional weights.
 // Unlisted tests use the one-second fallback.
 var componentEstimates = map[string]float64{
+	"TestInstalledParallelCreateReportsOneStoreFailureInPlanOrder":                        5,
 	"TestAdministrativeReleaseEndsOnlyItsConsumedGraph":                                   12,
 	"TestAdministrativeRetirementExitKeepsOnlyConsumedVectors":                            4,
 	"TestInstalledMaximumGeneratedResultResumesAfterReopen":                               2,
 	"TestInstalledGeneratedAutomaticTerminalPreservesEarlierCreateHazard":                 13,
-	"TestInstalledManagedCreateRecoversAcrossStoreLoss":                                   20,
-	"TestInstalledManagedCreateKeepsCleanupTargetAfterValueEncodingRefusal":               19,
+	"TestInstalledManagedCreateRecoversAcrossStoreLoss":                                   42,
+	"TestInstalledManagedCreateKeepsCleanupTargetAfterValueEncodingRefusal":               18,
 	"TestInstalledGeneratedCleanupRecordsProviderIdentityConflict":                        6,
 	"TestGeneratedOrdinaryCleanupAmbiguityRefusesInvalidFactsWithoutStateChange":          1,
 	"TestGeneratedCleanupIdentityConflictRetainsExactOwner":                               1,
@@ -52,7 +53,7 @@ var componentEstimates = map[string]float64{
 	"TestInstalledPackagedSequenceCandidateCharges":                                       7,
 	"TestApplyReceiptFirstEndWorkChargesFutureApplicationPages":                           71,
 	"TestInstalledLocalFailureCompletesWithPendingKeyUnavailable":                         6,
-	"TestInstalledLocalGeneratorExportedResultPUTNeverBecomesCallbackFailure":             7,
+	"TestInstalledLocalGeneratorExportedResultPUTNeverBecomesCallbackFailure":             5,
 	"TestInstalledLocalGeneratorMixedFinalPreservesActualCFClosure":                       11,
 	"TestInstalledLocalNoEffectFinalReleasesDomain":                                       2,
 	"TestInstalledLocalUnknownFinalReleasesDomain":                                        10,
@@ -124,7 +125,7 @@ var componentEstimates = map[string]float64{
 	"TestInstalledGeneratedAnchoredCanonicalSelectionSurvivesLaterStops":                 8,
 	"TestInstalledGeneratedCleanupReflectsActualOriginalWithoutProducer":                 4,
 	"TestInstalledGeneratedRetirementRiskRequiresExactQualifiedAmbiguity":                22,
-	"TestInstalledGeneratedRetirementContinuesLateOriginalWithoutAnotherSend":            5,
+	"TestInstalledGeneratedRetirementContinuesLateOriginalWithoutAnotherSend":            10,
 	"TestInstalledGeneratedCleanupPreparationStopPreservesSelectedResult":                17,
 	"TestInstalledGeneratedCleanupCaptureRefusalPrecedesSigning":                         4,
 	"TestInstalledGeneratedLaterContentionReplacesSelectionCheckpoint":                   4,
@@ -1359,7 +1360,7 @@ var componentEstimates = map[string]float64{
 
 	"TestGeneratedOrdinaryCleanupRequiresEveryOwnedInvocation":                          2,
 	"TestPublicInitializationObserverAuthenticatesManifestAndHistoricalExpiry":          3,
-	"TestInstalledGeneratedRotationRetiresWithinOriginalApply":                          39,
+	"TestInstalledGeneratedRotationRetiresWithinOriginalApply":                          42,
 	"TestInstalledLocalGeneratorSharedDeleteReleaseRetainsOnlyActualIntents":            22,
 	"TestInstalledGeneratedAutomaticCryptoRejectsPostSelectionDrift":                    49,
 	"TestInstalledGeneratedRetirementAcknowledgesOnlyExactOldTarget":                    5,

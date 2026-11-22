@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"enkv.sh/core/contract"
+	"enkv.sh/core/format"
 	"enkv.sh/crypto/testsupport/custody"
 )
 
@@ -219,49 +220,104 @@ func TestInstalledGeneratedRetirementAcknowledgesOnlyExactOldTarget(t *testing.T
 	}
 }
 
+// Keep the actual acknowledgement in the Store. Only its first readback
+// differs, so a second read in the same invocation would conceal the conflict.
+func conflictInstalledDeleteReadback(t *testing.T, f *installedApplyTestFixture, callbacks *GeneratedApplyInstallation) func(PublicApplyResult) {
+	t.Helper()
+	base := requireAdmittedMemoryStore(t, f.env.Store)
+	store := &applyPreparationTestStore{Store: base, memory: base, create: base.Create}
+	f.env.Store = store
+	var inbox string
+	var observed bool
+	admit := callbacks.AdmitProducer
+	callbacks.AdmitProducer = func(ctx context.Context, q contract.CryptoGeneratedCompareRequest, control contract.ControlCore, in contract.GeneratedProducerInput, row contract.GeneratorImplementation, deadline time.Time) (*InstalledGeneratedProducerCustody, error) {
+		if in.Expected.Template.Action == contract.GeneratorActionDelete {
+			var err error
+			inbox, err = format.GeneratedResultKey(base.desc.Prefix, f.env.Domain, in.Expected.Template.InboxID)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return admit(ctx, q, control, in, row, deadline)
+	}
+	store.read = func(ctx context.Context, key string, limit uint32) contract.ReadResult {
+		r := base.Read(ctx, key, limit)
+		if key == inbox && !observed && r.Status == contract.ReadOK {
+			observed = true
+			r.Body = []byte("different readback")
+		}
+		return r
+	}
+	return func(out PublicApplyResult) {
+		t.Helper()
+		var reasons []contract.DiagnosticReason
+		for _, d := range out.Diagnostics {
+			if d.Subject.Kind == contract.SubjectStore {
+				reasons = append(reasons, d.Reason)
+			}
+		}
+		if !observed || !reflect.DeepEqual(reasons, []contract.DiagnosticReason{contract.ReasonImmutableConflict}) ||
+			out.Result.Outcome != ObservedCurrent || out.Result.Reason == CustodyUnavailable || len(out.Receipt) != 0 {
+			t.Fatal("confirmed selection lost the original acknowledgement persistence failure", observed, reasons, out.Result.Outcome)
+		}
+	}
+}
+
 // full_only: false
 func TestInstalledGeneratedRetirementContinuesLateOriginalWithoutAnotherSend(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
-	defer cancel()
-	f, selected, current, effects := installedGeneratedRetirementFixture(t, ctx, "acknowledged")
-	callbacks := installedGeneratedRetirementCallbacks(t, f, f.env.GeneratedProcess)
-	callbacks.AdmitAdoption = func(context.Context, contract.CryptoGeneratedCompareRequest, contract.ControlCore, contract.GeneratedAdoptionInput, time.Time) (*InstalledGeneratedCustody, error) {
-		return nil, contract.ErrRecord
-	}
-	first := installedGeneratedRetirementEngine(t, ctx, f, selected, callbacks)
-	stopped := first.RetireGenerated(ctx, testID("retirement stop before original adoption"), GeneratedRetirementRequest{DutyID: current.Generated.RetiringDutyID})
-	first.Close()
-	assertPositiveApplyPreparation(t, stopped)
-	if stopped.Payload != nil || stopped.Generated == nil || len(stopped.Generated.Effects) != 1 ||
-		stopped.Generated.Effects[0].Record.State != contract.GeneratedEffectTransmitted ||
-		stopped.Generated.Effects[0].DutyID != current.Generated.RetiringDutyID {
-		t.Fatal("nonterminal retirement published a transition or lost its actual Attempt", stopped)
-	}
-	cold := f.open(t, ctx)
-	if stopped.OperationID.IsZero() || cold.root.Generated.ActiveOwner != stopped.OperationID {
-		t.Fatal("interrupted retirement lost exact accepted operation", stopped.Result)
-	}
-	work := mustSelectedGeneratedWork(t, cold)
-	refuser := installedGeneratedRetirementEngine(t, ctx, f, cold, nil)
-	risk := refuser.AcceptGeneratedRetirementRisk(ctx, testID("active retirement without qualified ambiguity"), GeneratedRetirementRiskRequest{
-		DutyID: current.Generated.RetiringDutyID, AttemptID: work.phase.FrontierAttemptID})
-	refuser.Close()
-	if risk.Result.Outcome != AdmissionRefused || len(risk.Receipt) != 0 {
-		t.Fatal("transmitted state alone became qualified retirement ambiguity", risk)
-	}
-	callbacks = installedGeneratedRetirementCallbacks(t, f, f.env.GeneratedProcess)
-	callbacks.AdmitProducer = func(context.Context, contract.CryptoGeneratedCompareRequest, contract.ControlCore, contract.GeneratedProducerInput, contract.GeneratorImplementation, time.Time) (*InstalledGeneratedProducerCustody, error) {
-		t.Fatal("cold retirement restored a producer")
-		return nil, contract.ErrRecord
-	}
-	resumed := installedGeneratedRetirementEngine(t, ctx, f, cold, callbacks)
-	result := resumed.ContinueGeneratedRetirement(ctx, testID("cold retirement exact original"), GeneratedRetirementContinuationRequest{OperationID: stopped.OperationID})
-	resumed.Close()
-	assertPositiveApplyPreparation(t, result)
-	creates, deletes := effects()
-	if result.Result.Outcome != ObservedCurrent || result.Generated == nil || result.Generated.StateResult != "success" || result.OperationID != stopped.OperationID ||
-		creates != 2 || !reflect.DeepEqual(deletes, []string{"00000000000000000000000000000001"}) {
-		t.Fatal("cold retirement did not close only its original target", result, creates, deletes)
+	for _, mode := range []string{"adoption", "conflict"} {
+		t.Run(mode, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+			defer cancel()
+			f, selected, current, effects := installedGeneratedRetirementFixture(t, ctx, "acknowledged")
+			callbacks := installedGeneratedRetirementCallbacks(t, f, f.env.GeneratedProcess)
+			var checkConflict func(PublicApplyResult)
+			if mode == "conflict" {
+				checkConflict = conflictInstalledDeleteReadback(t, &f, callbacks)
+			} else {
+				callbacks.AdmitAdoption = func(context.Context, contract.CryptoGeneratedCompareRequest, contract.ControlCore, contract.GeneratedAdoptionInput, time.Time) (*InstalledGeneratedCustody, error) {
+					return nil, contract.ErrRecord
+				}
+			}
+			first := installedGeneratedRetirementEngine(t, ctx, f, selected, callbacks)
+			stopped := first.RetireGenerated(ctx, testID("retirement stop before original adoption"), GeneratedRetirementRequest{DutyID: current.Generated.RetiringDutyID})
+			first.Close()
+			if checkConflict != nil {
+				checkConflict(stopped)
+			}
+			assertPositiveApplyPreparation(t, stopped)
+			if stopped.Payload != nil || stopped.Generated == nil || len(stopped.Generated.Effects) != 1 ||
+				stopped.Generated.Effects[0].Record.State != contract.GeneratedEffectTransmitted ||
+				stopped.Generated.Effects[0].DutyID != current.Generated.RetiringDutyID {
+				t.Fatal("nonterminal retirement published a transition or lost its actual Attempt", stopped)
+			}
+			cold := f.open(t, ctx)
+			if stopped.OperationID.IsZero() || cold.root.Generated.ActiveOwner != stopped.OperationID {
+				t.Fatal("interrupted retirement lost exact accepted operation", stopped.Result)
+			}
+			work := mustSelectedGeneratedWork(t, cold)
+			refuser := installedGeneratedRetirementEngine(t, ctx, f, cold, nil)
+			risk := refuser.AcceptGeneratedRetirementRisk(ctx, testID("active retirement without qualified ambiguity"), GeneratedRetirementRiskRequest{
+				DutyID: current.Generated.RetiringDutyID, AttemptID: work.phase.FrontierAttemptID})
+			refuser.Close()
+			if risk.Result.Outcome != AdmissionRefused || len(risk.Receipt) != 0 {
+				t.Fatal("transmitted state alone became qualified retirement ambiguity", risk)
+			}
+			callbacks = installedGeneratedRetirementCallbacks(t, f, f.env.GeneratedProcess)
+			callbacks.AdmitProducer = func(context.Context, contract.CryptoGeneratedCompareRequest, contract.ControlCore, contract.GeneratedProducerInput, contract.GeneratorImplementation, time.Time) (*InstalledGeneratedProducerCustody, error) {
+				t.Fatal("cold retirement restored a producer")
+				return nil, contract.ErrRecord
+			}
+			resumed := installedGeneratedRetirementEngine(t, ctx, f, cold, callbacks)
+			result := resumed.ContinueGeneratedRetirement(ctx, testID("cold retirement exact original"), GeneratedRetirementContinuationRequest{OperationID: stopped.OperationID})
+			resumed.Close()
+			assertPositiveApplyPreparation(t, result)
+			creates, deletes := effects()
+			if result.Result.Outcome != ObservedCurrent || result.Generated == nil || result.Generated.StateResult != "success" || result.OperationID != stopped.OperationID ||
+				creates != 2 || !reflect.DeepEqual(deletes, []string{"00000000000000000000000000000001"}) {
+				t.Fatal("cold retirement did not close only its original target", result, creates, deletes)
+			}
+		})
 	}
 }
 

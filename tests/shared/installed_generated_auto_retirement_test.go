@@ -145,6 +145,7 @@ func TestInstalledGeneratedRotationRetiresWithinOriginalApply(t *testing.T) {
 		{name: "restart_after_first_auto_close", modes: []uint8{contract.GeneratedRetirementAuto, contract.GeneratedRetirementAuto}, stop: "second_producer"},
 		{name: "mixed", modes: []uint8{contract.GeneratedRetirementAuto, contract.GeneratedRetirementManual}},
 		{name: "restart_before_delete_reservation", modes: []uint8{contract.GeneratedRetirementAuto}, stop: "producer"},
+		{name: "restart_after_result_conflict", modes: []uint8{contract.GeneratedRetirementAuto}, recovery: true, stop: "store"},
 		{name: "restart_after_delete_transmission", modes: []uint8{contract.GeneratedRetirementAuto}, recovery: true, stop: "adoption"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -268,9 +269,16 @@ func TestInstalledGeneratedRotationRetiresWithinOriginalApply(t *testing.T) {
 				}
 				return adoption(ctx, q, control, in, deadline)
 			}
+			var checkConflict func(PublicApplyResult)
+			if tc.stop == "store" {
+				checkConflict = conflictInstalledDeleteReadback(t, &f, callbacks)
+			}
 			engine := installedGeneratedTestEngine(t, ctx, f, before, input, currentApplyRecipients(before.registry()), callbacks)
 			got := engine.Apply(ctx, testID(tc.name+" requested rotation"), input)
 			engine.Close()
+			if checkConflict != nil {
+				checkConflict(got)
+			}
 			for _, row := range f.open(t, ctx).supportRecords() {
 				if row.Kind != contract.GeneratedDutySupportKind {
 					continue
@@ -296,7 +304,7 @@ func TestInstalledGeneratedRotationRetiresWithinOriginalApply(t *testing.T) {
 				}
 				creates, deletes := effects()
 				expectedEntered := 0
-				if tc.stop == "adoption" {
+				if tc.stop == "adoption" || tc.stop == "store" {
 					expectedEntered = 1
 					work := mustSelectedGeneratedWork(t, cold)
 					attempt, present := work.attempts[work.phase.FrontierAttemptID]

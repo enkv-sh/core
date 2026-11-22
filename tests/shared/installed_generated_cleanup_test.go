@@ -1000,9 +1000,23 @@ func TestInstalledManagedCreateKeepsCleanupTargetAfterValueEncodingRefusal(t *te
 			}) {
 				t.Fatal("encoding refusal did not preserve the original failed attempt")
 			}
+			var checkConflict func(PublicApplyResult)
+			if tc.pauseBeforeFinal {
+				checkConflict = conflictInstalledDeleteReadback(t, &f, callbacks)
+			}
 			cleaner := installedGeneratedRetirementEngine(t, ctx, f, cold, callbacks)
 			cleaned := cleaner.CleanupGenerated(ctx, testID("clean the unusable generated value"))
 			cleaner.Close()
+			if checkConflict != nil {
+				checkConflict(cleaned)
+				cold = f.open(t, ctx)
+				if cold.root.Generated.ActiveOwner != cleaned.OperationID {
+					t.Fatal("conflict lost selected cleanup")
+				}
+				resumed := installedGeneratedRetirementEngine(t, ctx, f, cold, callbacks)
+				cleaned = resumed.ContinueGeneratedCleanup(ctx, testID("resume cleanup after Store conflict"), GeneratedCleanupContinuationRequest{OperationID: cleaned.OperationID})
+				resumed.Close()
+			}
 			creates, deletes = counts()
 			if cleaned.Generated == nil || cleaned.Generated.StateResult != "success" || creates != wantCreates || !slices.Equal(deletes, []string{token}) || int(f.open(t, ctx).root.Generated.Hazards) != wantCreates-1 {
 				t.Fatalf("cleanup did not complete for the exact created resource: creates=%d deletes=%d outcome=%v", creates, len(deletes), cleaned.Result.Outcome)

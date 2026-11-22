@@ -101,6 +101,7 @@ func TestMutationDiagnosticsRetainSelectionAndReceipt(t *testing.T) {
 		{Subject: contract.DiagnosticSubject{Kind: contract.SubjectObservation}, Path: []contract.DiagnosticField{contract.FieldPresence}, Outcome: contract.DiagnosticUnable, Reason: contract.ReasonExpired},
 		{Subject: contract.DiagnosticSubject{Kind: contract.SubjectConfiguration}, Path: []contract.DiagnosticField{contract.FieldPresence}, Outcome: contract.DiagnosticUnable, Reason: contract.ReasonEvidenceUnavailable},
 	}
+	r.Diagnostics = append(r.Diagnostics, contract.Diagnostic{Subject: contract.DiagnosticSubject{Kind: contract.SubjectStore}, Path: []contract.DiagnosticField{contract.FieldPresence}, Outcome: contract.DiagnosticUnable, Reason: contract.ReasonImmutableConflict})
 	before := r.Result
 	for name, render := range map[string]func(core.PublicApplyResult) ([]byte, error){"json": RenderApplyJSON, "human": RenderApplyHuman} {
 		t.Run(name, func(t *testing.T) {
@@ -108,7 +109,7 @@ func TestMutationDiagnosticsRetainSelectionAndReceipt(t *testing.T) {
 			if err != nil {
 				t.Fatal("preparation, interruption and pair cleanup diagnostics hid a selected result", err)
 			}
-			for _, reason := range []string{"selected-object-unavailable", "expired", "evidence-unavailable"} {
+			for _, reason := range []string{"selected-object-unavailable", "expired", "evidence-unavailable", "immutable-conflict"} {
 				if !bytes.Contains(body, []byte(reason)) {
 					t.Error("missing diagnostic", reason)
 				}
@@ -124,7 +125,7 @@ func TestMutationDiagnosticsRetainSelectionAndReceipt(t *testing.T) {
 			Diagnostics []readerDiagnosticRecord `json:"diagnostics"`
 			Receipt     string                   `json:"receipt_hex"`
 		}
-		if json.Unmarshal(body, &got) != nil || len(got.Diagnostics) != 3 || got.Receipt == "" {
+		if json.Unmarshal(body, &got) != nil || len(got.Diagnostics) != len(r.Diagnostics) || got.Receipt == "" {
 			t.Error("complete diagnostic sequence or retained receipt missing")
 		}
 	}
