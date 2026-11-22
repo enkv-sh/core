@@ -81,10 +81,17 @@ func (s *selectedImage) publicationReplayBody(page, slot int) ([]byte, error) {
 		return nil, contract.ErrRecord
 	}
 	selected := s.supportFacts[page]
-	if selected.ref != s.root.RequiredSupport[page] || slot >= len(selected.rows) || selected.rows[slot] != fact.digest {
+	if selected.ref != s.root.RequiredSupport[page] || slot >= len(selected.rows) {
 		return nil, contract.ErrRecord
 	}
-	encoded, err := fact.body()
+	return fact.replayBody(selected.rows[slot])
+}
+
+func (r selectedPublicationRecord) replayBody(selected contract.SupportRecordDigest) ([]byte, error) {
+	if r.digest != selected {
+		return nil, contract.ErrRecord
+	}
+	encoded, err := r.body()
 	if err != nil || len(encoded) == cap(encoded) {
 		return encoded, err
 	}

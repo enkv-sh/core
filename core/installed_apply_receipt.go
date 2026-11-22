@@ -387,9 +387,17 @@ func (s *StateSession) receiptSupportPlanDescriptor(storage mutationReceiptStora
 				}
 			} else {
 				var ok bool
-				fact, ok = prior[generatedRecordKey{row.Kind, row.RecordID}]
+				key := generatedRecordKey{row.Kind, row.RecordID}
+				fact, ok = prior[key]
 				if !ok {
 					return contract.DescriptorVector{}, contract.ErrRecord
+				}
+				if publicationSupportKind(row.Kind) {
+					var err error
+					row.Body, err = s.publicationFacts[key].replayBody(fact)
+					if err != nil {
+						return contract.DescriptorVector{}, err
+					}
 				}
 			}
 			ordered = append(ordered, rowFact{row, fact})

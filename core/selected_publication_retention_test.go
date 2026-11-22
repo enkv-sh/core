@@ -244,6 +244,60 @@ func TestCompleteSelectedPublicationRetainsFactsWithoutEncodedBodies(t *testing.
 }
 
 // full_only: false
+func TestReceiptPlanBindsReleasedPublicationToSelectedRow(t *testing.T) {
+	state, _ := publicationConfiguredImage(t, publicationRelationID(2), publicationRelationID(3), publicationRelationID(2))
+	reader := publicationRetentionReader(t, state)
+	reader.replacementRead = true
+	image, result := scanSelectedImage(t.Context(), reader, state.root, true, selectedComplete, nil)
+	if result != (Result{}) || len(image.publicationFacts) != 2 {
+		t.Fatal("expected selected coordinate and marker", result)
+	}
+	plan := contract.CompactMutationReceiptPlan{Schema: contract.MutationReceiptSchema, OperationKind: 36, DomainID: state.root.Domain,
+		OperationID: generatedVectorID(150), PredecessorRevisionID: generatedVectorID(151),
+		RequestedRevisionID: generatedVectorID(152), ObservedRevisionID: generatedVectorID(152),
+		StateResult: 1, EvidenceCeiling: 1, CanonicalOutcome: 1,
+		ChangedSubjects: contract.GeneratorDescriptor{Digest: generatedVectorID(153), Length: 4},
+		CompleteResult:  contract.GeneratorDescriptor{Digest: generatedVectorID(154), Length: 8 + contract.MutationResultProjectionLength, Count: 1}}
+	body, err := contract.AppendCompactMutationReceiptPlan(nil, plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	receipt := contract.SupportRecordView{Kind: contract.MutationReceiptSupportKind, RecordID: plan.OperationID, Body: body}
+	source := StateSession{root: state.root, supportFacts: image.supportFacts}
+	for key, fact := range image.publicationFacts {
+		source.publicationFacts = maps.Clone(image.publicationFacts)
+		row := contract.SupportRecordView{Kind: key.kind, RecordID: key.id}
+		rows := []contract.SupportRecordView{row, receipt}
+		storage := mutationReceiptStorage{pages: []format.RequiredSupportPageView{{Records: rows}}}
+		actual, err := source.receiptSupportPlanDescriptor(storage, plan)
+		if err != nil {
+			t.Fatal("released publication receipt descriptor", key.kind, err)
+		}
+		rows[0].Body, err = fact.body()
+		if err != nil {
+			t.Fatal(err)
+		}
+		full, err := source.receiptSupportPlanDescriptor(storage, plan)
+		if err != nil || actual != full {
+			t.Fatal("released and materialized receipt descriptors differ", key.kind, err)
+		}
+		rows[0].Body = nil
+		delete(source.publicationFacts, key)
+		if _, err := source.receiptSupportPlanDescriptor(storage, plan); err == nil {
+			t.Fatal("accepted missing publication fact", key.kind)
+		}
+		for other, value := range image.publicationFacts {
+			if other != key {
+				source.publicationFacts[key] = value
+			}
+		}
+		if _, err := source.receiptSupportPlanDescriptor(storage, plan); err == nil {
+			t.Fatal("accepted a different selected row", key.kind)
+		}
+	}
+}
+
+// full_only: false
 func TestSelectedPublicationExactPageReuseNeedsNoNewStoreRead(t *testing.T) {
 	state, _ := publicationConfiguredImage(t, publicationRelationID(2), publicationRelationID(3), publicationRelationID(2))
 	reader := publicationRetentionReader(t, state)
