@@ -9,6 +9,7 @@ package main
 // Unlisted tests use the one-second fallback.
 var componentEstimates = map[string]float64{
 	"TestInstalledRetirementReleasesOnlyItsObsoleteInbox":                                 8,
+	"TestInstalledRetirementReleasesInboxAfterLastSupportOwner":                           10,
 	"TestInstalledCleanupReleasesOriginalAtSelectedHandoff":                               24,
 	"TestInstalledCleanupKeepsSealedReturnAfterCallerCancellation":                        11,
 	"TestInstalledParallelCreateReportsOneStoreFailureInPlanOrder":                        5,

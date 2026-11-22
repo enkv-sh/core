@@ -280,8 +280,21 @@ func (g *generatedSelection) generatedInboxReleaseClosure(inboxID contract.ID) (
 	if err != nil {
 		return out, err
 	}
+	support, err := g.generatedSupportOwners(rows, g.vectors)
+	if err != nil {
+		return out, err
+	}
 	filtered := rows[:0]
 	for _, row := range rows {
+		if row.Kind == contract.GeneratorVectorSupportKind {
+			carrier, err := contract.InspectGeneratorVectorCarrier(row.Body)
+			if err != nil {
+				return out, err
+			}
+			if carrier.VectorKind == contract.GeneratorVectorSupport && !support[generatedVectorKey{carrier.OwnerKind, carrier.OwnerID, carrier.VectorKind, carrier.Vector}] {
+				continue
+			}
+		}
 		if row.Kind == contract.GeneratedFragmentSupportKind {
 			var blob contract.ID
 			if row.Body == nil {

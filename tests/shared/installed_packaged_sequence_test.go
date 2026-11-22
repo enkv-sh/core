@@ -69,13 +69,14 @@ func (s packagedSequenceShape) selectedReadBound() uint64 {
 }
 
 type packagedSequenceObservation struct {
-	mu     sync.Mutex
-	domain contract.ID
-	t      testing.TB
-	writes []packagedSequenceWrite
-	signs  []packagedSequenceSign
-	reads  uint64
-	heads  []packagedSequenceHead
+	genesis packagedSequenceHead
+	mu      sync.Mutex
+	domain  contract.ID
+	t       testing.TB
+	writes  []packagedSequenceWrite
+	signs   []packagedSequenceSign
+	reads   uint64
+	heads   []packagedSequenceHead
 }
 
 type packagedSequenceStore struct {
@@ -306,7 +307,27 @@ func packagedGeneratedSequence(t *testing.T, ctx context.Context) (installedAppl
 	return packagedGeneratedSequenceWithRecovery(t, ctx, nil)
 }
 
+// full_only: false
+func TestInstalledRetirementReleasesInboxAfterLastSupportOwner(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+	defer cancel()
+	history := make(map[string]contract.ReadResult)
+	f, _, _ := packagedGeneratedSequenceWithHandoff(t, ctx, nil, history)
+	if len(history) != 3 || f.selected.root.Generated.PendingReleases != 0 {
+		t.Fatal("retirements left a temporary result after the final handoff")
+	}
+	for key, original := range history {
+		if f.env.Store.Read(ctx, key, uint32(len(original.Body))).Status != contract.ReadMissing {
+			t.Fatal("released result remains in the Store")
+		}
+	}
+}
+
 func packagedGeneratedSequenceWithRecovery(t *testing.T, ctx context.Context, fault *packagedRecoveryCase) (installedApplyTestFixture, *packagedSequenceObservation, []packagedSequenceCommand) {
+	return packagedGeneratedSequenceWithHandoff(t, ctx, fault, nil)
+}
+
+func packagedGeneratedSequenceWithHandoff(t *testing.T, ctx context.Context, fault *packagedRecoveryCase, history map[string]contract.ReadResult) (installedApplyTestFixture, *packagedSequenceObservation, []packagedSequenceCommand) {
 	var lock sync.Mutex
 	creates := 0
 	var deletes []string
@@ -348,6 +369,7 @@ func packagedGeneratedSequenceWithRecovery(t *testing.T, ctx context.Context, fa
 		t.Fatal("fixed sequence requires two initialized recipients")
 	}
 	observation := &packagedSequenceObservation{t: t, domain: f.env.Domain, writes: make([]packagedSequenceWrite, 0, 4096), signs: make([]packagedSequenceSign, 0, 128), heads: make([]packagedSequenceHead, 0, 128)}
+	observation.genesis = packagedSequenceHead{bytes.Clone(f.selected.body), f.selected.token}
 	f.env.Store = packagedSequenceStore{Store: f.env.Store, observation: observation}
 	f.env.Trust = packagedSequenceTrust{QualifyingTrust: f.env.Trust.(contract.QualifyingTrust), observation: observation}
 	var commands []packagedSequenceCommand
@@ -506,6 +528,25 @@ func packagedGeneratedSequenceWithRecovery(t *testing.T, ctx context.Context, fa
 		packagedRetirementSuccessor(t, closed, wantCurrent, receipt)
 		if wantCurrent == nil && len(closed.root.Names) != 0 {
 			t.Fatal("detached retirement restored entries", label)
+		}
+		if history != nil {
+			store := &generatedCleanupDeleteStore{memoryStore: requireAdmittedMemoryStore(t, f.env.Store), Store: f.env.Store}
+			original := mustSelectedGeneratedWork(t, closed).releases[closed.head.Generator.AttemptID]
+			key, err := format.GeneratedResultKey(store.desc.Prefix, f.env.Domain, original.release.InboxID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			read := store.Read(ctx, key, original.release.ObjectLength)
+			if read.Status != contract.ReadOK || contract.Hash(read.Body) != original.release.SelectedHandoffDigest {
+				t.Fatal("original retirement result unavailable", label)
+			}
+			history[key] = read
+			closed = generatedLifecycleReopen(t, ctx, closed, store)
+			releaseInstalledGeneratedInboxes(ctx, closed, result.OperationID, f.env.Trust, time.Now().Add(time.Minute))
+			closed = f.open(t, ctx)
+			if store.deletes != 1 || store.deleteKey != key || store.deleteToken != read.Token || closed.head.Generator == nil || closed.head.Generator.Purpose != contract.GeneratorAuthorityInboxRelease {
+				t.Fatal("installed handoff did not release the exact retirement inbox", label)
+			}
 		}
 		return closed
 	}
