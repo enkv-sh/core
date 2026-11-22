@@ -8,6 +8,7 @@ package main
 // Omitted, failed, partial and unobserved roots keep prior or provisional weights.
 // Unlisted tests use the one-second fallback.
 var componentEstimates = map[string]float64{
+	"TestContinuationCapacityKeepsDetachedOriginalAcrossAnotherParent":                    2,
 	"TestMixedApplyKeepsAnExistingOwnerOfTheSuppliedSecret":                               4,
 	"TestControlledRetirementCompletesAfterPreservingGC":                                  18,
 	"TestInstalledSignerReplacementKeepsStreamedCurrentIntents":                           27,
@@ -60,7 +61,7 @@ var componentEstimates = map[string]float64{
 	"TestInstalledGeneratedListRechecksAdmissionAfterHazardQualification":                 12,
 	"TestInstalledGeneratedListCloseJoinsHazardQualification":                             4,
 	"TestInstalledNormalHandoffAddsRecipientAcrossPageBoundary":                           9,
-	"TestInstalledGeneratedCleanupLateCreateReflectionAllowsFollowingCleanup":             13,
+	"TestInstalledGeneratedCleanupLateCreateReflectionAllowsFollowingCleanup":             12,
 	"TestGCActiveLocalAndMixedGraphPublicReadersProtectAdmittedInboxes":                   5,
 	"TestApplyPreparationExcludesPublicationImmutableWrites":                              13,
 	"TestInstalledApplyPreparationRetainsActualImmutableEvidence":                         2,
@@ -143,7 +144,7 @@ var componentEstimates = map[string]float64{
 	"TestInstalledRetirementParksHostRejectedResource":                                   12,
 	"TestInstalledActiveRetirementAcceptsSavedUnknownAfterParkingFailure":                31,
 	"TestInstalledGeneratedRetirementRiskRequiresExactQualifiedAmbiguity":                20,
-	"TestInstalledGeneratedRetirementContinuesLateOriginalWithoutAnotherSend":            11,
+	"TestInstalledGeneratedRetirementContinuesLateOriginalWithoutAnotherSend":            10,
 	"TestInstalledGeneratedCleanupPreparationStopPreservesSelectedResult":                17,
 	"TestInstalledGeneratedCleanupCaptureRefusalPrecedesSigning":                         4,
 	"TestInstalledGeneratedLaterContentionReplacesSelectionCheckpoint":                   4,

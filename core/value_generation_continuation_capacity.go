@@ -1307,6 +1307,148 @@ func continuationPreparationPopulation(population continuationPopulation, genera
 	return nil
 }
 
+// Each selected source owns the original inboxes that can outlive a parent.
+// Reading their signed consumer vector needs neither an inbox read nor a new
+// provider request. Closing a source hands off every one of its originals.
+func reserveLateOriginalResults(population continuationPopulation, g *generatedSelection) (uint64, error) {
+	if len(g.attempts) == 0 {
+		return 0, nil
+	}
+	byResult := make(map[contract.ID]contract.ID, len(g.attempts))
+	for id, attempt := range g.attempts {
+		byResult[attempt.record.ResultID] = id
+	}
+	var releaseGroups uint64
+	for key, row := range g.records {
+		if key.kind != contract.GeneratedHazardSupportKind && key.kind != contract.GeneratedDutySupportKind || g.cleanupConflicts[key.id] {
+			continue
+		}
+		source, err := contract.InspectGeneratedDeleteSource(row)
+		if err != nil {
+			return 0, err
+		}
+		if key.kind == contract.GeneratedDutySupportKind && source.Duty.Kind == contract.GeneratedDutyCreate {
+			continue
+		}
+		bodies, err := g.vectors.borrow(key.kind, key.id, contract.GeneratorVectorConsumers, source.Consumers)
+		if err != nil {
+			return 0, err
+		}
+		var originals []contract.ID
+		canClose := false
+		for _, body := range bodies {
+			consumer, err := contract.InspectGeneratorConsumer(body)
+			if err != nil {
+				return 0, err
+			}
+			if consumer.SubjectKind != contract.GeneratorConsumerOriginalResult || consumer.Purpose != contract.GeneratorConsumerAdoptLateOriginalResult {
+				continue
+			}
+			id, ok := byResult[consumer.SubjectID]
+			if !ok {
+				return 0, contract.ErrRecord
+			}
+			originals = append(originals, id)
+			closes, err := population.reserveLateReply(source, g.attempts[id])
+			if err != nil {
+				return 0, err
+			}
+			canClose = canClose || closes
+		}
+		if !canClose {
+			continue
+		}
+		for _, id := range originals {
+			if err := population.reserveLateRelease(g, g.attempts[id]); err != nil {
+				return 0, err
+			}
+			releaseGroups++
+		}
+	}
+	return releaseGroups, nil
+}
+
+// reserveLateReply returns whether this already-entered request can close its
+// source. Existing history and attempt rows are rewritten at their fixed widths.
+func (p continuationPopulation) reserveLateReply(source contract.GeneratedDeleteSource, a generatedAttempt) (bool, error) {
+	if a.record.State != contract.GeneratedEffectUnknown && a.record.State != contract.GeneratedEffectClosedWithResidue && a.record.State != contract.GeneratedEffectTransmitted {
+		return false, nil
+	}
+	const carrier = contract.SupportRecordOverhead + contract.GeneratorCarrierFixedLength
+	if a.expected.Template.Action == contract.GeneratorActionCreate {
+		if source.Hazard.Exposure != contract.GeneratedExposurePossibleLive || source.OriginalAttemptID != a.record.AttemptID {
+			return false, nil
+		}
+		if len(a.result) == 0 {
+			p.atLeast(continuationGroupKey{class: format.ResultSupport, owner: a.record.ResultID}, 1, uint64(format.RequiredSupportGroupLimit(format.ResultSupport)))
+			p.addLateRows(format.CreateContinuationSupport, a.record.AttemptID, 1, carrier+contract.GeneratorFactsRowMaxLength)
+			p.addLateRows(format.OwnerSupport, source.SourceID, 1, carrier+contract.GeneratorTargetMaxLength)
+		}
+		return true, nil
+	}
+	if a.record.CompletionClass == contract.GeneratedCompletionAcknowledged {
+		return true, nil
+	}
+	if len(a.result) != 0 {
+		result, err := contract.InspectGeneratedResultRecord(a.result)
+		return result.SafeFacts.Disposition == contract.GeneratorDispositionScopedUnusability, err
+	}
+	// A delete reply has an empty value. A parked delete Hazard retains the
+	// reply alone. An ordinary cleanup can also record facts and progress.
+	const result = uint64(contract.SupportRecordOverhead + contract.GeneratedResultRecordMaxLength - contract.CryptoMaxRetainedValue)
+	count, width := uint64(1), result
+	if source.Hazard.Exposure != contract.GeneratedExposurePossibleLive {
+		count += 2
+		width += carrier + contract.GeneratorFactsRowMaxLength + carrier + contract.GeneratorProgressLength
+		if source.Record.Kind == contract.GeneratedDutySupportKind {
+			count++
+			width += carrier + contract.GeneratorProgressLength
+		}
+	}
+	// Closure can keep a facts row and a release mapping even if the
+	// nonclosing branch for this original would retain only the result.
+	if a.record.Progress.Count != 0 {
+		count = max(count, 2)
+		width = max(width, uint64(carrier+contract.GeneratorFactsRowMaxLength))
+	}
+	p.addLateRows(format.DeleteContinuationSupport, a.record.AttemptID, count, width)
+	// A scoped confirmation must have entered with an exact earlier ACK.
+	return a.record.Progress.Count != 0, nil
+}
+
+func (p continuationPopulation) reserveLateRelease(g *generatedSelection, a generatedAttempt) error {
+	class := format.DeleteContinuationSupport
+	if a.expected.Template.Action == contract.GeneratorActionCreate {
+		class = format.CreateContinuationSupport
+	}
+	p.addLateRows(class, a.record.AttemptID, 1, contract.SupportRecordOverhead+contract.PendingInboxReleaseRecordBodyLength)
+	if class != format.DeleteContinuationSupport || a.record.CompletionClass != contract.GeneratedCompletionConfirmed || len(a.result) == 0 {
+		return nil
+	}
+	// A sibling's closure can replace ambiguity facts with the immutable
+	// reply's facts. An already recorded reply keeps its existing facts.
+	recorded, err := g.deleteResultRecorded(a)
+	if err != nil || recorded {
+		return err
+	}
+	rows, err := g.vectors.borrow(contract.GeneratedAttemptSupportKind, a.record.AttemptID, contract.GeneratorVectorFacts, a.record.Facts)
+	if err != nil {
+		return err
+	}
+	if len(rows) == 0 {
+		p.addLateRows(class, a.record.AttemptID, 1, contract.SupportRecordOverhead+contract.GeneratorCarrierFixedLength+contract.GeneratorFactsRowMaxLength)
+	} else {
+		p.addLateRows(class, a.record.AttemptID, 0, uint64(contract.GeneratorFactsRowMaxLength-len(rows[0])))
+	}
+	return nil
+}
+
+func (p continuationPopulation) addLateRows(class format.SupportStorageGroup, owner contract.ID, count, framed uint64) {
+	key := continuationGroupKey{class: class, owner: owner}
+	old := p[key]
+	p[key] = continuationGroupCharge{old.count + count, min(uint64(format.RequiredSupportGroupLimit(class)), old.framed+framed)}
+}
+
 func calculateSelectedContinuationCapacity(ctx context.Context, image *selectedImage, generated *generatedSelection, read selectedFragmentRead) (selectedContinuationCapacity, error) {
 	var out selectedContinuationCapacity
 	if ctx == nil || image == nil || generated == nil || generated.image == nil || generated.content == nil || !image.receiptsValidated || image.root.Domain != generated.image.root.Domain || image.root.Snapshot != generated.image.root.Snapshot {
@@ -1328,6 +1470,10 @@ func calculateSelectedContinuationCapacity(ctx context.Context, image *selectedI
 	if err != nil {
 		return out, err
 	}
+	releaseGroups, err := reserveLateOriginalResults(population, generated)
+	if err != nil {
+		return out, err
+	}
 	if err := boundSelectedPhaseGroup(population, generated); err != nil {
 		return out, err
 	}
@@ -1339,6 +1485,7 @@ func calculateSelectedContinuationCapacity(ctx context.Context, image *selectedI
 	if err != nil {
 		return out, err
 	}
+	growth.newGroups += releaseGroups
 	preparation := final.preparationBytes != 0
 	if err := continuationVectorGrowth(image, generated, &growth, preparation && generated.preparation == nil); err != nil {
 		return out, err

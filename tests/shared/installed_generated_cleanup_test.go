@@ -445,6 +445,45 @@ func installedGeneratedLateCreateFixture(t *testing.T, ctx context.Context, choi
 }
 
 // full_only: false
+func TestContinuationCapacityKeepsDetachedOriginalAcrossAnotherParent(t *testing.T) {
+	ctx := t.Context()
+	env, before, original, reply := installedGeneratedLateCreateFixture(t, ctx, custody.StandardValue)
+	entries, canonical := generatedCurrentDeclaration(t, before)
+	input := generatedPlanInputForGenerationsIntent(t, before, generatedVectorID(233), []string{"other"}, []byte(`{"name":"other"}`), defaultGeneratedFixtureProfile(), entries...)
+	prior, _ := preparePrivateGeneratedReservation(t, env, before, input, canonical)
+	active, _, _, _ := selectActualGeneratedPacketRecord(t, env, before, prior, custody.GeneratedTerminalFailure, true, nil)
+	bound := continuationTestBound(t, active).Remaining
+	if active.root.Generated.ActiveOwner == original.record.OperationID || active.root.Generated.ActiveOwner.IsZero() {
+		t.Fatal("fixture needs an independent live parent")
+	}
+	if _, _, err := active.readGeneratedCleanup(ctx); err == nil {
+		t.Fatal("live parent admitted early reflection")
+	}
+	admitted := generatedPlanInputFixture(t, active).context
+	admitted.AdmissionID, admitted.SessionID = testID("independent Final admission"), testID("independent Final session")
+	plan, err := active.generatedFinalRequest(ctx, admitted)
+	if err != nil || plan.selecting {
+		t.Fatal("independent failed Final", err)
+	}
+	active, final := preparePrivateGeneratedFinal(t, env, active, plan)
+	closed, selected := active.selectCandidate(ctx, final.reservation.candidate)
+	if closed == nil || selected.Outcome != ObservedCurrent {
+		t.Fatal("independent parent remained active", selected)
+	}
+	env.Custody.RetireGenerated()
+	closed = generatedLifecycleReopen(t, ctx, closed, env.Store)
+	late, err := closed.generatedReflectionPlan(ctx, original.record.ResultID, reply, generatedPlanInputFixture(t, closed).context)
+	if err != nil {
+		t.Fatal("original reply after independent Final", err)
+	}
+	next, err := closed.deriveGeneratedReflection(ctx, late)
+	if err != nil {
+		t.Fatal("record detached original", err)
+	}
+	continuationTestCandidateWithin(t, next.state, bound)
+}
+
+// full_only: false
 func TestInstalledGeneratedCleanupLateCreateReflectionAllowsFollowingCleanup(t *testing.T) {
 	for _, test := range []struct {
 		name, state      string
@@ -475,6 +514,7 @@ func TestInstalledGeneratedCleanupLateCreateReflectionAllowsFollowingCleanup(t *
 			}
 			work := mustSelectedGeneratedWork(t, before)
 			hazardKey := generatedRecordKey{contract.GeneratedHazardSupportKind, original.expected.Template.HazardID}
+			remaining := continuationTestBound(t, before).Remaining
 			other := make(map[generatedRecordKey][]byte)
 			for key, row := range work.records {
 				if key.kind == contract.GeneratedHazardSupportKind && key != hazardKey {
@@ -553,7 +593,8 @@ func TestInstalledGeneratedCleanupLateCreateReflectionAllowsFollowingCleanup(t *
 			if !test.closed {
 				retained := after.attempts[original.record.AttemptID]
 				hazard, err := contract.InspectGeneratedHazardRecord(after.records[hazardKey].Body)
-				if err != nil || !bytes.Equal(retained.result, packet) || retained.record.State != contract.GeneratedEffectClosedWithResidue ||
+				if err != nil || retained.record.Facts.Count != 1 || hazard.Target.Count != 1 || hazard.OriginalResults.Count != 1 ||
+					!bytes.Equal(retained.result, packet) || retained.record.State != contract.GeneratedEffectClosedWithResidue ||
 					hazard.Exposure != contract.GeneratedExposureLateEffect || hazard.Eligibility != contract.GeneratedExposureLateEffect || hazard.Fenced != 1 {
 					t.Fatal("cold reflection lost authenticated target or exact historical uncertainty", err)
 				}
@@ -602,6 +643,9 @@ func TestInstalledGeneratedCleanupLateCreateReflectionAllowsFollowingCleanup(t *
 				t.Fatal("following cleanup did not close its own obligation and preserve current data")
 			}
 			checkGeneratedReceiptRowsUnchanged(t, cold, closed)
+			t.Run("reported-capacity", func(t *testing.T) {
+				continuationTestCandidateWithin(t, cold, remaining)
+			})
 		})
 	}
 }

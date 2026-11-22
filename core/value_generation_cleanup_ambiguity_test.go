@@ -413,7 +413,20 @@ func TestGeneratedOrdinaryCleanupAmbiguityIsReceiptFreeAndAllowsFreshInvocation(
 						t.Fatal("ordinary ambiguity did not record its own source history")
 					}
 					s, source = closed.state, afterSource
-					generatedLifecycleFixture(t, s)
+					admitted := generatedLifecycleFixture(t, s)
+					if invocation == 1 {
+						bound := continuationTestBound(t, s).Remaining
+						reply := generatedRetirementResultFixture(t, s, parked, contract.GeneratorDispositionRetirementAcknowledged)
+						plan, err := s.generatedReflectionPlan(t.Context(), parked.record.ResultID, reply, admitted)
+						if err != nil {
+							t.Fatal("parked ordinary cleanup reply", err)
+						}
+						reflected, err := s.deriveGeneratedLifecycle(t.Context(), plan, nil)
+						if err != nil {
+							t.Fatal("record parked cleanup reply", err)
+						}
+						continuationTestCandidateWithin(t, reflected.state, bound)
+					}
 				}
 			})
 		}

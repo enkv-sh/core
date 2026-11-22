@@ -541,6 +541,7 @@ func TestGeneratedConfirmedLateAcknowledgementsKeepExactMembershipInEitherOrder(
 			if len(attempts) != 3 {
 				t.Fatal("three original delete coordinates required")
 			}
+			bound := continuationTestBound(t, s).Remaining
 			for i, index := range order {
 				g = mustSelectedGeneratedWork(t, s)
 				a := g.attempts[attempts[index].record.AttemptID]
@@ -554,12 +555,24 @@ func TestGeneratedConfirmedLateAcknowledgementsKeepExactMembershipInEitherOrder(
 					t.Fatal("nonfinal late ACK successor", err)
 				}
 				s = next.state
+				continuationTestCandidateWithin(t, s, bound)
 				g = mustSelectedGeneratedWork(t, s)
 				h, err := contract.InspectGeneratedHazardRecord(g.records[generatedRecordKey{11, g.deleteHazards[a.record.AttemptID]}].Body)
 				if err != nil || h.OriginalResults.Count != uint32(i+1) || h.Exposure != contract.GeneratedExposurePossibleLive ||
 					len(g.attempts) != 3 || len(g.releases) != 0 {
 					t.Fatal("late ACK changed owner or exact result membership", err)
 				}
+			}
+			// Every original now has its immutable ACK. A further provider
+			// confirmation requires fresh admission.
+			selected, err := selectedContinuationGroups(t.Context(), g.image, g)
+			if err != nil {
+				t.Fatal(err)
+			}
+			groups, _, err := continuationGroupTotals(selected, continuationGrowth{})
+			after := continuationTestBound(t, s).Remaining.Groups
+			if err != nil || after[contract.GeneratorCapacityDeletes] != groups[contract.GeneratorCapacityDeletes] {
+				t.Fatal("already recorded replies acquired fresh delete growth", err)
 			}
 		})
 	}
@@ -722,6 +735,7 @@ func TestGeneratedLateConfirmationBindsAlreadySelectedAck(t *testing.T) {
 			if _, err := lateWork.generatedReflectLateDelete(t.Context(), lateSelection, parked.head.Core.Revision); err != nil {
 				t.Fatal("late confirmation closure construction", err)
 			}
+			bound := continuationTestBound(t, parked).Remaining
 			latePlan, err := parked.generatedReflectionPlan(t.Context(), expected.Template.ResultID, confirmation, generatedPlanInputFixture(t, parked).context)
 			if err != nil {
 				t.Fatal("late confirmation public plan", err)
@@ -739,6 +753,7 @@ func TestGeneratedLateConfirmationBindsAlreadySelectedAck(t *testing.T) {
 				t.Fatal("late confirmation closure", selected)
 			}
 			closed = generatedLifecycleReopen(t, t.Context(), closed, store)
+			continuationTestCandidateWithin(t, closed, bound)
 			final := mustSelectedGeneratedWork(t, closed)
 			if closed.root.Generated.Hazards != 0 || len(final.attempts) != 0 || closed.root.Generated.PendingReleases != uint32(previous+2) {
 				t.Fatal("late confirmation did not close exact owner", closed.root.Generated.Hazards, len(final.attempts), closed.root.Generated.PendingReleases)
@@ -761,6 +776,7 @@ func TestGeneratedOriginalReflectionAuthenticatesOlderDeleteBeforeOneK2Close(t *
 	for _, recovery := range []bool{false, true} {
 		t.Run(fmt.Sprint(recovery), func(t *testing.T) {
 			env, s, original, packet := generatedAuthenticatedDeleteHazardFixture(t, recovery, 2)
+			bound := continuationTestBound(t, s).Remaining
 			beforeWork, err := s.selectedGeneratedWork(context.Background())
 			if err != nil {
 				t.Fatal(err)
@@ -782,6 +798,7 @@ func TestGeneratedOriginalReflectionAuthenticatesOlderDeleteBeforeOneK2Close(t *
 				t.Fatal("older result closure did not select once", selected)
 			}
 			cold := generatedLifecycleReopen(t, t.Context(), next, store)
+			continuationTestCandidateWithin(t, cold, bound)
 			g, err := cold.selectedGeneratedWork(context.Background())
 			if err != nil || len(g.attempts) != 0 || len(g.releases) != len(beforeWork.releases)+3 || cold.root.Generated.Hazards != 0 {
 				t.Fatalf("older result closure: error=%v attempts=%d materials=%d releases=%d previous releases=%d hazards=%d", err, len(g.attempts), len(g.materials), len(g.releases), len(beforeWork.releases), cold.root.Generated.Hazards)
