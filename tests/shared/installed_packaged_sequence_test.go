@@ -502,31 +502,10 @@ func packagedGeneratedSequenceWithRecovery(t *testing.T, ctx context.Context, fa
 		if err != nil || receipt.OperationKind != contract.OperationRetireGeneratedGeneration || receipt.OperationID != result.OperationID || receipt.EvidenceCeiling != contract.ReceiptEvidenceAcknowledged {
 			t.Fatal("retirement exact receipt", label, err)
 		}
-		packagedSequenceRetirementEvidence(t, ctx, selected, closed, result.OperationID, duty, wantExecutor, receipt)
-		var changed []contract.ChangedSubjectIdentity
-		if wantCurrent != nil {
-			for _, subject := range []struct {
-				kind uint8
-				id   contract.ID
-			}{{contract.ChangedSubjectValueEntry, wantCurrent.Incarnation}, {contract.ChangedSubjectGeneratedValue, wantCurrent.Generated.GenerationID}} {
-				identity, err := contract.ChangedSubjectIdentityID(closed.root.Domain, subject.kind, subject.id, contract.ID{})
-				if err != nil {
-					t.Fatal(err)
-				}
-				changed = append(changed, contract.ChangedSubjectIdentity{Kind: subject.kind, Change: contract.ChangedSubjectUpdated, Identity: identity})
-			}
-			_, actualCurrent := observeCurrentValueEntry(t, closed, "generated")
-			expected := *wantCurrent
-			expected.Generated.RetiringDutyPresent, expected.Generated.RetiringDutyID = 0, contract.ID{}
-			if !reflect.DeepEqual(actualCurrent, expected) || receipt.ChangedSubjects.Count != 2 || receipt.ChangedSubjects.Length != 80 {
-				t.Fatal("retirement changed current successor or its exact vector", label)
-			}
-		} else if len(closed.root.Names) != 0 || receipt.ChangedSubjects.Count != 0 || receipt.ChangedSubjects.Length != 4 {
-			t.Fatal("detached retirement restored a current value", label)
-		}
-		wantedSubjects, err := contract.ChangedSubjectDescriptor(changed)
-		if err != nil || receipt.ChangedSubjects != wantedSubjects {
-			t.Fatal("retirement changed-subject identities differ", label, err)
+		packagedSequenceRetirementEvidence(t, ctx, selected, closed, result.OperationID, duty, wantExecutor, receipt, closed.store.Read)
+		packagedRetirementSuccessor(t, closed, wantCurrent, receipt)
+		if wantCurrent == nil && len(closed.root.Names) != 0 {
+			t.Fatal("detached retirement restored entries", label)
 		}
 		return closed
 	}
@@ -846,7 +825,7 @@ func packagedSequenceEvidence(t *testing.T, ctx context.Context, f installedAppl
 	}
 }
 
-func packagedSequenceRetirementEvidence(t testing.TB, ctx context.Context, before, closed *StateSession, operation, dutyID, executor contract.ID, receipt contract.CompactMutationReceipt) {
+func packagedSequenceRetirementEvidence(t testing.TB, ctx context.Context, before, closed *StateSession, operation, dutyID, executor contract.ID, receipt contract.CompactMutationReceipt, readOriginal func(context.Context, string, uint32) contract.ReadResult) {
 	t.Helper()
 	original := mustSelectedGeneratedWork(t, before)
 	row, present := original.records[generatedRecordKey{contract.GeneratedDutySupportKind, dutyID}]
@@ -905,7 +884,8 @@ func packagedSequenceRetirementEvidence(t testing.TB, ctx context.Context, befor
 	if err != nil {
 		t.Fatal(err)
 	}
-	read := closed.store.Read(ctx, key, mapping.release.ObjectLength)
+	read := readOriginal(ctx, key, mapping.release.ObjectLength)
+	defer clear(read.Body)
 	if read.Status != contract.ReadOK || uint32(len(read.Body)) != mapping.release.ObjectLength || contract.Hash(read.Body) != mapping.release.SelectedHandoffDigest ||
 		mapping.release.SelectedHandoffDigest != subject.ResultDigest || mapping.release.HandoffRevisionID != closed.head.Core.Revision || mapping.release.OriginalResultID != subject.ResultID || mapping.release.InboxID != mapping.attempt.InboxID {
 		t.Fatal("retirement original inbox identity differs")
@@ -926,4 +906,113 @@ func packagedSequenceRetirementEvidence(t testing.TB, ctx context.Context, befor
 		receipt.AcknowledgedCount != 1 || receipt.ConfirmedCount != 0 || receipt.UnknownCount != 0 || receipt.WarningBits != contract.ReceiptWarningInvalidationNotConfirmed {
 		t.Fatal("retirement receipt does not bind the immediate acknowledged close")
 	}
+}
+
+func packagedRetirementSuccessor(t testing.TB, closed *StateSession, wantCurrent *contract.ValueEntry, receipt contract.CompactMutationReceipt) {
+	t.Helper()
+	var changed []contract.ChangedSubjectIdentity
+	if wantCurrent != nil {
+		for _, subject := range []struct {
+			kind uint8
+			id   contract.ID
+		}{{contract.ChangedSubjectValueEntry, wantCurrent.Incarnation}, {contract.ChangedSubjectGeneratedValue, wantCurrent.Generated.GenerationID}} {
+			identity, err := contract.ChangedSubjectIdentityID(closed.root.Domain, subject.kind, subject.id, contract.ID{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			changed = append(changed, contract.ChangedSubjectIdentity{Kind: subject.kind, Change: contract.ChangedSubjectUpdated, Identity: identity})
+		}
+		_, actualCurrent := observeCurrentValueEntry(t, closed, "generated")
+		expected := *wantCurrent
+		expected.Generated.RetiringDutyPresent, expected.Generated.RetiringDutyID = 0, contract.ID{}
+		if !reflect.DeepEqual(actualCurrent, expected) || receipt.ChangedSubjects.Count != 2 || receipt.ChangedSubjects.Length != 80 {
+			t.Fatal("retirement changed current successor or its exact vector")
+		}
+	} else if closed.root.Generated.GeneratedCurrent != 0 || receipt.ChangedSubjects.Count != 0 || receipt.ChangedSubjects.Length != 4 {
+		t.Fatal("detached retirement restored a current value")
+	}
+	wantedSubjects, err := contract.ChangedSubjectDescriptor(changed)
+	if err != nil || receipt.ChangedSubjects != wantedSubjects {
+		t.Fatal("retirement changed-subject identities differ", err)
+	}
+}
+
+// Historical reads have no mutation capability. The expected digest comes from a signed HEAD.
+type stockOriginalReader func(context.Context, string, contract.ID, uint32) (contract.ReadResult, error)
+
+func stockHistoricalRetirement(t testing.TB, ctx context.Context, before, after *StateSession, operation, revision, dutyID, executor contract.ID, reader stockOriginalReader) (contract.ID, contract.ID, uint32) {
+	t.Helper()
+	domain := before.root.Domain
+	if after.root.Domain != domain || before.store.Descriptor() != after.store.Descriptor() {
+		t.Fatal("stock retirement observation domain or Store changed")
+	}
+	current := after
+	released := make(map[contract.ID]contract.ID)
+	for current.head.Generator != nil && current.head.Generator.Purpose == contract.GeneratorAuthorityInboxRelease {
+		s := current.head.Generator
+		if _, seen := released[s.OwnerID]; seen || uint64(len(released)) >= generatedResultReleaseLimit {
+			t.Fatal("stock retirement release chain repeats or exceeds its limit")
+		}
+		released[s.OwnerID] = s.ResultDigest
+		predecessor, err := stockReleasePredecessor(ctx, before, current, reader)
+		if err != nil {
+			t.Fatal("historical release predecessor does not authenticate", err)
+		}
+		current = predecessor
+	}
+	closed := current
+	receipt, ok := closed.mutationReceipts[operation]
+	if closed.head.Generator == nil || closed.head.Generator.Purpose != contract.GeneratorAuthorityRetireClose || !ok || after.mutationReceipts[operation] != receipt || receipt.OperationID != operation || receipt.OperationKind != contract.OperationRetireGeneratedGeneration || receipt.EvidenceCeiling != contract.ReceiptEvidenceAcknowledged || closed.head.Core.Revision != revision {
+		t.Fatal("stock retirement close or retained receipt differs")
+	}
+	closeSubject := closed.head.Generator
+	mapping, ok := mustSelectedGeneratedWork(t, closed).releases[closeSubject.AttemptID]
+	if !ok || released[mapping.release.InboxID] != closeSubject.ResultDigest {
+		t.Fatal("stock release does not reference the retired result")
+	}
+	if _, stillPresent := mustSelectedGeneratedWork(t, after).releases[closeSubject.AttemptID]; stillPresent {
+		t.Fatal("stock retirement release remains selected")
+	}
+	key, err := format.GeneratedResultKey(after.store.Descriptor().Prefix, domain, mapping.release.InboxID)
+	if err != nil || after.store.Read(ctx, key, mapping.release.ObjectLength).Status != contract.ReadMissing {
+		t.Fatal("stock retirement result remains current or its absence is unknown")
+	}
+	packagedSequenceRetirementEvidence(t, ctx, before, closed, operation, dutyID, executor, receipt, func(ctx context.Context, k string, n uint32) contract.ReadResult {
+		read, err := reader(ctx, k, closeSubject.ResultDigest, n)
+		if err != nil {
+			t.Fatal("stock original retirement result unavailable")
+		}
+		return read
+	})
+	var successor *contract.ValueEntry
+	if before.root.Generated.GeneratedCurrent != 0 {
+		_, entry := observeCurrentValueEntry(t, before, "generated")
+		successor = &entry
+	}
+	packagedRetirementSuccessor(t, closed, successor, receipt)
+
+	return contract.Hash(closed.body), closeSubject.ResultDigest, mapping.release.ObjectLength
+}
+
+// The current image was independently opened. Reopen the exact preceding HEAD
+// with the original admission, then compare its signed revision and root.
+func stockReleasePredecessor(ctx context.Context, before, current *StateSession, reader stockOriginalReader) (*StateSession, error) {
+	head, s := current.head.Core, current.head.Generator
+	if s == nil || s.Purpose != contract.GeneratorAuthorityInboxRelease || s.PreviousHEADDigest != head.PreviousDigest || s.PreviousRevisionID != head.PreviousRevision || s.AfterRootDigest != head.Root.Digest {
+		return nil, contract.ErrRecord
+	}
+	read, err := reader(ctx, current.store.Descriptor().HeadKey, head.PreviousDigest, 0)
+	defer clear(read.Body)
+	if err != nil {
+		return nil, err
+	}
+	if read.Status != contract.ReadOK || read.Token != head.PreviousToken || contract.Hash(read.Body) != head.PreviousDigest {
+		return nil, contract.ErrRecord
+	}
+	store := packagedSequenceHeadStore{Store: current.store, head: packagedSequenceHead{body: bytes.Clone(read.Body), token: read.Token}}
+	predecessor, opened := Open(ctx, OpenContext{admission: &before.admission}, store)
+	if predecessor == nil || opened.Outcome != ObservedCurrent || predecessor.head.Core.Revision != head.PreviousRevision || predecessor.head.Core.Root.Digest != s.BeforeRootDigest {
+		return nil, contract.ErrRecord
+	}
+	return predecessor, nil
 }

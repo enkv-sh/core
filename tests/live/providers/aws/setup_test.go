@@ -361,6 +361,10 @@ func (s *awsSetup) check(ctx context.Context) error {
 }
 
 func (s *awsSetup) checkBucket(ctx context.Context) error {
+	return s.checkBucketVersioning(ctx, "")
+}
+
+func (s *awsSetup) checkBucketVersioning(ctx context.Context, want s3types.BucketVersioningStatus) error {
 	bucket, owner := aws.String(s.settings.Bucket), aws.String(s.settings.Account)
 	checks := []func(context.Context, *s3.Client) error{
 		func(ctx context.Context, c *s3.Client) error {
@@ -385,7 +389,7 @@ func (s *awsSetup) checkBucket(ctx context.Context) error {
 			if err != nil {
 				return err
 			}
-			if out.Status != "" || out.MFADelete != "" {
+			if out.Status != want || out.MFADelete != "" {
 				return errAWSSetup
 			}
 			return nil

@@ -161,6 +161,32 @@ func assertCompleteStockPluginEvidencePredicates(t *testing.T, artifact records.
 				t.Fatal("original joined workers refused", err)
 			}
 		})
+		if provider == "aws" {
+			t.Run("historical-retirements", func(t *testing.T) {
+				proof := input
+				proof.Fixture.Purpose = records.StockRetirementProofPurpose
+				proof.Fixture.Bucket = "enkv-" + proof.Fixture.Account + "-pa-" + proof.Fixture.FixtureID
+				observed := clone(complete)
+				if observed.ValidateComplete(proof) == nil {
+					t.Fatal("missing historical proof accepted")
+				}
+				for i := range observed.Retirements {
+					observed.Retirements[i].CloseDigest = id(330 + i)
+					observed.Retirements[i].ResultDigest = id(340 + i)
+					observed.Retirements[i].ResultLength = 1024
+				}
+				if observed.ValidateComplete(proof) != nil || observed.ValidateComplete(input) == nil {
+					t.Fatal("historical evidence is not bound to its profile")
+				}
+				for i := range observed.Retirements {
+					damaged := clone(observed)
+					damaged.Retirements[i].ResultLength = 0
+					if damaged.ValidateComplete(proof) == nil {
+						t.Fatal("one incomplete retirement accepted")
+					}
+				}
+			})
+		}
 		t.Run("complete-with-diagnostic-reference", func(t *testing.T) {
 			value := clone(complete)
 			value.Commands[0].DiagnosticSHA256 = id(300)

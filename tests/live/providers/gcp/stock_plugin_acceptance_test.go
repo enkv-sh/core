@@ -740,3 +740,7 @@ func TestStockGCPStorePrefixKeepsBucketReusableAcrossRuns(t *testing.T) {
 		t.Fatal("later run removed an old late arrival or deleted its bucket")
 	}
 }
+
+func openStockVersionReader(context.Context, liveRunInput, string, *runBudget, contract.ID) (stockOriginalReader, error) {
+ return nil, errInventory
+}

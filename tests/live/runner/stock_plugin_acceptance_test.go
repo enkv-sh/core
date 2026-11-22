@@ -480,6 +480,9 @@ func runStockPluginAcceptance(t testing.TB, inv records.Invocation, input liveRu
 	if !known || len(execution.Writer) != 3 || !livePublicConfigurationAdmitted(input) {
 		t.Fatal("stock live contract refused")
 	}
+	if input.PublicConfiguration.Stock.Fixture.ValidateNewStockRun() != nil {
+		t.Fatal("stock AWS retirement requires an admitted historical Reader before effects")
+	}
 	begin := func(index int) uint64 {
 		sequence, err := worker.BeginStep(execution.Writer[index].Step, input.Participants[execution.Writer[index].Step.Role])
 		if err != nil {
@@ -578,11 +581,7 @@ func runStockPluginAcceptance(t testing.TB, inv records.Invocation, input liveRu
 	}
 	r.assert("b-same-epoch-reused")
 	r.missingA(ctx, source, a1)
-	retiredA := r.generated(ctx, "exact-a-retired", "a", source, "success", "generated", "retire", "--duty", a1.Duties[0].Facts.Duty)
-	if !stockRetirementMatches(retiredA, a1.Duties[0]) {
-		t.Fatal("stock retained A retirement substituted support or target")
-	}
-	r.evidence.Retirements = append(r.evidence.Retirements, stockRetirementEvidence("exact-a-retired", retiredA, a1.Duties[0]))
+	r.retire(ctx, "exact-a-retired", "a", source, a1.Duties[0])
 	r.assert("exact-a-retired")
 	stockDeclareGenerated(t, source, *stock, input.RunID, expires, 2, true)
 	b2Result := r.generated(ctx, "b2-created", "b", source, "retirement-pending", "apply")
@@ -600,11 +599,7 @@ func runStockPluginAcceptance(t testing.TB, inv records.Invocation, input liveRu
 	r.save()
 	r.verifySelectedToken(ctx, source)
 	r.assert("b2-created")
-	retiredB := r.generated(ctx, "b-retired-a1", "b", source, "success", "generated", "retire", "--duty", b2.Duties[0].Facts.Duty)
-	if !stockRetirementMatches(retiredB, b2.Duties[0]) {
-		t.Fatal("stock new B retirement changed A1 target or support")
-	}
-	r.evidence.Retirements = append(r.evidence.Retirements, stockRetirementEvidence("b-retired-a1", retiredB, b2.Duties[0]))
+	r.retire(ctx, "b-retired-a1", "b", source, b2.Duties[0])
 	r.assert("b-retired-a1")
 	r.publishOutputs(ctx, source)
 	r.manifest(ctx, source)
@@ -618,11 +613,7 @@ func runStockPluginAcceptance(t testing.TB, inv records.Invocation, input liveRu
 	}
 	r.evidence.Duties = append(r.evidence.Duties, stockDutyEvidence("final-generation-retired", final.Duties[0]))
 	r.save()
-	retiredFinal := r.generated(ctx, "final-generation-retired", "b", source, "success", "generated", "retire", "--duty", final.Duties[0].Facts.Duty)
-	if !stockRetirementMatches(retiredFinal, final.Duties[0]) {
-		t.Fatal("stock final retirement support or target differs")
-	}
-	r.evidence.Retirements = append(r.evidence.Retirements, stockRetirementEvidence("final-generation-retired", retiredFinal, final.Duties[0]))
+	r.retire(ctx, "final-generation-retired", "b", source, final.Duties[0])
 	closed := r.list(ctx, source)
 	if len(closed.Current) != 0 || len(closed.Duties) != 0 || len(closed.Hazards) != 0 {
 		t.Fatal("stock final generated work remains")

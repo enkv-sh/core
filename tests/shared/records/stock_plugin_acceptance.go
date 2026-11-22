@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"enkv.sh/core/contract"
 	"enkv.sh/sdk/artifact"
 	"enkv.sh/sdk/artifact/credentialroute"
 )
@@ -61,6 +62,18 @@ func (v StockPluginFixture) Validate() error {
 			return errRecord
 		}
 	default:
+		return errRecord
+	}
+	return nil
+}
+
+// The AWS stock scenario owns the real Cloudflare retirement qualification.
+// Existing grants still identify their original fixture during recovery.
+func (v StockPluginFixture) ValidateNewStockRun() error {
+	if err := v.Validate(); err != nil {
+		return err
+	}
+	if v.Provider == "aws" && v.Purpose != StockRetirementProofPurpose {
 		return errRecord
 	}
 	return nil
@@ -247,6 +260,9 @@ type StockPluginDuty struct {
 }
 
 type StockPluginRetirement struct {
+	CloseDigest                    string `json:"close_digest,omitempty"`
+	ResultDigest                   string `json:"result_digest,omitempty"`
+	ResultLength                   uint32 `json:"result_length,omitempty"`
 	Phase                          string `json:"phase"`
 	DutyID                         string `json:"duty_id"`
 	DeletionAcknowledgedCount      uint32 `json:"deletion_acknowledged_count"`
@@ -393,6 +409,14 @@ func (v StockPluginEvidence) validateFacts(input StockPluginAcceptanceInput) err
 	}
 
 	for i, retirement := range v.Retirements {
+		if input.Fixture.Purpose == StockRetirementProofPurpose {
+			if !publicOutputID(retirement.CloseDigest) || !publicOutputID(retirement.ResultDigest) || retirement.ResultLength == 0 || retirement.ResultLength > uint32(contract.GeneratedResultRecordMaxLength) {
+				return errRecord
+			}
+		} else if retirement.CloseDigest != "" || retirement.ResultDigest != "" || retirement.ResultLength != 0 {
+			return errRecord
+		}
+
 		if retirement.Phase != []string{"exact-a-retired", "b-retired-a1", "final-generation-retired"}[i] || retirement.DutyID != v.Duties[i].DutyID || retirement.DeletionAcknowledgedCount != 1 || retirement.InvalidationConfirmedCount != 0 || retirement.UnknownCount != 0 || !retirement.InvalidationNotConfirmed || !retirement.EffectInvalidationNotConfirmed {
 			return errRecord
 		}

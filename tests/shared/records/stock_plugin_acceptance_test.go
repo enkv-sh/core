@@ -19,6 +19,19 @@ func stockFixtureLiteral(provider string) StockPluginFixture {
 
 // full_only: false
 func TestStockPluginFixtureRequiresExactReusableScope(t *testing.T) {
+	t.Run("fresh-cloudflare-proof", func(t *testing.T) {
+		old := stockFixtureLiteral("aws")
+		if old.Validate() != nil || old.ValidateNewStockRun() == nil {
+			t.Fatal("ordinary AWS fixture admitted new Cloudflare qualification")
+		}
+		proof := old
+		proof.Purpose = StockRetirementProofPurpose
+		proof.Bucket = "enkv-" + proof.Account + "-pa-" + proof.FixtureID
+		if proof.ValidateNewStockRun() != nil || stockFixtureLiteral("gcp").ValidateNewStockRun() != nil {
+			t.Fatal("supported provider fixture refused")
+		}
+	})
+
 	t.Run("retained-version-proof", func(t *testing.T) {
 		f := stockFixtureLiteral("aws")
 		f.Purpose = "stock-plugin-retirement-proof"

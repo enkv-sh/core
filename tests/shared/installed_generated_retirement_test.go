@@ -227,6 +227,18 @@ func TestInstalledRetirementReleasesOnlyItsObsoleteInbox(t *testing.T) {
 	defer cancel()
 	f, selected, current, effects := installedGeneratedRetirementFixture(t, ctx, "acknowledged")
 	store := &generatedCleanupDeleteStore{memoryStore: requireAdmittedMemoryStore(t, f.env.Store)}
+	history := map[string]map[contract.ID]contract.ReadResult{}
+	store.readHook = func(key string, read contract.ReadResult) contract.ReadResult {
+		if read.Status == contract.ReadOK {
+			if history[key] == nil {
+				history[key] = map[contract.ID]contract.ReadResult{}
+			}
+			copied := read
+			copied.Body = bytes.Clone(read.Body)
+			history[key][contract.Hash(copied.Body)] = copied
+		}
+		return read
+	}
 	f.env.Store = store
 	for epoch := uint64(1); epoch <= 2; epoch++ {
 		if epoch == 2 {
@@ -248,6 +260,7 @@ func TestInstalledRetirementReleasesOnlyItsObsoleteInbox(t *testing.T) {
 			t.Fatal("unexpected baseline retirement inbox")
 		}
 		engine := installedGeneratedRetirementEngine(t, ctx, f, selected, installedGeneratedRetirementCallbacks(t, f, f.env.GeneratedProcess))
+		before := selected
 		out := engine.RetireGenerated(ctx, testID(fmt.Sprintf("release retirement inbox %d", epoch)), GeneratedRetirementRequest{DutyID: current.Generated.RetiringDutyID})
 		engine.Close()
 		if out.Result.Outcome != ObservedCurrent || out.Generated == nil || len(out.Generated.Effects) != 1 || len(out.Receipt) == 0 {
@@ -258,6 +271,46 @@ func TestInstalledRetirementReleasesOnlyItsObsoleteInbox(t *testing.T) {
 		key, err := format.GeneratedResultKey(store.desc.Prefix, selected.root.Domain, effect.InboxID)
 		if err != nil {
 			t.Fatal(err)
+		}
+		receipt, err := contract.InspectCompactMutationReceipt(out.Receipt)
+		if err != nil {
+			t.Fatal(err)
+		}
+		original := func(_ context.Context, k string, digest contract.ID, length uint32) (contract.ReadResult, error) {
+			read, ok := history[k][digest]
+			if !ok || length != 0 && int(length) != len(read.Body) {
+				return contract.ReadResult{}, contract.ErrRecord
+			}
+			read.Body = bytes.Clone(read.Body)
+			return read, nil
+		}
+		stockHistoricalRetirement(t, ctx, before, selected, out.OperationID, receipt.ObservedRevisionID, current.Generated.RetiringDutyID, f.env.GeneratedProcess.Implementation.ExecutorID, original)
+		if epoch == 1 {
+			for _, damage := range []string{"different-body", "different-token", "missing", "different-root"} {
+				t.Run(damage, func(t *testing.T) {
+					image := *selected
+					subject := *selected.head.Generator
+					image.head.Generator = &subject
+					if damage == "different-root" {
+						subject.BeforeRootDigest = testID("unrelated root")
+					}
+					_, err := stockReleasePredecessor(ctx, before, &image, func(ctx context.Context, key string, digest contract.ID, n uint32) (contract.ReadResult, error) {
+						read, err := original(ctx, key, digest, n)
+						switch damage {
+						case "different-body":
+							read.Body = []byte("different HEAD")
+						case "different-token":
+							read.Token = contract.Token{Family: contract.AWS, Value: `"other"`}
+						case "missing":
+							return contract.ReadResult{Status: contract.ReadMissing}, nil
+						}
+						return read, err
+					})
+					if err == nil {
+						t.Fatal("changed historical predecessor accepted")
+					}
+				})
+			}
 		}
 		_, physical := store.objects[key]
 		_, retained := mustSelectedGeneratedWork(t, selected).releases[effect.AttemptID]

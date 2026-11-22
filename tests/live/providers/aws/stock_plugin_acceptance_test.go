@@ -23,6 +23,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go/logging"
 )
 
@@ -47,7 +48,7 @@ func stockAWSFixture(input liveRunInput) (records.StockPluginFixture, error) {
 		return records.StockPluginFixture{}, errInventory
 	}
 	f, s := input.PublicConfiguration.Stock.Fixture, input.Settings
-	if f.Validate() != nil || f.Purpose != "stock-plugin-acceptance" || f.Provider != "aws" || s.Provider != f.Provider || s.Bucket != f.Bucket ||
+	if f.Validate() != nil || f.Provider != "aws" || s.Provider != f.Provider || s.Bucket != f.Bucket ||
 		s.Account != f.Account || s.Region != f.Region || input.RecoveryMode != "enabled" ||
 		!records.ValidRunID(input.RunID) || !strings.HasPrefix(input.Prefix, "enkv-test/"+input.RunID+"/") ||
 		!slices.Equal(input.Scenarios, []string{records.StockPluginScenario}) {
@@ -63,8 +64,8 @@ func openStockStorePrefix(ctx context.Context, input liveRunInput, directory str
 	if deadline, ok := ctx.Deadline(); !ok || !time.Now().Before(deadline) {
 		return nil, errInventory
 	}
-	if _, err := stockAWSFixture(input); err != nil {
-		return nil, err
+	if fixture, err := stockAWSFixture(input); err != nil || fixture.Purpose != "stock-plugin-acceptance" {
+		return nil, errInventory
 	}
 	restore, err := publicSDKEnvironment(input, "cleanup", directory)
 	if err != nil {
@@ -88,7 +89,14 @@ func stockAWSStorePrefix(input liveRunInput, setup *awsSetup, original *stockPre
 	setup.client.Transport = stockAWSBudgetTransport{setup.transport}
 	// S3 exposes no bucket-incarnation token here. The identity binds the
 	// explicit fixture route; actual ownership/configuration is checked below.
-	id := contract.Hash([]byte("enkv/test/stock-s3/v1\x00" + f.FixtureID + "\x00" + f.Account + "\x00" + f.Region + "\x00" + f.Bucket))
+	versioned := f.Purpose == records.StockRetirementProofPurpose
+	fixtureType := "enkv/test/stock-s3/v1"
+	var versioning s3types.BucketVersioningStatus
+	if versioned {
+		fixtureType = "enkv/test/stock-s3-history/v1"
+		versioning = s3types.BucketVersioningStatusEnabled
+	}
+	id := contract.Hash([]byte(fixtureType + "\x00" + f.FixtureID + "\x00" + f.Account + "\x00" + f.Region + "\x00" + f.Bucket))
 	identity := hex.EncodeToString(id[:])
 	var admitted *stockPrefixInspection
 	if original != nil {
@@ -101,8 +109,15 @@ func stockAWSStorePrefix(input liveRunInput, setup *awsSetup, original *stockPre
 	setup.ownedKey = func(key string) bool { return publicObjectKeyLimit(input.Prefix, key) > 0 }
 	inspect := func(ctx context.Context, budget *runBudget) (stockPrefixInspection, error) {
 		ctx = context.WithValue(ctx, stockAWSBudgetKey{}, budget)
-		if err := setup.checkBucket(ctx); err != nil {
+		if err := setup.checkBucketVersioning(ctx, versioning); err != nil {
 			return stockPrefixInspection{}, err
+		}
+		if versioned {
+			items, err := stockS3ListVersions(ctx, setup, input.Prefix+"/", false)
+			if err != nil {
+				return stockPrefixInspection{}, err
+			}
+			return stockPrefixInspection{Empty: len(items) == 0, Identity: identity, Prefix: input.Prefix}, nil
 		}
 		keys, err := stockAWSPrefixKeys(ctx, setup, input.Prefix)
 		if err != nil {
@@ -112,7 +127,7 @@ func stockAWSStorePrefix(input liveRunInput, setup *awsSetup, original *stockPre
 	}
 	attempted := false
 	return &stockStorePrefix{Inspect: inspect, Clean: func(ctx context.Context, budget *runBudget) (bool, error) {
-		if attempted || admitted == nil {
+		if attempted || admitted == nil || versioned {
 			return false, errInventory
 		}
 		attempted = true

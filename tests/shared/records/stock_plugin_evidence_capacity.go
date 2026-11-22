@@ -34,7 +34,7 @@ func StockPluginEvidenceReservationBytes(current StockPluginEvidence, coordinate
 		maximum.Generations[i] = StockPluginGeneration{Phase: label, Epoch: ^uint64(0), GenerationID: identity, ResourceID: identity, ResourceDigest: identity, OriginOperationID: identity, OriginAttemptID: identity}
 		maximum.Creates[i] = StockPluginCreate{Phase: label, OperationID: identity, AttemptID: identity, GenerationID: identity, ResourceID: identity, ResourceDigest: identity, DescriptorID: identity, ExecutorID: identity, CredentialRouteID: identity, ConfigContractID: identity, ResourceContractID: identity, ResultContractID: identity}
 		maximum.Duties[i] = StockPluginDuty{Phase: label, DutyID: identity, ResourceID: identity, DescriptorID: identity, ExecutorID: identity, CredentialRouteID: identity, ResultContractID: identity, OriginalOperationID: identity, OriginalAttemptID: identity}
-		maximum.Retirements[i] = StockPluginRetirement{Phase: label, DutyID: identity, DeletionAcknowledgedCount: ^uint32(0), InvalidationConfirmedCount: ^uint32(0), UnknownCount: ^uint32(0)}
+		maximum.Retirements[i] = StockPluginRetirement{CloseDigest: identity, ResultDigest: identity, ResultLength: ^uint32(0), Phase: label, DutyID: identity, DeletionAcknowledgedCount: ^uint32(0), InvalidationConfirmedCount: ^uint32(0), UnknownCount: ^uint32(0)}
 	}
 	maximum.Outputs = make([]StockPluginOutput, len(coordinates))
 	for i, coordinate := range coordinates {

@@ -646,6 +646,22 @@
       "tests": [
         "TestStockGCPStorePrefixKeepsBucketReusableAcrossRuns"
       ]
+    },
+    {
+      "id": "stock-aws-historical-result",
+      "kind": "assembly-checks",
+      "responsibility": "aws",
+      "tests": [
+        "TestStockAWSHistoricalResultRequiresUniqueCompleteVersion"
+      ]
+    },
+    {
+      "id": "stock-aws-history-preflight",
+      "kind": "assembly-checks",
+      "responsibility": "aws",
+      "tests": [
+        "TestStockAWSHistoryPreflightRejectsRetainedPrefix"
+      ]
     }
   ]
 }
