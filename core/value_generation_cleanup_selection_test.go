@@ -3,6 +3,7 @@ package core
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"slices"
 	"testing"
 	"time"
@@ -12,6 +13,117 @@ import (
 
 // Direct selected-state tests supply their own context. Runtime cleanup paths
 // pass the caller context to selectGeneratedCleanup.
+
+// full_only: false
+func TestGeneratedDetachedCleanupDistinguishesInboxReleaseFromLiveCreate(t *testing.T) {
+	for _, state := range []uint8{0, contract.GeneratedReleasePending, contract.GeneratedReleaseUnknown} {
+		t.Run(fmt.Sprint(state), func(t *testing.T) {
+			s, source := generatedOrdinaryCleanupSourceState(t, contract.GeneratedCompletionAcknowledged, true)
+			g := mustSelectedGeneratedWork(t, s)
+			a := g.attempts[source.OriginalAttemptID]
+			target, err := g.generatedCleanupTarget(source.Record.Kind, source.SourceID, source.Target)
+			if err != nil {
+				t.Fatal(err)
+			}
+			s = generatedHazardEvidenceHandoff(t, s, a, source.Hazard, state)
+			generatedLifecycleFixture(t, s)
+			observationProtectFixture(t, s)
+			selected, ok, err := s.readGeneratedCleanup(t.Context())
+			if err != nil || !ok || selected.kind != generatedCleanupHazard || selected.hazard.HazardID != source.SourceID ||
+				selected.target != target || !selected.attempt.record.AttemptID.IsZero() {
+				t.Fatal("detached cleanup did not select its exact target", err)
+			}
+			g = mustSelectedGeneratedWork(t, s)
+			source, err = contract.InspectGeneratedDeleteSource(g.records[selected.sourceKey()])
+			if err != nil {
+				t.Fatal(err)
+			}
+			deleteContract, err := generatedCleanupResultContract(g, source, target)
+			if err != nil {
+				t.Fatal("qualify retained delete contract", err)
+			}
+			if state == 0 {
+				if !deleteContract.IsZero() || len(g.releases) != 0 {
+					t.Fatal("graphless original supplied a release or a deletion contract")
+				}
+				return
+			}
+			if deleteContract != generatedVectorID(49) {
+				t.Fatal("installed cleanup lost its retained delete contract")
+			}
+			release := g.releases[a.record.AttemptID]
+			if release.release.State != state || release.release.SelectedHandoffDigest != contract.Hash(a.result) ||
+				g.hasRecord(generatedRecordKey{contract.GeneratedResultSupportKind, a.record.ResultID}) ||
+				g.materials[materialIdentity{contract.OperationSeedMaterialKind, a.material.Core.OperationMaterialID}] {
+				t.Fatal("release restored private create support")
+			}
+			// A different mapping cannot classify this physical Attempt as released.
+			damaged := *g
+			damaged.releases = map[contract.ID]generatedReleasedAttempt{generatedVectorID(224): release}
+			if damaged.validateDetachedCleanupHazard(t.Context(), source.Hazard, target) == nil {
+				t.Fatal("unrelated release admitted")
+			}
+			other := release
+			other.attempt.OperationID = generatedVectorID(222)
+			damaged.releases = map[contract.ID]generatedReleasedAttempt{a.record.AttemptID: other}
+			if damaged.validateDetachedCleanupHazard(t.Context(), source.Hazard, target) == nil {
+				t.Fatal("release for another original operation admitted")
+			}
+			wrong := target
+			wrong.ResourceDigest = generatedVectorID(225)
+			if g.validateDetachedCleanupHazard(t.Context(), source.Hazard, wrong) == nil {
+				t.Fatal("wrong target admitted")
+			}
+			wrongHazard := source.Hazard
+			wrongHazard.OriginalResults.Digest = generatedVectorID(225)
+			if g.validateDetachedCleanupHazard(t.Context(), wrongHazard, target) == nil {
+				t.Fatal("wrong evidence admitted")
+			}
+			damaged = *g
+			damaged.attempts = map[contract.ID]generatedAttempt{a.record.AttemptID: a}
+			if damaged.validateDetachedCleanupHazard(t.Context(), source.Hazard, target) == nil {
+				t.Fatal("live original treated as released")
+			}
+			operation := generatedVectorID(210)
+			input := generatedOrdinaryCleanupReservationInput(t, s, source, operation)
+			reservation, err := s.deriveGeneratedReservation(t.Context(), input)
+			if err != nil {
+				t.Fatal("reserve qualified cleanup", err)
+			}
+			s = reservation.state
+			g = mustSelectedGeneratedWork(t, s)
+			deletion := g.attempts[g.phase.FrontierAttemptID]
+			if deletion.record.OwnerID != source.OwnerID || deletion.record.ResourceID != target.ResourceID ||
+				deletion.expected.TargetResourceDigest != target.ResourceDigest || deletion.expected.Template.Action != contract.GeneratorActionDelete {
+				t.Fatal("cleanup selected a different deletion")
+			}
+			packet := generatedRetirementResultFixture(t, s, deletion, contract.GeneratorDispositionRetirementAcknowledged)
+			record, err := s.generatedRecordRequest(t.Context(), deletion.record.AttemptID, packet, generatedContinuationContext(t, s, 182, 183))
+			if err != nil {
+				t.Fatal(err)
+			}
+			recorded, err := s.deriveGeneratedRecord(t.Context(), record)
+			if err != nil {
+				t.Fatal(err)
+			}
+			s = recorded.state
+			plan, err := s.generatedOrdinaryCleanupClosePlan(t.Context(), deletion.record.AttemptID, generatedContinuationContext(t, s, 184, 185))
+			if err != nil {
+				t.Fatal(err)
+			}
+			closed, err := s.deriveGeneratedCleanupClose(t.Context(), plan)
+			if err != nil {
+				t.Fatal("close the exact detached hazard", err)
+			}
+			cold := generatedReflectionSelectAndColdOpen(t, s, closed)
+			g = mustSelectedGeneratedWork(t, cold)
+			if g.parent != nil || g.phase != nil || cold.root.Generated.Hazards != 0 || len(g.releases) != 2 ||
+				g.releases[a.record.AttemptID] != release || g.releases[deletion.record.AttemptID].release.SelectedHandoffDigest != contract.Hash(packet) {
+				t.Fatal("cleanup lost original release or retained resource hazard")
+			}
+		})
+	}
+}
 
 // full_only: false
 func TestGeneratedRepeatedDeleteReflectionOrdersEveryActualOriginalCoordinate(t *testing.T) {

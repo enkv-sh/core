@@ -250,6 +250,7 @@ var componentEstimates = map[string]float64{
 	"TestAdministrativeEndWorkRepairsHistoricalInboxProvenance":    7,
 	"TestAdministrativeEndWorkDropsSeedKeptOnlyForInboxProvenance": 7,
 	// Focused retained-reader observations.
+	"TestGeneratedDetachedCleanupDistinguishesInboxReleaseFromLiveCreate":        1,
 	"TestGeneratedClosePreservesAnotherResourcesRetainedGeneratedValue":          1,
 	"TestGeneratedLateDeleteReflectionRemovesFinalNoncurrentCanonicalAccessPage": 3,
 	"TestGeneratedLateDeleteReflectionRemovesRetainedOnlyReaderAccessPage":       3,

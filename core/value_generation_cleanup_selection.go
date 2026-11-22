@@ -226,7 +226,7 @@ func (g *generatedSelection) selectGeneratedCleanup(ctx context.Context, returne
 // validated the Hazard. Recheck the evidence-to-target relation here so an
 // ordinary cleanup selection cannot treat a merely missing Attempt as a grant.
 func (g *generatedSelection) validateDetachedCleanupHazard(ctx context.Context, h contract.GeneratedHazardRecord, target contract.GeneratorTarget) error {
-	if _, present := g.records[generatedRecordKey{kind: contract.GeneratedAttemptSupportKind, id: h.OriginalAttemptID}]; present {
+	if _, live := g.attempts[h.OriginalAttemptID]; live {
 		return contract.ErrRecord
 	}
 	if _, present := g.records[generatedRecordKey{kind: contract.GeneratedDutySupportKind, id: h.OwnerID}]; present {
@@ -235,6 +235,19 @@ func (g *generatedSelection) validateDetachedCleanupHazard(ctx context.Context, 
 	result, err := generatedCreateResultID(h.DomainID, h.OriginalOperationID, h.OriginalAttemptID)
 	if err != nil {
 		return err
+	}
+	if row, present := g.records[generatedRecordKey{contract.GeneratedAttemptSupportKind, h.OriginalAttemptID}]; present {
+		// A release keeps the original graph and Attempt until its inbox is
+		// disposed of. Only an observed release of this CREATE explains the row.
+		released, ok := g.releases[h.OriginalAttemptID]
+		a, err := contract.InspectGeneratedAttemptRecord(row.Body)
+		if err != nil || !ok || a != released.attempt || released.template.Action != contract.GeneratorActionCreate ||
+			released.release.State == contract.GeneratedReleaseUnobserved || a.DomainID != h.DomainID || a.OperationID != h.OriginalOperationID ||
+			a.AttemptID != h.OriginalAttemptID || a.ResultID != result || a.OwnerID != h.OwnerID || a.ResourceID != h.ResourceID ||
+			a.ConfigContractID != h.ConfigContractID || a.ResourceContractID != h.ResourceContractID || a.ResultContractID != h.ResultContractID ||
+			a.ExecutorID != h.ExecutorID || a.CredentialRouteID != h.CredentialRouteID || a.DescriptorID != h.DescriptorID || a.CompletionClass != h.CompletionClass {
+			return contract.ErrRecord
+		}
 	}
 	evidence, present := g.records[generatedRecordKey{kind: contract.GeneratedCreateEvidenceSupportKind, id: result}]
 	if !present {
