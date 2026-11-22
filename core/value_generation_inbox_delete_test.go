@@ -97,7 +97,7 @@ func TestGeneratedInboxDeleteRequiresExactObservedHandoff(t *testing.T) {
 				body = append([]byte(nil), body...)
 				body[0] ^= 1
 				return contract.ReadResult{Status: contract.ReadOK, Body: body, Token: token}
-			}, contract.WriteResult{Status: contract.WriteAcknowledged}, generatedInboxDeleteUnknown, 0},
+			}, contract.WriteResult{Status: contract.WriteAcknowledged}, generatedInboxDeleteInvalidObject, 0},
 			{"raced", func(body []byte, token contract.Token) contract.ReadResult {
 				return contract.ReadResult{Status: contract.ReadOK, Body: body, Token: token}
 			}, contract.WriteResult{Status: contract.WritePrecondition, Reason: contract.ReasonCondition}, generatedInboxDeletePending, 1},

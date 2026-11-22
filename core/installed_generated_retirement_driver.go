@@ -324,6 +324,7 @@ func selectInstalledGeneratedRetirementLifecycle(ctx context.Context, out Public
 
 	out.WarningBits = next.root.WarningBits
 	checkpoint.recordSelected(out)
+	releaseInstalledGeneratedInboxes(ctx, next, out.OperationID, i.Trust, time.Unix(0, int64(plan.context.Expiry)))
 	return out
 }
 

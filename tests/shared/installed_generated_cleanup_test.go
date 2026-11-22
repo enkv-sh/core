@@ -617,7 +617,7 @@ func TestInstalledGeneratedCleanupReflectsActualOriginalWithoutProducer(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	store.objects[key] = stored{Body: bytes.Clone(packet), Token: contract.Token{Family: store.desc.Family, Value: `"installed-late-original"`}}
+	store.objects[key] = stored{Body: bytes.Clone(packet), Token: contract.Token{Family: store.desc.Family, Value: "42"}}
 	store.creates, store.cas, trust.signs = 0, 0, 0
 	before, recipients := selected.pages, selected.registry()
 	engine := installedGeneratedCleanupTestEngine(t, env, selected, installedGeneratedVerificationTestCallbacks(t, env))
@@ -651,6 +651,106 @@ func TestInstalledGeneratedCleanupReflectsActualOriginalWithoutProducer(t *testi
 	}
 	if noWork.Payload != nil {
 		t.Error("zero-work cleanup emitted TransitionPayload")
+	}
+}
+
+type installedCleanupReleaseStore struct {
+	*generatedCleanupDeleteStore
+	mode    string
+	inbox   string
+	swapped bool
+}
+
+func (s *installedCleanupReleaseStore) Read(ctx context.Context, key string, limit uint32) contract.ReadResult {
+	if key == s.inbox && s.mode == "replacement" && s.cas != 0 && !s.swapped {
+		s.objects[key] = stored{Body: []byte("replacement"), Token: contract.Token{Family: s.desc.Family, Value: "99"}}
+		s.swapped = true
+	}
+	return s.generatedCleanupDeleteStore.Read(ctx, key, limit)
+}
+
+func (s *installedCleanupReleaseStore) DeleteIfToken(ctx context.Context, key string, token contract.Token) contract.WriteResult {
+	if key == s.inbox {
+		switch s.mode {
+		case "refused":
+			s.deletes++
+			return contract.WriteResult{Status: contract.WriteRefused, Reason: contract.ReasonAccess}
+		case "token-change":
+			s.objects[key] = stored{Body: []byte("replacement"), Token: contract.Token{Family: s.desc.Family, Value: "99"}}
+		}
+	}
+	return s.generatedCleanupDeleteStore.DeleteIfToken(ctx, key, token)
+}
+
+// full_only: false
+func TestInstalledCleanupReleasesOriginalAtSelectedHandoff(t *testing.T) {
+	for _, mode := range []string{"acknowledged", "lost", "refused", "token-change", "replacement", "no-capability"} {
+		t.Run(mode, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
+			defer cancel()
+			env, before, original, packet := generatedAuthenticatedDeleteHazardFixture(t, false, 0)
+			base := env.Store.(*memoryStore)
+			key, err := format.GeneratedResultKey(base.desc.Prefix, original.record.DomainID, original.record.InboxID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			base.objects[key] = stored{Body: bytes.Clone(packet), Token: contract.Token{Family: base.desc.Family, Value: "42"}}
+			base.cas = 0
+			store := &installedCleanupReleaseStore{generatedCleanupDeleteStore: &generatedCleanupDeleteStore{memoryStore: base, lost: mode == "lost"}, inbox: key, mode: mode}
+			if mode != "no-capability" {
+				env.Store = store
+			}
+			engine := installedGeneratedCleanupTestEngine(t, env, before, installedGeneratedVerificationTestCallbacks(t, env))
+			out := engine.CleanupGenerated(ctx, testID("release reflected original"))
+			engine.Close()
+			if out.Generated == nil || out.Generated.StateResult != "success" || len(out.Receipt) != 0 ||
+				out.Cleanup == nil || !slices.Contains(out.Cleanup.RemainingInboxIDs, original.record.InboxID) ||
+				out.Cleanup.RemainingWorkBasis.HeadRevisionID != out.Result.ObservedRevision {
+				t.Fatal("lost cleanup result at its selected handoff", out.Result)
+			}
+			cold := generatedLifecycleReopen(t, ctx, before, store)
+			work := mustSelectedGeneratedWork(t, cold)
+			release, mapped := work.releases[original.record.AttemptID]
+			object, present := store.objects[key]
+			state := uint8(0)
+			if mapped {
+				state = release.release.State
+			}
+			wantState := uint8(contract.GeneratedReleaseUnknown)
+			if mode == "acknowledged" {
+				wantState = 0
+			} else if mode == "token-change" || mode == "replacement" || mode == "no-capability" {
+				wantState = contract.GeneratedReleasePending
+			}
+			wantPresent := mode != "acknowledged" && mode != "lost"
+			wantDeletes := 1
+			if mode == "replacement" || mode == "no-capability" {
+				wantDeletes = 0
+			}
+			if state != wantState || present != wantPresent || store.deletes != wantDeletes || mapped && release.release.SelectedHandoffDigest != contract.Hash(packet) {
+				t.Fatalf("release state=%d want=%d physical=%t want=%t conditional calls=%d want=%d", state, wantState, present, wantPresent, store.deletes, wantDeletes)
+			}
+			if (mode == "token-change" || mode == "replacement") && !bytes.Equal(object.Body, []byte("replacement")) {
+				t.Fatal("replacement object changed")
+			}
+			marks, err := gcMarkSelected(work.image, work, store.Descriptor())
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, protected := marks.objects[contract.StoreObjectIdentity{Namespace: contract.StoreResultObject, ObjectID: original.record.InboxID}]
+			if protected != mapped {
+				t.Fatal("release mapping and exact GC protection differ")
+			}
+			checkGeneratedReceiptRowsUnchanged(t, before, cold)
+			writes := store.cas
+			observe := installedGeneratedCleanupTestEngine(t, env, cold, nil)
+			empty := observe.CleanupGenerated(ctx, testID("fresh cleanup following release"))
+			observe.Close()
+			if empty.Result.Outcome != Unchanged || store.cas != writes || store.deletes != wantDeletes || empty.Cleanup == nil ||
+				slices.Contains(empty.Cleanup.RemainingInboxIDs, original.record.InboxID) != mapped {
+				t.Fatal("fresh zero-work cleanup changed selected release or lost its observation", empty.Result)
+			}
+		})
 	}
 }
 

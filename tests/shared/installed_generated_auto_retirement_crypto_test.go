@@ -369,13 +369,15 @@ func TestInstalledGeneratedAutomaticRetirementAfterOriginalSealReduction(t *test
 			process, effects := installedGeneratedRetirementProcess(t, "acknowledged")
 			f := newInstalledApplyTestFixture(t, ctx, contract.GCP, true)
 			f.env.GeneratedProcess = process
+			inboxes := &generatedCleanupDeleteStore{memoryStore: requireAdmittedMemoryStore(t, f.env.Store)}
+			f.env.Store = inboxes
 			authority, reader := f.selected.admission.recipient, fixtureID(f.env.Domain, "reader")
 			members := []contract.ID{authority, reader}
 			slices.SortFunc(members, compareGeneratedIDs)
 			original := suppliedSecret(t, f.env, "secret", "automatic original shared seal", custody.StandardValue, members...)
 			generation := &contract.GeneratorDeclaredGeneration{Schema: contract.GeneratorDeclaredGenerationSchema, LifecycleMode: contract.GeneratorLifecycleManaged, RetirementMode: contract.GeneratedRetirementManual,
 				ConfigContractID: process.Implementation.ConfigContractID, ResourceContractID: hermeticCloudflareResourceContractID(), CompletionClass: contract.GeneratedCompletionAcknowledged, Intent: bytes.Clone(process.Intent)}
-			input := []ApplyEntryInput{{Name: "generated", ValueSource: contract.Generated, ConfidentialityClass: contract.Secret, Recipients: []contract.ID{authority}, Generated: generation}, original}
+			input := []ApplyEntryInput{{Name: "generated", InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ValueSource: contract.Generated, ConfidentialityClass: contract.Secret, Recipients: []contract.ID{authority}, Generated: generation}, original}
 			initial := installedGeneratedTestEngine(t, ctx, f, f.selected, input, currentApplyRecipients(f.selected.registry()), installedGeneratedRetirementCallbacks(t, f, process))
 			first := initial.Apply(ctx, testID("shared original seal initial "+stop), input)
 			initial.Close()
@@ -468,6 +470,9 @@ func TestInstalledGeneratedAutomaticRetirementAfterOriginalSealReduction(t *test
 				t.Fatal("cold automatic retirement failed or repeated a consumed send", got.Result, creates, deletes, injected)
 			}
 			closed := f.open(t, ctx)
+			if inboxes.deletes != 1 || closed.root.Generated.PendingReleases != 0 {
+				t.Fatal("automatic continuation did not release its obsolete inbox", inboxes.deletes, closed.root.Generated.PendingReleases)
+			}
 			_, current := observeCurrentValueEntry(t, closed, "generated")
 			want := successor
 			want.Generated.RetiringDutyPresent, want.Generated.RetiringDutyID = 0, contract.ID{}

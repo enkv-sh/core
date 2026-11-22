@@ -57,6 +57,12 @@ func TestGeneratedDetachedCleanupDistinguishesInboxReleaseFromLiveCreate(t *test
 				g.materials[materialIdentity{contract.OperationSeedMaterialKind, a.material.Core.OperationMaterialID}] {
 				t.Fatal("release restored private create support")
 			}
+			// The release still owns the only graph with the admitted DELETE
+			// contract. Qualification must stop before physical deletion.
+			admitted := generatedContinuationContext(t, s, 182, 183)
+			if permit, err := s.admitGeneratedInboxRelease(t.Context(), release.release.InboxID, admitted); err == nil || permit != nil {
+				t.Fatal("released the only available cleanup contract before resource closure")
+			}
 			// A different mapping cannot classify this physical Attempt as released.
 			damaged := *g
 			damaged.releases = map[contract.ID]generatedReleasedAttempt{generatedVectorID(224): release}
@@ -120,6 +126,21 @@ func TestGeneratedDetachedCleanupDistinguishesInboxReleaseFromLiveCreate(t *test
 			if g.parent != nil || g.phase != nil || cold.root.Generated.Hazards != 0 || len(g.releases) != 2 ||
 				g.releases[a.record.AttemptID] != release || g.releases[deletion.record.AttemptID].release.SelectedHandoffDigest != contract.Hash(packet) {
 				t.Fatal("cleanup lost original release or retained resource hazard")
+			}
+			for _, id := range []contract.ID{release.release.InboxID, deletion.record.InboxID} {
+				admitted := generatedContinuationContext(t, cold, 186, 187)
+				plan, err := cold.generatedInboxReleasePlan(t.Context(), id, admitted)
+				if err != nil {
+					t.Fatal("qualify obsolete inbox after exact resource closure", err)
+				}
+				clean, err := cold.deriveGeneratedInboxRelease(t.Context(), plan)
+				if err != nil {
+					t.Fatal(err)
+				}
+				cold = generatedReflectionSelectAndColdOpen(t, cold, clean)
+			}
+			if work := mustSelectedGeneratedWork(t, cold); len(work.releases) != 0 || len(work.bundles) != 0 || cold.root.Generated.Hazards != 0 {
+				t.Fatal("exact releases after resource closure retained an exclusive graph")
 			}
 		})
 	}

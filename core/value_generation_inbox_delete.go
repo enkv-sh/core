@@ -15,6 +15,7 @@ const (
 	generatedInboxDeleteClean
 	generatedInboxDeleteUnknown
 	generatedInboxDeleteExpired
+	generatedInboxDeleteInvalidObject
 )
 
 // deleteGeneratedInbox verifies the selected handoff bytes before it asks an
@@ -47,16 +48,25 @@ func (s *StateSession) deleteGeneratedInbox(ctx context.Context, inboxID contrac
 	case contract.ReadMissing:
 		return generatedInboxDeleteClean
 	case contract.ReadOK:
-		if uint32(len(read.Body)) != release.ObjectLength || contract.Hash(read.Body) != release.SelectedHandoffDigest ||
-			!read.Token.Valid() || read.Token.Family != s.admission.store.Family {
+		if uint32(len(read.Body)) != release.ObjectLength || contract.Hash(read.Body) != release.SelectedHandoffDigest {
+			return generatedInboxDeleteInvalidObject
+		}
+		if !read.Token.Valid() || read.Token.Family != s.admission.store.Family {
 			return generatedInboxDeleteUnknown
 		}
+	case contract.ReadInvalid:
+		if read.Reason == contract.ReasonLimit {
+			return generatedInboxDeleteInvalidObject
+		}
+		return generatedInboxDeleteUnknown
 	default:
 		return generatedInboxDeleteUnknown
 	}
 	deleter, ok := s.store.(contract.ConditionalDeleteStore)
 	if !ok {
-		return generatedInboxDeleteUnknown
+		// The exact object was observed present, and this Store cannot send
+		// a conditional deletion. Its existing mapping still applies.
+		return generatedInboxDeletePending
 	}
 	if ctx.Err() != nil {
 		return generatedInboxDeleteExpired

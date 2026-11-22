@@ -221,6 +221,71 @@ func TestInstalledGeneratedRetirementAcknowledgesOnlyExactOldTarget(t *testing.T
 	}
 }
 
+// full_only: false
+func TestInstalledRetirementReleasesOnlyItsObsoleteInbox(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+	defer cancel()
+	f, selected, current, effects := installedGeneratedRetirementFixture(t, ctx, "acknowledged")
+	store := &generatedCleanupDeleteStore{memoryStore: requireAdmittedMemoryStore(t, f.env.Store)}
+	f.env.Store = store
+	for epoch := uint64(1); epoch <= 2; epoch++ {
+		if epoch == 2 {
+			input := installedGeneratedRetirementEntries(f.env.GeneratedProcess, selected.admission.recipient, epoch, "retained healthy sibling")
+			engine := installedGeneratedTestEngine(t, ctx, f, selected, input, currentApplyRecipients(selected.registry()), installedGeneratedRetirementCallbacks(t, f, f.env.GeneratedProcess))
+			rotated := engine.Apply(ctx, testID("rotate for next inbox release"), input)
+			engine.Close()
+			if rotated.Result.Outcome != ObservedCurrent {
+				t.Fatal("next managed rotation", rotated.Result)
+			}
+			selected = f.open(t, ctx)
+			_, current = observeCurrentValueEntry(t, selected, "generated")
+		}
+		prior, err := selected.receiptWindows(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if selected.root.Generated.PendingReleases != 0 {
+			t.Fatal("unexpected baseline retirement inbox")
+		}
+		engine := installedGeneratedRetirementEngine(t, ctx, f, selected, installedGeneratedRetirementCallbacks(t, f, f.env.GeneratedProcess))
+		out := engine.RetireGenerated(ctx, testID(fmt.Sprintf("release retirement inbox %d", epoch)), GeneratedRetirementRequest{DutyID: current.Generated.RetiringDutyID})
+		engine.Close()
+		if out.Result.Outcome != ObservedCurrent || out.Generated == nil || len(out.Generated.Effects) != 1 || len(out.Receipt) == 0 {
+			t.Fatal("retirement receipt", out.Result)
+		}
+		selected = f.open(t, ctx)
+		effect := out.Generated.Effects[0].Record
+		key, err := format.GeneratedResultKey(store.desc.Prefix, selected.root.Domain, effect.InboxID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, physical := store.objects[key]
+		_, retained := mustSelectedGeneratedWork(t, selected).releases[effect.AttemptID]
+		if physical || retained || selected.root.Generated.PendingReleases != 0 || store.deleteKey != key || store.deletes != int(epoch) {
+			t.Fatalf("retirement %d inbox present=%t mapping=%t pending=%d conditional deletes=%d", epoch, physical, retained, selected.root.Generated.PendingReleases, store.deletes)
+		}
+		if selected.head.Generator == nil || selected.head.Generator.Purpose != contract.GeneratorAuthorityInboxRelease || selected.head.Generator.PreviousRevisionID != out.Result.ObservedRevision {
+			t.Fatal("cold release does not follow the exact signed retirement close")
+		}
+		for _, group := range selected.adminIndex.Groups {
+			if group.OwnerKind == format.AdministrativeInboxRelease {
+				t.Fatal("released inbox still charges selected bytes or pages", group.ChargedBytes, group.ChargedPages)
+			}
+		}
+		after, err := selected.receiptWindows(ctx)
+		if err != nil || len(after.Successes) != len(prior.Successes)+1 || len(after.Failures) != len(prior.Failures) {
+			t.Fatal("receipt-window growth per retirement", err)
+		}
+		check := installedGeneratedRetirementEngine(t, ctx, f, selected, nil)
+		replay := check.ContinueGeneratedRetirement(ctx, testID(fmt.Sprintf("observe retirement %d", epoch)), GeneratedRetirementContinuationRequest{OperationID: out.OperationID})
+		check.Close()
+		creates, deletes := effects()
+		if replay.Generated == nil || !replay.Generated.ReceiptObservation || !bytes.Equal(replay.Receipt, out.Receipt) || creates != int(epoch+1) || len(deletes) != int(epoch) || store.deletes != int(epoch) || f.open(t, ctx).head.Core != selected.head.Core {
+			t.Fatal("cold observation changed the receipt, HEAD or effects")
+		}
+	}
+}
+
 // Keep the actual acknowledgement in the Store. Only its first readback
 // differs, so a second read in the same invocation would conceal the conflict.
 func conflictInstalledDeleteReadback(t *testing.T, f *installedApplyTestFixture, callbacks *GeneratedApplyInstallation) func(PublicApplyResult) {

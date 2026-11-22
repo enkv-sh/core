@@ -179,6 +179,7 @@ func (e *InstalledApply) installedGeneratedAutomaticStep(ctx context.Context, ou
 		out.Payload = payload
 		checkpoint.recordSelected(*out)
 		e.captureApplyPublication(ctx, next, applyPublicationComplete(*out))
+		releaseInstalledGeneratedInboxes(ctx, next, out.OperationID, i.Trust, deadline)
 	}
 	return next, true, result
 }

@@ -366,7 +366,7 @@ func packagedGeneratedSequenceWithRecovery(t *testing.T, ctx context.Context, fa
 	meta := contract.GeneratorDeclaredGeneration{Schema: contract.GeneratorDeclaredGenerationSchema, LifecycleMode: contract.GeneratorLifecycleManaged,
 		RetirementMode: contract.GeneratedRetirementManual, ConfigContractID: first.Implementation.ConfigContractID, ResourceContractID: hermeticCloudflareResourceContractID(),
 		CompletionClass: contract.GeneratedCompletionAcknowledged, Intent: bytes.Clone(first.Intent)}
-	input := []ApplyEntryInput{{Name: "generated", ValueSource: contract.Generated, ConfidentialityClass: contract.Secret, Recipients: readers, Generated: &meta}}
+	input := []ApplyEntryInput{{Name: "generated", InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ValueSource: contract.Generated, ConfidentialityClass: contract.Secret, Recipients: readers, Generated: &meta}}
 	apply := func(label string, wantPurposes []contract.GeneratorAuthorityPurpose, wantSigns int) *StateSession {
 		t.Helper()
 		store := requireAdmittedMemoryStore(t, f.env.Store)

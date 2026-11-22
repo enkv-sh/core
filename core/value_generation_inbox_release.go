@@ -60,6 +60,8 @@ func (s *StateSession) generatedInboxReleasePlan(ctx context.Context, inboxID co
 		return cleanPlan, nil
 	case generatedInboxDeleteUnknown:
 		return unknownPlan, nil
+	case generatedInboxDeleteInvalidObject:
+		return nil, selectedReadFailure(failure(IntegrityFailure, ImmutableConflict))
 	case generatedInboxDeleteExpired:
 		return nil, fmt.Errorf("inbox release deadline: %w", contract.ErrRecord)
 	default:

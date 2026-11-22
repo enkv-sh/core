@@ -627,6 +627,7 @@ func (e *InstalledApply) installedGeneratedFinal(ctx context.Context, s *StateSe
 		out.Payload, out.Receipt = payload, receipt
 		checkpoint.recordSelected(*out)
 		e.captureApplyPublication(ctx, next, applyPublicationComplete(*out))
+		releaseInstalledGeneratedInboxes(ctx, next, out.OperationID, i.Trust, deadline)
 	}
 	return next, terminal, true, result
 }

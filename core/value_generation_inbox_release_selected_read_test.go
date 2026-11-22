@@ -98,8 +98,7 @@ func TestGeneratedInboxReleaseSelectedReadResults(t *testing.T) {
 						if releaseKind == "clean" {
 							return contract.ReadResult{Status: contract.ReadMissing}, true
 						}
-						return contract.ReadResult{Status: contract.ReadOK, Body: bytes.Clone(attempt.result),
-							Token: contract.Token{Family: store.descriptor.Family, Value: "selected-inbox"}}, true
+						return contract.ReadResult{Status: contract.ReadUnavailable, Reason: contract.ReasonTransport}, true
 					}
 					return backing.Read(ctx, key, limit), true
 				}

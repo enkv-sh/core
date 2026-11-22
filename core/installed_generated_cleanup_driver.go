@@ -102,5 +102,8 @@ func selectInstalledGeneratedCleanupLifecycle(ctx context.Context, out PublicApp
 	call.Checkpoint(telemetry.DiagnosticCommitObservation, telemetry.DiagnosticReasonNone)
 	next, result := s.selectObserved(ctx, candidate)
 	recordInstalledGeneratedCleanupSelection(ctx, &out, next, result, capture, checkpoint)
+	if result.Outcome == ObservedCurrent && candidateMatches(next, candidate) {
+		releaseInstalledGeneratedInboxes(ctx, next, out.OperationID, i.Trust, time.Unix(0, int64(plan.context.Expiry)))
+	}
 	return out
 }
