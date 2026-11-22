@@ -405,7 +405,7 @@ func TestHistoricalExclusionCannotBecomeNewCheckpointOrLoseAuthority(t *testing.
 			strict.materialization = nil
 			store := requireAdmittedMemoryStore(t, checkpoint.store)
 			creates, cas := store.creates, store.cas
-			if candidate, err := checkpoint.deriveGeneratedFinalPreparation(t.Context(), g, &strict, image.Generated, image.Supplied); err == nil || candidate != nil {
+			if candidate, err := checkpoint.deriveGeneratedFinalPreparation(t.Context(), g, &strict, image.Generated, image.Supplied, image.GrantSeals); err == nil || candidate != nil {
 				t.Fatal("old protected removal accepted as new prepared output")
 			}
 			if store.creates != creates || store.cas != cas {

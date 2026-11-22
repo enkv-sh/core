@@ -31,7 +31,7 @@ func (s *StateSession) buildSuccessor(ctx context.Context, c *Comparison, p tran
 		}
 		return nil, refused(InvalidRelation)
 	}
-	return s.encodeSuccessor(ctx, next, p, authority)
+	return s.encodeSuccessor(ctx, next, p, authority, c)
 }
 
 func mustKey(t testing.TB, prefix string, ref format.Ref) string {

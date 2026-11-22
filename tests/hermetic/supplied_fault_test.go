@@ -150,7 +150,7 @@ func TestMixedSuppliedFreshProcessAtEveryWriteBoundary(t *testing.T) {
 			if err != nil {
 				t.Fatal("mixed successor authority", err)
 			}
-			planned, result := f.session.encodeSuccessor(ctx, next, permit.plan, authority)
+			planned, result := f.session.encodeSuccessor(ctx, next, permit.plan, authority, comparison)
 			if planned == nil {
 				t.Fatal(result)
 			}
