@@ -167,7 +167,7 @@ func TestStockGeneratedWireBindsSelectedCreateAndDuty(t *testing.T) {
 		t.Fatal("A0 retirement Duty does not match its original resource and A support")
 	}
 	t.Run("selected-retirement-contract", func(t *testing.T) {
-		descriptor, err := artifact.DecodeDescriptor([]byte(`{"schema":1,"name":"independent-stock-generator","role":"generator","version":"0.1.0","wire":{"kind":"wire","identity":"ae01109b61a0b703dc32a6453ea2356e9a0fe1633081893e2dfd33d269823310","version":4},"generator":{"config_contract_id":"0707070707070707070707070707070707070707070707070707070707070707","credential_route":"AAEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEBGUVOS1ZfR0VORVJBVE9SX1RFU1RfVE9LRU4AAAAA"},"output":null,"manifest":null}`))
+		descriptor, err := artifact.DecodeDescriptor([]byte(`{"schema":1,"name":"independent-stock-generator","role":"generator","version":"0.1.0","wire":{"kind":"wire","identity":"cc827c32a204204ec680e29c0b79df771ea2ad5d2c1df10170d8b450e7628b0f","version":5},"generator":{"config_contract_id":"0707070707070707070707070707070707070707070707070707070707070707","credential_route":"AAEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEBGUVOS1ZfR0VORVJBVE9SX1RFU1RfVE9LRU4AAAAA"},"output":null,"manifest":null}`))
 		if err != nil {
 			t.Fatal("fixed selected descriptor refused", err)
 		}
@@ -175,7 +175,7 @@ func TestStockGeneratedWireBindsSelectedCreateAndDuty(t *testing.T) {
 			Schema: artifact.FamilySchema, Descriptor: descriptor,
 			ExecutionFacts: artifact.ExecutionFacts{Module: "author.example/generator", Command: ".", GoVersion: "go1.27.3", NativeTuple: "darwin/arm64"},
 		}, artifact.Digest{1}, 1, artifact.Digest{2})
-		if err != nil || facts.DescriptorID.String() != "0cac132f05038156bea2614834af780798374c8093f41db9ec92618a116c1e4b" {
+		if err != nil || facts.DescriptorID.String() != "360bbd47733c561513718f51c86eacd995892eb8a70340b80c68ef49e5d6f627" {
 			t.Fatal("fixed metadata differs from independently encoded descriptor", err)
 		}
 		body, err := json.Marshal(facts)
@@ -193,7 +193,10 @@ func TestStockGeneratedWireBindsSelectedCreateAndDuty(t *testing.T) {
 		}
 		duty := list.Duties[0]
 		duty.Facts.Descriptor, duty.Facts.Executor, duty.Facts.CredentialRoute = facts.DescriptorID.String(), facts.ExecutorID.String(), artifact.Digest(routeID).String()
-		duty.Facts.ResultContract = "4eb23fd5c025745915bbc82936ba56cbec6a7ebe05a77fc897daaf1e1a931799"
+		// SHA-256 of the result-contract-v4 domain and its length-prefixed body:
+		// descriptor ID, wire v5 ID, reader v4 ID, then big-endian Delete(2),
+		// acknowledged(1), maximum value(0), maximum facts(4096), raw input(1).
+		duty.Facts.ResultContract = "6f6a9f9dc0d10b2a4336c12eea39714e13030b48ba6b1d43bdfff5906caa825e"
 		if !stockDutyMatches(duty, old, a0Create, metadata) {
 			t.Fatal("selected Delete contract differs from independent action/bounds vector")
 		}
