@@ -43,7 +43,7 @@ func readPublicConfigurationFileContext(ctx context.Context, path string, limit 
 	if err := ctx.Err(); err != nil {
 		return nil, nil, errors.Join(errPublicConfigurationEvidence, err)
 	}
-	if limit > records.MaximumJSONBytes {
+	if limit > max(records.MaximumJSONBytes, nativeprocess.MaxCaptureBytes) {
 		return nil, nil, errPublicConfigurationEvidence
 	}
 	if _, err := records.SafePath(filepath.Dir(path), filepath.Base(path)); err != nil {
