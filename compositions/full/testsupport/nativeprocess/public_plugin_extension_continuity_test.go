@@ -326,7 +326,12 @@ func TestPublicNativeRetirementAfterLocalCacheLoss(t *testing.T) {
 	if err := os.Remove(filepath.Join(cached, "plugin")); err != nil {
 		t.Fatal(err)
 	}
-	nativeExtensionGeneratedOutcome(t, retire(), "unavailable", 3)
+	child := retire()
+	nativeExtensionGeneratedOutcome(t, child, "refused", 2)
+	after, currentRoot, _ := f.selected(t)
+	if !reflect.DeepEqual(head, after) || !reflect.DeepEqual(duties, nativeExtensionDutyRecords(t, f.store, currentRoot)) || f.service.Counts() != (testservice.Counts{Tokens: 2, TokenCreates: 2}) {
+		t.Fatal("missing original executable changed selected work or called the provider")
+	}
 	retry := apply()
 	switch retry.code {
 	case 0:
@@ -393,6 +398,7 @@ func nativeExtensionGeneratorContinuity(t *testing.T, cli string, builds []artif
 	f.declare(t, 1, "manual", &subject, false)
 	rotation := nativeExtensionGeneratedOutcome(t, f.run(t, "apply", false, credentialA, "apply", "--source", f.path, "--source-format", "json", "--json"), "retirement-pending", 3)
 	_, acceptedRoot, acceptedEntries := f.selected(t)
+	f.store.gcListPrefix = f.store.prefix + "/" + nativeExtensionID(acceptedRoot.Domain) + "/result/"
 	accepted := nativeExtensionDutyRecords(t, f.store, acceptedRoot)
 	if len(accepted) != 1 || len(rotation.Duties) != 1 || accepted[0].ExecutorID != contract.ID(aFacts.ExecutorID) || accepted[0].CredentialRouteID != contract.ID(aRouteID) || accepted[0].ResourceID != initial["TOKEN"].Generated.ResourceIncarnationID || acceptedEntries["TOKEN"].Generated.Epoch != 1 || acceptedEntries["TOKEN"].Generated.GenerationID == initial["TOKEN"].Generated.GenerationID || f.service.Counts() != (testservice.Counts{Tokens: 2, TokenCreates: 2}) {
 		t.Fatal("A1 did not preserve A's exact accepted A0 retirement")

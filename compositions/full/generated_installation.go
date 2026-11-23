@@ -78,14 +78,17 @@ func configurationGeneratedInstalled(ctx context.Context, plugins *configuration
 		captured, err = plugins.coordinator.ResolveRetained(ctx, artifact.Digest(request.Retained.ExecutorID), func(_ context.Context, metadata artifact.Metadata, dependency []byte) error {
 			candidate, err := generatorhost.NewRetainedInstallation(metadata, dependency)
 			if err != nil {
-				return err
+				return errors.Join(contract.ErrRecord, err)
 			}
 			if _, err := resolveConfigurationGeneratedImplementation(request, candidate.Artifact()); err != nil {
-				return err
+				return errors.Join(contract.ErrRecord, err)
 			}
 			exact = candidate
 			return nil
 		})
+		if plugininstallation.RetainedSupportRefused(err) {
+			err = errors.Join(contract.ErrRecord, err)
+		}
 	}
 	if err != nil || captured == nil || exact == nil {
 		return contract.GeneratorImplementation{}, nil, "", errors.Join(ErrCell, err)

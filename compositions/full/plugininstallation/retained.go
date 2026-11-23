@@ -123,6 +123,19 @@ func (c *Coordinator) remember(ctx context.Context, installed *Installed) (err e
 	return err
 }
 
+// RetainedSupportRefused reports a conclusive failure to match the retained
+// installation. A joined read, close or cancellation error keeps the lookup
+// inconclusive even when another cause identifies damaged or absent support.
+func RetainedSupportRefused(err error) bool {
+	return onlyCauses(err, func(cause error) bool {
+		switch cause {
+		case ErrMissing, ErrInvalid, ErrIdentity, ErrIncompatible, ErrSignature, artifact.ErrSignature, artifact.ErrRecord:
+			return true
+		}
+		return errors.Is(cause, os.ErrNotExist)
+	})
+}
+
 // ResolveRetained accepts an exact check supplied only by the trusted
 // composition from Core's authenticated original tuple. The check must use the
 // original dependency decoder/domain, exact descriptor and credential-route

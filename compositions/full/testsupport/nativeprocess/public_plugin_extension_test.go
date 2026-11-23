@@ -245,6 +245,7 @@ func TestPublicNativeUnknownPluginsGeneratePublishAndRenderWithUnchangedCLI(t *t
 	if counts := service.Counts(); counts != (testservice.Counts{Tokens: 1, Values: 1, TokenCreates: 1, ValueCreates: 1}) {
 		t.Fatal("canonical removal changed a remote resource before explicit retirement", counts)
 	}
+	s.gcListPrefix = s.prefix + "/" + nativeExtensionID(selected.Domain) + "/result/"
 	retirement := run("apply", false, "generated", "retire", "--source", path, "--source-format", "json", "--duty", duty.Facts.DutyID, "--log-level", "info", "--json")
 	retired := nativeExtensionGeneratedOutcome(t, retirement, "success", 0)
 	if retired.Canonical != "selected" || retired.EffectSummary != "effect-complete" || len(retired.Effects) != 1 || len(retired.Duties) != 0 || len(retired.Hazards) != 0 {

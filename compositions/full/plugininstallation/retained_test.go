@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -12,6 +13,31 @@ import (
 
 	"enkv.sh/sdk/artifact"
 )
+
+// full_only: false
+func TestRetainedSupportRefusalRequiresConclusiveCauses(t *testing.T) {
+	for _, row := range []struct {
+		name    string
+		err     error
+		refused bool
+	}{
+		{"missing-member", ErrInvalid, true},
+		{"missing-locator", missing(&os.PathError{Op: "open", Path: "locator", Err: os.ErrNotExist}), true},
+		{"changed-executable", errors.Join(ErrIdentity, artifact.ErrRecord), true},
+		{"read-denied", errors.Join(ErrIdentity, os.ErrPermission), false},
+		{"incomplete-read", errors.Join(ErrMissing, io.ErrUnexpectedEOF), false},
+		{"cancelled", errors.Join(ErrInvalid, context.Canceled), false},
+		{"deadline", context.DeadlineExceeded, false},
+		{"unknown", errors.New("another failure"), false},
+		{"valid", nil, false},
+	} {
+		t.Run(row.name, func(t *testing.T) {
+			if RetainedSupportRefused(row.err) != row.refused {
+				t.Fatal("wrong retained support classification")
+			}
+		})
+	}
+}
 
 // full_only: false
 func TestRetainedLocalLookupKeepsAcceptedAAfterCurrentB(t *testing.T) {
@@ -65,13 +91,39 @@ func TestRetainedLocalLookupKeepsAcceptedAAfterCurrentB(t *testing.T) {
 	if err != nil || retained.Identity() != one.identity {
 		t.Fatalf("retained A unavailable %v", err)
 	}
+	// Both members belong to the same accepted build regardless of current B.
+	for _, name := range []string{"plugin", "dependencies.bin"} {
+		path := filepath.Join(filepath.Dir(retained.Executable()), name)
+		dir := filepath.Dir(path)
+		info, err := os.Stat(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(dir, 0700); err != nil {
+			t.Fatal(err)
+		}
+		backup := filepath.Join(t.TempDir(), name)
+		if err := os.Rename(path, backup); err != nil {
+			t.Fatal(err)
+		}
+		got, err := restarted.ResolveRetained(t.Context(), family.ExecutorID, check)
+		if got != nil || !RetainedSupportRefused(err) {
+			t.Fatalf("missing %s did not refuse retained lookup: %v", name, err)
+		}
+		if err := os.Rename(backup, path); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(dir, info.Mode().Perm()); err != nil {
+			t.Fatal(err)
+		}
+	}
 	if _, err := restarted.ResolveRetained(t.Context(), other.ExecutorID, check); !errors.Is(err, ErrIdentity) {
 		t.Fatal("old tuple accepted B", err)
 	}
 	if err := os.Remove(c.locatorPath(family.ExecutorID)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := restarted.ResolveRetained(t.Context(), family.ExecutorID, check); !errors.Is(err, ErrMissing) {
+	if _, err := restarted.ResolveRetained(t.Context(), family.ExecutorID, check); !errors.Is(err, ErrMissing) || !RetainedSupportRefused(err) {
 		t.Fatal("missing pointer scanned store", err)
 	}
 	if _, err := restarted.RestoreRetainedLocal(t.Context(), filepath.Join(one.output, "builds", one.identity.String()), one.identity, check); err != nil {

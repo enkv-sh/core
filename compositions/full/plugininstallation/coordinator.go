@@ -459,6 +459,12 @@ func (c *Coordinator) authenticateSelection(ctx context.Context, selection artif
 }
 
 func onlyMissing(err error) bool {
+	return onlyCauses(err, func(cause error) bool {
+		return cause == ErrMissing || errors.Is(cause, os.ErrNotExist)
+	})
+}
+
+func onlyCauses(err error, allow func(error) bool) bool {
 	if err == nil {
 		return false
 	}
@@ -468,14 +474,14 @@ func onlyMissing(err error) bool {
 			return false
 		}
 		for _, cause := range causes {
-			if !onlyMissing(cause) {
+			if !onlyCauses(cause, allow) {
 				return false
 			}
 		}
 		return true
 	}
 	if wrapped, ok := err.(interface{ Unwrap() error }); ok {
-		return onlyMissing(wrapped.Unwrap())
+		return onlyCauses(wrapped.Unwrap(), allow)
 	}
-	return err == ErrMissing || errors.Is(err, os.ErrNotExist)
+	return allow(err)
 }
