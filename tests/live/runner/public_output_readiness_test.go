@@ -20,6 +20,22 @@ func TestPublicOutputCleanupDeclarationComparisonPreservesCompleteMeaning(t *tes
 			Organization: records.PublicOutputScope{Owner: "organization", Visibility: "selected", Repositories: []uint64{9007199254740993, 18446744073709551615}},
 			Environment:  records.PublicOutputScope{Owner: "owner", Repository: "repository", Environment: "prod"},
 		}}}
+	names := publicOutputNames(input.Prefix)
+	for _, tc := range []struct {
+		plain, secret map[string]any
+		ok            bool
+	}{
+		{map[string]any{}, map[string]any{"output_encoding": "base64"}, true},
+		{map[string]any{"output_encoding": "raw"}, map[string]any{"output_encoding": "base64"}, true},
+		{map[string]any{"output_encoding": "base64"}, map[string]any{"output_encoding": "base64"}, false},
+		{map[string]any{}, map[string]any{"output_encoding": "raw"}, false},
+		{map[string]any{}, map[string]any{}, false},
+	} {
+		doc := map[string]any{"entries": map[string]any{names[0]: tc.plain, names[1]: tc.secret}}
+		if publicOutputEncodingsMatch(doc, names) != tc.ok {
+			t.Fatal("cleanup accepted different entry output encodings")
+		}
+	}
 	want, err := json.Marshal(publicOutputDeclaration(input))
 	if err != nil {
 		t.Fatal(err)
@@ -59,9 +75,7 @@ func TestPublicOutputCleanupDeclarationComparisonPreservesCompleteMeaning(t *tes
 			case "routing":
 				decoded["routing"].(map[string]any)["default"] = []string{"aws-secrets-manager"}
 			case "encoding":
-				for name := range destinations["aws-secrets-manager"].(map[string]any)["encodings"].(map[string]any) {
-					destinations["aws-secrets-manager"].(map[string]any)["encodings"].(map[string]any)[name] = "raw"
-				}
+				destinations["aws-secrets-manager"].(map[string]any)["encodings"] = map[string]any{"obsolete": "raw"}
 			}
 			actual, err := json.Marshal(decoded)
 			if err != nil || publicOutputDeclarationMatches(actual, want) != (condition == "exact") {

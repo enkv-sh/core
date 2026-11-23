@@ -7,12 +7,14 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/json/jsontext"
 	jsonv2 "encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -61,10 +63,27 @@ func stockRecoveredIntent(account, name, permission, expires string, generated c
 	return append(intent, settings...)
 }
 
+// Reject duplicate members before decoding; keep repository IDs and epochs exact.
+func stockRecoveryDocument(body []byte, out *map[string]any) bool {
+	if !jsontext.Value(body).IsValid() {
+		return false
+	}
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	decoder.UseNumber()
+	return decoder.Decode(out) == nil && *out != nil
+}
+
+func stockCanonicalViewMatches(view map[string]any, expected []byte) bool {
+	canonical, ok := view["canonical"].(map[string]any)
+	settings, present := canonical["settings"]
+	body, err := json.Marshal(settings)
+	return ok && len(canonical) == 1 && present && err == nil && publicOutputDeclarationMatches(body, expected)
+}
+
 // Read the raw source arm before decoding the Core carrier. In particular,
 // absent selections and ordinary settings must not normalize into this arm.
-func stockRecoveredOutputsMatch(outputs map[string]any, expected contract.OutputConfiguration, entries map[contract.ID]string) bool {
-	if len(outputs) != len(expected.Bindings) {
+func stockRecoveredOutputsMatch(outputs, records map[string]any, expected contract.OutputConfiguration, entries map[contract.ID]string) bool {
+	if len(outputs) != len(expected.Bindings) || len(records) != len(expected.Bindings) {
 		return false
 	}
 	for _, binding := range expected.Bindings {
@@ -76,11 +95,10 @@ func stockRecoveredOutputsMatch(outputs map[string]any, expected contract.Output
 		if !present || plugin != nil {
 			return false
 		}
-		canonical, ok := output["canonical"].(map[string]any)
-		if !ok || len(canonical) != 1 {
+		if !stockCanonicalViewMatches(output, binding.Destination.CanonicalSettings) {
 			return false
 		}
-		encoded, ok := canonical["binding_base64"].(string)
+		encoded, ok := records[binding.DestinationID].(string)
 		if !ok {
 			return false
 		}
@@ -134,19 +152,19 @@ func stockRecoveredRoutingMatches(outputs map[string]any, input liveRunInput) bo
 	return reflect.DeepEqual(outputs["routing"], wantRouting) && reflect.DeepEqual(outputs["groups"], wantGroups)
 }
 
-func stockRecoveredGeneratedSourceMatches(source map[string]any, epoch uint64, wantIntent []byte) bool {
-	if len(source) != 5 || source["kind"] != "generated" || source["retirement"] != "manual" || source["epoch"] != float64(epoch) {
+func stockRecoveredGeneratedSourceMatches(source map[string]any, record any, epoch uint64, wantIntent []byte) bool {
+	if len(source) != 5 || source["kind"] != "generated" || source["retirement"] != "manual" || source["epoch"] != json.Number(strconv.FormatUint(epoch, 10)) {
 		return false
 	}
 	plugin, present := source["plugin"]
 	if !present || plugin != nil {
 		return false
 	}
-	canonical, ok := source["canonical"].(map[string]any)
-	if !ok || len(canonical) != 1 {
+	intent, err := contract.InspectGeneratorIntent(wantIntent)
+	if err != nil || !stockCanonicalViewMatches(source, intent.Settings) {
 		return false
 	}
-	encoded, ok := canonical["intent_base64"].(string)
+	encoded, ok := record.(string)
 	if !ok {
 		return false
 	}
@@ -177,11 +195,11 @@ func (r *stockPluginRun) reconstruct(ctx context.Context, source, expires string
 	headDigest := bodyDigest(selected.body)
 	priorImage := publicSourceImage(r.t, source)
 	var priorDocument, priorSatellite map[string]any
-	if jsonv2.Unmarshal(priorImage.Files[source], &priorDocument) != nil {
+	if !stockRecoveryDocument(priorImage.Files[source], &priorDocument) {
 		r.t.Fatal("stock prior source JSON unavailable")
 	}
 	priorGeneratedPath := filepath.Join(filepath.Dir(source), filepath.FromSlash(priorDocument["generated"].(string)))
-	if jsonv2.Unmarshal(priorImage.Files[priorGeneratedPath], &priorSatellite) != nil {
+	if !stockRecoveryDocument(priorImage.Files[priorGeneratedPath], &priorSatellite) {
 		r.t.Fatal("stock prior satellite JSON unavailable")
 	}
 	oldDirectory := filepath.Dir(source)
@@ -250,9 +268,9 @@ func (r *stockPluginRun) reconstruct(ctx context.Context, source, expires string
 	// JSON v2 rejects duplicate object members throughout the unmodified source.
 	// No product source parser or plugin normalizer participates in this oracle.
 	var document, satellite map[string]any
-	if jsonv2.Unmarshal(image.Files[source], &document) != nil || jsonv2.Unmarshal(image.Files[generatedPath], &satellite) != nil ||
-		len(document) != 6 || document["schema"] != "enkv/configuration/v2" || document["generated"] != ".enkv/restored.generated.json" ||
-		satellite["schema"] != "enkv/generated/v1" || !publicIdentityHex(fmt.Sprint(satellite["file_id"])) || satellite["file_id"] == priorSatellite["file_id"] ||
+	if !stockRecoveryDocument(image.Files[source], &document) || !stockRecoveryDocument(image.Files[generatedPath], &satellite) ||
+		len(document) != 6 || document["schema"] != "enkv/configuration/v3" || document["generated"] != ".enkv/restored.generated.json" ||
+		satellite["schema"] != "enkv/generated/v2" || !publicIdentityHex(fmt.Sprint(satellite["file_id"])) || satellite["file_id"] == priorSatellite["file_id"] ||
 		!reflect.DeepEqual(satellite["domain"], priorSatellite["domain"]) {
 		r.t.Fatal("stock recovery changed the raw canonical source or domain identity")
 	}
@@ -264,9 +282,15 @@ func (r *stockPluginRun) reconstruct(ctx context.Context, source, expires string
 	if !reflect.DeepEqual(document["domain"], priorDomain) {
 		r.t.Fatal("stock recovered domain coordinates or control selectors differ")
 	}
+	records, _ := satellite["canonical_records"].(map[string]any)
+	generators, _ := records["generators"].(map[string]any)
+	outputRecords, recordsOK := records["outputs"].(map[string]any)
+	if len(records) != 2 || len(generators) != 1 || !recordsOK {
+		r.t.Fatal("stock recovery changed the canonical record set")
+	}
 	outputs, ok := document["outputs"].(map[string]any)
 	destinations, destinationsOK := outputs["destinations"].(map[string]any)
-	if !ok || len(outputs) != 3 || !destinationsOK || !stockRecoveredOutputsMatch(destinations, configurationBefore, entries) {
+	if !ok || len(outputs) != 3 || !destinationsOK || !stockRecoveredOutputsMatch(destinations, outputRecords, configurationBefore, entries) {
 		r.t.Fatal("stock recovery changed the complete canonical output configuration")
 	}
 	if !stockRecoveredRoutingMatches(outputs, r.input) {
@@ -283,7 +307,7 @@ func (r *stockPluginRun) reconstruct(ctx context.Context, source, expires string
 	for reference, value := range recoveredRecipients {
 		row, rowOK := value.(map[string]any)
 		editable, editableOK := recipients[reference].(map[string]any)
-		if !rowOK || !editableOK || len(editable) != 2 {
+		if !rowOK || !editableOK || len(editable) != 3 || editable["id"] != row["id"] {
 			r.t.Fatal("stock recovered recipient declaration unavailable")
 		}
 		found := false
@@ -319,7 +343,14 @@ func (r *stockPluginRun) reconstruct(ctx context.Context, source, expires string
 	}
 	for name, expected := range expectedEntries {
 		entry, entryOK := recoveredEntries[name].(map[string]any)
-		if !entryOK || len(entry) != 3 {
+		fields := 3
+		if name == publicOutputNames(r.input.Prefix)[1] {
+			fields++
+			if entry["output_encoding"] != "base64" {
+				r.t.Fatal("stock recovery changed the supplied secret output encoding")
+			}
+		}
+		if !entryOK || len(entry) != fields {
 			r.t.Fatal("stock recovered entry arm differs")
 		}
 		input, inputOK := entry["source"].(map[string]any)
@@ -332,7 +363,7 @@ func (r *stockPluginRun) reconstruct(ctx context.Context, source, expires string
 		}
 		switch name {
 		case "generated":
-			if entry["confidentiality"] != "secret" || !stockRecoveredGeneratedSourceMatches(input, 2, wantIntent) {
+			if entry["confidentiality"] != "secret" || !stockRecoveredGeneratedSourceMatches(input, generators[name], 2, wantIntent) {
 				r.t.Fatal("stock recovery changed raw canonical generator intent or selected a build")
 			}
 		case publicOutputNames(r.input.Prefix)[0]:
@@ -513,9 +544,10 @@ func TestStockRecoveredIntentHasIndependentCompleteCanonicalBytes(t *testing.T) 
 		t.Fatal("independent generator canonical carrier bytes differ")
 	}
 	encoded := base64.StdEncoding.EncodeToString(got)
-	for _, condition := range []string{"exact", "selection", "missing-selection", "settings", "missing-epoch", "null-epoch", "changed-intent", "extra-canonical-member", "duplicate-selection"} {
+	for _, condition := range []string{"exact", "selection", "missing-selection", "settings", "missing-epoch", "null-epoch", "changed-intent", "changed-view", "missing-record", "extra-canonical-member", "duplicate-selection"} {
 		t.Run(condition, func(t *testing.T) {
-			wire := `{"kind":"generated","plugin":null,"epoch":2,"retirement":"manual","canonical":{"intent_base64":"` + encoded + `"}}`
+			record := encoded
+			wire := `{"kind":"generated","plugin":null,"epoch":2,"retirement":"manual","canonical":{"settings":` + wantSettings + `}}`
 			switch condition {
 			case "selection":
 				wire = strings.Replace(wire, `"plugin":null`, `"plugin":"unrequested"`, 1)
@@ -528,14 +560,18 @@ func TestStockRecoveredIntentHasIndependentCompleteCanonicalBytes(t *testing.T) 
 			case "null-epoch":
 				wire = strings.Replace(wire, `"epoch":2`, `"epoch":null`, 1)
 			case "changed-intent":
-				wire = strings.Replace(wire, encoded, base64.StdEncoding.EncodeToString(append(bytes.Clone(got), 0)), 1)
+				record = base64.StdEncoding.EncodeToString(append(bytes.Clone(got), 0))
+			case "changed-view":
+				wire = strings.Replace(wire, wantSettings, "{}", 1)
+			case "missing-record":
+				record = ""
 			case "extra-canonical-member":
-				wire = strings.Replace(wire, `"intent_base64":`, `"extra":null,"intent_base64":`, 1)
+				wire = strings.Replace(wire, `"settings":`, `"extra":null,"settings":`, 1)
 			case "duplicate-selection":
 				wire = strings.Replace(wire, `"plugin":null`, `"plugin":"unrequested","plugin":null`, 1)
 			}
 			var source map[string]any
-			accepted := jsonv2.Unmarshal([]byte(wire), &source) == nil && stockRecoveredGeneratedSourceMatches(source, 2, got)
+			accepted := stockRecoveryDocument([]byte(wire), &source) && stockRecoveredGeneratedSourceMatches(source, record, 2, got)
 			if accepted != (condition == "exact") {
 				t.Fatal("recovery accepted changed raw generator canonical arm")
 			}
@@ -546,13 +582,13 @@ func TestStockRecoveredIntentHasIndependentCompleteCanonicalBytes(t *testing.T) 
 // full_only: false
 func TestStockRecoveredOutputComparisonChecksEveryTarget(t *testing.T) {
 	a, b := contract.ID{1}, contract.ID{2}
-	destination := contract.OutputDestination{ConfigContractID: "private-config/v1", ServiceContractID: "private/v1", CanonicalSettings: []byte(`{"region":"one"}`), Capabilities: contract.OutputCapabilityCreateEmpty | contract.OutputCapabilityCreateWithValue | contract.OutputCapabilityWriteValue | contract.OutputCapabilityUpdatePolicy | contract.OutputCapabilityDeleteOwned | contract.OutputCapabilityDeleteReservedSlot}
+	destination := contract.OutputDestination{ConfigContractID: "private-config/v1", ServiceContractID: "private/v1", CanonicalSettings: []byte(`{"region":"one","repository":9007199254740993}`), Capabilities: contract.OutputCapabilityCreateEmpty | contract.OutputCapabilityCreateWithValue | contract.OutputCapabilityWriteValue | contract.OutputCapabilityUpdatePolicy | contract.OutputCapabilityDeleteOwned | contract.OutputCapabilityDeleteReservedSlot}
 	first := contract.OutputTarget{ServiceContractID: "private/v1", TargetContractID: "private-target/v1", CanonicalTarget: "one", ConsumerLocator: "consumer-one", PayloadEncoding: contract.OutputEncodingRaw, Capabilities: contract.OutputCapabilityCreateEmpty | contract.OutputCapabilityCreateWithValue | contract.OutputCapabilityWriteValue | contract.OutputCapabilityUpdatePolicy | contract.OutputCapabilityDeleteOwned | contract.OutputCapabilityDeleteReservedSlot}
 	second := contract.OutputTarget{ServiceContractID: "private/v1", TargetContractID: "private-target/v1", CanonicalTarget: "two", ConsumerLocator: "consumer-two", PayloadEncoding: contract.OutputEncodingBase64, Capabilities: contract.OutputCapabilityCreateEmpty | contract.OutputCapabilityCreateWithValue | contract.OutputCapabilityWriteValue | contract.OutputCapabilityUpdatePolicy | contract.OutputCapabilityDeleteOwned | contract.OutputCapabilityDeleteReservedSlot}
 	base := contract.NormalOutputBinding{DestinationID: "private", Destination: destination, Targets: []contract.NormalOutputTarget{{Name: "first", Target: first}, {Name: "second", Target: second}}}
 	first.EntryIncarnationID, second.EntryIncarnationID = a, b
 	expected := contract.OutputConfiguration{Bindings: []contract.OutputBinding{{DestinationID: "private", Destination: destination, Targets: []contract.OutputTarget{first, second}}}}
-	for _, condition := range []string{"exact", "later-target", "later-locator", "later-contract", "later-encoding", "settings-bytes", "missing-target", "extra-target", "missing-profile", "extra-profile", "selection", "missing-selection", "ordinary-settings", "extra-canonical-member", "invalid-base64", "duplicate-selection"} {
+	for _, condition := range []string{"exact", "later-target", "later-locator", "later-contract", "later-encoding", "settings-bytes", "missing-target", "extra-target", "missing-profile", "extra-profile", "selection", "missing-selection", "ordinary-settings", "extra-canonical-member", "invalid-base64", "missing-record", "extra-record", "changed-repository", "duplicate-selection"} {
 		t.Run(condition, func(t *testing.T) {
 			binding := base
 			binding.Targets = slices.Clone(base.Targets)
@@ -581,12 +617,13 @@ func TestStockRecoveredOutputComparisonChecksEveryTarget(t *testing.T) {
 				t.Fatal("valid controlled canonical carrier fixture unavailable")
 			}
 			encoded := base64.StdEncoding.EncodeToString(body)
-			wire := `{"private":{"plugin":null,"canonical":{"binding_base64":"` + encoded + `"}}}`
+			records := map[string]any{"private": encoded}
+			wire := `{"private":{"plugin":null,"canonical":{"settings":{"repository":9007199254740993,"region":"one"}}}}`
 			switch condition {
 			case "missing-profile":
 				wire = `{}`
 			case "extra-profile":
-				wire = strings.TrimSuffix(wire, "}") + `,"another":{"plugin":null,"canonical":{"binding_base64":"` + encoded + `"}}}`
+				wire = strings.TrimSuffix(wire, "}") + `,"another":{"plugin":null,"canonical":{"settings":{}}}}`
 			case "selection":
 				wire = strings.Replace(wire, `"plugin":null`, `"plugin":"unrequested"`, 1)
 			case "missing-selection":
@@ -594,14 +631,20 @@ func TestStockRecoveredOutputComparisonChecksEveryTarget(t *testing.T) {
 			case "ordinary-settings":
 				wire = strings.Replace(wire, `"plugin":null`, `"plugin":null,"settings":{}`, 1)
 			case "extra-canonical-member":
-				wire = strings.Replace(wire, `"binding_base64":`, `"extra":null,"binding_base64":`, 1)
+				wire = strings.Replace(wire, `"settings":`, `"extra":null,"settings":`, 1)
 			case "invalid-base64":
-				wire = strings.Replace(wire, encoded, encoded+"!", 1)
+				records["private"] = encoded + "!"
+			case "missing-record":
+				delete(records, "private")
+			case "extra-record":
+				records["another"] = encoded
+			case "changed-repository":
+				wire = strings.Replace(wire, "9007199254740993", "9007199254740992", 1)
 			case "duplicate-selection":
 				wire = strings.Replace(wire, `"plugin":null`, `"plugin":"unrequested","plugin":null`, 1)
 			}
 			var outputs map[string]any
-			accepted := jsonv2.Unmarshal([]byte(wire), &outputs) == nil && stockRecoveredOutputsMatch(outputs, expected, map[contract.ID]string{a: "first", b: "second"})
+			accepted := stockRecoveryDocument([]byte(wire), &outputs) && stockRecoveredOutputsMatch(outputs, records, expected, map[contract.ID]string{a: "first", b: "second"})
 			if accepted != (condition == "exact") {
 				t.Fatal("recovery accepted incomplete or changed raw canonical output source")
 			}

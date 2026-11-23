@@ -55,14 +55,14 @@ func TestStockOutputDeclarationRoutesOnlySuppliedPair(t *testing.T) {
 					plain, secret := stem+"_PLAIN", stem+"_SECRET"
 					scopes := []string{"aws-secrets-manager", "github-repository", "github-organization", "github-environment"}
 					destinations := map[string]any{
-						"aws-secrets-manager": map[string]any{"plugin": "aws-secrets-manager", "settings": map[string]any{"account": "123456789012", "region": "ap-southeast-2"}, "encodings": map[string]any{secret: "base64"}},
-						"github-repository":   map[string]any{"plugin": "github-actions-repository", "settings": map[string]any{"owner": "fixture", "repository": "repository"}, "encodings": map[string]any{secret: "base64"}},
-						"github-organization": map[string]any{"plugin": "github-actions-organization", "settings": map[string]any{"owner": "fixture", "visibility": "selected", "repositories": []uint64{11, 22}}, "encodings": map[string]any{secret: "base64"}},
-						"github-environment":  map[string]any{"plugin": "github-actions-environment", "settings": map[string]any{"owner": "fixture", "repository": "repository", "environment": "environment"}, "encodings": map[string]any{secret: "base64"}},
+						"aws-secrets-manager": map[string]any{"plugin": "aws-secrets-manager", "settings": map[string]any{"account": "123456789012", "region": "ap-southeast-2"}},
+						"github-repository":   map[string]any{"plugin": "github-actions-repository", "settings": map[string]any{"owner": "fixture", "repository": "repository"}},
+						"github-organization": map[string]any{"plugin": "github-actions-organization", "settings": map[string]any{"owner": "fixture", "visibility": "selected", "repositories": []uint64{11, 22}}},
+						"github-environment":  map[string]any{"plugin": "github-actions-environment", "settings": map[string]any{"owner": "fixture", "repository": "repository", "environment": "environment"}},
 					}
 					if provider == "gcp" {
 						scopes = []string{"gcp-secret-manager"}
-						destinations = map[string]any{"gcp-secret-manager": map[string]any{"plugin": "gcp-secret-manager", "settings": map[string]any{"project_number": "123456789"}, "encodings": map[string]any{secret: "base64"}}}
+						destinations = map[string]any{"gcp-secret-manager": map[string]any{"plugin": "gcp-secret-manager", "settings": map[string]any{"project_number": "123456789"}}}
 					}
 					want := map[string]any{"destinations": destinations, "routing": map[string]any{"entries": map[string]any{plain: scopes, secret: scopes}}, "groups": [][]string{{plain, secret}}}
 					actualBody, err := json.Marshal(stockOutputDeclaration(input))
@@ -546,6 +546,7 @@ func (r *stockPluginRun) publishOutputs(ctx context.Context, source string) {
 	publicAssertSetPair(r.t, set, source, names[1])
 	clear(set.Body)
 	document := publicSourceDocument(r.t, source)
+	document["entries"].(map[string]any)[names[1]].(map[string]any)["output_encoding"] = "base64"
 	document["entries"].(map[string]any)[names[0]] = map[string]any{"confidentiality": "plain", "recipients": []string{}, "source": map[string]any{"kind": "supplied", "value": stockPlainValue}}
 	document["outputs"] = stockOutputDeclaration(r.input)
 	publicWriteSource(r.t, source, document)

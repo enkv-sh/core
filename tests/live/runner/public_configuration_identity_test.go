@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -47,7 +48,7 @@ func publicRequestIdentityValid(product publicProductResult) bool {
 	}
 	decoder := json.NewDecoder(bytes.NewReader(product.RequestIdentity))
 	decoder.DisallowUnknownFields()
-	if decoder.Decode(&value) != nil || value.Schema != "PreAdmissionRequestIdentity/v1" || !publicIdentityHex(value.OperationID) || value.OperationID != product.OperationID || value.OperationKind != product.Operation || value.SourceSchema != "enkv/configuration/v2" || value.SourceProfile != "direct-candidate" || product.ReplayIdentity != "none" {
+	if decoder.Decode(&value) != nil || value.Schema != "PreAdmissionRequestIdentity/v1" || !publicIdentityHex(value.OperationID) || value.OperationID != product.OperationID || value.OperationKind != product.Operation || value.SourceSchema != "enkv/configuration/v3" || value.SourceProfile != "direct-candidate" || product.ReplayIdentity != "none" {
 		return false
 	}
 	if value.Format != "" && value.Format != "json" && value.Format != "yaml" || value.RequestNonce != "" && !publicIdentityHex(value.RequestNonce) {
@@ -61,10 +62,22 @@ func publicRequestIdentityValid(product publicProductResult) bool {
 	return product.State != "success" && product.State != "exact-resume" && product.State != "no-op"
 }
 
-const publicPreAdmissionJSON = `{"schema":"ProductResult/v1","operation_kind":"apply-declaration","state_result":"refused","operation_id":"4444444444444444444444444444444444444444444444444444444444444444","request_identity":{"schema":"PreAdmissionRequestIdentity/v1","operation_id":"4444444444444444444444444444444444444444444444444444444444444444","operation_kind":"apply-declaration","stage":"capture","code":"missing-required-field","source_schema":"enkv/configuration/v2","source_profile":"direct-candidate","format":"json","request_nonce":"5555555555555555555555555555555555555555555555555555555555555555"},"replay_identity":"none","payload":null}`
+const publicPreAdmissionJSON = `{"schema":"ProductResult/v1","operation_kind":"apply-declaration","state_result":"refused","operation_id":"4444444444444444444444444444444444444444444444444444444444444444","request_identity":{"schema":"PreAdmissionRequestIdentity/v1","operation_id":"4444444444444444444444444444444444444444444444444444444444444444","operation_kind":"apply-declaration","stage":"capture","code":"missing-required-field","source_schema":"enkv/configuration/v3","source_profile":"direct-candidate","format":"json","request_nonce":"5555555555555555555555555555555555555555555555555555555555555555"},"replay_identity":"none","payload":null}`
 
 // full_only: false
 func TestPublicConfigurationRequestIdentityConsumer(t *testing.T) {
+	t.Run("setup-schema", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "configuration.json")
+		publicSetupSource(t, liveRunInput{Settings: liveSettings{Provider: "aws"}}, path)
+		product := publicProduct(t, publicChildResult{Code: 2, Body: []byte(publicPreAdmissionJSON)}, "apply-declaration")
+		var identity struct {
+			SourceSchema string `json:"source_schema"`
+		}
+		if json.Unmarshal(product.RequestIdentity, &identity) != nil || publicSourceDocument(t, path)["schema"] != identity.SourceSchema {
+			t.Fatal("setup schema differs from the CLI request identity")
+		}
+	})
+
 	for _, operation := range []string{"apply-declaration", "initialize-empty-domain", "compare-public-configuration"} {
 		t.Run(operation, func(t *testing.T) {
 			body := strings.ReplaceAll(publicPreAdmissionJSON, "apply-declaration", operation)
@@ -88,7 +101,7 @@ func TestPublicConfigurationRequestIdentityConsumer(t *testing.T) {
 		{"wrong-replay", `"replay_identity":"none"`, `"replay_identity":"5555555555555555555555555555555555555555555555555555555555555555"`},
 		{"wrong-format", `"format":"json"`, `"format":"toml"`},
 		{"wrong-profile", "direct-candidate", "trusted-baseline"},
-		{"wrong-source-schema", "enkv/configuration/v2", "other/v1"},
+		{"wrong-source-schema", "enkv/configuration/v3", "enkv/configuration/v2"},
 		{"missing-stage", `"stage":"capture"`, `"stage":""`},
 		{"invalid-code", `"code":"missing-required-field"`, `"code":"private path"`},
 		{"invalid-nonce", `"request_nonce":"5555555555555555555555555555555555555555555555555555555555555555"`, `"request_nonce":"bad"`},

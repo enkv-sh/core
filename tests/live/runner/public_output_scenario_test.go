@@ -73,14 +73,14 @@ func publicOutputDeclarationForScopes(input liveRunInput, scopes []string) map[s
 		cloud, cloudSpec = "gcp-secret-manager", map[string]any{"project_number": input.Settings.ProjectNumber}
 	}
 	if slices.Contains(scopes, cloud) {
-		destinations[cloud] = map[string]any{"plugin": cloud, "settings": cloudSpec, "encodings": map[string]any{names[1]: "base64"}}
+		destinations[cloud] = map[string]any{"plugin": cloud, "settings": cloudSpec}
 	}
 	for _, row := range []struct {
 		name string
 		spec records.PublicOutputScope
 	}{{"github-repository", outputs.Repository}, {"github-organization", outputs.Organization}, {"github-environment", outputs.Environment}} {
 		if slices.Contains(scopes, row.name) {
-			destinations[row.name] = map[string]any{"plugin": strings.Replace(row.name, "github-", "github-actions-", 1), "settings": row.spec, "encodings": map[string]any{names[1]: "base64"}}
+			destinations[row.name] = map[string]any{"plugin": strings.Replace(row.name, "github-", "github-actions-", 1), "settings": row.spec}
 		}
 	}
 	return map[string]any{"destinations": destinations, "routing": map[string]any{"default": slices.Clone(scopes)}, "groups": [][]string{names}}
@@ -230,6 +230,7 @@ func runPublicOutput(t testing.TB, ctx context.Context, inv records.Invocation, 
 	publicAssertSet(t, set, source, names[1])
 	clear(set.Body)
 	document := publicSourceDocument(t, source)
+	document["entries"].(map[string]any)[names[1]].(map[string]any)["output_encoding"] = "base64"
 	document["entries"].(map[string]any)[names[0]] = map[string]any{"confidentiality": "plain", "recipients": []any{}, "source": map[string]any{"kind": "supplied", "value": "public output plain"}}
 	document["outputs"] = publicOutputDeclaration(input)
 	publicWriteSource(t, source, document)
@@ -298,7 +299,7 @@ func publicCleanupOutputs(t testing.TB, ctx context.Context, inv records.Invocat
 		declaration = publicManifestDeclaration(input)
 	}
 	want, wantErr := json.Marshal(declaration)
-	if err != nil || wantErr != nil || !publicOutputDeclarationMatches(got, want) {
+	if err != nil || wantErr != nil || !publicOutputDeclarationMatches(got, want) || !publicOutputEncodingsMatch(document, publicOutputNames(input.Prefix)) {
 		t.Fatal("public output cleanup declaration differs from the exact run targets")
 	}
 	var passive []records.PublicOutputPassiveCoordinate
@@ -374,6 +375,14 @@ func publicCleanupOutputs(t testing.TB, ctx context.Context, inv records.Invocat
 		t.Fatal("public output acknowledgement retention failed; domain retained")
 	}
 
+}
+
+func publicOutputEncodingsMatch(document map[string]any, names []string) bool {
+	entries, _ := document["entries"].(map[string]any)
+	plain, plainOK := entries[names[0]].(map[string]any)
+	secret, secretOK := entries[names[1]].(map[string]any)
+	encoding, explicit := plain["output_encoding"]
+	return plainOK && secretOK && (!explicit || encoding == "raw") && secret["output_encoding"] == "base64"
 }
 
 func publicOutputDeclarationMatches(actual, expected []byte) bool {

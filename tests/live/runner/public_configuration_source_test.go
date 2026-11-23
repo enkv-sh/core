@@ -55,7 +55,7 @@ func publicSetupSource(t testing.TB, input liveRunInput, path string) {
 	if input.RecoveryMode == "enabled" {
 		recovery["signing_key"], recovery["encryption_key"] = s.RecoveryKeyID, s.RecoveryKEKID
 	}
-	publicWriteSource(t, path, map[string]any{"schema": "enkv/configuration/v2", "domain": map[string]any{"name": "prod", "provider": s.Provider, "store": store, "authority": map[string]any{"display_name": "Authority", "signing_key": s.KeyID, "encryption_key": s.AuthorityKEKID}, "recovery": recovery}, "recipients": map[string]any{"consumer": map[string]any{"display_name": "Consumer", "encryption_key": s.ReaderKEKID}}, "entries": map[string]any{}, "outputs": map[string]any{"destinations": map[string]any{}, "routing": map[string]any{}}})
+	publicWriteSource(t, path, map[string]any{"schema": "enkv/configuration/v3", "domain": map[string]any{"name": "prod", "provider": s.Provider, "store": store, "authority": map[string]any{"display_name": "Authority", "signing_key": s.KeyID, "encryption_key": s.AuthorityKEKID}, "recovery": recovery}, "recipients": map[string]any{"consumer": map[string]any{"display_name": "Consumer", "encryption_key": s.ReaderKEKID}}, "entries": map[string]any{}, "outputs": map[string]any{"destinations": map[string]any{}, "routing": map[string]any{}}})
 }
 
 type publicPairImage struct {
