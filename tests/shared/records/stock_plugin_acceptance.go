@@ -24,20 +24,25 @@ const MaximumStockPluginVerifications = 32
 // StockPluginFixture identifies one reusable test bucket. Each run receives
 // separate authority over its own prefix, never over the whole bucket.
 type StockPluginFixture struct {
-	Schema        uint16 `json:"schema"`
-	Purpose       string `json:"purpose"`
-	FixtureID     string `json:"fixture_id"`
-	Provider      string `json:"provider"`
-	Region        string `json:"region"`
-	Bucket        string `json:"bucket"`
-	Account       string `json:"account,omitempty"`
-	Project       string `json:"project,omitempty"`
-	ProjectNumber string `json:"project_number,omitempty"`
+	Schema          uint16 `json:"schema"`
+	Purpose         string `json:"purpose"`
+	FixtureID       string `json:"fixture_id"`
+	Provider        string `json:"provider"`
+	Region          string `json:"region"`
+	Bucket          string `json:"bucket"`
+	Account         string `json:"account,omitempty"`
+	Project         string `json:"project,omitempty"`
+	ProjectNumber   string `json:"project_number,omitempty"`
+	DailyRolePrefix string `json:"daily_role_prefix,omitempty"`
 }
 
 var stockFixtureLabel = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$`)
+var dailyRolePrefix = regexp.MustCompile(`^enkv-orders-[a-z][a-z0-9]{0,11}-public$`)
 
 func (v StockPluginFixture) Validate() error {
+	if v.DailyRolePrefix != "" && (v.Provider != "aws" || v.Purpose != StockRetirementProofPurpose || !dailyRolePrefix.MatchString(v.DailyRolePrefix)) {
+		return errRecord
+	}
 	if v.Schema != 1 || !validHex(v.FixtureID, 16) ||
 		!stockFixtureLabel.MatchString(v.Bucket) || !strings.HasSuffix(v.Bucket, "-pa-"+v.FixtureID) ||
 		v.Region == "" || len(v.Region) > 64 || strings.ContainsAny(v.Region, "/\\\x00 \t\n") {

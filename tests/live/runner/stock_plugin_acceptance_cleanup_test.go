@@ -64,6 +64,9 @@ func runStockPluginAcceptanceFresh(t testing.TB, inv records.Invocation, input l
 	}
 	ctx, cancel := context.WithTimeout(worker.Context(context.Background()), 2*time.Minute)
 	defer cancel()
+	if login := stockLoginFor(input); login.identity != nil && login.admit(ctx, input, inv.StateDir, budget, "reader") != nil {
+		t.Fatal("daily retirement Reader identity refused")
+	}
 	r := stockExistingRun(t, inv, input, budget)
 	image := publicSourceImage(t, facts.Source)
 	child := r.command(ctx, "post-exit-reader", "reader", "", nil, "plan", "--trusted", facts.Source, "--trusted-format", "json", "--json")
@@ -144,7 +147,8 @@ func runStockPluginAcceptanceCleanup(t testing.TB, inv records.Invocation, input
 	if !livePublicConfigurationAdmitted(input) {
 		t.Fatal("stock cleanup admission refused")
 	}
-	if validateStockSDKContext(input, "cleanup") != nil {
+	login := stockLoginFor(input)
+	if login.config(input, "cleanup") != nil {
 		t.Fatal("stock cleanup credential source changed")
 	}
 	r := stockExistingRun(t, inv, input, budget)
@@ -161,6 +165,9 @@ func runStockPluginAcceptanceCleanup(t testing.TB, inv records.Invocation, input
 	}
 	ctx, cancel := context.WithTimeout(worker.Context(context.Background()), time.Duration(input.Limits.CleanupSeconds)*time.Second)
 	defer cancel()
+	if login.identity != nil && login.identity(ctx, input, "cleanup", inv.StateDir, budget) != nil {
+		t.Fatal("daily retirement Cleanup identity refused")
+	}
 	sequence := liveBeginPhase(t, worker, "cleanup", true)
 	original := &stockPrefixInspection{Empty: grant.PreflightEmpty, Identity: grant.BucketIdentity, Prefix: grant.Prefix}
 	store, err := openStockStorePrefix(ctx, input, inv.StateDir, original)

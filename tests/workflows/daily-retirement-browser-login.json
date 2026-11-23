@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "name": "daily-retirement-browser-login",
+  "profile": "full",
+  "description": "Explicit AWS daily-user browser-login retirement qualification. Supply a private environment, live effect authorization and the dedicated versioned fixture.",
+  "execution": {"parallel": 1},
+  "steps": [
+    {
+      "id": "daily-retirement-browser-login",
+      "kind": "run",
+      "suites": ["../suites/daily-retirement-browser-login.json"],
+      "environment": "../environments/daily-retirement-browser-login.example.json",
+      "additional_providers": {"cloudflare": "../environments/cloudflare-stock-plugin.example.json"},
+      "telemetry_config": "../telemetry/local.json",
+      "limits": "../live/limits/stock-plugin-acceptance.json",
+      "recovery_mode": "enabled"
+    }
+  ]
+}

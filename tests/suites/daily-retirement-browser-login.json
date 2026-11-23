@@ -1,0 +1,7 @@
+{
+  "schema_version": 2,
+  "name": "daily-retirement-browser-login",
+  "description": "Explicit daily AWS browser-login qualification of automatic inbox release and independent Cloudflare retirement proof through five limited assumed roles.",
+  "required_roles": ["authority", "apply", "reader", "consumer", "cleanup"],
+  "scenarios": ["public-configuration.plugin-contracts/plugin_contracts"]
+}

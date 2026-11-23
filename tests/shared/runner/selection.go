@@ -263,6 +263,9 @@ func resolveSavedRun(suitePaths []string, environmentPath, generatorPath, limits
 	if environment.SchemaVersion != 1 {
 		return request, refused
 	}
+	if err := validateDailyRetirementSelection(names, selected, environment); err != nil {
+		return request, err
+	}
 	if generatorPath != "" && environment.Mode != "live" {
 		return request, errors.New("additional provider requires a live environment")
 	}

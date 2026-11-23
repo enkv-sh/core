@@ -161,7 +161,7 @@ func (r *stockPluginRun) home(role string) string {
 		return home
 	}
 	actor, ok := r.input.PublicConfiguration.Actors[role]
-	if !ok || validateStockSDKContext(r.input, role) != nil {
+	if !ok || stockLoginFor(r.input).config(r.input, role) != nil {
 		r.t.Fatal("stock standard credential context refused")
 	}
 	home, err := stockCreateSDKHome(filepath.Join(r.evidenceInvocation().StateDir, "stock-homes", r.inv.Worker), role, actor)
@@ -492,10 +492,8 @@ func runStockPluginAcceptance(t testing.TB, inv records.Invocation, input liveRu
 	}
 	r := &stockPluginRun{t: t, inv: inv, input: input, budget: budget, homes: map[string]string{}, evidence: records.StockPluginEvidence{Schema: 1, RunID: input.RunID, Scenario: input.Scenarios[0], Provider: input.Settings.Provider, Prefix: input.Prefix, FixtureID: input.PublicConfiguration.Stock.Fixture.FixtureID, CLISHA256: input.PublicConfiguration.Stock.Artifact.CLI.SHA256}}
 	sequence := begin(0)
-	for _, role := range []string{"authority", "apply", "reader", "consumer", "cleanup"} {
-		if validateStockSDKContext(input, role) != nil {
-			t.Fatal("stock configured credential route refused")
-		}
+	if err := stockLoginFor(input).admit(ctx, input, inv.StateDir, budget, "authority", "apply", "reader", "consumer", "cleanup"); err != nil {
+		t.Fatal("stock configured credential route refused")
 	}
 	stock := input.PublicConfiguration.Stock
 	if !stockFileMatches(stock.Artifact.CLI) {

@@ -153,6 +153,12 @@ credentials. Follow the [stock acceptance guide](live/publicprocess/stock-plugin
 for exact claims, input preparation, limits and cleanup. The workflow does not
 provision resources, log in, run OpenTofu or authorize its own live execution.
 
+The [daily browser-login retirement workflow](workflows/daily-retirement-browser-login.json)
+runs the versioned AWS retirement proof with the two daily IAM users. Each worker
+checks the browser session and its assigned role using STS. Select the dedicated
+suite with its [environment template](environments/daily-retirement-browser-login.example.json).
+The ordinary AWS acceptance workflow continues to require its SSO source.
+
 The [local materialization workflow](workflows/materialization-local.json) selects
 request/result contracts, Recipient custody, exact dotenv bytes, native file
 faults and capacity, public CLI/GC paths, and workflow/evidence consumers. Select

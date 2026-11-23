@@ -4,6 +4,7 @@ package main
 // rounded up to seconds. Unknown and sub-second roots use a one-second estimate.
 // These weights affect scheduling only; discovery owns selection.
 var runnerEstimates = map[string]float64{
+	"enkv.sh/core/internal/testmain\x00TestCoordinatorStockCleanupRequiresJoinedSuccess":                  2,
 	"enkv.sh/core/internal/testmain\x00TestStockCleanupRejectsPassedWorkerWithoutStockProof":              2,
 	"enkv.sh/core/internal/testmain\x00TestManualReleaseSigningKeepsPrivateKeyOutsideOutput":              2,
 	"enkv.sh/core/internal/testmain\x00TestSupervisorSetupNativeFailurePreservesVerifiedSettlement":       18,
