@@ -248,7 +248,7 @@ func TestGeneratedStockCapacityIncludesRetainedBacklog(t *testing.T) {
 	})
 	t.Run("maximum-organization-policy-output", func(t *testing.T) {
 		id := generatedVectorID
-		configuration := contract.OutputConfiguration{Schema: 4, DomainID: id(1)}
+		configuration := contract.OutputConfiguration{Schema: contract.OutputConfigurationSchema, DomainID: id(1)}
 		var destinations []string
 		for bindingIndex := range 4 {
 			destination := strings.Repeat("d", 255) + string(rune('a'+bindingIndex))
