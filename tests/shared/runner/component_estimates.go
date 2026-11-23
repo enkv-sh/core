@@ -19,7 +19,7 @@ var componentEstimates = map[string]float64{
 	"TestGCDefersGeneratedLifecycleWritesUntilClose":                                      11,
 	"TestPrivateReplacementOpensCurrentGeneratedRequiredSupport":                          26,
 	"TestInstalledRemovalRefusesRejectedRetirementBeforeDuty":                             3,
-	"TestInstalledUnavailableRetirementKeepsIdentityUntilAuthorizedEnd":                   5,
+	"TestInstalledUnavailableRetirementKeepsIdentityUntilAuthorizedEnd":                   4,
 	"TestInstalledPlainEditPreservesTwoCurrentCreationProofs":                             3,
 	"TestGCAdministrativeEndingPreservesInstalledCurrentCreationProof":                    5,
 	"TestInstalledGeneratedInboxCleanupReopensOnlyNamedMapping":                           62,
