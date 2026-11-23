@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"maps"
 	"reflect"
 	"slices"
 	"testing"
@@ -992,6 +993,11 @@ func TestSelectedConfigurationThreeSlicesChargePhysicalReadsAndPreserveFacts(t *
 				if err := selected.bindPreservedPublication(ctx, &selected); err != nil {
 					t.Fatal("complete publication before preservation", err)
 				}
+				reads := len(store.keys)
+				signerOnly, err := selected.preservedState(ctx, contract.SuccessionChangeNormalSigner, true)
+				if err != nil || signerOnly.Digest.IsZero() || signerOnly.Length == 0 || len(store.keys) != reads {
+					t.Fatal("signer-only recovery must preserve committed shared slices without a Store read", err, len(store.keys)-reads)
+				}
 				original := selected
 				borrowedProjection, err := selected.preservedState(ctx, contract.SuccessionChangeNormalSigner, false)
 				if err != nil {
@@ -1018,7 +1024,16 @@ func TestSelectedConfigurationThreeSlicesChargePhysicalReadsAndPreserveFacts(t *
 				for _, length := range store.limits {
 					actual += uint64(length)
 				}
-				if actual != 3*expectedBytes || episode.stageReads != 10 || episode.readLimit != 10 || !slices.Equal(store.keys, append(append(slices.Clone(expectedKeys), expectedKeys...), expectedKeys...)) {
+				// Configuration streams follow slice indexes. Preserved work follows record IDs.
+				var preservationKeys []string
+				for _, id := range slices.SortedFunc(maps.Keys(bySlice), func(a, b contract.ID) int { return bytes.Compare(a[:], b[:]) }) {
+					key, err := format.Key(selected.admission.store.Prefix, bySlice[id])
+					if err != nil {
+						t.Fatal(err)
+					}
+					preservationKeys = append(preservationKeys, key)
+				}
+				if actual != 3*expectedBytes || episode.stageReads != 10 || episode.readLimit != 10 || !slices.Equal(store.keys, slices.Concat(expectedKeys, expectedKeys, preservationKeys)) {
 					t.Fatal("multi-page preservation physical reads differ", actual, episode, store.keys)
 				}
 				if len(selected.cache) != 0 {
@@ -1048,7 +1063,7 @@ func TestSelectedConfigurationThreeSlicesChargePhysicalReadsAndPreserveFacts(t *
 				}
 				failedProjection, err := selected.preservedState(ctx, contract.SuccessionChangeNormalSigner, false)
 				if err == nil || failedProjection != (contract.DigestLength{}) || !injected ||
-					len(store.keys)-start != 2 || !slices.Equal(store.keys[start:], expectedKeys[:2]) ||
+					len(store.keys)-start != 2 || !slices.Equal(store.keys[start:], preservationKeys[:2]) ||
 					episode.stageReads != 2 || episode.readLimit != int(descriptor.SliceCount) || episode.stages != 2 {
 					t.Fatal("later preserved-row failure was not observed exactly", failedProjection, err, injected, store.keys[start:], episode)
 				}

@@ -8,6 +8,7 @@ package main
 // Omitted, failed, partial and unobserved roots keep prior or provisional weights.
 // Unlisted tests use the one-second fallback.
 var componentEstimates = map[string]float64{
+	"TestInstalledRecoveryAuthorizedSignerReplacementPreservesMissingOptionalWork":        2,
 	"TestContinuationCapacityKeepsDetachedOriginalAcrossAnotherParent":                    2,
 	"TestMixedApplyKeepsAnExistingOwnerOfTheSuppliedSecret":                               4,
 	"TestControlledRetirementCompletesAfterPreservingGC":                                  18,
@@ -729,7 +730,7 @@ var componentEstimates = map[string]float64{
 	"TestGeneratedSelectedControlledProviderRetirementUsesExactProviderDelete":                    17,
 	"TestGeneratedSelectedRetirementDutySurvivesCurrentKeyLoss":                                   33,
 	"TestGeneratedSelectionProtectsExactSources":                                                  11,
-	"TestGeneratedSignerOnlyReplacementOpensNoPrivateMaterial":                                    6,
+	"TestGeneratedSignerOnlyReplacementOpensNoPrivateMaterial":                                    7,
 	"TestGeneratedSixtyFiveMaximumSuppliedSecretsSelectInBoundedBatches":                          9,
 	"TestGeneratedStateHistories":                                                                 80,
 	"TestGeneratedStrongerLateAcknowledgementReflectsWithoutClosing":                              18,
