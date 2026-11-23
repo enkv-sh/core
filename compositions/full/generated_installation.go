@@ -180,6 +180,9 @@ func configurationGeneratedRetirementCompatibility(plugins *configurationInstall
 			return nil, nil, err
 		}
 		response, err := validator.CheckRetirementCompatibility(ctx, request)
+		if errors.Is(err, generatorhost.ErrPassiveRefused) {
+			return nil, nil, errors.Join(contract.ErrRecord, err)
+		}
 		if err != nil {
 			return nil, nil, err
 		}
