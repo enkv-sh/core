@@ -220,7 +220,7 @@ func nativeExtensionLifecycle(t *testing.T, cli string, builds []artifact.LocalP
 	source["outputs"] = map[string]any{"destinations": map[string]any{}, "routing": map[string]any{}}
 	nativeGeneratedWriteJSON(t, path, source)
 	removed := run("apply", false, "apply", "--source", path, "--source-format", "json", "--retire-generator", "TOKEN=private-local-token", "--log-level", "info", "--json")
-	pending := nativeExtensionGeneratedOutcome(t, removed, "retirement-pending", 3)
+	pending := nativeExtensionLoggedOutcome(t, removed, "retirement-pending", 3)
 	if pending.Canonical != "selected" || pending.EffectSummary != "effect-no-change" || len(pending.Effects) != 0 || len(pending.Duties) != 1 || len(pending.Hazards) != 0 {
 		t.Fatal("removal did not select exactly one pending retirement without another effect")
 	}
@@ -270,7 +270,7 @@ func nativeExtensionLifecycle(t *testing.T, cli string, builds []artifact.LocalP
 	}
 	s.gcListPrefix = s.prefix + "/" + nativeExtensionID(selected.Domain) + "/result/"
 	retirement := run("apply", false, "generated", "retire", "--source", path, "--source-format", "json", "--duty", duty.Facts.DutyID, "--log-level", "info", "--json")
-	retired := nativeExtensionGeneratedOutcome(t, retirement, "success", 0)
+	retired := nativeExtensionLoggedOutcome(t, retirement, "success", 0)
 	if retired.Canonical != "selected" || retired.EffectSummary != "effect-complete" || len(retired.Effects) != 1 || len(retired.Duties) != 0 || len(retired.Hazards) != 0 {
 		t.Fatal("exact generated retirement did not complete without remaining owned work")
 	}
@@ -313,6 +313,77 @@ func nativeExtensionLifecycle(t *testing.T, cli string, builds []artifact.LocalP
 		}
 	}
 	nativeMaterializationJoined(t, children, 7)
+}
+
+const nativeDeliveryWarning = "diagnostic delivery incomplete; retain the result on stdout"
+
+func nativeExtensionLoggedOutcome(t *testing.T, child workflowChild, state string, productCode int) nativeGeneratedOutput {
+	t.Helper()
+	partial, valid := nativeExtensionInfoDelivery(child.diagnostic)
+	if !valid {
+		t.Fatal("unexpected command diagnostic in the INFO console output")
+	}
+	want := productCode
+	if partial && productCode == 0 {
+		want = 2
+	}
+	t.Logf("state=%s process_exit=%d diagnostic_delivery_partial=%t", state, child.code, partial)
+	result := nativeExtensionGeneratedOutcome(t, child, state, want)
+	if result.Diagnostics == nil || len(result.Diagnostics) != 0 {
+		t.Fatal("generated command did not report an empty Product diagnostic list")
+	}
+	return result
+}
+
+func nativeExtensionInfoDelivery(body []byte) (partial, valid bool) {
+	lines, complete := strings.CutSuffix(string(body), "\n")
+	if !complete {
+		return false, false
+	}
+	for line := range strings.SplitSeq(lines, "\n") {
+		if partial {
+			return false, false
+		}
+		if line == nativeDeliveryWarning {
+			partial = true
+			continue
+		}
+		stamp, record, _ := strings.Cut(line, " ")
+		if _, err := time.Parse(time.RFC3339Nano, stamp); err != nil {
+			return false, false
+		}
+		if !strings.HasPrefix(record, `INFO (9) component="`) && !strings.HasPrefix(record, `WARN (13) component="`) && !strings.HasPrefix(record, `ERROR (17) component="`) {
+			return false, false
+		}
+	}
+	return partial, true
+}
+
+// full_only: false
+func TestNativeExtensionInfoDeliveryRequiresAnExactTerminalWarning(t *testing.T) {
+	const record = "2026-01-02T03:04:05Z INFO (9) component=\"application\" operation=\"application.invocation\" event=\"return\" result=\"success\"\n"
+	const warning = nativeDeliveryWarning + "\n"
+	for _, test := range []struct {
+		name, body     string
+		partial, valid bool
+	}{
+		{"complete", record, false, true},
+		{"partial", record + warning, true, true},
+		{"all-records-lost", warning, true, true},
+		{"quoted-warning", strings.TrimSuffix(record, "\n") + ` error="` + nativeDeliveryWarning + "\"\n", false, true},
+		{"output-error", "generated output failed\n" + warning, false, false},
+		{"duplicate-warning", warning + warning, false, false},
+		{"warning-before-record", warning + record, false, false},
+		{"truncated-warning", record + nativeDeliveryWarning, false, false},
+		{"empty", "", false, false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			partial, valid := nativeExtensionInfoDelivery([]byte(test.body))
+			if partial != test.partial || valid != test.valid {
+				t.Fatalf("partial=%t valid=%t", partial, valid)
+			}
+		})
+	}
 }
 
 func nativeExtensionGeneratedOutcome(t *testing.T, child workflowChild, state string, code int) nativeGeneratedOutput {

@@ -640,6 +640,7 @@ type nativeGeneratedFact struct {
 	}
 }
 type nativeGeneratedOutput struct {
+	Diagnostics              []json.RawMessage `json:"diagnostics"`
 	Schema                   string
 	State                    string `json:"state_result"`
 	Operation                string `json:"operation_id"`
