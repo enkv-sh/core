@@ -121,6 +121,17 @@ func (f *nativeExtensionCase) run(t *testing.T, phase string, readOnly bool, cre
 	return child
 }
 
+func (f *nativeExtensionCase) retire(t *testing.T, credential []string, duty string) nativeGeneratedOutput {
+	t.Helper()
+	head, _ := workflowHead(t, f.store)
+	domain := workflowRoot(t, f.store, head).Domain
+	previous := f.store.gcListPrefix
+	f.store.gcListPrefix = f.store.prefix + "/" + nativeExtensionID(domain) + "/result/"
+	defer func() { f.store.gcListPrefix = previous }()
+	child := f.run(t, "apply", false, credential, "generated", "retire", "--source", f.path, "--source-format", "json", "--duty", duty, "--json")
+	return nativeExtensionGeneratedOutcome(t, child, "success", 0)
+}
+
 func (f *nativeExtensionCase) finish(t *testing.T, commands int, tokenSubjects ...string) {
 	t.Helper()
 	// The test service's documented deterministic token grammar supplies these
@@ -354,9 +365,7 @@ func TestPublicNativeRetirementAfterLocalCacheLoss(t *testing.T) {
 	if !reflect.DeepEqual(head, reopened) || !reflect.DeepEqual(duties, nativeExtensionDutyRecords(t, f.store, current)) || f.service.Counts() != (testservice.Counts{Tokens: 2, TokenCreates: 2}) {
 		t.Fatal("restoring the local build changed the domain or called the provider")
 	}
-	// Successful retirement conditionally deletes its result inbox in the local Store.
-	f.store.gcListPrefix = f.store.prefix + "/" + nativeExtensionID(root.Domain) + "/result/"
-	retired := nativeExtensionGeneratedOutcome(t, retire(), "success", 0)
+	retired := f.retire(t, credential, nativeExtensionID(duties[0].DutyID))
 	_, current, _ = f.selected(t)
 	if len(retired.Effects) != 1 || retired.Effects[0].Target.ResourceID != nativeExtensionID(duties[0].ResourceID) ||
 		retired.Effects[0].Facts.ExecutorID != nativeExtensionID(duties[0].ExecutorID) || len(nativeExtensionDutyRecords(t, f.store, current)) != 0 ||
@@ -398,7 +407,6 @@ func nativeExtensionGeneratorContinuity(t *testing.T, cli string, builds []artif
 	f.declare(t, 1, "manual", &subject, false)
 	rotation := nativeExtensionGeneratedOutcome(t, f.run(t, "apply", false, credentialA, "apply", "--source", f.path, "--source-format", "json", "--json"), "retirement-pending", 3)
 	_, acceptedRoot, acceptedEntries := f.selected(t)
-	f.store.gcListPrefix = f.store.prefix + "/" + nativeExtensionID(acceptedRoot.Domain) + "/result/"
 	accepted := nativeExtensionDutyRecords(t, f.store, acceptedRoot)
 	if len(accepted) != 1 || len(rotation.Duties) != 1 || accepted[0].ExecutorID != contract.ID(aFacts.ExecutorID) || accepted[0].CredentialRouteID != contract.ID(aRouteID) || accepted[0].ResourceID != initial["TOKEN"].Generated.ResourceIncarnationID || acceptedEntries["TOKEN"].Generated.Epoch != 1 || acceptedEntries["TOKEN"].Generated.GenerationID == initial["TOKEN"].Generated.GenerationID || f.service.Counts() != (testservice.Counts{Tokens: 2, TokenCreates: 2}) {
 		t.Fatal("A1 did not preserve A's exact accepted A0 retirement")
@@ -503,7 +511,7 @@ func nativeExtensionGeneratorContinuity(t *testing.T, cli string, builds []artif
 			}
 		}()
 	}
-	retiredA := nativeExtensionGeneratedOutcome(t, f.run(t, "apply", false, credentialA, "generated", "retire", "--source", f.path, "--source-format", "json", "--duty", nativeExtensionID(accepted[0].DutyID), "--json"), "success", 0)
+	retiredA := f.retire(t, credentialA, nativeExtensionID(accepted[0].DutyID))
 	if len(retiredA.Effects) != 1 || retiredA.Effects[0].Facts.ExecutorID != aFacts.ExecutorID.String() || retiredA.Effects[0].Target.ResourceID != nativeExtensionID(accepted[0].ResourceID) || f.service.Counts() != (testservice.Counts{Tokens: 1, TokenCreates: 2, TokenRetires: 1}) {
 		t.Fatal("accepted retirement did not use exact A and only A's route")
 	}
@@ -543,7 +551,7 @@ func nativeExtensionGeneratorContinuity(t *testing.T, cli string, builds []artif
 	}
 	// The modified source default changes the actual service request for new work.
 	nativeExtensionReadToken(t, f, "t3", []byte("\x00\xffextension/consumer-b/t3"))
-	retiredB := nativeExtensionGeneratedOutcome(t, f.run(t, "apply", false, credentialB, "generated", "retire", "--source", f.path, "--source-format", "json", "--duty", nativeExtensionID(newDuties[0].DutyID), "--json"), "success", 0)
+	retiredB := f.retire(t, credentialB, nativeExtensionID(newDuties[0].DutyID))
 	if len(retiredB.Effects) != 1 || retiredB.Effects[0].Facts.ExecutorID != bFacts.ExecutorID.String() || retiredB.Effects[0].Facts.Action != "delete" || retiredB.Effects[0].Facts.State != "succeeded" || retiredB.Effects[0].Target.ResourceID != nativeExtensionID(newDuties[0].ResourceID) || retiredB.Effects[0].Target.ResourceDigest != nativeExtensionID(acceptedEntries["TOKEN"].Generated.ResourceDigest) || f.service.Counts() != (testservice.Counts{Tokens: 1, TokenCreates: 3, TokenRetires: 2}) {
 		t.Fatal("NEW B retirement did not acknowledge the exact A1 resource once")
 	}
@@ -554,7 +562,7 @@ func nativeExtensionGeneratorContinuity(t *testing.T, cli string, builds []artif
 	if len(removed.Duties) != 1 || removed.Duties[0].Facts.ExecutorID != bFacts.ExecutorID.String() {
 		t.Fatal("B cleanup lost exact selected support")
 	}
-	nativeExtensionGeneratedOutcome(t, f.run(t, "apply", false, credentialB, "generated", "retire", "--source", f.path, "--source-format", "json", "--duty", removed.Duties[0].Facts.DutyID, "--json"), "success", 0)
+	f.retire(t, credentialB, removed.Duties[0].Facts.DutyID)
 	_, done, _ := f.selected(t)
 	if f.service.Counts() != (testservice.Counts{TokenCreates: 3, TokenRetires: 3}) || done.Generated.GeneratedCurrent != 0 || done.Generated.Duties != 0 || done.Generated.Hazards != 0 {
 		t.Fatal("independent A/B cleanup left known resources or generated work")

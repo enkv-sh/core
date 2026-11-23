@@ -97,7 +97,7 @@ func nativeExtensionLostOutput(t *testing.T, cli string, builds []artifact.Local
 	if len(removed.Duties) != 1 {
 		t.Fatal("lost output cleanup lost its known generated resource")
 	}
-	nativeExtensionGeneratedOutcome(t, f.run(t, "apply", false, credential, "generated", "retire", "--source", f.path, "--source-format", "json", "--duty", removed.Duties[0].Facts.DutyID, "--json"), "success", 0)
+	f.retire(t, credential, removed.Duties[0].Facts.DutyID)
 	_, done, _ := f.selected(t)
 	finalRows := nativePublicationRows(nativePublicationSelectedParts(t, f.store))
 	markerKey := fmt.Sprintf("%d/%s", contract.PublicationMarkerSupportKind, unknown)
@@ -207,7 +207,7 @@ func nativeExtensionLostGenerator(t *testing.T, cli string, builds []artifact.Lo
 	if len(removed.Duties) != 1 || removed.Duties[0].Target.ResourceID != successor.Target.ResourceID {
 		t.Fatal("known successor cleanup substituted the uncertain original")
 	}
-	nativeExtensionGeneratedOutcome(t, f.run(t, "apply", false, credential, "generated", "retire", "--source", f.path, "--source-format", "json", "--duty", removed.Duties[0].Facts.DutyID, "--json"), "success", 0)
+	f.retire(t, credential, removed.Duties[0].Facts.DutyID)
 	final := nativeExtensionGeneratedOutcome(t, f.run(t, "reader", true, nil, "generated", "list", "--source", f.path, "--source-format", "json", "--json"), "success", 0)
 	_, done, _ := f.selected(t)
 	if len(final.Current) != 0 || len(final.Duties) != 0 || len(final.Hazards) != 1 || done.Generated.GeneratedCurrent != 0 || done.Generated.Duties != 0 || done.Generated.Hazards != 1 || !reflect.DeepEqual(hazards, nativeExtensionHazards(t, f, done)) || f.service.Counts() != (testservice.Counts{Tokens: 1, TokenCreates: 2, TokenRetires: 1}) {

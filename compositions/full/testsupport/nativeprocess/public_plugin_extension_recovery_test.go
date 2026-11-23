@@ -395,7 +395,7 @@ func nativeExtensionRecoveryAndFiltering(t *testing.T, cli string, builds []arti
 	if len(removed.Duties) != 1 {
 		t.Fatal("recovered private cleanup did not retain exact retirement")
 	}
-	nativeExtensionGeneratedOutcome(t, f.run(t, "apply", false, credential, "generated", "retire", "--source", f.path, "--source-format", "json", "--duty", removed.Duties[0].Facts.DutyID, "--json"), "success", 0)
+	f.retire(t, credential, removed.Duties[0].Facts.DutyID)
 	deleted := f.run(t, "apply", false, credential, "publish", "--source", f.path, "--source-format", "json", "--delete-coordinate", coordinate+"=private-local-values", "--json")
 	var deletion nativePublicationOutput
 	if json.Unmarshal(deleted.out, &deletion) != nil || deleted.code != 0 || deletion.State != "success" || f.service.Counts() != (testservice.Counts{TokenCreates: 1, TokenRetires: 1, ValueCreates: 1, ValueDeletes: 1}) {
