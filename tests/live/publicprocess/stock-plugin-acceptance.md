@@ -269,14 +269,18 @@ two request units per logical read. These releases add 480 request units and
 1,258,291,200 body bytes across the four Opens. Prefix preflight, at most 32
 verification debits, and four cloud output value/deletion checks are also
 included. Repeated persistence costs another byte debit, even when an immutable
-key already exists.
+key already exists. A result record reserves 92,637 bytes. Its fields use
+16 bytes for framing, 452 for the core, 4,096 for safe facts, 215 for payload
+framing, 87,384 for the retained value and 474 for the transfer envelope.
+Each create or rotation reserves 18 result-record writes. Each exact retirement
+reserves six.
 
 | Complete cell reservation | AWS | GCP |
 |---|---:|---:|
 | Requests | 103,828 | 76,981 |
 | Body bytes | 311,761,309,163 | 237,771,717,235 |
 | Store objects, including HEAD/configuration/inboxes | 2,557 | 1,837 |
-| Object bytes | 1,013,511,168 | 706,802,688 |
+| Object bytes | 1,015,084,584 | 708,376,104 |
 | Generator create reservations | 9 | 9 |
 | Generator retirement reservations | 9 | 9 |
 

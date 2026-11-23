@@ -178,11 +178,11 @@ func TestStockCommandReservationsCoverFixedLifecycle(t *testing.T) {
 				priorReleases, count uint64
 				aws, gcp             budgetReservation
 			}{
-				{[]string{"a0-created", "a1-pending-a"}, []string{"apply"}, 0, 2, budgetReservation{Requests: 13380, BodyBytes: 45070422888, Objects: 291, ObjectBytes: 116093184, GeneratorCreates: 3}, budgetReservation{Requests: 13377, BodyBytes: 45054694248, Objects: 291, ObjectBytes: 116093184, GeneratorCreates: 3}},
-				{[]string{"b2-created"}, []string{"apply"}, 1, 1, budgetReservation{Requests: 14700, BodyBytes: 48030357093, Objects: 336, ObjectBytes: 116093184, GeneratorCreates: 3}, budgetReservation{Requests: 14697, BodyBytes: 48014628453, Objects: 336, ObjectBytes: 116093184, GeneratorCreates: 3}},
-				{[]string{"exact-a-retired"}, []string{"generated", "retire"}, 0, 1, budgetReservation{Requests: 3995, BodyBytes: 10632235003, Objects: 129, ObjectBytes: 51346176, GeneratorRetires: 3}, budgetReservation{Requests: 3992, BodyBytes: 10616506363, Objects: 129, ObjectBytes: 51346176, GeneratorRetires: 3}},
-				{[]string{"b-retired-a1"}, []string{"generated", "retire"}, 1, 1, budgetReservation{Requests: 4550, BodyBytes: 11911170358, Objects: 149, ObjectBytes: 51346176, GeneratorRetires: 3}, budgetReservation{Requests: 4547, BodyBytes: 11895441718, Objects: 149, ObjectBytes: 51346176, GeneratorRetires: 3}},
-				{[]string{"final-generation-retired"}, []string{"generated", "retire"}, 2, 1, budgetReservation{Requests: 5105, BodyBytes: 13190105713, Objects: 169, ObjectBytes: 51346176, GeneratorRetires: 3}, budgetReservation{Requests: 5102, BodyBytes: 13174377073, Objects: 169, ObjectBytes: 51346176, GeneratorRetires: 3}},
+				{[]string{"a0-created", "a1-pending-a"}, []string{"apply"}, 0, 2, budgetReservation{Requests: 13380, BodyBytes: 45070422888, Objects: 291, ObjectBytes: 116486538, GeneratorCreates: 3}, budgetReservation{Requests: 13377, BodyBytes: 45054694248, Objects: 291, ObjectBytes: 116486538, GeneratorCreates: 3}},
+				{[]string{"b2-created"}, []string{"apply"}, 1, 1, budgetReservation{Requests: 14700, BodyBytes: 48030357093, Objects: 336, ObjectBytes: 116486538, GeneratorCreates: 3}, budgetReservation{Requests: 14697, BodyBytes: 48014628453, Objects: 336, ObjectBytes: 116486538, GeneratorCreates: 3}},
+				{[]string{"exact-a-retired"}, []string{"generated", "retire"}, 0, 1, budgetReservation{Requests: 3995, BodyBytes: 10632235003, Objects: 129, ObjectBytes: 51477294, GeneratorRetires: 3}, budgetReservation{Requests: 3992, BodyBytes: 10616506363, Objects: 129, ObjectBytes: 51477294, GeneratorRetires: 3}},
+				{[]string{"b-retired-a1"}, []string{"generated", "retire"}, 1, 1, budgetReservation{Requests: 4550, BodyBytes: 11911170358, Objects: 149, ObjectBytes: 51477294, GeneratorRetires: 3}, budgetReservation{Requests: 4547, BodyBytes: 11895441718, Objects: 149, ObjectBytes: 51477294, GeneratorRetires: 3}},
+				{[]string{"final-generation-retired"}, []string{"generated", "retire"}, 2, 1, budgetReservation{Requests: 5105, BodyBytes: 13190105713, Objects: 169, ObjectBytes: 51477294, GeneratorRetires: 3}, budgetReservation{Requests: 5102, BodyBytes: 13174377073, Objects: 169, ObjectBytes: 51477294, GeneratorRetires: 3}},
 				{[]string{"plan"}, []string{"apply"}, 2, 2, budgetReservation{Requests: 1326, BodyBytes: 4185195045, Objects: 30, ObjectBytes: 12779520}, budgetReservation{Requests: 1236, BodyBytes: 3713335845, Objects: 30, ObjectBytes: 12779520}},
 				{[]string{"remove-generated"}, []string{"apply"}, 2, 1, budgetReservation{Requests: 1326, BodyBytes: 4185195045, Objects: 30, ObjectBytes: 12779520}, budgetReservation{Requests: 1236, BodyBytes: 3713335845, Objects: 30, ObjectBytes: 12779520}},
 				{[]string{"init"}, []string{"init"}, 0, 1, budgetReservation{Requests: 759, BodyBytes: 2144403825, Objects: 22, ObjectBytes: 12791808}, budgetReservation{Requests: 753, BodyBytes: 2112946545, Objects: 22, ObjectBytes: 12791808}},
@@ -226,9 +226,9 @@ func TestStockCommandReservationsCoverFixedLifecycle(t *testing.T) {
 				total.GeneratorRetires += row.count * want.GeneratorRetires
 				commands += row.count
 			}
-			want := budgetReservation{Requests: 75200, BodyBytes: 233715235443, Objects: 1837, ObjectBytes: 706802688, GeneratorCreates: 9, GeneratorRetires: 9}
+			want := budgetReservation{Requests: 75200, BodyBytes: 233715235443, Objects: 1837, ObjectBytes: 708376104, GeneratorCreates: 9, GeneratorRetires: 9}
 			if provider == "aws" {
-				want = budgetReservation{Requests: 101976, BodyBytes: 307597389291, Objects: 2557, ObjectBytes: 1013511168, GeneratorCreates: 9, GeneratorRetires: 9}
+				want = budgetReservation{Requests: 101976, BodyBytes: 307597389291, Objects: 2557, ObjectBytes: 1015084584, GeneratorCreates: 9, GeneratorRetires: 9}
 			}
 			if commands != 35 || total != want {
 				t.Fatal("complete fixed command table differs", commands, total, want)
