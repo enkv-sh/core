@@ -636,7 +636,8 @@ func TestSavedFuzzAndLiveWorkflowsMatchCanonical(t *testing.T) {
 				t.Fatal("stock plugin cell lost finite isolated lifecycle selection", step.ID)
 			}
 		} else if generated && step.request.environment.PublicConfiguration {
-			if len(step.Run.Schedule.Selected) != 2 || len(step.Run.Entries) != 2 || step.Run.Schedule.SmokePolicy != catalog.SmokePublicConfiguration || !step.Run.Entries[0].Smoke || step.Limits.GeneratorCreates != 6 || step.Limits.GeneratorRetires != 22 {
+			// The manual and automatic retirement cases each reserve six creates and 22 retires.
+			if len(step.Run.Schedule.Selected) != 2 || len(step.Run.Entries) != 2 || step.Run.Schedule.SmokePolicy != catalog.SmokePublicConfiguration || !step.Run.Entries[0].Smoke || step.Limits.GeneratorCreates != 2*6 || step.Limits.GeneratorRetires != 2*22 {
 				t.Fatal("public generated cell lost finite isolated lifecycle selection", step.ID)
 			}
 		} else if generated {
