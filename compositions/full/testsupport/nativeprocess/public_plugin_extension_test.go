@@ -94,6 +94,29 @@ func TestPublicNativeUnknownPluginsGeneratePublishAndRenderWithUnchangedCLI(t *t
 		builds = append(builds, artifact.LocalPlugin{Name: descriptor.Name, Directory: output})
 		t.Logf("independent example role=%s name=%s artifact=%s executable=%s", metadata.Role, metadata.Name, marker.Artifact, metadata.Executable.SHA256)
 	}
+	t.Run("generate-publish-render-retire", func(t *testing.T) {
+		nativeExtensionLifecycle(t, cli, builds, declared, renderer)
+	})
+	t.Run("generator-build-continuity", func(t *testing.T) {
+		nativeExtensionGeneratorContinuity(t, cli, builds)
+	})
+	t.Run("recovery-service-filter-and-collision", func(t *testing.T) {
+		nativeExtensionRecoveryAndFiltering(t, cli, builds, renderer)
+	})
+	t.Run("lost-output-reply", func(t *testing.T) {
+		nativeExtensionLostOutput(t, cli, builds)
+	})
+	t.Run("lost-generator-reply", func(t *testing.T) {
+		nativeExtensionLostGenerator(t, cli, builds)
+	})
+	after, err := artifact.ExecutableIdentity(t.Context(), cli)
+	if err != nil || before != after {
+		t.Fatal("new plugin service or format behavior changed the captured CLI", err)
+	}
+	t.Logf("unchanged CLI executable=%s length=%d; controlled Store/KMS fixture only", before.SHA256, before.Length)
+}
+
+func nativeExtensionLifecycle(t *testing.T, cli string, builds []artifact.LocalPlugin, declared []string, renderer artifact.Digest) {
 	plugins := newNativePluginFixture(t, builds...)
 	const bearer = "local-extension-private-credential"
 	service, err := testservice.New(testservice.Config{Token: bearer, Namespace: "extension"})
@@ -290,23 +313,6 @@ func TestPublicNativeUnknownPluginsGeneratePublishAndRenderWithUnchangedCLI(t *t
 		}
 	}
 	nativeMaterializationJoined(t, children, 7)
-	t.Run("generator-build-continuity", func(t *testing.T) {
-		nativeExtensionGeneratorContinuity(t, cli, builds)
-	})
-	t.Run("recovery-service-filter-and-collision", func(t *testing.T) {
-		nativeExtensionRecoveryAndFiltering(t, cli, builds, renderer)
-	})
-	t.Run("lost-output-reply", func(t *testing.T) {
-		nativeExtensionLostOutput(t, cli, builds)
-	})
-	t.Run("lost-generator-reply", func(t *testing.T) {
-		nativeExtensionLostGenerator(t, cli, builds)
-	})
-	after, err := artifact.ExecutableIdentity(t.Context(), cli)
-	if err != nil || before != after {
-		t.Fatal("new plugin service or format behavior changed the captured CLI", err)
-	}
-	t.Logf("unchanged CLI executable=%s length=%d; controlled Store/KMS fixture only", before.SHA256, before.Length)
 }
 
 func nativeExtensionGeneratedOutcome(t *testing.T, child workflowChild, state string, code int) nativeGeneratedOutput {
@@ -341,7 +347,7 @@ func nativeExtensionGeneratedOutcome(t *testing.T, child workflowChild, state st
 		for _, row := range failure.Reasons[:min(4, len(failure.Reasons))] {
 			reasons = append(reasons, closedReason(row.Reason))
 		}
-		t.Logf("extension generated failure boundary: decoded=%t pre_admission=%t stage=%s code=%s commit_possible=%t diagnostics=%d reasons=%v", decoded, preAdmission, stage, closedReason(identity.Code), failure.Commit, len(failure.Reasons), reasons)
+		t.Logf("extension generated failure boundary: decoded=%t pre_admission=%t stage=%s code=%s commit_possible=%t diagnostics=%d reasons=%v effect_complete=%t diagnostic_delivery_incomplete=%t", decoded, preAdmission, stage, closedReason(identity.Code), failure.Commit, len(failure.Reasons), reasons, result.EffectSummary == "effect-complete", bytes.Contains(child.diagnostic, []byte("diagnostic delivery incomplete; retain the result on stdout\n")))
 		t.Fatalf("extension generated result expected=%s/%d actual=%s/%d decoded=%t schema_valid=%t canonical_selected=%t receipt_present=%t effects=%d duties=%d hazards=%d", state, code, workflowSafeState(result.State), child.code, err == nil, result.Schema == "ProductResult/v1", result.Canonical == "selected", result.Receipt != "", len(result.Effects), len(result.Duties), len(result.Hazards))
 	}
 	return result
