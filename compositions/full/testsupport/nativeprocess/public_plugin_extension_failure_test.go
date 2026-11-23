@@ -140,64 +140,53 @@ func nativeExtensionLostGenerator(t *testing.T, cli string, builds []artifact.Lo
 	f.declare(t, 0, "manual", &subject, false)
 	credential := []string{"ENKV_EXAMPLE_TOKEN=" + nativeExtensionBearer}
 	f.service.LoseNextTokenReply()
-	createdChild := f.run(t, "apply", false, credential, "apply", "--source", f.path, "--source-format", "json", "--json")
-	created := nativeExtensionGeneratedOutcome(t, createdChild, "success", 0)
-	var original, successor *nativeGeneratedFact
-	for i := range created.Effects {
-		switch created.Effects[i].Facts.State {
-		case "closed-with-residue":
-			if original != nil {
-				t.Fatal("duplicate original unqualified effect")
-			}
-			original = &created.Effects[i]
-		case "succeeded":
-			if successor != nil {
-				t.Fatal("duplicate qualified successor effect")
-			}
-			successor = &created.Effects[i]
-		}
+	lostChild := f.run(t, "apply", false, credential, "apply", "--source", f.path, "--source-format", "json", "--json")
+	lost := nativeExtensionGeneratedOutcome(t, lostChild, "effect-unknown", 3)
+	var detail struct {
+		Effects  []struct{ Target json.RawMessage }
+		Warnings struct {
+			PossibleLive bool `json:"possible_live_residue"`
+		} `json:"effect_warnings"`
 	}
-	if len(created.Effects) != 2 || original == nil || successor == nil {
-		t.Logf("lost-generator terminal facts: effects=%d original=%t successor=%t hazards=%d", len(created.Effects), original != nil, successor != nil, len(created.Hazards))
-		t.Fatal("lost reply did not retain one closed residue and one qualified successor")
+	if json.Unmarshal(lostChild.out, &detail) != nil || len(detail.Effects) != 1 || !bytes.Equal(detail.Effects[0].Target, []byte("null")) || !detail.Warnings.PossibleLive || lost.Receipt == "" || len(lost.Effects) != 1 || len(lost.Hazards) != 1 {
+		t.Fatal("lost CREATE reply did not close with one unqualified effect and a possible-live warning")
 	}
-	var planned struct {
-		Effects []struct {
-			Facts struct {
-				Attempt  string `json:"attempt_id"`
-				Resource string `json:"planned_resource_incarnation_id"`
-			}
-			Target json.RawMessage
-		}
+	original := lost.Effects[0]
+	_, firstRoot, firstEntries := f.selected(t)
+	hazards := nativeExtensionHazards(t, f, firstRoot)
+	if len(hazards) != 1 || original.Facts.Action != "create" || original.Facts.State != "closed-with-residue" || !firstRoot.Generated.ActiveOwner.IsZero() || len(firstEntries) != 0 || firstRoot.Generated.GeneratedCurrent != 0 || firstRoot.Generated.Duties != 0 || f.service.Counts() != (testservice.Counts{Tokens: 1, TokenCreates: 1}) {
+		t.Fatal("uncertain CREATE changed current values, kept the operation active or sent another provider request")
 	}
-	if json.Unmarshal(createdChild.out, &planned) != nil || len(planned.Effects) != 2 {
-		t.Fatal("lost-generator planned facts are malformed")
+	hazard := hazards[0]
+	if hazard.Exposure != contract.GeneratedExposurePossibleLive || hazard.Target.Count != 0 || hazard.ResourceID.IsZero() || hazard.OriginalAttemptID.IsZero() || hazard.OriginalOperationID.IsZero() ||
+		nativeExtensionID(hazard.ResourceID) != original.Facts.PlannedResourceID || nativeExtensionID(hazard.OriginalAttemptID) != original.Facts.AttemptID ||
+		nativeExtensionID(hazard.OriginalOperationID) != lost.Operation || lost.Hazards[0].Facts.HazardID != nativeExtensionID(hazard.HazardID) || lost.Hazards[0].Facts.OriginalAttemptID != original.Facts.AttemptID {
+		t.Fatal("lost CREATE did not preserve the original operation, attempt and planned resource in its hazard")
 	}
-	var originalResource, successorResource string
-	for _, row := range planned.Effects {
-		switch row.Facts.Attempt {
-		case original.Facts.AttemptID:
-			if !bytes.Equal(row.Target, []byte("null")) || originalResource != "" {
-				t.Fatal("unqualified original invented a target or duplicated its Attempt")
-			}
-			originalResource = row.Facts.Resource
-		case successor.Facts.AttemptID:
-			if bytes.Equal(row.Target, []byte("null")) || successorResource != "" {
-				t.Fatal("qualified successor lost its target or duplicated its Attempt")
-			}
-			successorResource = row.Facts.Resource
-		default:
-			t.Fatal("lost-generator result added an unrelated Attempt")
-		}
+	list := func() nativeGeneratedOutput {
+		child := f.run(t, "reader", true, nil, "generated", "list", "--source", f.path, "--source-format", "json", "--json")
+		workflowGETOnly(t, child)
+		return nativeExtensionGeneratedOutcome(t, child, "success", 0)
 	}
+	before := list()
+	if len(before.Current) != 0 || len(before.Duties) != 0 || len(before.Hazards) != 1 || before.Hazards[0].Facts.HazardID != nativeExtensionID(hazard.HazardID) || before.Hazards[0].Facts.OriginalAttemptID != original.Facts.AttemptID || f.service.Counts() != (testservice.Counts{Tokens: 1, TokenCreates: 1}) {
+		t.Fatal("fresh reader lost the original hazard or observed an unrequested replacement")
+	}
+
+	replacement := nativeExtensionGeneratedOutcome(t, f.run(t, "apply", false, credential, "apply", "--source", f.path, "--source-format", "json", "--json"), "success", 0)
+	if replacement.Operation == "" || replacement.Operation == lost.Operation || len(replacement.Effects) != 1 {
+		t.Fatal("explicit replacement did not start one distinct CREATE operation")
+	}
+	successor := replacement.Effects[0]
 	_, selected, entries := f.selected(t)
-	hazards := nativeExtensionHazards(t, f, selected)
-	if len(originalResource) != 64 || len(successorResource) != 64 || originalResource == successorResource || original.Facts.AttemptID == successor.Facts.AttemptID || original.Target.ResourceID != "" || successor.Target.ResourceID != successorResource || len(created.Hazards) != 1 || len(hazards) != 1 || created.Hazards[0].Facts.OriginalAttemptID != original.Facts.AttemptID || nativeExtensionID(hazards[0].OriginalAttemptID) != original.Facts.AttemptID || nativeExtensionID(hazards[0].ResourceID) != originalResource || nativeExtensionID(entries["TOKEN"].Generated.ResourceIncarnationID) != successorResource || selected.Generated.GeneratedCurrent != 1 || selected.Generated.Hazards != 1 || f.service.Counts() != (testservice.Counts{Tokens: 2, TokenCreates: 2}) {
-		t.Logf("lost-generator selection facts: planned_original=%t planned_successor=%t distinct_resources=%t original_target_absent=%t exact_successor_target=%t public_hazards=%d stored_hazards=%d current=%d hazards=%d", len(originalResource) == 64, len(successorResource) == 64, originalResource != successorResource, original.Target.ResourceID == "", successor.Target.ResourceID == successorResource, len(created.Hazards), len(hazards), selected.Generated.GeneratedCurrent, selected.Generated.Hazards)
-		t.Fatal("lost original was adopted or its qualified distinct successor/Hazard was lost")
+	if successor.Facts.Action != "create" || successor.Facts.State != "succeeded" || successor.Facts.AttemptID == "" || successor.Facts.AttemptID == original.Facts.AttemptID ||
+		successor.Target.ResourceID == original.Facts.PlannedResourceID || successor.Target.ResourceID != successor.Facts.PlannedResourceID ||
+		entries["TOKEN"].Generated.ResourceIncarnationID.IsZero() || nativeExtensionID(entries["TOKEN"].Generated.ResourceIncarnationID) != successor.Target.ResourceID ||
+		selected.Generated.GeneratedCurrent != 1 || selected.Generated.Hazards != 1 || !reflect.DeepEqual(hazards, nativeExtensionHazards(t, f, selected)) || f.service.Counts() != (testservice.Counts{Tokens: 2, TokenCreates: 2}) {
+		t.Fatal("explicit replacement did not select its own resource and preserve the original hazard")
 	}
 	nativeExtensionReadToken(t, f, "t2", []byte("\x00\xffextension/consumer/t2"))
-	listed := nativeExtensionGeneratedOutcome(t, f.run(t, "reader", true, nil, "generated", "list", "--source", f.path, "--source-format", "json", "--json"), "success", 0)
+	listed := list()
 	if len(listed.Current) != 1 || listed.Current[0].ResourceID != successor.Target.ResourceID || len(listed.Hazards) != 1 || listed.Hazards[0].Facts.OriginalAttemptID != original.Facts.AttemptID || f.service.Counts() != (testservice.Counts{Tokens: 2, TokenCreates: 2}) {
 		t.Fatal("fresh process lost original uncertainty or substituted its resource")
 	}
@@ -208,10 +197,11 @@ func nativeExtensionLostGenerator(t *testing.T, cli string, builds []artifact.Lo
 		t.Fatal("known successor cleanup substituted the uncertain original")
 	}
 	f.retire(t, credential, removed.Duties[0].Facts.DutyID)
-	final := nativeExtensionGeneratedOutcome(t, f.run(t, "reader", true, nil, "generated", "list", "--source", f.path, "--source-format", "json", "--json"), "success", 0)
+	final := list()
 	_, done, _ := f.selected(t)
 	if len(final.Current) != 0 || len(final.Duties) != 0 || len(final.Hazards) != 1 || done.Generated.GeneratedCurrent != 0 || done.Generated.Duties != 0 || done.Generated.Hazards != 1 || !reflect.DeepEqual(hazards, nativeExtensionHazards(t, f, done)) || f.service.Counts() != (testservice.Counts{Tokens: 1, TokenCreates: 2, TokenRetires: 1}) {
 		t.Fatal("known successor cleanup resolved or lost the original uncertainty")
 	}
-	f.finish(t, 6, "consumer/t1", "consumer/t2")
+	nativeExtensionReadToken(t, f, "t1", []byte("\x00\xffextension/consumer/t1"))
+	f.finish(t, 8, "consumer/t1", "consumer/t2")
 }

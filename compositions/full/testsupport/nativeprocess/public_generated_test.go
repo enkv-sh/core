@@ -615,6 +615,7 @@ type nativeGeneratedFact struct {
 	Facts struct {
 		DutyID            string `json:"duty_id"`
 		ResourceID        string `json:"resource_incarnation_id"`
+		PlannedResourceID string `json:"planned_resource_incarnation_id"`
 		HazardID          string `json:"hazard_id"`
 		Exposure          string `json:"exposure"`
 		AttemptID         string `json:"attempt_id"`
