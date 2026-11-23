@@ -312,7 +312,7 @@ func TestInstalledRetirementReleasesInboxAfterLastSupportOwner(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
 	defer cancel()
 	history := make(map[string]contract.ReadResult)
-	f, _, _ := packagedGeneratedSequenceWithHandoff(t, ctx, nil, history)
+	f, _, _ := packagedGeneratedSequenceWithHandoff(t, ctx, false, nil, history)
 	if len(history) != 3 || f.selected.root.Generated.PendingReleases != 0 {
 		t.Fatal("retirements left a temporary result after the final handoff")
 	}
@@ -324,10 +324,10 @@ func TestInstalledRetirementReleasesInboxAfterLastSupportOwner(t *testing.T) {
 }
 
 func packagedGeneratedSequenceWithRecovery(t *testing.T, ctx context.Context, fault *packagedRecoveryCase) (installedApplyTestFixture, *packagedSequenceObservation, []packagedSequenceCommand) {
-	return packagedGeneratedSequenceWithHandoff(t, ctx, fault, nil)
+	return packagedGeneratedSequenceWithHandoff(t, ctx, false, fault, nil)
 }
 
-func packagedGeneratedSequenceWithHandoff(t *testing.T, ctx context.Context, fault *packagedRecoveryCase, history map[string]contract.ReadResult) (installedApplyTestFixture, *packagedSequenceObservation, []packagedSequenceCommand) {
+func packagedGeneratedSequenceWithHandoff(t *testing.T, ctx context.Context, recovery bool, fault *packagedRecoveryCase, history map[string]contract.ReadResult) (installedApplyTestFixture, *packagedSequenceObservation, []packagedSequenceCommand) {
 	var lock sync.Mutex
 	creates := 0
 	var deletes []string
@@ -364,7 +364,7 @@ func packagedGeneratedSequenceWithHandoff(t *testing.T, ctx context.Context, fau
 	if first.Implementation.ExecutorID == second.Implementation.ExecutorID || first.Implementation.ConfigContractID != second.Implementation.ConfigContractID || first.Implementation.ProtocolID != second.Implementation.ProtocolID {
 		t.Fatal("independent compatible process pair differs")
 	}
-	f := newInstalledApplyTestFixture(t, ctx, contract.AWS, false)
+	f := newInstalledApplyTestFixture(t, ctx, contract.AWS, recovery)
 	if len(f.selected.registry()) != 2 {
 		t.Fatal("fixed sequence requires two initialized recipients")
 	}

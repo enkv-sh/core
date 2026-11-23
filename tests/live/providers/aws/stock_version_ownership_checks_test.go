@@ -21,7 +21,7 @@ func TestStockAWSVersionOwnershipRequiresSignedRunAndOriginalResults(t *testing.
 	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Minute)
 	defer cancel()
 	data := make(map[string]contract.ReadResult)
-	f, observation, _ := packagedGeneratedSequenceWithHandoff(t, ctx, nil, data)
+	f, observation, _ := packagedGeneratedSequenceWithHandoff(t, ctx, true, nil, data)
 	store := requireAdmittedMemoryStore(t, f.env.Store)
 	key := store.Descriptor().HeadKey
 	for k, v := range store.objects {
@@ -94,6 +94,61 @@ func TestStockAWSVersionOwnershipRequiresSignedRunAndOriginalResults(t *testing.
 		r.Body = bytes.Clone(r.Body)
 		return r, nil
 	}
+	t.Run("reconstructed-observation", func(t *testing.T) {
+		image := stockTestObservation(t, f.selected, store)
+		basis := PublicBasis{SigningAnchor: image.SigningAnchor, StoreConfiguration: image.StoreConfiguration,
+			HEAD: image.HEAD, Root: image.Root, RecipientPages: image.RecipientPages}
+		reopened := publicOperatorOpen(t, ctx, f.env.Domain, basis, store)
+		if err := stockS3RetainQualifiedHistory(ctx, reopened, input, e, versions, stockProofDirectory(t), read); err != nil {
+			t.Fatal("reconstructed final observation could not qualify its original history", err)
+		}
+		t.Run("missing-genesis-root", func(t *testing.T) {
+			head, err := format.DecodeHead(observation.genesis.body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			key, err := contract.StoreObjectKey(store.desc.Prefix, f.env.Domain, gcPageIdentity(head.Core.Root))
+			if err != nil {
+				t.Fatal(err)
+			}
+			original, present := store.objects[key]
+			if !present {
+				t.Fatal("fixture has no original root")
+			}
+			delete(store.objects, key)
+			defer func() { store.objects[key] = original }()
+			directory := stockProofDirectory(t)
+			if err := stockS3RetainQualifiedHistory(ctx, reopened, input, e, versions, directory, read); err == nil {
+				t.Fatal("qualified absent genesis root")
+			}
+			if _, err := os.Lstat(filepath.Join(directory, "stock-version-proof.json")); !os.IsNotExist(err) {
+				t.Fatal("left a proof for missing history")
+			}
+		})
+		for _, proof := range []string{"authorization", "recovery-challenge"} {
+			t.Run(proof, func(t *testing.T) {
+				head, err := format.DecodeHead(bytes.Clone(observation.genesis.body))
+				if err != nil {
+					t.Fatal(err)
+				}
+				signature := head.AuthorizationSignature
+				if proof == "recovery-challenge" {
+					signature = head.Genesis.K3Challenge
+				}
+				if len(signature) == 0 {
+					t.Fatal("missing original signature")
+				}
+				signature[len(signature)-1] ^= 1
+				body, err := format.EncodeHead(head)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if _, err := stockGenesisHistorySession(ctx, reopened, body); err == nil {
+					t.Fatal("accepted altered genesis proof")
+				}
+			})
+		}
+	})
 	for _, mode := range []string{"exact", "extra-version", "missing-head", "wrong-genesis", "wrong-final", "damaged-head", "changed-etag", "damaged-result", "unreleased-marker", "missing-marker", "other-registered-token", "wrong-close", "wrong-length", "foreign-key", "missing-current-root"} {
 		t.Run(mode, func(t *testing.T) {
 			items := slices.Clone(versions)
@@ -151,16 +206,9 @@ func TestStockAWSVersionOwnershipRequiresSignedRunAndOriginalResults(t *testing.
 					}
 				}
 			}
-			base, err := filepath.EvalSymlinks(t.TempDir())
-			if err != nil {
-				t.Fatal(err)
-			}
-			directory := filepath.Join(base, "private")
-			if err := os.Mkdir(directory, 0700); err != nil {
-				t.Fatal(err)
-			}
+			directory := stockProofDirectory(t)
 			path := filepath.Join(directory, "stock-version-proof.json")
-			err = stockS3RetainQualifiedHistory(ctx, f.selected, input, proof, items, directory, fetch)
+			err := stockS3RetainQualifiedHistory(ctx, f.selected, input, proof, items, directory, fetch)
 			if (err == nil) != (mode == "exact") {
 				t.Fatal("unexpected ownership result", err)
 			}
@@ -197,4 +245,17 @@ func TestStockAWSVersionOwnershipRequiresSignedRunAndOriginalResults(t *testing.
 			}
 		})
 	}
+}
+
+func stockProofDirectory(t *testing.T) string {
+	t.Helper()
+	base, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	directory := filepath.Join(base, "private")
+	if err := os.Mkdir(directory, 0700); err != nil {
+		t.Fatal(err)
+	}
+	return directory
 }

@@ -329,7 +329,9 @@ GET requests need it to return 404.
 The dedicated AWS fixture also checks historical versions. The initial prefix
 must contain zero data versions and zero delete markers. Cleanup opens the
 final domain using its public handoff and checks every HEAD version back to
-the signed initialization. It reads each data version by ID. For a released
+the signed initialization. After reconstruction, it verifies the original
+Genesis HEAD with its own root and recipient pages under the signing anchor
+and Store configuration from the final handoff. It reads each data version by ID. For a released
 result it requires the original bytes, the signed release, the resource from
 this run and one current delete marker. The worker removes qualified data
 versions first, then their markers, then the final HEAD. Before the first

@@ -19,6 +19,48 @@ type stockHistoryHead struct {
 }
 
 // Account for every HEAD version between the two independently observed endpoints.
+// A reconstructed observation holds the final root. Verify the original root
+// and recipient pages under the same signing anchor and Store configuration.
+func stockGenesisHistorySession(ctx context.Context, selected *StateSession, body []byte) (*StateSession, error) {
+	final := selected.admission.observation.observation
+	head, err := format.DecodeHead(body)
+	if err != nil || head.Genesis == nil || final == nil {
+		return nil, errInventory
+	}
+	rootBytes, result := selected.readObjectUncached(ctx, head.Core.Root)
+	if result.Outcome != 0 {
+		return nil, errInventory
+	}
+	root, err := format.DecodeRoot(rootBytes)
+	if err != nil {
+		return nil, errInventory
+	}
+	basis := PublicBasis{SigningAnchor: final.SigningAnchor, StoreConfiguration: final.StoreConfiguration, HEAD: body, Root: rootBytes}
+	for _, ref := range root.Recipients {
+		if ref != nil {
+			page, result := selected.readObjectUncached(ctx, *ref)
+			if result.Outcome != 0 {
+				return nil, errInventory
+			}
+			basis.RecipientPages = append(basis.RecipientPages, page)
+		}
+	}
+	admitted, result := admitPublicNormal(ctx, selected.root.Domain, selected.store.Descriptor(), basis, selected.store, selected.admission.composition, nil)
+	if result.Outcome != ObservedCurrent {
+		return nil, errInventory
+	}
+	current, ok := selected.admission.currentControl()
+	original, verified := admitted.admission.currentControl()
+	if !ok || !verified || !CurrentControlMatches(current, original) {
+		return nil, errInventory
+	}
+	session, result := newReadSession(ctx, admitted, selected.store, false)
+	if result.Outcome != 0 {
+		return nil, errInventory
+	}
+	return session, nil
+}
+
 func stockHistoryHeads(ctx context.Context, selected *StateSession, e records.StockPluginEvidence, items []stockS3Version, read stockS3ReadOriginal) (map[contract.ID]stockHistoryHead, error) {
 	final := contract.Hash(selected.body)
 	if hex.EncodeToString(final[:]) != e.FinalHEAD {
@@ -37,7 +79,15 @@ func stockHistoryHeads(ctx context.Context, selected *StateSession, e records.St
 			return nil, err
 		}
 		digest := contract.Hash(r.Body)
-		head, result := selected.authenticateHeadResponse(ctx, r)
+		verifier := selected
+		if selected.admission.observation != nil && hex.EncodeToString(digest[:]) == e.GenesisHEAD {
+			verifier, err = stockGenesisHistorySession(ctx, selected, r.Body)
+			if err != nil {
+				clear(r.Body)
+				return nil, err
+			}
+		}
+		head, result := verifier.authenticateHeadResponse(ctx, r)
 		clear(head.body)
 		clear(r.Body)
 		if _, exists := heads[digest]; exists || result.Outcome != 0 || r.Reason != contract.ReasonNone || r.Token != item.token || len(r.Body) != int(item.length) || item.latest != (digest == final) || item.latest && item.token != selected.token {

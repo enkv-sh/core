@@ -709,34 +709,40 @@ func stockGitHubMetadata(ctx context.Context, client *http.Client, target string
 	return nil
 }
 
+func stockTestObservation(t *testing.T, session *StateSession, configurationSource contract.StoreConfigurationSource) localBasisImage {
+	t.Helper()
+	anchor, err := contract.EncodePublicSigningBinding(session.root.CurrentAccess.Core.CurrentControl.NormalSigning)
+	if err != nil {
+		t.Fatal(err)
+	}
+	configuration, err := contract.EncodeStoreConfiguration(configurationSource.StoreConfiguration())
+	if err != nil {
+		t.Fatal(err)
+	}
+	root, err := format.EncodeRoot(session.root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	observation := localBasisImage{Kind: "observation", SigningAnchor: anchor, StoreConfiguration: configuration, HEAD: session.body, Root: root}
+	for _, page := range session.recipients {
+		if page != nil {
+			body, err := format.EncodeRecipientPage(*page)
+			if err != nil {
+				t.Fatal(err)
+			}
+			observation.RecipientPages = append(observation.RecipientPages, body)
+		}
+	}
+	return observation
+}
+
 // full_only: false
 func TestStockSourceBasisAuthenticatesGenesisAndObservation(t *testing.T) {
 	for _, family := range []contract.Family{contract.AWS, contract.GCP} {
 		t.Run(strconv.Itoa(int(family)), func(t *testing.T) {
 			env, _ := genesisEnvironment(t, family, true)
 			f := newEnvironmentFixture(t, t.Context(), env, []int{1}, false)
-			anchor, err := contract.EncodePublicSigningBinding(f.session.root.CurrentAccess.Core.CurrentControl.NormalSigning)
-			if err != nil {
-				t.Fatal(err)
-			}
-			configuration, err := contract.EncodeStoreConfiguration(env.Store.(*memoryStore).StoreConfiguration())
-			if err != nil {
-				t.Fatal(err)
-			}
-			root, err := format.EncodeRoot(f.session.root)
-			if err != nil {
-				t.Fatal(err)
-			}
-			observation := localBasisImage{Kind: "observation", SigningAnchor: anchor, StoreConfiguration: configuration, HEAD: f.session.body, Root: root}
-			for _, page := range f.session.recipients {
-				if page != nil {
-					body, err := format.EncodeRecipientPage(*page)
-					if err != nil {
-						t.Fatal(err)
-					}
-					observation.RecipientPages = append(observation.RecipientPages, body)
-				}
-			}
+			observation := stockTestObservation(t, f.session, env.Store.(*memoryStore))
 			for _, image := range []localBasisImage{{Kind: "genesis", Descriptor: fixtureAdmission(env).admission.descriptor}, observation} {
 				t.Run(image.Kind, func(t *testing.T) {
 					fields := map[string]any{"kind": image.Kind, "descriptor": image.Descriptor}
