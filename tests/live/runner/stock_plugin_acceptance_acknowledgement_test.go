@@ -17,17 +17,18 @@ func TestStockOutputAcknowledgementsRequireCompleteCorrelatedActions(t *testing.
 	// Fixed digests derived with Python hashlib/struct, independently of the
 	// formatter and predicate: REQUEST-CONTRACT/v2 + wire32 + config32 +
 	// blob32(service) + blob32(target) + action8; RESPONSE-CONTRACT/v2 + request32
-	// + artifact32 + big-endian schema roles 4/1/3. Config is {1}, artifact is
-	// {2}; all remaining bytes are zero. Marker facts use separate fixed IDs.
+	// + artifact32 + big-endian schema roles 6/1/3. Wire is SHA-256 of "ENKV/OUTPUT-WIRE/v6\x00".
+	// Config starts with byte 1 and artifact starts with byte 2. The remaining
+	// bytes are zero. Marker facts use separate fixed IDs.
 	digests := map[string]struct{ request, response string }{
-		"aws/create-empty":         {"aec221c62014342fdcf6e4bb3bc02c8b1406cfebae38136b0bd470af4248bc15", "ad610066a4e47a8811faed186401ddd351d2e2f7782b48acd73c0f1178594e6d"},
-		"aws/write-value":          {"511ef08c7c1848f4adbf8392bdcbb335b2b473cac3fa7d93d1ba2101a08e6580", "77abf5a35dd0e2d75c5e8d75221caeae02c12cc7bbe367649a9c7c1d8ca2fc47"},
-		"aws/delete-owned":         {"2cb1706c83d83849e70f3572df0fa3d94c7eda8fb679882b6de8b6cf76aeddcb", "8281b348b854305c24291d66ccb0eb57aba2356a7e985c971339ad6317e635a7"},
-		"gcp/create-empty":         {"5a2d48a2ea96d777846e9b40a8f178f601ef7e8bf9dbd43a7b84f9e1baf5feb8", "9709d9e7569de1b1080d7d290df3f62c98cce72af9ee65caff16572359e91434"},
-		"gcp/write-value":          {"6b1470df65325c6897c818d93484a1da97ff7b2f2c19c6fe18c7f3701b820d30", "65f3dec326370ff80cff01136cfbddb8dd729f8586bde4cdc3d79f76c923e6eb"},
-		"gcp/delete-owned":         {"222d6097e8882b1202488d0bb6f0326b31dc3278fa09b94aa258bc1f5fe2e021", "ec492c443d00cbeb8d8365f5f921f8048a19b00fb34e3b401ec26a1a8e84e1ff"},
-		"github/create-with-value": {"f4b5e4b914ab0927a7242d9128bf10cfbb8d3d4bae8390365b88dd55d43719c0", "61b0cab5404179829e725419548e29ef7891490bba157721a1bb7f95482cd8ae"},
-		"github/delete-owned":      {"46a6b9a1c9e11b1b4b97618e36685479e9adec9dc3544401c504d9b49acd221d", "cc251026bf2cff08ed4ab6bb7319b7026de85a4a0c0fd7d49caa82a128daabc2"},
+		"aws/create-empty":         {"ef021cd0da3794bde1589cd7a42251fae1732c0a7cf8590445c522afcf7e7a21", "c1e0d7896e153aeb8c4535fc292b78fb05175dcb350d14380ba06cc303763fdc"},
+		"aws/write-value":          {"34f01e2598fe3016f3b3d741548aed89699521c21edcbf2e4b4438dd8e69ed1c", "fa27902fbcab0cc8f7c00fa31e227b65de5e5d4eb493f25f8ae93b2ce39e375f"},
+		"aws/delete-owned":         {"50530cb2708f567600edae8d47bdbe77e84480173ba41c4dd06904988db076df", "ff668bcc2098e44f91ca287a88a5706b4b72215e96b95222c881749cf8b1d509"},
+		"gcp/create-empty":         {"3c3565169541d1e33983a416807e929a1a58a15d232adb6287036941790126c5", "d81bc6bc1a3595c40d61bc9bf712059a2b7d780b128b7e34fd55f047969bf9fc"},
+		"gcp/write-value":          {"7a5a51fcd92a45a2b7f2dc080ae421da6ca284e785108fdcc2eee65eda4749c4", "2fe0610fb335d9b2e3d924038e32c594a29aa285bd716d5ed1ff9c93cea448d0"},
+		"gcp/delete-owned":         {"b14963c3a3ac2cde3889e639eb1bfc0d18e231640e02c5e60c9859ffc127ec3e", "d0b28bdad50311005f2698f828b90efb46e0e7c4e5b71a5a1017e970729cdd0d"},
+		"github/create-with-value": {"d9a7c4c76be1409ef145ac72a8df634bb041323de322ec2cbc99625e4f931065", "e2d475b75207bf5c65a88df903f52bc1bfb66d06eb588d5217e972ac42c69e93"},
+		"github/delete-owned":      {"82e05a90812ff0841bb0e9bb5c3fe29c4d75c709b9302469353a8906629877a5", "4fe76633ba101b8afaf1f7ea15cee06f25486448214db229e91adfbacbe44590"},
 	}
 	id := func(text string) contract.ID {
 		body, err := hex.DecodeString(text)
@@ -36,7 +37,7 @@ func TestStockOutputAcknowledgementsRequireCompleteCorrelatedActions(t *testing.
 		}
 		return contract.ID(body)
 	}
-	support := stockPublicationSupport{Protocol: id("d64d97b5c889c28bfefaa9ae3b1ae283589e0f7a7ec6074f39298e06aeec293c"), Config: contract.ID{1}, Artifact: contract.ID{2}}
+	support := stockPublicationSupport{Protocol: id("c0432dd35c122a5bf0b44a58234ef9aef0a2cbeb48acd2169f4bc027f322dcf2"), Config: contract.ID{1}, Artifact: contract.ID{2}}
 	for _, profile := range []string{"aws", "gcp", "github-repository", "github-organization", "github-environment"} {
 		for _, deletion := range []bool{false, true} {
 			conditions := []string{"exact"}
@@ -221,8 +222,8 @@ func TestStockOutputAcknowledgementsRequireCompleteCorrelatedActions(t *testing.
 					if condition == "missing-marker" {
 						delete(observation.Markers, originalAttempt)
 					}
-					if stockOutputActionsMatch(rows, expected, contracts, observation, deletion) != (condition == "exact") {
-						t.Fatal("stock publication accepted an incomplete correlated acknowledgement")
+					if got, want := stockOutputActionsMatch(rows, expected, contracts, observation, deletion), condition == "exact"; got != want {
+						t.Fatalf("stock acknowledgement match = %t, want %t", got, want)
 					}
 				})
 			}
