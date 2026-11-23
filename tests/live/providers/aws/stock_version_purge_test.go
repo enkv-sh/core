@@ -95,11 +95,10 @@ func stockS3DeleteVersion(ctx context.Context, setup *awsSetup, item stockS3Vers
 		failure.Operation = "object_cleanup"
 		return failure
 	}
+	// The qualified version ID identifies immutable data. S3 evaluates If-Match
+	// on the current object, which can be a different version or a delete marker.
 	request := &s3.DeleteObjectInput{Bucket: aws.String(setup.settings.Bucket), ExpectedBucketOwner: aws.String(setup.settings.Account),
 		Key: aws.String(item.key), VersionId: aws.String(item.version)}
-	if !item.marker {
-		request.IfMatch = aws.String(item.token.Value)
-	}
 	out, err := setup.s3(credentials).DeleteObject(next, request)
 	if err != nil {
 		return awsSetupFailureFor(next, errAWSDelete, "conditional_delete", "transport", err)

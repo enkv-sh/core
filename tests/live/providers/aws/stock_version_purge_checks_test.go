@@ -19,7 +19,7 @@ import (
 func TestStockAWSPurgeVersionsRequiresExactInventoryAndFinalAcknowledgements(t *testing.T) {
 	for _, mode := range []string{
 		"exact", "paginated", "explicit-data-marker-false", "missing", "extra", "changed-length", "changed-etag", "changed-version", "changed-latest", "changed-marker",
-		"remaining-marker-changed", "remaining-extra", "remaining-missing", "head-changed", "final-nonempty",
+		"remaining-marker-changed", "remaining-extra", "remaining-missing", "concurrent-replacement", "head-changed", "final-nonempty",
 		"wrong-version-ack", "missing-version-ack", "data-marker-ack", "missing-marker-ack", "false-marker-ack", "nonfinal-ack", "lost-data-response", "lost-marker-response", "lost-head-response",
 		"initial-budget", "marker-budget", "head-budget", "final-budget",
 	} {
@@ -131,6 +131,18 @@ func TestStockAWSPurgeVersionsRequiresExactInventoryAndFinalAcknowledgements(t *
 					return
 				}
 				version := q.Get("versionId")
+				if r.Header.Values("If-Match") != nil {
+					http.Error(w, "conditional deletion of a specified version", http.StatusNotImplemented)
+					return
+				}
+				if mode == "concurrent-replacement" && len(deletes) == 0 {
+					for i := range current {
+						if current[i].key == root {
+							current[i].latest = false
+						}
+					}
+					current = append(current, data(root, "replacement-version", true))
+				}
 				index := slices.IndexFunc(current, func(item stockS3Version) bool {
 					return version == item.version && r.URL.Path == "/"+settings.Bucket+"/"+item.key
 				})
@@ -139,9 +151,6 @@ func TestStockAWSPurgeVersionsRequiresExactInventoryAndFinalAcknowledgements(t *
 					return
 				}
 				item := current[index]
-				if item.marker && r.Header.Get("If-Match") != "" || !item.marker && r.Header.Get("If-Match") != item.token.Value {
-					t.Error("purge lost the data version's conditional token")
-				}
 				deletes = append(deletes, version)
 				if len(deletes) > len(wantDeletes) || version != wantDeletes[len(deletes)-1] {
 					t.Error("purge changed the deterministic data-marker-HEAD order")
@@ -202,7 +211,7 @@ func TestStockAWSPurgeVersionsRequiresExactInventoryAndFinalAcknowledgements(t *
 			switch mode {
 			case "exact", "explicit-data-marker-false", "paginated", "final-nonempty", "final-budget":
 				wantCount, wantLists = 5, 4
-			case "remaining-marker-changed", "remaining-extra", "remaining-missing":
+			case "remaining-marker-changed", "remaining-extra", "remaining-missing", "concurrent-replacement":
 				wantCount, wantLists = 3, 2
 			case "head-changed", "missing-marker-ack", "false-marker-ack", "lost-marker-response", "head-budget":
 				wantCount, wantLists = 4, 2
@@ -221,6 +230,9 @@ func TestStockAWSPurgeVersionsRequiresExactInventoryAndFinalAcknowledgements(t *
 			}
 			if len(deletes) != wantCount || !slices.Equal(deletes, wantDeletes[:wantCount]) || lists != wantLists {
 				t.Fatalf("purge continued after incomplete evidence: deletes=%d want=%d lists=%d want=%d", len(deletes), wantCount, lists, wantLists)
+			}
+			if mode == "concurrent-replacement" && !slices.Contains(current, data(root, "replacement-version", true)) {
+				t.Fatal("purge removed the concurrent replacement")
 			}
 			if strings.HasSuffix(mode, "budget") && (!budget.exhausted || calls != int(budget.limits.Requests)) {
 				t.Fatal("purge escaped its cumulative request budget")

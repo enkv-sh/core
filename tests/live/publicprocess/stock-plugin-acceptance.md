@@ -334,8 +334,10 @@ Genesis HEAD with its own root and recipient pages under the signing anchor
 and Store configuration from the final handoff. It reads each data version by ID. For a released
 result it requires the original bytes, the signed release, the resource from
 this run and one current delete marker. The worker removes qualified data
-versions first, then their markers, then the final HEAD. Before the first
-deletion it saves `stock-version-proof.json` in the private run directory.
+versions first, then their markers, then the final HEAD. Each removal
+names the qualified version ID and requires S3 to acknowledge that same ID.
+It saves `stock-version-proof.json` in the private run directory before
+the first deletion.
 The file records version IDs, ETags, lengths, hashes, signed HEADs and the three
 original retirement acknowledgements. It can be inspected after interruption.
 Other value bodies stay out of this file. The worker lists the complete
