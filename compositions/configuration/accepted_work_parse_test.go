@@ -128,7 +128,8 @@ func TestAcceptedWorkParseRequiresCapturedResolvedCompanion(t *testing.T) {
 		t.Fatal("accepted work admitted a companion-free source")
 	}
 	resolved := writePair(t, sourceSetupJSON, sourceGeneratedJSON, JSON)
-	if m, err := ParseForAcceptedWork(nil, resolved); err == nil || m != nil {
+	var absentContext context.Context
+	if m, err := ParseForAcceptedWork(absentContext, resolved); err == nil || m != nil {
 		t.Fatal("accepted work admitted a nil context")
 	}
 	ctx, cancel := context.WithCancel(t.Context())

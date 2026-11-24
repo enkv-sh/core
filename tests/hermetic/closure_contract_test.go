@@ -144,8 +144,8 @@ func storeContractRootBytes(t *testing.T, f *fixture, ref format.Ref, body []byt
 }
 
 func fixtureValueIntentLength(root *format.Root) uint64 {
-	const rowFixed = 4 + 2 + 1 + 1 + 4 + 32 + 4 + 1 + 2*32
-	length := uint64(len("ENKV/CRYPTO/v2/supplied-intent-v7\x00")+32+4) +
+	const rowFixed = 4 + 2 + 1 + 1 + 4 + 1 + 4 + 1 + 32 + 4 + 1 + 2*32
+	length := uint64(len("ENKV/CRYPTO/v2/supplied-intent-v8\x00")+32+4) +
 		rowFixed*uint64(root.ValueEntryCount) + 32*uint64(root.MembershipCount)
 	for _, named := range root.Names {
 		length += uint64(len(named.Name))

@@ -36,6 +36,7 @@ func TestApplyPublicationBetweenStagesUnroutedRemovalRespectsParticipatingGroup(
 				output.groups = [][]string{{"outside", "plain"}}
 			}
 			f.session = selectAdmittedOutputConfiguration(t, ctx, f.session, env, env.Custody, entries, output)
+			recorder.collect()
 			f.admission = OpenContext{admission: &f.session.admission}
 			input := installedApplyCurrentInput(f.session)
 			for i := range input {
@@ -58,6 +59,7 @@ func TestApplyPublicationBetweenStagesUnroutedRemovalRespectsParticipatingGroup(
 				closeOwner := owner.Close
 				owner.Close = func() {
 					closeOwner()
+					recorder.collect()
 					if removed || f.store.cas != beforeCAS+1 {
 						t.Fatal("removal cut did not follow exactly one completed apply selection")
 					}
@@ -89,6 +91,7 @@ func TestApplyPublicationBetweenStagesUnroutedRemovalRespectsParticipatingGroup(
 						f.session = generatedLifecycleReopen(t, callctx, selected, env.Store)
 					}
 					f.admission = OpenContext{admission: &f.session.admission}
+					recorder.collect()
 					removed = true
 				}
 				return owner, nil

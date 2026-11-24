@@ -7,8 +7,10 @@ import (
 	"reflect"
 	"slices"
 	"testing"
+	"time"
 
 	"enkv.sh/core/contract"
+	"enkv.sh/core/format"
 	catalog "enkv.sh/core/internal/testcatalog"
 	"enkv.sh/crypto/testsupport/custody"
 )
@@ -425,4 +427,111 @@ func runGeneratedHistoryScenario(t testing.TB, ctx context.Context, env fixtureE
 // full_only: false
 func TestGeneratedRetainedSuppliedGrantFinalReceipt(t *testing.T) {
 	runStateScenario(t, t.Context(), memoryScenarioEnvironmentMode(t, true), "accepted.same-value-reader-union/source2_late_result_reader_union")
+}
+
+// full_only: false
+func TestInstalledFinalGrantsReaderWithUnchangedRegistry(t *testing.T) {
+	for _, recovery := range []bool{false, true} {
+		t.Run(fmt.Sprintf("recovery-%t", recovery), func(t *testing.T) {
+			env := memoryScenarioEnvironmentMode(t, recovery)
+			run := newScenarioRun(t, t.Context(), env)
+			h := &generatedHistoryFixture{run: run, casePlan: catalog.GeneratedHistoryCase{SourceMode: 2, Union: true}, reader: fixtureID(env.Domain, "reader")}
+			h.intent, h.request = hermeticCloudflareIntent()
+			h.state = newEnvironmentFixture(t, t.Context(), run.env, nil, false)
+			enterGeneratedHistory(t, h)
+			h.state.session = env.FreshGeneratedRecord(t, h.state.session, h.inputs.expected.Template.AttemptID, h.result)
+			assertGeneratedHistory(t, h, true)
+			before := captureGeneratedHistoryGrantEvidence(t, h)
+			deadline := time.Now().Add(time.Minute)
+			prepare := func(t *testing.T, purpose contract.GeneratorAuthorityPurpose) (*StateSession, *custody.InstalledGeneratedOwner, *generatedPreparation, contract.GeneratedCandidateInput) {
+				t.Helper()
+				s, result := Open(t.Context(), h.state.admission, run.env.Store)
+				if s == nil || result.Outcome != ObservedCurrent {
+					t.Fatal("open selected predecessor", result)
+				}
+				g, err := s.selectedGeneratedWork(t.Context())
+				if err != nil || len(g.bundles) != 1 || g.bundles[0].Request.Schema != contract.GeneratorRequestCoreSchema || g.registry != nil {
+					t.Fatal("expected selected work with unchanged enrollment", err)
+				}
+				admitted := generatedContinuationContext(t, s, 170+byte(purpose), 190+byte(purpose))
+				admitted.AdmissionID = fixtureID(env.Domain, t.Name()+fmt.Sprint(purpose)+" admission")
+				admitted.SessionID = fixtureID(env.Domain, t.Name()+fmt.Sprint(purpose)+" session")
+				admitted.Expiry = uint64(deadline.UnixNano())
+				plan, err := s.generatedFinalRequest(t.Context(), admitted)
+				if err != nil {
+					t.Fatal(err)
+				}
+				input, err := s.installedGeneratedFinalInput(t.Context(), g, plan)
+				if err != nil {
+					t.Fatal(err)
+				}
+				owner, err := memoryCurrentAuthorityKeys(t, s).NewInstalledGeneratedFinal(plan.request, currentControlOf(s), input, deadline)
+				if err != nil {
+					t.Fatal("installed Final admission", err)
+				}
+				t.Cleanup(owner.Close)
+				p, result := s.PrepareGeneratedFinal(t.Context(), &admittedGeneratedFinal{session: s, plan: plan, crypto: owner, instance: owner.InstanceID(), deadline: deadline})
+				if p == nil || result.Outcome != ObservedCurrent {
+					t.Fatal("prepare installed Final", result)
+				}
+				c, err := s.installedGeneratedCandidate(t.Context(), p.reservation, plan)
+				if err != nil || c.Subject.Purpose != purpose || c.Registry != nil {
+					t.Fatal("candidate purpose or registry", err)
+				}
+				if purpose == contract.GeneratorAuthorityFinal {
+					oldRoot, oldErr := format.EncodeRoot(s.root)
+					newRoot, newErr := format.EncodeRoot(p.reservation.state.root)
+					if oldErr != nil || newErr != nil || len(c.GrantWraps) == 0 || c.UnchangedRegistry == nil ||
+						!bytes.Equal(c.UnchangedRegistry.Before, oldRoot) || !bytes.Equal(c.UnchangedRegistry.After, newRoot) ||
+						!reflect.DeepEqual(s.root.Recipients, p.reservation.state.root.Recipients) {
+						t.Fatal("grant lacks the exact roots or changes registered readers")
+					}
+				}
+				return s, owner, p, c
+			}
+			for _, purpose := range []contract.GeneratorAuthorityPurpose{contract.GeneratorAuthorityFinalPreparation, contract.GeneratorAuthorityFinal} {
+				if purpose == contract.GeneratorAuthorityFinal && !recovery {
+					for _, change := range []string{"missing-roots", "changed-predecessor", "changed-candidate", "missing-wraps", "duplicate-wraps"} {
+						t.Run(change, func(t *testing.T) {
+							s, owner, _, c := prepare(t, purpose)
+							switch change {
+							case "missing-roots":
+								c.UnchangedRegistry = nil
+							case "changed-predecessor":
+								c.UnchangedRegistry.Before = c.UnchangedRegistry.After
+							case "changed-candidate":
+								c.UnchangedRegistry.After = c.UnchangedRegistry.Before
+							case "missing-wraps":
+								c.GrantWraps = nil
+							case "duplicate-wraps":
+								c.GrantWraps = append(bytes.Clone(c.GrantWraps), c.GrantWraps...)
+							}
+							if code := owner.BindCandidate(t.Context(), c); code != contract.CryptoInvalidAdmission {
+								t.Fatal("incorrect grant evidence", code)
+							}
+							cold := run.open(h.state.admission)
+							if !bytes.Equal(cold.body, s.body) {
+								t.Fatal("refused grant changed selected HEAD")
+							}
+						})
+					}
+				}
+				s, owner, p, c := prepare(t, purpose)
+				if code := owner.BindCandidate(t.Context(), c); code != contract.CryptoSuccess {
+					t.Fatal("installed Final bind", code)
+				}
+				candidate, result := s.ClaimGeneratedPreparation(t.Context(), p.reservation.candidate, memoryCurrentAuthoritySigner(t, s))
+				if candidate == nil || result.Outcome != ObservedCurrent {
+					t.Fatal("claim installed Final", result)
+				}
+				h.state.session, result = s.selectCandidate(t.Context(), candidate)
+				if h.state.session == nil || result.Outcome != ObservedCurrent {
+					t.Fatal("select installed Final", result)
+				}
+				owner.Close()
+			}
+			assertGeneratedHistoryClosed(t, h)
+			assertGeneratedHistoryGrantReceipt(t, h, before)
+		})
+	}
 }

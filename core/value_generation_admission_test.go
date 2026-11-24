@@ -579,7 +579,7 @@ func TestGeneratedPlanAdmissionRefusesBacklogBeyondReservedChildren(t *testing.T
 			owners = append(owners, hazard.HazardID)
 		}
 	}
-	for i := 400; i <= 403; i++ {
+	for _, i := range []int{393, 394, 395} {
 		t.Run(fmt.Sprint(i), func(t *testing.T) {
 			greatestRequested = max(greatestRequested, i)
 			buildPrefix(t, i)
@@ -673,13 +673,14 @@ func TestGeneratedPlanAdmissionRefusesBacklogBeyondReservedChildren(t *testing.T
 			// Each pending hazard contributes one old create owner. The new
 			// request reserves three entered attempts. A 64 KiB owner group
 			// fits 31 times per support page. The independent graph fragments
-			// use two rows per page. The other 37 projected pages include the mandatory configuration and are the
-			// fixed baseline of this boundary fixture, not a joint maximum
-			// capacity proof.
+			// use two rows per page in addition to four reserved graph pages.
+			// Sealed result envelopes fit 22 per page. The other fourteen
+			// groups reserve 18 pages, including five auxiliary pages.
 			wantCreatePages := uint32((i + 3 + 30) / 31)
-			wantGraphPages := uint32((i + 1) / 2)
-			wantProjected := uint32(37) + wantCreatePages + wantGraphPages
-			if i >= 401 {
+			wantResultPages := uint32((i + 3 + 21) / 22)
+			wantGraphPages := 4 + uint32((i+1)/2)
+			wantProjected := uint32(18) + wantCreatePages + wantResultPages + wantGraphPages
+			if i >= 395 {
 				if wantProjected+1 <= ordinaryChildPageLimit {
 					t.Fatal("incorrect fixture crossing", wantProjected)
 				}
@@ -708,9 +709,16 @@ func TestGeneratedPlanAdmissionRefusesBacklogBeyondReservedChildren(t *testing.T
 				t.Fatal(err)
 			}
 			shape.DeclarationBytes = uint64(len(input.declaration))
+			shape.RegistryBytes = uint64(len(input.registryImage))
 			shards, err := s.generatedAdministrativeShardReserve(shape)
 			if err != nil || reservedPages != wantProjected || shards != 1 || reservedPages+shards > ordinaryChildPageLimit || s.root.ChildCount >= ordinaryChildPageLimit || s.prepared {
 				t.Fatal("did not reserve projected continuation and index before private work", reservedPages, shards, s.root.ChildCount, err)
+			}
+			if i == 394 {
+				if reservedPages+shards != ordinaryChildPageLimit {
+					t.Fatal("dense boundary", reservedPages, shards)
+				}
+				return
 			}
 			// Two sparse current pages require one more page than the new
 			// one-entry image. This reaches the exact ordinary child limit.

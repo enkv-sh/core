@@ -57,9 +57,10 @@ func newGeneratedGrants(before *contract.ValueEntry, intended []contract.ID, pre
 	}
 	count := 0
 	for _, id := range intended {
-		if !slices.Contains(before.Recipients, id) && !(preserved && slices.Contains(retained, id)) {
-			count++
+		if slices.Contains(before.Recipients, id) || preserved && slices.Contains(retained, id) {
+			continue
 		}
+		count++
 	}
 	return count
 }

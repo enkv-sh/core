@@ -51,6 +51,7 @@ func TestGCPHeadPacingSharesFixtureSelectionAndCleanup(t *testing.T) {
 	if got := backend.Put(context.Background(), "test-run/HEAD", []byte("initial")); got != want {
 		t.Fatalf("fixture refusal changed: %+v", got)
 	}
+	want.NotSent = true
 	if got := backend.Store.CompareAndSwap(context.Background(), "test-run/HEAD", token, []byte("candidate")); got != want {
 		t.Fatalf("selection refusal changed: %+v", got)
 	}

@@ -105,6 +105,10 @@ func TestRecoveredSettingsCompleteFormattedPairBoundary(t *testing.T) {
 			for names := 0; names < 8 && chosenPadding < 0; names++ {
 				for padding := max(0, estimate-32); padding <= estimate+8; padding++ {
 					growth := int64(padding + base64.StdEncoding.EncodedLen(recordLength+padding) - base64.StdEncoding.EncodedLen(recordLength) + 2*names)
+					if format == YAML && padding > 0 {
+						// A nonempty plain scalar replaces the two quotes around the empty string.
+						growth -= 2
+					}
 					if growth == delta && (recordLength+padding)%3 != 0 {
 						chosenPadding, chosenName = padding, strings.Repeat("p", names+1)
 						break

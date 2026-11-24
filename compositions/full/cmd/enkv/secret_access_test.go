@@ -51,7 +51,7 @@ func assertSecretAccessGrammarRefusal(t *testing.T, operation uint16, args []str
 
 // full_only: false
 func TestSecretAccessCommandGrammarRefusesBeforeExecutor(t *testing.T) {
-	assertSecretAccessGrammarRefusal(t, contract.OperationEnvelopeRekey, []string{"--private-argument-sentinel", "--json"})
+	assertSecretAccessGrammarRefusal(t, contract.OperationEnvelopeRekey, []string{"--json", "--private-argument-sentinel"})
 	for _, row := range []struct {
 		name string
 		tail []string
@@ -109,7 +109,7 @@ func TestSecretAccessCommandsForwardExactNamesReferencesAndResults(t *testing.T)
 			return maintenanceCLIResult(core.PublicApplyResult{RequestID: request, Result: core.Result{Outcome: core.Contention}})
 		})
 		cancel()
-		if code != 3 || calls != 1 || !bytes.Contains(out.Bytes(), []byte(`"state_result":"contention"`)) || !bytes.Contains(out.Bytes(), []byte(`"effect_summary":"not-applicable"`)) {
+		if code != 3 || calls != 1 || !bytes.Contains(out.Bytes(), []byte(`"state_result": "contention"`)) || !bytes.Contains(out.Bytes(), []byte(`"effect_summary": "not-applicable"`)) {
 			t.Fatal("command lost outcome", code, out.String(), diagnostic.String())
 		}
 	}

@@ -79,7 +79,7 @@ func TestLifecycleIdentityAllocationCountsSuccessorPages(t *testing.T) {
 			case "mixed":
 				input = mixedIntent(f.session)
 			case "add-empty":
-				input = []ApplyEntryInput{{Name: "new", Recipients: []contract.ID{f.session.admission.recipient}, ValueSource: 1, ConfidentialityClass: 1}}
+				input = []ApplyEntryInput{{Name: "new", Recipients: []contract.ID{f.session.admission.recipient}, ValueSource: 1, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: 1}}
 			case "retained-update":
 				input = f.session.currentEntryInputs()
 				input[0].InputBytes = []byte{99}

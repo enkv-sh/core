@@ -44,7 +44,7 @@ func generatedOriginalSealedCurrent(t *testing.T, f *generatedRuntimeFixture, re
 	selected := contract.ConsumerSelection{DomainID: core.DomainID, SnapshotID: root.Object, HEADDigest: f.compare.Context.PredecessorHEADDigest, AccessRoot: f.compare.Context.CurrentAccessRoot,
 		Root: root, HEADRevision: consumerID("generated predecessor revision"), HEADToken: contract.Token{Family: contract.GCP, Value: "1"}, Slot: 1, Core: core, Payload: payload, Binding: authority, Access: access,
 		Entry: contract.ValueEntry{Name: core.Name, Incarnation: core.EntryIncarnationID, ValueState: core.ValueStateID, OriginSnapshot: core.OriginSnapshotID,
-			OriginTransition: core.OriginTransitionID, ValueSource: contract.Supplied, ConfidentialityClass: contract.Secret, Recipients: slices.Clone(readers), InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ContentLength: 0, RetainedLength: 0}}
+			OriginTransition: core.OriginTransitionID, ValueSource: contract.Supplied, ConfidentialityClass: contract.Secret, Recipients: slices.Clone(readers), InputEncoding: core.InputEncoding, OutputEncoding: contract.OutputEncodingRaw, ContentLength: core.ContentLength, RetainedLength: core.RetainedLength}}
 	refreshConsumerSelection(t, &selected)
 	return selected
 }

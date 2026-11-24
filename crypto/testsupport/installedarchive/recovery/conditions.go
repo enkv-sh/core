@@ -67,8 +67,8 @@ func configureCondition(t testing.TB, condition string, input *installedarchive.
 		input.ExpectedDomain = &id
 		refuse(5, 2)
 	case "wrong-kek-pin":
-		input.ExpectedKEK = "different-immutable-key"
-		refuse(6, 17)
+		input.ExpectedKEK = resourcesNormal
+		refuse(8, 2) // AdmissionRefused, ConstructionMismatch
 	case "wrong-owner":
 		input.Owner = "999999999999"
 		refuse(6, 8)

@@ -423,7 +423,13 @@ func TestPublicationTelemetryRefusalNoOpAndCleanup(t *testing.T) {
 				t.Fatal("plan missing")
 			}
 			got := plan.execute(ctx, private.callbacks(), capture.current(publicationEngineCurrent(f)))
-			if got.state != refused(CustodyUnavailable) || len(private.owners) != 1 || private.owners[0].retired != 1 {
+			wantState := refused(CustodyUnavailable)
+			wantResult, wantReason := telemetry.ResultFailure, telemetry.DiagnosticReasonCustodyUnavailable
+			if mode == "persist_refused" {
+				wantState = failure(IntegrityFailure, ImmutableConflict)
+				wantResult, wantReason = telemetry.ResultIntegrityFailure, telemetry.DiagnosticReasonImmutableConflict
+			}
+			if got.state != wantState || len(private.owners) != 1 || private.owners[0].retired != 1 {
 				t.Fatal("cleanup result/right changed")
 			}
 			want := uint8(contract.PublicationOutcomeAcknowledged)
@@ -446,7 +452,7 @@ func TestPublicationTelemetryRefusalNoOpAndCleanup(t *testing.T) {
 					returned = record
 				}
 			}
-			if returned.Result != telemetry.ResultFailure || returned.Reason != telemetry.DiagnosticReasonCustodyUnavailable || returned.SeverityText != "ERROR" {
+			if returned.Result != wantResult || returned.Reason != wantReason || returned.SeverityText != "ERROR" {
 				t.Fatal("cleanup failure was hidden by effect/state")
 			}
 			wire, err := json.Marshal(records)

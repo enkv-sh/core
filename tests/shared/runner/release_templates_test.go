@@ -132,9 +132,9 @@ func TestReleaseSigningTemplates(t *testing.T) {
 				case "wrong-digest":
 					reason = "qualified input SHA-256 mismatch"
 				case "wrong-key":
-					reason = "artifact signature refused"
+					reason = "verify signature: invalid signature or key"
 				case "wrong-purpose", "malformed":
-					reason = "selected purpose or record"
+					reason = "sign record: invalid record"
 				case "record-limit", "public-key-limit":
 					reason = "signing input exceeds byte limit"
 				case "private-key-limit":

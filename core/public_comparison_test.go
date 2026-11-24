@@ -460,18 +460,17 @@ func TestPublicComparisonRequestMeaningAndOwnedValidation(t *testing.T) {
 
 // full_only: false
 func TestPublicComparisonDiagnosticBackingBound(t *testing.T) {
-	// Entry and generated slots include structural allowances. Only 128
-	// entries per side can carry generated settings. Targets have eleven
-	// fields plus presence; preliminary route rows may still be invalid.
-	const fields = 2*(512*6+128*8) + 2*256*8 + 2*64*4 + 2*1024*12 + 2*59918 + 66
+	// The two sides each admit 512 entries, 256 recipients, 64 bindings,
+	// 1,024 targets, 513 routing rules, 32 control fields and one groups field.
+	const fields = 2*512*18 + 2*256*8 + 2*64*3 + 2*1024*12 + 2*513*2 + 66
 	const count = 160060
-	if fields != 157278 || fields > count || count != contract.MaxPublicDiagnostics || unsafe.Sizeof(contract.Diagnostic{}) != 200 || unsafe.Sizeof(contract.SourceLocation{}) != 32 || unsafe.Sizeof(contract.DiagnosticField("")) != 16 {
+	if fields != 49606 || fields > count || count != contract.MaxPublicDiagnostics || unsafe.Sizeof(contract.Diagnostic{}) != 168 || unsafe.Sizeof(contract.SourceLocation{}) != 32 || unsafe.Sizeof(contract.DiagnosticField("")) != 16 {
 		t.Fatal("diagnostic inventory/layout changed")
 	}
-	const names = 2*(512*6+128*8)*256 + 2*1024*12*512 + 2*59918*256 + 2*64*4*256
-	const peak = 3*count*200 + names + count*32 + count*96 + 65536
+	const names = 2*512*18*256 + 2*1024*12*512 + 2*513*2*256 + 2*64*3*256
+	const peak = 3*count*168 + names + count*32 + count*96 + 65536
 	const budget = count*1024 + 65536
-	if names != 45489152 || peak != 162078368 || budget != 163966976 || peak > budget {
+	if names != 17925120 || peak != 119148576 || budget != 163966976 || peak > budget {
 		t.Fatal("diagnostic owners exceed shared backing account")
 	}
 }

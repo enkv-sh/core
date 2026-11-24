@@ -28,7 +28,7 @@ func gcActualJointMaximumSeed(t *testing.T) gcActualJointSeed {
 	env, run, f, keys, enrolled := successionMemoryRegistryFixture(t, true)
 	env.Context = t.Context()
 	run.suppliedSelection(f, []ApplyEntryInput{{Name: "actual-receipt-plain-seed", ValueSource: contract.Supplied,
-		ConfidentialityClass: contract.Plain, Recipients: []contract.ID{enrolled[0]}, InputBytes: []byte{0}}})
+		InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain, Recipients: []contract.ID{enrolled[0]}, InputBytes: []byte{0}}})
 	store := env.Store.(*memoryStore)
 	// scenarioRun counts the real supplied selection through its wrapper;
 	// the actual receipt producer requires the same selected state on its

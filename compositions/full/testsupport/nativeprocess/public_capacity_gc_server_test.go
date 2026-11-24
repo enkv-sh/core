@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"enkv.sh/core/contract"
+	stateformat "enkv.sh/core/format"
 )
 
 // capacityStoreRequest extends the existing offline responder only when the
@@ -19,7 +20,7 @@ func (s *workflowServer) capacityStoreRequest(w http.ResponseWriter, r *http.Req
 	if !awsList && !gcpList && r.Method != http.MethodDelete {
 		return false
 	}
-	if s.gcListPrefix == "" || len(body) != 0 || len(s.gcListKeys) > contract.StoreListPageEntries || (phase != "reader" && phase != "apply") {
+	if (awsList || gcpList) && s.gcListPrefix == "" || len(body) != 0 || len(s.gcListKeys) > contract.StoreListPageEntries || (phase != "reader" && phase != "apply") {
 		s.fail(w, "capacity-store-authority")
 		return true
 	}
@@ -73,7 +74,15 @@ func (s *workflowServer) capacityStoreRequest(w http.ResponseWriter, r *http.Req
 		!workflowGCPQuery(q, map[string]string{"x-id": "DeleteObject"}) {
 		ok = false
 	}
-	if !ok || phase != "apply" || !strings.HasPrefix(key, s.gcListPrefix) || !workflowStoreKey(s.prefix, key, phase) || condition == "" || r.Header.Get("If-None-Match") != "" {
+	listedScope := s.gcListPrefix != "" && strings.HasPrefix(key, s.gcListPrefix)
+	inboxScope := false
+	if selected, err := stateformat.DecodeHead(s.objects[s.prefix+"/HEAD"].body); err == nil {
+		domain := selected.Core.Root.Domain
+		inboxPrefix := fmt.Sprintf("%s/%x/result/", s.prefix, domain[:])
+		suffix, inbox := strings.CutPrefix(key, inboxPrefix)
+		inboxScope = inbox && len(suffix) == 64
+	}
+	if !ok || phase != "apply" || !listedScope && !inboxScope || !workflowStoreKey(s.prefix, key, phase) || condition == "" || r.Header.Get("If-None-Match") != "" {
 		s.fail(w, "capacity-delete-shape")
 		return true
 	}

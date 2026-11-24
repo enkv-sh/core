@@ -23,6 +23,7 @@ func editableOnlyLocalConfiguration(t *testing.T, format configuration.Format) (
 	var editable map[string]any
 	source := configurationSetPair(t, "aws", format, func(e, _ map[string]any) {
 		editable = e
+		e["outputs"] = map[string]any{"destinations": map[string]any{}, "routing": map[string]any{}}
 		var generatedSource map[string]any
 		if err := json.Unmarshal([]byte(`{"kind":"generated","plugin":"cloudflare-account-token","epoch":3,"retirement":"manual","settings":{"account":"0123456789abcdef0123456789abcdef","name":"edge-token","policies":[{"effect":"allow","permission_groups":["123456789abcdef0123456789abcdef0"],"resources":[{"kind":"account","id":"0123456789abcdef0123456789abcdef"}]}]}}`), &generatedSource); err != nil {
 			t.Fatal(err)
@@ -120,7 +121,11 @@ func TestLocalEditableOnlyEditsAndRecoveryProveSatelliteAbsence(t *testing.T) {
 					var result *LocalEditResult
 					var err error
 					result, err = RenameConfigurationDomain(operationContext, path, format, "next")
-					want := strings.Replace(string(before), `"name":"prod"`, `"name":"next"`, 1)
+					name := `"name":"next"`
+					if format == configuration.YAML {
+						name = `"name":next`
+					}
+					want := strings.Replace(string(before), `"name":"prod"`, name, 1)
 					if interrupt {
 						if LocalEditExitCode(result, err) != 3 {
 							t.Fatal("editable-only interruption lost its saved owner", err)

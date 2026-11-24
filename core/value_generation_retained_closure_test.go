@@ -93,7 +93,7 @@ func TestGeneratedRetainedReaderAccessCapacityExactAndOneByteOver(t *testing.T) 
 	// is a byte-bound proof, not an ordinary successor or physical page-edge
 	// proof. Valid wire lengths cannot grow by one byte: 102 and 489 are
 	// divisible by three. Instead, B-1 is a declared bound exceeded by one.
-	c := &Comparison{session: s, slots: []uint16{s.root.Names[0].Slot},
+	c := &Comparison{session: s, recipients: currentApplyRecipients(s.registry()), slots: []uint16{s.root.Names[0].Slot},
 		intent: []contract.CryptoIntentRow{{Name: current.Name, Recipients: slices.Clone(current.Recipients),
 			ValueSource: current.ValueSource, ConfidentialityClass: current.ConfidentialityClass,
 			ContentLength: 4, InputEncoding: current.InputEncoding, RetainedLength: current.RetainedLength, OutputEncoding: current.OutputEncoding, PayloadDigest: contract.Hash(current.ValueBytes), PayloadLength: uint32(len(current.ValueBytes))}},

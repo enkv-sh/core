@@ -96,21 +96,25 @@ func TestRecipientRetirementCommandPreservesExactReferenceAndBlockerFacts(t *tes
 				r.RetirementBlockers = &core.RecipientRetirementBlockers{Total: 1, Rows: []core.RecipientRetirementBlocker{{MaterialID: contract.ID{1}, OwnerKind: contract.GeneratedParentSupportKind, OwnerID: contract.ID{2}}}}
 				return maintenanceCLIResult(r)
 			})
-			if code != 2 || calls != 1 || !bytes.Contains(out.Bytes(), []byte("retire-recipient-identity")) || !bytes.Contains(out.Bytes(), []byte("recipient_retirement_blockers")) || bytes.Contains(out.Bytes(), []byte("retirement-pending")) {
+			if code != 2 || calls != 1 || bytes.Contains(out.Bytes(), []byte("retirement-pending")) {
 				t.Fatal("retirement lost exact blocked result", code, out.String(), diagnostic.String())
 			}
 			if structured {
 				var v struct {
-					State    string `json:"state_result"`
-					Payload  any
-					Blockers struct {
+					Operation string `json:"operation_kind"`
+					State     string `json:"state_result"`
+					Payload   any
+					Blockers  struct {
 						Total uint32
 						Rows  []map[string]any
 					} `json:"recipient_retirement_blockers"`
 				}
-				if json.Unmarshal(out.Bytes(), &v) != nil || v.State != "refused" || v.Payload != nil || v.Blockers.Total != 1 || len(v.Blockers.Rows) != 1 || v.Blockers.Rows[0]["owner_kind"] != "parent" {
+				if json.Unmarshal(out.Bytes(), &v) != nil || v.Operation != "retire-recipient-identity" || v.State != "refused" || v.Payload != nil || v.Blockers.Total != 1 || len(v.Blockers.Rows) != 1 || v.Blockers.Rows[0]["owner_kind"] != "parent" {
 					t.Fatal("retirement command changed blocker payload")
 				}
+			} else if !strings.Contains(out.String(), "Recipient retirement: refused\n") ||
+				!strings.Contains(out.String(), "Retirement blockers: 1\nMaterial 01"+strings.Repeat("00", 31)+"; parent 02"+strings.Repeat("00", 31)+"\n") {
+				t.Fatal("human result lost the exact retirement blocker", out.String())
 			}
 		}
 	}

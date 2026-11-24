@@ -215,7 +215,7 @@ func TestEndWorkReserveFallbackFromAuthenticHistory(t *testing.T) {
 		t.Helper()
 		sources := make([]contract.GeneratorDeclarationEntry, plainCount)
 		for i := range sources {
-			sources[i] = contract.GeneratorDeclarationEntry{Schema: contract.GeneratorDeclarationEntrySchema, Kind: contract.GeneratorDeclarationPlain,
+			sources[i] = contract.GeneratorDeclarationEntry{Schema: contract.GeneratorDeclarationEntrySchema, Kind: contract.GeneratorDeclarationPlain, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw,
 				Name: fmt.Sprintf("plain-%03d-%03d", prefix, i), Recipients: []contract.ID{selected.admission.recipient},
 				Payload: bytes.Repeat([]byte{byte(i + 1)}, 65536)}
 		}

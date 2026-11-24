@@ -14,7 +14,7 @@ func TestRecoverySuccessionReceiptPreservesInheritedDomainWarnings(t *testing.T)
 	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
 	f := newInstalledApplyTestFixture(t, ctx, contract.GCP, true)
-	input := []ApplyEntryInput{{Name: "plain", Recipients: []contract.ID{f.selected.admission.recipient}, ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, InputBytes: []byte("warning history fixture")}}
+	input := []ApplyEntryInput{{Name: "plain", Recipients: []contract.ID{f.selected.admission.recipient}, ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain, InputBytes: []byte("warning history fixture")}}
 	baseline := f.engine(t, f.selected, input, nil)
 	result := baseline.Apply(ctx, fixtureID(f.env.Domain, "recovery warning baseline"), input)
 	baseline.Close()

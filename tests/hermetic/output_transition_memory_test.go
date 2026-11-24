@@ -198,7 +198,7 @@ func TestRetainedOutputObserverAllocation(t *testing.T) {
 		if selected.pages[index] == nil {
 			selected.pages[index] = &format.ValueEntryPage{}
 		}
-		entry := &contract.ValueEntry{Name: name, Incarnation: fixtureID(selected.root.Domain, name), ValueSource: contract.Supplied}
+		entry := &contract.ValueEntry{Name: name, Incarnation: fixtureID(selected.root.Domain, name), ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw}
 		if i < 128 {
 			entry.ValueSource = contract.Generated
 			for r := 0; r < 16; r++ {
@@ -239,7 +239,8 @@ func TestRetainedOutputObserverAllocation(t *testing.T) {
 	}
 	// One extra desired target byte exceeds the declaration ceiling.
 	// Refuse it before allocating another owned witness.
-	target := &template.Bindings[0].Targets[0].Target
+	// Binding 0 fills the first eight targets to their individual limit.
+	target := &template.Bindings[0].Targets[8].Target
 	data := target.TargetData
 	if len(data)+1 > contract.MaxOutputTargetDataBytes {
 		t.Fatal("observer overflow must remain within the individual target bound")
@@ -1410,10 +1411,11 @@ func TestOutputConfigurationGeneratedMaximumTransitionMemory(t *testing.T) {
 		env, f, keys := seed.openCase(t)
 		before := f.session
 		capacityConfigurationSupportRefs(t, before)
-		// This fixed predecessor admits 27 new declaration fragments at most:
-		// ceil((49+27)/2)+1=39 Intent pages, 225 total group pages and
-		// 27 prospective index shards. One more byte needs 253 children.
-		const declarationBoundary = 28_304_640
+		// The other groups reserve 190 pages, including 18 for 384 maximum
+		// CREATE results (22 per page). The remaining 35 Intent pages hold
+		// 49 selected fragments and 19 new ones: ceil((49+19)/2)+1.
+		// With 27 index shards this fills 252 children. One more byte needs 253.
+		const declarationBoundary = 19 * (1<<20 - 256)
 		store, trust := env.Store.(*memoryStore), env.Trust.(*fixtureTrust)
 		if len(before.adminIndex.Groups) != 1024 {
 			t.Fatal("maximum predecessor administrative group count", len(before.adminIndex.Groups))
@@ -1495,7 +1497,7 @@ func TestOutputConfigurationGeneratedMaximumTransitionMemory(t *testing.T) {
 			}
 			t.Fatal("exact complete reservation boundary", err, before.prepared)
 		}
-		if got := plan.capacity.Groups[contract.GeneratorCapacityIntents]; got != (contract.GeneratorCapacityGroup{MaxCount: 76, MaxFramedBytes: 78_645_636, MaxPages: 39}) {
+		if got := plan.capacity.Groups[contract.GeneratorCapacityIntents]; got != (contract.GeneratorCapacityGroup{MaxCount: 68, MaxFramedBytes: 70_258_092, MaxPages: 35}) {
 			t.Fatal("exact declaration and retained Intent charge", got)
 		}
 		if got := plan.capacity.Groups[contract.GeneratorCapacityAuxiliary]; got != (contract.GeneratorCapacityGroup{MaxCount: 54, MaxFramedBytes: 55_397_548, MaxPages: 30}) {
@@ -1519,7 +1521,7 @@ func TestOutputConfigurationGeneratedMaximumTransitionMemory(t *testing.T) {
 		indexBytes, err := before.generatedAdministrativeReservedLength(shape)
 		// Retained canonical summaries add 384*32 material-association bytes
 		// after the shared fragment-row and owner-reference reservation.
-		if err != nil || indexBytes != 54_910_124 {
+		if err != nil || indexBytes != 54_876_988 {
 			t.Fatal("exact boundary administrative reserve", indexBytes, err)
 		}
 		shards, err := before.generatedAdministrativeShardReserve(shape)
@@ -1783,10 +1785,11 @@ func assertMaximumPublicationTransition(t *testing.T, before, after *StateSessio
 				if err != nil {
 					t.Fatal("predecessor coordinate", err)
 				}
+				coordinate.BindingState, coordinate.ActiveBindingIncarnationID = contract.PublicationBindingRetired, contract.ID{}
 				for _, binding := range configuration.Bindings {
 					for _, target := range binding.Targets {
 						if coordinate.ServiceContractID == target.ServiceContractID && coordinate.CanonicalTarget == target.CanonicalTarget {
-							coordinate.ActiveBindingIncarnationID = binding.IncarnationID
+							coordinate.BindingState, coordinate.ActiveBindingIncarnationID = contract.PublicationBindingActive, binding.IncarnationID
 						}
 					}
 				}

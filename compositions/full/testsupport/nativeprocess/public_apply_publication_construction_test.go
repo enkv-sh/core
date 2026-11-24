@@ -117,8 +117,8 @@ func nativeApplyPublisherFailureExecutable(t *testing.T) (string, string) {
 	ledger := filepath.Join(private, "publisher-ownership")
 	for _, edit := range []struct{ relative, anchor, replacement string }{
 		{"compositions/full/apply_publication.go", "import (\n\t\"context\"", "import (\n\t\"context\"\n\t\"os\""},
-		{"compositions/full/apply_publication.go", "return openConfigurationPublication(ctx, pair, m, i, nil, captured)", `if os.Getenv("ENKV_TEST_PUBLICATION_FACTORY") == "missing" { nativePublisherOwnership('N'); return nil, ErrCell }
- owner, err := openConfigurationPublication(ctx, pair, m, i, nil, captured)
+		{"compositions/full/apply_publication.go", "return openConfigurationPublication(ctx, pair, m, i, choices, captured)", `if os.Getenv("ENKV_TEST_PUBLICATION_FACTORY") == "missing" { nativePublisherOwnership('N'); return nil, ErrCell }
+ owner, err := openConfigurationPublication(ctx, pair, m, i, choices, captured)
  if err != nil || owner == nil { return owner, err }
  nativePublisherOwnership('C')
  return owner, ErrCell`},

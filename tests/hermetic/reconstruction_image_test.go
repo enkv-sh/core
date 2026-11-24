@@ -165,8 +165,8 @@ func TestReconstructionMixedFieldsAndReturnedPrivateValues(t *testing.T) {
 	authority := f.session.admission.recipient
 	shared := capacityRecipients(t, f.session, 2)
 	input := []ApplyEntryInput{
-		{Name: "", Recipients: []contract.ID{authority}, ValueSource: format.Supplied, ConfidentialityClass: format.Plain, InputBytes: []byte{}},
-		{Name: "e\u0301/雪", Recipients: shared, ValueSource: format.Supplied, ConfidentialityClass: format.Plain, InputBytes: []byte{0, 255, 128, 10}},
+		{Name: "", Recipients: []contract.ID{authority}, ValueSource: format.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: format.Plain, InputBytes: []byte{}},
+		{Name: "e\u0301/雪", Recipients: shared, ValueSource: format.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: format.Plain, InputBytes: []byte{0, 255, 128, 10}},
 		suppliedSecret(t, env, "secret empty", "projection empty", custody.EmptyValue),
 		suppliedSecret(t, env, "secret binary", "projection binary", custody.MaximumValue, shared...),
 	}

@@ -184,13 +184,13 @@ func TestSuccessionIdentityDerivesTypedCandidate(t *testing.T) {
 	}{
 		{"entry", got.PhaseEntry, 4667, "9c1a92c396898dc4bede661d026a0aec0c386e6c71f37fad9e547cbf2b107ac0"},
 		{"binding", got.TransitionBinding, 804, "7829fb41200d6d063326000fb6d36ab1bde362f44d65af78c314315f8b5b720b"},
-		{"graph", got.Graph, 3399, "d7ecbd09080227ed41e808a594bbb41fc5650c116280505d9f11240f92d4259a"},
+		{"graph", got.Graph, 3399, "b6e4debc37445eb88457c7833eb2c226137a4a80fb9cb14f41daca83a405fe33"},
 	} {
 		if row.got.Digest != successionLiteralID(t, row.digest) || row.got.Length != row.length || row.got.Count != 1 {
 			t.Fatalf("%s differs from fixed descriptor: %+v", row.name, row.got)
 		}
 	}
-	if got.RequestIdentityDigest != successionLiteralID(t, "9e225438d55abc77d83fde988ad465c7fcc801f6a36de8c45c2885d6d9672317") {
+	if got.RequestIdentityDigest != successionLiteralID(t, "bee9435ac0ee97b26821ef352c7b8db82dc9f8e2ed4ba7edac4ffe3910c0589b") {
 		t.Fatal("request identity differs from fixed literal")
 	}
 }

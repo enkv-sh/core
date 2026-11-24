@@ -470,8 +470,8 @@ func TestGeneratedFailedFinalReceiptCommitsCanonicalRelatedOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal("derive exact terminal Final", err)
 	}
-	wantEffects := []string{"bb42252be043bd03f20b79f5923a00bed57c9b4aa99ffaee42bbc08d7442083d", "7d0cefd00513938ce7b9b8bad2218e4ec1dfa87d635d433244f13c48ca156b2d", "2e38edba47ef402490549cf23b7a43fbba3a9bd9484bd08a7db8a074b9f18dc1"}
-	wantHazards := []string{"12d10c2ed4d0a9f86aec1eea1c5bb5f8bb9d5cdc35d824ba3b2dc56ff3f325a7", "1506573557759099d005b0b00ec41bad5d393f56481cfd12eba201c942998c77", "696829b243b55f0ee850015cfc7c7831d28f682a539398d6e98a70e57f976d4e"}
+	wantEffects := []string{"29a0daa35e8e40627c3a1ea637fc305dedc194ce8c755218c67543a6adf81d3d", "c9a7e925215bd79348a8912dac4b5da82bd8bf1188bbb1b2a632fdfcd9f54175", "1a3293baaa7d447689d4122cb4853ef338115a6e67c0f949260f4cb3854b8837"}
+	wantHazards := []string{"507bc3b7fd77959f6deeef3fedd65d3712e8a746c5c6d28f51c732ce38e9719d", "ae130684b606f302fb4ac1473e43b0ae9851ba09309ebfe27e378c0b1d3c9257", "d3b0c739755fb3e3b9c0469531b7398e871e7e6ef6cbdf5de7bc498ab8463ee8"}
 	selectedRows := proposal.state.supportRecords()
 	var rows []contract.SupportRecord
 	for _, id := range wantHazards {
@@ -541,8 +541,8 @@ func TestGeneratedFailedFinalReceiptCommitsCanonicalDutyOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal("derive exact terminal Final", err)
 	}
-	wantEffects := []string{"bb42252be043bd03f20b79f5923a00bed57c9b4aa99ffaee42bbc08d7442083d", "94cd36f977abb6e963f083a33b924c8176f8211113f963345e4d71c044205621", "2e38edba47ef402490549cf23b7a43fbba3a9bd9484bd08a7db8a074b9f18dc1"}
-	wantDuties := []string{"8577581f30ed66e3fb2d91ca432b6bf43c4481efaa5f873df5e5ad1e74be79d2", "912d243ecfd506dad7de0136c3499e25b62018481a2e297e4f477b7a30ef289b"}
+	wantEffects := []string{"29a0daa35e8e40627c3a1ea637fc305dedc194ce8c755218c67543a6adf81d3d", "c8afed166d9f5319bc5df80ea9ee8b2cbbb4703bdb5dba0c891f8352ae0a336d", "1a3293baaa7d447689d4122cb4853ef338115a6e67c0f949260f4cb3854b8837"}
+	wantDuties := []string{"0a20eff9dd823c1c61fbd54c6f8facc4d92c8a3a5e9381fbeb616fd526686a65", "c88749f9c96ab914893aef9e80bb52e90eec0afb3e76179e59b0004e19538dd0"}
 	selectedRows := proposal.state.supportRecords()
 	var rows []contract.SupportRecord
 	for _, id := range wantDuties {

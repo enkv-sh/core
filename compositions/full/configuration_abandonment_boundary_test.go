@@ -129,12 +129,13 @@ func abandonmentBoundaryRendered(t *testing.T, ctx context.Context, out Abandonm
 			t.Error("local invalid input escaped into public result")
 		}
 		if human {
-			at := strings.Index(text, "\nresult: ")
-			if at < 0 {
-				t.Error("human result record absent")
-				continue
+			p := out.Operation
+			if !strings.Contains(text, "abandon-plan: "+state+"\n") ||
+				!strings.Contains(text, "Operation: "+readerID(p.OperationID)+".\n") ||
+				(p.PreAdmission != nil && !strings.Contains(text, "Admission: "+p.PreAdmission.Stage+" / "+p.PreAdmission.Code+".\n")) {
+				t.Error("human abandonment refusal lost operation, state or admission reason")
 			}
-			text = text[at+len("\nresult: "):]
+			continue
 		}
 		var result struct {
 			Schema      string          `json:"schema"`

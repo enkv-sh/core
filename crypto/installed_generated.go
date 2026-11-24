@@ -185,7 +185,7 @@ func (c *GeneratedCustody) BindCandidate(ctx context.Context, input contract.Gen
 		return code
 	}
 	call.Checkpoint(telemetry.DiagnosticPrivateCustody, telemetry.DiagnosticReasonNone)
-	candidate := generatedCandidate{ActiveOwner: input.ActiveOwner, ActivePhase: input.ActivePhase, ActiveGraph: input.ActiveGraph, Subject: input.Subject, PublicState: input.PublicState, CurrentAccess: input.CurrentAccess, AccessRecords: input.AccessRecords, SupportRecords: input.SupportRecords, HeadCore: input.HeadCore, GrantWraps: input.GrantWraps, Conditional: input.Conditional, SourceProtections: input.SourceProtections, LiveSourceUses: input.LiveSourceUses, Registry: input.Registry}
+	candidate := generatedCandidate{ActiveOwner: input.ActiveOwner, ActivePhase: input.ActivePhase, ActiveGraph: input.ActiveGraph, Subject: input.Subject, PublicState: input.PublicState, CurrentAccess: input.CurrentAccess, AccessRecords: input.AccessRecords, SupportRecords: input.SupportRecords, HeadCore: input.HeadCore, GrantWraps: input.GrantWraps, Conditional: input.Conditional, SourceProtections: input.SourceProtections, LiveSourceUses: input.LiveSourceUses, Registry: input.Registry, UnchangedRegistry: input.UnchangedRegistry}
 	for _, row := range input.Entries {
 		candidate.Entries = append(candidate.Entries, generatedCandidateEntry(row))
 	}

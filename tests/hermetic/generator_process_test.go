@@ -333,7 +333,7 @@ func nativeGeneratedEntryPlan(t *testing.T, s *StateSession, attempt contract.ID
 		EntryIncarnationID: entryPlan.EntryIncarnationID, ValueStateID: identity.ValueStateID, OriginSnapshotID: identity.OriginSnapshotID,
 		OriginTransitionID: identity.OriginTransitionID, DataKeyID: identity.DataKeyID, DataKeyEpoch: 1,
 		CommitmentKeyID: identity.CommitmentKeyID, CommitmentKeyEpoch: 1, ContentLength: result.Payload.ContentLength,
-		ValueSource: contract.Generated, GeneratedBindingDigest: binding, InputEncoding: contract.InputEncodingRaw, RetainedLength: result.Payload.ContentLength}
+		ValueSource: contract.Generated, GeneratedBindingDigest: binding, InputEncoding: result.Payload.InputEncoding, RetainedLength: result.Payload.RetainedLength}
 	declaration, err := contract.InspectGeneratorDeclaration(input.Plan.Declaration)
 	if err != nil {
 		t.Fatal(err)
@@ -356,7 +356,7 @@ func nativeGeneratedEntryPlan(t *testing.T, s *StateSession, attempt contract.ID
 	}
 	return nativeGeneratedEntryFixture{request: q, phase: phase, reference: reference, input: input,
 		entryAdmission: custody.GeneratedEntryAdmission{Slot: entryPlan.Slot, Generated: meta},
-		plan: contract.CryptoGeneratedValueEntryPlan{Slot: entryPlan.Slot, Result: bytes.Clone(resultBody), ValueCore: value,
+		plan: contract.CryptoGeneratedValueEntryPlan{Slot: entryPlan.Slot, OutputEncoding: entryPlan.OutputEncoding, Result: bytes.Clone(resultBody), ValueCore: value,
 			Generated: meta, Recipients: recipients}}
 }
 

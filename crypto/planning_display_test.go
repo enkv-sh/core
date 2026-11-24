@@ -251,8 +251,8 @@ func TestPlanningDisplayBounds(t *testing.T) {
 		lengths []uint32
 		valid   bool
 	}{
-		{"none", nil, false}, {"empty", []uint32{0}, true}, {"maximum-value", []uint32{65536}, true}, {"oversized-value", []uint32{65537}, false}, {"maximum-count", make([]uint32, 512), true}, {"oversized-count", make([]uint32, 513), false},
-		{"maximum-total", slices.Repeat([]uint32{65536}, 128), true}, {"oversized-total", slices.Repeat([]uint32{65536}, 129), false},
+		{"none", nil, false}, {"empty", []uint32{0}, true}, {"maximum-value", []uint32{87384}, true}, {"oversized-value", []uint32{87385}, false}, {"maximum-count", make([]uint32, 512), true}, {"oversized-count", make([]uint32, 513), false},
+		{"maximum-total", append(slices.Repeat([]uint32{87384}, 128), 1024), true}, {"oversized-total", append(slices.Repeat([]uint32{87384}, 128), 1025), false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if planningDisplayBounds(tc.lengths) != tc.valid {

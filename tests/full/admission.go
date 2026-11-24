@@ -70,7 +70,7 @@ func WriteAdministrativeFixtureSource(t testing.TB, fixture installedarchive.Adm
 	generatedRecovery := map[string]any{"enabled": false}
 	if d.Recovery != nil {
 		recovery = map[string]any{"enabled": true, "signing_key": d.Recovery.Signing.KeySelector, "encryption_key": d.Recovery.KMS.KeySelector}
-		generatedRecovery = map[string]any{"enabled": true, "id": readerID(d.Recovery.RoleID), "signing": map[string]any{"selector": d.Recovery.Signing.KeySelector, "public_key": d.Recovery.Signing.SPKI}, "encryption": key(d.Recovery.KMS)}
+		generatedRecovery = map[string]any{"enabled": true, "signing": map[string]any{"selector": d.Recovery.Signing.KeySelector, "public_key": d.Recovery.Signing.SPKI}, "encryption": key(d.Recovery.KMS)}
 	}
 	a := fixture.Before.Archive
 	family := "aws"
@@ -81,7 +81,7 @@ func WriteAdministrativeFixtureSource(t testing.TB, fixture installedarchive.Adm
 	if a.Location.ExpectedOwner != "" {
 		store["expected_owner"] = a.Location.ExpectedOwner
 	}
-	generated := map[string]any{"schema": "enkv/generated/v1", "file_id": readerID(contract.Hash(append([]byte("administrative CLI fixture file"), d.DomainID[:]...))), "domain": map[string]any{"id": readerID(d.DomainID), "authority": generatedAuthority, "recovery": generatedRecovery}, "recipients": generatedRecipients, "secrets": map[string]any{}, "public_basis": map[string]any{"kind": "genesis", "descriptor": basis.Descriptor}}
+	generated := map[string]any{"schema": "enkv/generated/v2", "file_id": readerID(contract.Hash(append([]byte("administrative CLI fixture file"), d.DomainID[:]...))), "domain": map[string]any{"id": readerID(d.DomainID), "authority": generatedAuthority, "recovery": generatedRecovery}, "recipients": generatedRecipients, "secrets": map[string]any{}, "public_basis": map[string]any{"kind": "genesis", "descriptor": basis.Descriptor}}
 	body, err := json.Marshal(generated)
 	if err != nil {
 		t.Fatal(err)
@@ -93,7 +93,7 @@ func WriteAdministrativeFixtureSource(t testing.TB, fixture installedarchive.Adm
 	if err := os.WriteFile(filepath.Join(directory, reference), body, 0600); err != nil {
 		t.Fatal(err)
 	}
-	editable := map[string]any{"schema": "enkv/configuration/v2", "generated": reference, "domain": map[string]any{"name": "prod", "provider": family, "store": store, "authority": authority, "recovery": recovery}, "recipients": recipients, "entries": map[string]any{}, "outputs": map[string]any{"destinations": map[string]any{}, "routing": map[string]any{}}}
+	editable := map[string]any{"schema": "enkv/configuration/v3", "generated": reference, "domain": map[string]any{"name": "prod", "provider": family, "store": store, "authority": authority, "recovery": recovery}, "recipients": recipients, "entries": map[string]any{}, "outputs": map[string]any{"destinations": map[string]any{}, "routing": map[string]any{}}}
 	body, err = json.Marshal(editable)
 	if err != nil {
 		t.Fatal(err)

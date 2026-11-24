@@ -373,7 +373,7 @@ func publicationDisposalSizes(phase string, n int) publicationDisposalSize {
 	// Target: entry ID, five B(fields), three flags, four u32 bounds,
 	// and absent B(policy). Declaration includes one binding and no groups.
 	target := 32 + 5*4 + 3 + 17 + 11 + 28 + 18 + 3 + 4*4 + 4
-	declaration, routing := 4+15+32+destination+4+target+2, 6+65+4+11
+	declaration, routing := 4+15+32+destination+2+target+2, 5+33+4+11
 	configuration := 75 + 37 + 78 + declaration + 4 + routing
 	// Coordinate fixed fields648 include the variable-field length prefixes.
 	// The retained six public fields add11+28+17+18+29+16 bytes.
@@ -391,9 +391,9 @@ func publicationDisposalSizes(phase string, n int) publicationDisposalSize {
 	case "active_unknown":
 		markers, rows, index = markerPage, 3, 1560+37*n
 	case "retired_unknown":
-		configuration, markers, rows, index = 206, markerPage, 3, 1560+37*n
+		configuration, markers, rows, index = 75+37+78+15, markerPage, 3, 1560+37*n
 	case "coordinate_exit":
-		configuration, coordinate, rows, index = 206, 0, 1, 650+37*n
+		configuration, coordinate, rows, index = 75+37+78+15, 0, 1, 650+37*n
 	}
 	pages, support := rows, configuration+coordinate+markers
 	if n == 0 {
@@ -403,7 +403,8 @@ func publicationDisposalSizes(phase string, n int) publicationDisposalSize {
 		pages += 2
 		support += 75 + 508*n + 224 + 72*n
 	}
-	return publicationDisposalSize{rows: rows, pages: pages, children: pages + 3, support: uint64(support), index: uint64(index), bytes: uint64(1919 + support + index)}
+	// Each of the two entries also stores both encoding tags and two u32 lengths.
+	return publicationDisposalSize{rows: rows, pages: pages, children: pages + 3, support: uint64(support), index: uint64(index), bytes: uint64(1919 + 2*(2+2*4) + support + index)}
 }
 
 func publicationDisposalPhysical(t *testing.T, s *StateSession, phase string, n int) {
@@ -720,7 +721,7 @@ func publicationDisposalPreserved(t *testing.T, s *StateSession) contract.Digest
 	if err != nil {
 		t.Fatal("current access leaf", err)
 	}
-	b := binary.BigEndian.AppendUint16([]byte("ENKV/administrative-preserved-current/v1\x00"), 10)
+	b := binary.BigEndian.AppendUint16([]byte("ENKV/administrative-preserved-current/v1\x00"), 11)
 	b = append(b, s.root.Domain[:]...)
 	for _, page := range s.pages {
 		if page == nil {

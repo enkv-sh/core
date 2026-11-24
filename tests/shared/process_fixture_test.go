@@ -799,6 +799,14 @@ func assertFreshSelectedClosureReads(t testing.TB, descriptor contract.Descripto
 		}
 	}
 	for _, ref := range expected.Root.CurrentAccess.Core.AccessPageRefs {
+		// A selected grant stores its base page. HEAD supplies the wraps
+		// needed to reconstruct the logical access page at this index.
+		for _, base := range expected.Root.GrantPages {
+			if base.Index == ref.Index {
+				ref = base
+				break
+			}
+		}
 		add(ref)
 	}
 	allowedDuplicates := make(map[string]bool)

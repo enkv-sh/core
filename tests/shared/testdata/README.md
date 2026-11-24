@@ -6,8 +6,9 @@ The current contract tests read these schema-11 fixtures:
 |---|---|---|
 | `value-access-wire-schema11.json` | `TestValueAccessIndependentWireVectors`: value, payload, wrap and access bytes; accepted and refused encodings | `04ef51f2e515a25202a3c800bac0de0245fedabf327cf1355d9a7ceded456c05` |
 | `lifecycle-projections-schema11.json` | `TestLifecycleIndependentProjectionVectors`: comparison, membership, grant, exclusion and prepared-secret projections | `c253220bebee4282acf3f6fbbb88b0f602e949155693bf61e862752613153caf` |
-| `stored-closure-v11.json` | `TestIndependentStoredGenesisAndFirstSecretClosures`: empty genesis and first-secret closures with Recovery disabled and enabled | `d619ec197d4924c5c1adb2dc98147b3ca9acf741d02a00ea8ba1ece9dcc0b4fc` |
+| `stored-closure-v11.json` | `TestIndependentStoredGenesisAndFirstSecretClosures`: empty genesis and first-secret closures with Recovery disabled and enabled | `504e6f272a35b12834655285326a7321d52b28184dcbcb6cdaf6ebdcb5732f4e` |
 
+The stored-closure SHA-256 before the administrative revision update in 161e3f5 was `d619ec197d4924c5c1adb2dc98147b3ca9acf741d02a00ea8ba1ece9dcc0b4fc`.
 The stored-closure hash above is checked against the exact file bytes. Canonical
 records use schema 11; compact mutation receipts retain schema 3 and receipt
 indexes use schema 2. Output configuration uses schema 5 and routing schema 3.
@@ -39,12 +40,13 @@ fixed, self-contained source states and their exact hashes. They cover supplied
 secret/plain state in both Recovery modes, current and retiring generated work,
 active residue and final Hazards, and discarded-publication warnings.
 
-`TestPreservedSyntheticStatesColdReplay` reads these fixed bytes in a fresh
-process. It checks the captured image and separate case-authored semantic
-expectations, common receipt order and synthetic private consumption.
-`TestPreservedSyntheticStatesRefuseDamagedClosure` checks damaged HEAD/root
-refusal without writes. The observed image is not an independent semantic
-oracle. All private consumption uses fixed repository test keys and test values.
+The released beta.1 reader accepted these six states. They use HEAD revision
+11. With the original admission data, ordinary Open must return
+`AdmissionRefused / AdmissionInvalid` before its first Store read. With valid
+current admission data and the original envelope at HEAD, it must return
+`IntegrityFailure / InvalidFormat` after one read. Each case checks zero
+writes. `TestPreservedSyntheticStatesColdReplay` checks both paths for all six
+original files and verifies their original hashes.
 
 Keep these source bytes immutable. Do not regenerate them with a later producer
 to make a replay pass. Their provenance separates known capture inputs from
@@ -52,6 +54,22 @@ later replay-source observations and states the missing complete capture-time
 tree. They establish small synthetic replay, not migration, platform/cloud
 qualification or the identity of a released official plugin. Released source,
 build and required plugin-support identities have separate release ownership.
+
+The six files in `preservation-v14/` contain separate synthetic domains from
+the current writer with HEAD revision 12. Work 102 captured the same six
+named cases through the producer operations using repository test keys. Each
+case has its own fixed file hash. Normal tests only read these files.
+`TestPreservedSyntheticStatesColdReplay` opens them in a fresh process and
+checks the signed image, the case-authored expectations, receipt order and
+private consumption. `TestPreservedSyntheticStatesRefuseDamagedClosure` checks
+missing and changed HEAD and root for each case, including the refusal outcome
+and zero writes.
+
+Both current lineage cases retain the same 1,357-byte original result packet.
+Its SHA-256 is `6932381067d17c6eb6118fa90df553320837ac2de7275c1623844426e564803d`.
+The expected packet hash, attempt ID and inbox ID were checked independently
+against the captured bytes and object key. The separate current domains do
+not establish a migration from beta.1.
 
 ## Historical schema 10 derivation
 

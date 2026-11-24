@@ -413,7 +413,7 @@ func packagedGeneratedSequenceWithHandoff(t *testing.T, ctx context.Context, rec
 			fault.active = false
 			actualCreates, actualDeletes, served := creates-startCreates, len(deletes)-startDeletes, fault.served
 			lock.Unlock()
-			if served != len(fault.replies) || actualCreates != served || actualDeletes != 0 || len(entered)-startEntered != served {
+			if served != 1 || actualCreates != served || actualDeletes != 0 || len(entered)-startEntered != served {
 				t.Fatal("native recovery create call set differs", served, actualCreates, actualDeletes)
 			}
 			for _, executor := range entered[startEntered:] {
@@ -422,7 +422,7 @@ func packagedGeneratedSequenceWithHandoff(t *testing.T, ctx context.Context, rec
 				}
 			}
 			closed := f.open(t, ctx)
-			fault.checkWindow(t, ctx, f, observation, commands[len(commands)-1], firstHead)
+			fault.checkWindow(t, ctx, f, observation, commands[len(commands)-1], firstHead, result)
 			fault.checkCreate(t, ctx, f, observation.heads[firstHead:], selected, closed, result, current.Implementation)
 			f.selected = closed
 			return closed
@@ -493,7 +493,7 @@ func packagedGeneratedSequenceWithHandoff(t *testing.T, ctx context.Context, rec
 				t.Fatal("native recovery retirement call set differs", served, actualCreates, actualDeletes)
 			}
 			closed := f.open(t, ctx)
-			fault.checkWindow(t, ctx, f, observation, commands[len(commands)-1], firstHead)
+			fault.checkWindow(t, ctx, f, observation, commands[len(commands)-1], firstHead, result)
 			fault.checkRetirement(t, ctx, selected, closed, result, duty, wantExecutor)
 			f.selected = closed
 			return closed

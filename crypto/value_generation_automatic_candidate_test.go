@@ -24,6 +24,7 @@ func TestGeneratedAutomaticSelectionFreezesExactChangedDescriptors(t *testing.T)
 	oldA, oldB, newC := entry("a"), entry("b"), entry("c")
 	newA := oldA
 	newA.ValueBytes, newA.Recipients = []byte("after"), []contract.ID{id("new reader")}
+	newA.ContentLength, newA.RetainedLength = uint32(len(newA.ValueBytes)), uint32(len(newA.ValueBytes))
 	output := &contract.GeneratedOutputTransition{Before: contract.OutputConfiguration{Schema: contract.OutputConfigurationSchema, DomainID: domain}}
 	for slot, old := range []contract.ValueEntry{oldA, oldB} {
 		body, err := contract.EncodeValueEntry(old)

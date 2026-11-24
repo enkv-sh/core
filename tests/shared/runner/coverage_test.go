@@ -690,8 +690,11 @@ func setScenarioReconstructionFixture(result *scenarioResult, parent runRecord) 
 		case "required-public-denied":
 			outcome = installedarchive.RecoveryResult{Outcome: 6, Reason: 12}
 			refused = true
-		case "required-authority-denied", "recovery-key-only", "later-secret-denied", "wrong-kek-pin":
+		case "required-authority-denied", "recovery-key-only", "later-secret-denied":
 			outcome = installedarchive.RecoveryResult{Outcome: 6, Reason: 17}
+			refused = true
+		case "wrong-kek-pin":
+			outcome = installedarchive.RecoveryResult{Outcome: 8, Reason: 2}
 			refused = true
 		case "wrong-owner":
 			outcome = installedarchive.RecoveryResult{Outcome: 6, Reason: 8}

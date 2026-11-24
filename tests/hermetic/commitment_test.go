@@ -41,7 +41,7 @@ func TestUnionCommitmentGolden(t *testing.T) {
 	// Independently packed v6 vector: 70-byte header, two (6+name)-byte
 	// row headers, and four 100-byte sides. Each side contains a v6 public
 	// member digest, itself derived from the fixed ValueEntry fields above.
-	if union.Length != 488 || union.Count != 2 || changed != 2 || len(grants) != 0 || len(exclusions) != 0 || hex.EncodeToString(union.Digest[:]) != "dae130c91cfbec6f24825542b3740cb61f206fba2a6bc34272313d72f4280ccc" {
+	if union.Length != 488 || union.Count != 2 || changed != 2 || len(grants) != 0 || len(exclusions) != 0 || hex.EncodeToString(union.Digest[:]) != "eadf498738c884552702a4a48b63412b194249b99404ff1bce3d4d8a8386426c" {
 		t.Fatalf("union commitment changed: %+v changed=%d", union, changed)
 	}
 }

@@ -17,36 +17,50 @@ import (
 
 // full_only: false
 func TestPublicOutputRecoveryPairRequiresCanonicalUnselectedOutputContracts(t *testing.T) {
-	// Independently framed Binding/v1: cloud, config/service/settings, empty
-	// policy, six action bits, and zero target and encoding counts.
-	const source = `{"outputs":{"destinations":{"cloud":{"plugin":null,"canonical":{"binding_base64":"AAEAAAAFY2xvdWQAAAA2AAAAEWZpeHR1cmUvY29uZmlnL3YxAAAAEmZpeHR1cmUvc2VydmljZS92MQAAAAJ7fQAAAAA/AAAAAA=="}}}}}`
-	for _, change := range []struct{ name, before, after string }{
-		{"none", "", ""},
-		{"plugin", `"plugin":null`, `"plugin":"local-available"`},
-		{"missing-plugin", `"plugin":null,`, ``},
-		{"missing-binding", `"binding_base64":`, `"other":`},
-		{"binding-name", `"cloud":`, `"other":`},
-		{"malformed-binding", `AAEAAAAF`, `AAIAAAAF`},
-		{"extra-source-field", `"plugin":null`, `"plugin":null,"settings":{}`},
-		{"duplicate-source-field", `"plugin":null`, `"plugin":null,"plugin":null`},
+	// Independently framed Binding/v2: cloud, config/service/settings, empty
+	// policy, six action bits, and a zero target count.
+	const source = `{"generated":"generated.json","outputs":{"destinations":{"cloud":{"plugin":null,"canonical":{"settings":{}}}}}}`
+	const generated = `{"canonical_records":{"generators":{},"outputs":{"cloud":"AAIAAAAFY2xvdWQAAAA2AAAAEWZpeHR1cmUvY29uZmlnL3YxAAAAEmZpeHR1cmUvc2VydmljZS92MQAAAAJ7fQAAAAA/AAA="}}}`
+	for _, change := range []struct{ name, file, before, after string }{
+		{"none", "", "", ""},
+		{"plugin", "source", `"plugin":null`, `"plugin":"local-available"`},
+		{"missing-plugin", "source", `"plugin":null,`, ``},
+		{"missing-binding", "generated", `"outputs":`, `"other":`},
+		{"binding-name", "generated", `"cloud":`, `"other":`},
+		{"malformed-binding", "generated", `AAIAAAAF`, `AAEAAAAF`},
+		{"extra-source-field", "source", `"plugin":null`, `"plugin":null,"settings":{}`},
+		{"duplicate-source-field", "source", `"plugin":null`, `"plugin":null,"plugin":null`},
+		{"changed-settings", "source", `"settings":{}`, `"settings":{"name":"other"}`},
+		{"missing-companion", "source", `"generated.json"`, `"other.json"`},
 	} {
 		t.Run(change.name, func(t *testing.T) {
-			body := []byte(source)
-			if change.name != "none" {
-				body = bytes.Replace(body, []byte(change.before), []byte(change.after), 1)
+			files := []PublicOutputRecoveryPairFile{{Path: "configuration.json", Data: []byte(source)}, {Path: "generated.json", Data: []byte(generated)}}
+			if change.file != "" {
+				at := 0
+				if change.file == "generated" {
+					at = 1
+				}
+				original := files[at].Data
+				files[at].Data = bytes.Replace(original, []byte(change.before), []byte(change.after), 1)
+				if bytes.Equal(original, files[at].Data) {
+					t.Fatal("fixture mutation missed its field")
+				}
 			}
-			pair := PublicOutputRecoveryPair{Files: []PublicOutputRecoveryPairFile{{Path: "configuration.json", Data: body}}}
+			pair := PublicOutputRecoveryPair{Files: files}
 			contracts, err := pair.OutputContracts()
 			if change.name == "none" {
 				if err != nil || len(contracts) != 1 || contracts[0] != "fixture/config/v1" {
 					t.Fatal("canonical pair lost its exact output contract", contracts, err)
 				}
-			} else if bytes.Equal(body, []byte(source)) || err == nil {
-				t.Fatal("unselected canonical output contract accepted damaged source")
+			} else if err == nil {
+				t.Fatal("unselected canonical output contract accepted damaged pair")
 			}
 		})
 	}
-	pair := PublicOutputRecoveryPair{Files: []PublicOutputRecoveryPairFile{{Path: "configuration.json", Data: []byte(`{"outputs":{"destinations":{}}}`)}}}
+	pair := PublicOutputRecoveryPair{Files: []PublicOutputRecoveryPairFile{
+		{Path: "configuration.json", Data: []byte(`{"generated":"generated.json","outputs":{"destinations":{}}}`)},
+		{Path: "generated.json", Data: []byte(`{}`)},
+	}}
 	if contracts, err := pair.OutputContracts(); err != nil || contracts == nil || len(contracts) != 0 {
 		t.Fatal("empty canonical output set was refused", contracts, err)
 	}

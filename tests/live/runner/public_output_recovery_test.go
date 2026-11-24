@@ -264,22 +264,38 @@ func TestPublicOutputRecoveryPrepareRequiresAuthenticatedDependencies(t *testing
 		{Destination: contract.OutputDestination{ConfigContractID: "github-actions/repository-config/v1"}},
 	}}
 	proof := records.PublicOutputRecoveryProof{Domain: contract.ID{1}, HeadSHA256: strings.Repeat("2", 64)}
-	// Independently framed Binding/v1: destination name, config/service/settings,
-	// empty policy, six action bits, and zero target and encoding counts.
-	const source = `{"generated":".enkv/cleanup.generated.json","outputs":{"destinations":{"cloud":{"plugin":null,"canonical":{"binding_base64":"AAEAAAAFY2xvdWQAAABOAAAAKUVOS1YvT1VUUFVUL0FXUy1TRUNSRVRTLU1BTkFHRVIvQ09ORklHL3YxAAAAEmZpeHR1cmUvc2VydmljZS92MQAAAAJ7fQAAAAA/AAAAAA=="}},"github":{"plugin":null,"canonical":{"binding_base64":"AAEAAAAGZ2l0aHViAAAASAAAACNnaXRodWItYWN0aW9ucy9yZXBvc2l0b3J5LWNvbmZpZy92MQAAABJmaXh0dXJlL3NlcnZpY2UvdjEAAAACe30AAAAAPwAAAAA="}}}}}`
+	// Independently framed Binding/v2: destination name, config/service/settings,
+	// empty policy, six action bits, and a zero target count.
+	const source = `{"generated":".enkv/cleanup.generated.json","outputs":{"destinations":{"cloud":{"plugin":null,"canonical":{"settings":{}}},"github":{"plugin":null,"canonical":{"settings":{}}}}}}`
+	const generated = `{"canonical_records":{"generators":{},"outputs":{"cloud":"AAIAAAAFY2xvdWQAAABOAAAAKUVOS1YvT1VUUFVUL0FXUy1TRUNSRVRTLU1BTkFHRVIvQ09ORklHL3YxAAAAEmZpeHR1cmUvc2VydmljZS92MQAAAAJ7fQAAAAA/AAA=","github":"AAIAAAAGZ2l0aHViAAAASAAAACNnaXRodWItYWN0aW9ucy9yZXBvc2l0b3J5LWNvbmZpZy92MQAAABJmaXh0dXJlL3NlcnZpY2UvdjEAAAACe30AAAAAPwAA"}}}`
 	pair := records.PublicOutputRecoveryPair{Source: "/recovery/configuration.json", Files: []records.PublicOutputRecoveryPairFile{
 		{Path: "configuration.json", Data: []byte(source), SHA256: strings.Repeat("3", 64)},
-		{Path: ".enkv/cleanup.generated.json", SHA256: strings.Repeat("4", 64)},
+		{Path: ".enkv/cleanup.generated.json", SHA256: strings.Repeat("4", 64), Data: []byte(generated)},
 	}}
-	body := []byte(`{"schema":"enkv/prepare-result/v2","operation":"prepare","request_id":"1111111111111111111111111111111111111111111111111111111111111111","branch":"reconstruction","recovery":{"status":"complete","domain":"0100000000000000000000000000000000000000000000000000000000000000","head":"2222222222222222222222222222222222222222222222222222222222222222"},"local_delivery":{"outcome":"recorded","editable_path":"/recovery/configuration.json","generated_path":"/recovery/.enkv/cleanup.generated.json","cleanup_failed":false,"readback":{"editable_digest":"3333333333333333333333333333333333333333333333333333333333333333","generated_digest":"4444444444444444444444444444444444444444444444444444444444444444"}},"dependencies":{"assessment":"complete","minimum_administrative_ready":true,"all_declared_ready":false,"requirements":[{"role":"output","plugin":null,"contract":"ENKV/OUTPUT/AWS-SECRETS-MANAGER/CONFIG/v1","protocol_version":4,"artifact":null,"status":"missing","reason":"not-installed"},{"role":"output","plugin":null,"contract":"github-actions/repository-config/v1","protocol_version":4,"artifact":null,"status":"missing","reason":"not-installed"}],"installations":[]},"diagnostics":[{"reason":"dependency-missing","subject":"dependencies"}],"outcome":"incomplete"}`)
+	body := []byte(`{"schema":"enkv/prepare-result/v2","operation":"prepare","request_id":"1111111111111111111111111111111111111111111111111111111111111111","branch":"reconstruction","recovery":{"status":"complete","domain":"0100000000000000000000000000000000000000000000000000000000000000","head":"2222222222222222222222222222222222222222222222222222222222222222"},"local_delivery":{"outcome":"recorded","editable_path":"/recovery/configuration.json","generated_path":"/recovery/.enkv/cleanup.generated.json","cleanup_failed":false,"readback":{"editable_digest":"3333333333333333333333333333333333333333333333333333333333333333","generated_digest":"4444444444444444444444444444444444444444444444444444444444444444"}},"dependencies":{"assessment":"complete","minimum_administrative_ready":true,"all_declared_ready":false,"requirements":[{"role":"output","subjects":[0],"plugin":null,"contract":"ENKV/OUTPUT/AWS-SECRETS-MANAGER/CONFIG/v1","protocol_version":6,"artifact":null,"status":"missing","reason":"selection-required"},{"role":"output","subjects":[1],"plugin":null,"contract":"github-actions/repository-config/v1","protocol_version":6,"artifact":null,"status":"missing","reason":"selection-required"}],"installations":[],"settings_failure":null},"missing_inputs":[],"diagnostics":[{"reason":"dependency-missing","subject":"dependencies"}],"outcome":"incomplete"}`)
 	if _, ok := publicOutputRecoveryPreparedMatches(publicChildResult{Code: 2, Body: body}, configuration, proof, pair); !ok {
 		t.Fatal("recovery prepare refused exact delivered state with unselected output dependencies")
+	}
+	changedCompanion := pair
+	changedCompanion.Files = slices.Clone(pair.Files)
+	changedCompanion.Files[1].Data = []byte(strings.Replace(generated, "AAIAAAAFY2xvdWQAAABOAAAAKUVOS1YvT1VUUFVUL0FXUy1TRUNSRVRTLU1BTkFHRVIvQ09ORklHL3YxAAAAEmZpeHR1cmUvc2VydmljZS92MQAAAAJ7fQAAAAA/AAA=", "AAIAAAAFY2xvdWQAAAA2AAAAEWZpeHR1cmUvY29uZmlnL3YxAAAAEmZpeHR1cmUvc2VydmljZS92MQAAAAJ7fQAAAAA/AAA=", 1))
+	if _, ok := publicOutputRecoveryPreparedMatches(publicChildResult{Code: 2, Body: body}, configuration, proof, changedCompanion); ok {
+		t.Fatal("recovery prepare accepted a different output contract from its companion")
+	}
+	reordered := pair
+	reordered.Files = slices.Clone(pair.Files)
+	reordered.Files[0].Data = []byte(`{"generated":".enkv/cleanup.generated.json","outputs":{"destinations":{"github":{"plugin":null,"canonical":{"settings":{}}},"cloud":{"plugin":null,"canonical":{"settings":{}}}}}}`)
+	swapped := strings.NewReplacer(`"subjects":[0]`, `"subjects":[1]`, `"subjects":[1]`, `"subjects":[0]`).Replace(string(body))
+	if _, ok := publicOutputRecoveryPreparedMatches(publicChildResult{Code: 2, Body: []byte(swapped)}, configuration, proof, reordered); !ok {
+		t.Fatal("recovery prepare lost destination source order")
+	}
+	if _, ok := publicOutputRecoveryPreparedMatches(publicChildResult{Code: 2, Body: body}, configuration, proof, reordered); ok {
+		t.Fatal("recovery prepare accepted indices from another source order")
 	}
 	for name, changedSource := range map[string]string{
 		"missing-destinations": `{"generated":".enkv/cleanup.generated.json"}`,
 		"empty-destinations":   `{"generated":".enkv/cleanup.generated.json","outputs":{"destinations":{}}}`,
 		"selected-plugin":      strings.Replace(source, `"plugin":null`, `"plugin":"installed"`, 1),
-		"different-contract":   strings.Replace(source, "AAEAAAAFY2xvdWQAAABOAAAAKUVOS1YvT1VUUFVUL0FXUy1TRUNSRVRTLU1BTkFHRVIvQ09ORklHL3YxAAAAEmZpeHR1cmUvc2VydmljZS92MQAAAAJ7fQAAAAA/AAAAAA==", "AAEAAAAFY2xvdWQAAAA2AAAAEWZpeHR1cmUvY29uZmlnL3YxAAAAEmZpeHR1cmUvc2VydmljZS92MQAAAAJ7fQAAAAA/AAAAAA==", 1),
 	} {
 		t.Run(name, func(t *testing.T) {
 			changed := pair
@@ -310,13 +326,17 @@ func TestPublicOutputRecoveryPrepareRequiresAuthenticatedDependencies(t *testing
 		{"role", `"role":"output"`, `"role":"generator"`},
 		{"contract", `"contract":"ENKV/OUTPUT/AWS-SECRETS-MANAGER/CONFIG/v1"`, `"contract":"undeclared/config/v1"`},
 		{"duplicate-contract", `"contract":"github-actions/repository-config/v1"`, `"contract":"ENKV/OUTPUT/AWS-SECRETS-MANAGER/CONFIG/v1"`},
-		{"protocol", `"protocol_version":4`, `"protocol_version":3`},
+		{"protocol", `"protocol_version":6`, `"protocol_version":4`},
 		{"plugin", `"plugin":null`, `"plugin":"local-available"`},
+		{"wrong-subject", `"subjects":[0]`, `"subjects":[1]`},
+		{"missing-subjects", `"subjects":[0],`, ``},
+		{"missing-inputs", `"missing_inputs":[],`, ``},
+		{"missing-settings-failure", `,"settings_failure":null`, ``},
 		{"missing-plugin", `"plugin":null,`, ``},
 		{"artifact", `"artifact":null`, `"artifact":"installed-artifact"`},
 		{"missing-artifact", `"artifact":null,`, ``},
 		{"status", `"status":"missing"`, `"status":"verified"`},
-		{"reason", `"reason":"not-installed"`, `"reason":"unavailable"`},
+		{"reason", `"reason":"selection-required"`, `"reason":"unavailable"`},
 		{"installations", `"installations":[]`, `"installations":[{}]`},
 		{"null-installations", `"installations":[]`, `"installations":null`},
 		{"diagnostic", `"reason":"dependency-missing"`, `"reason":"contention"`},
@@ -347,6 +367,7 @@ func TestPublicOutputRecoveryPrepareRequiresAuthenticatedDependencies(t *testing
 	zeroPair := pair
 	zeroPair.Files = slices.Clone(pair.Files)
 	zeroPair.Files[0].Data = []byte(`{"generated":".enkv/cleanup.generated.json","outputs":{"destinations":{}}}`)
+	zeroPair.Files[1].Data = []byte(`{}`)
 	if _, ok := publicOutputRecoveryPreparedMatches(publicChildResult{Body: zero}, contract.OutputConfiguration{}, proof, zeroPair); !ok {
 		t.Fatal("dependency-free reconstruction was refused")
 	}
@@ -578,7 +599,7 @@ func TestPublicOutputRecoveryPreservesOriginalCaptureOwner(t *testing.T) {
 // full_only: false
 func TestPublicOutputCurrentStateRequiresCompletePublicationRelation(t *testing.T) {
 	domain := contract.ID{1}
-	configuration, err := contract.EncodeOutputConfiguration(contract.OutputConfiguration{Schema: 4, DomainID: domain})
+	configuration, err := contract.EncodeOutputConfiguration(contract.OutputConfiguration{Schema: contract.OutputConfigurationSchema, DomainID: domain})
 	if err != nil {
 		t.Fatal("empty selected output configuration unavailable", err)
 	}
@@ -629,7 +650,7 @@ func TestPublicOutputCurrentStateRequiresCompletePublicationRelation(t *testing.
 		defer func() { refusal = recover() }()
 		publicSelectedOutputs(recoveryCustodyRefusalTB{TB: t}, t.Context(), selected)
 	}()
-	if _, ok := refusal.(recoveryCustodyRefusal); !ok {
+	if refusal != recoveryCustodyRefusal("public output complete publication relation unavailable") {
 		t.Fatal("output discovery accepted individually valid rows without complete publication ownership", refusal)
 	}
 }

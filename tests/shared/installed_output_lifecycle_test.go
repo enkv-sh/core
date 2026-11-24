@@ -217,6 +217,43 @@ func TestInstalledOutputMetadataPreservesUnresolvedPublication(t *testing.T) {
 	}
 }
 
+func assertRetirementPreservesOutput(t testing.TB, selected *StateSession, want contract.OutputConfiguration, q contract.CryptoCompareRequest, witness *contract.GeneratedSupportTransition) {
+	t.Helper()
+	ref, err := contract.AppendRef(nil, selected.head.Core.Root, contract.CanonicalSchema)
+	if err != nil || !bytes.Equal(q.Context.PredecessorRootRef[:], ref) || q.Context.PredecessorHEADDigest != contract.Hash(selected.body) || witness == nil || witness.BeforeRootDigest != selected.head.Core.Root.Digest || witness.Output != nil || len(witness.Handoffs) != 0 {
+		t.Fatal("retirement must bind the selected root and grant no output transition")
+	}
+	image, err := contract.EncodeOutputConfiguration(want)
+	if err != nil {
+		t.Fatal("expected shared configuration is invalid", err)
+	}
+	descriptor, parts, err := contract.SplitOutputConfiguration(selected.root.Domain, image)
+	if err != nil || descriptor != selected.root.OutputConfiguration {
+		t.Fatal("retirement predecessor changed the shared output configuration", err)
+	}
+	var facts []contract.SupportRecordDigest
+	for _, fact := range witness.RecordFacts {
+		if fact.Kind() == contract.OutputConfigurationSliceSupportKind {
+			facts = append(facts, fact)
+		}
+	}
+	if len(facts) != len(parts) {
+		t.Fatal("retirement changed the number of output slices before custody", len(facts), len(parts))
+	}
+	for _, part := range parts {
+		body, err := contract.EncodeOutputConfigurationSlice(part)
+		if err != nil {
+			t.Fatal(err)
+		}
+		id, err := contract.OutputConfigurationSliceID(selected.root.Domain, descriptor.ConfigurationDigest, part.SliceIndex)
+		if err != nil || !slices.ContainsFunc(facts, func(fact contract.SupportRecordDigest) bool {
+			return fact.RecordID() == id && fact.BodyLength() == uint32(len(body)) && fact.BodyDigest() == contract.Hash(body)
+		}) {
+			t.Fatal("retirement changed an output slice before custody", part.SliceIndex)
+		}
+	}
+}
+
 // full_only: false
 func TestInstalledRetirementBindsSharedOutputBeforeCustody(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
@@ -245,17 +282,15 @@ func TestInstalledRetirementBindsSharedOutputBeforeCustody(t *testing.T) {
 	called := 0
 	installation.AdmitCustody = func(ctx context.Context, q contract.CryptoCompareRequest, control contract.ControlCore, registry []contract.RecipientRecord, slot uint16, plain []contract.MembershipRow, support contract.DescriptorVector, witness *contract.GeneratedSupportTransition, revision contract.ID, windows contract.MutationReceiptWindows, warnings uint8, deadline time.Time) (*InstalledApplyCustody, error) {
 		called++
-		if witness == nil || witness.Output == nil || len(witness.Handoffs) != 0 || !reflect.DeepEqual(witness.Output.Before, before) || witness.Output.BeforeDescriptor != selected.root.OutputConfiguration {
-			t.Fatal("shared output was not bound before custody")
-		}
-		bindings := []contract.NormalOutputBinding{
-			{DestinationID: "reader", Destination: before.Bindings[0].Destination, Targets: []contract.NormalOutputTarget{{Name: "secret", Target: encoded.target}}},
-			{DestinationID: "stable", Destination: before.Bindings[1].Destination, Targets: []contract.NormalOutputTarget{{Name: "secret", Target: stable.target}}},
-		}
-		routes := []contract.NormalOutputRoute{{Name: "secret", Destinations: []string{"reader", "stable"}}, {Default: true, Destinations: nil}}
-		if !reflect.DeepEqual(witness.Output.Bindings, bindings) || !reflect.DeepEqual(witness.Output.Routes, routes) || !reflect.DeepEqual(witness.Output.Groups, [][]string{{"secret"}}) {
-			t.Fatal("pre-custody witness changed the complete shared output")
-		}
+		incarnation := selected.valueEntry(selected.root.Names[0].Slot).Incarnation
+		want := before
+		want.Bindings = slices.Clone(before.Bindings)
+		encoded.target.EntryIncarnationID, stable.target.EntryIncarnationID = incarnation, incarnation
+		want.Bindings[0].DestinationID, want.Bindings[0].Targets = "reader", []contract.OutputTarget{encoded.target}
+		want.Bindings[1].DestinationID, want.Bindings[1].Targets = "stable", []contract.OutputTarget{stable.target}
+		want.Routes = []contract.OutputRoute{{EntryIncarnationID: incarnation, Destinations: []string{"reader", "stable"}}}
+		want.DefaultDestinations, want.Groups = nil, [][]contract.ID{{incarnation}}
+		assertRetirementPreservesOutput(t, selected, want, q, witness)
 		return admit(ctx, q, control, registry, slot, plain, support, witness, revision, windows, warnings, deadline)
 	}
 	engine, err := NewInstalledRecipientRetirement(installation)
@@ -341,9 +376,16 @@ func TestInstalledRetirementPreservesDefaultAgainstProposedRegistry(t *testing.T
 				admit := installation.AdmitCustody
 				installation.AdmitCustody = func(ctx context.Context, q contract.CryptoCompareRequest, control contract.ControlCore, registry []contract.RecipientRecord, slot uint16, plain []contract.MembershipRow, support contract.DescriptorVector, witness *contract.GeneratedSupportTransition, revision contract.ID, windows contract.MutationReceiptWindows, warnings uint8, deadline time.Time) (*InstalledApplyCustody, error) {
 					called++
-					if witness == nil || witness.Output == nil || len(witness.Handoffs) != 0 || !reflect.DeepEqual(witness.Output.Before, before) || !reflect.DeepEqual(witness.Output.Routes, []contract.NormalOutputRoute{{Name: "secret", Destinations: []string{"app"}}, {Default: true, Destinations: []string{"app"}}}) || len(witness.Output.Bindings) != 1 || len(witness.Output.Bindings[0].Targets) != 1 || !reflect.DeepEqual(witness.Output.Bindings[0].Targets[0].Target, target.target) {
-						t.Fatal("retirement did not preserve the exact default before custody")
+					if len(before.Bindings) != 1 {
+						t.Fatal("default fixture requires one binding")
 					}
+					expected := before
+					expected.Bindings = slices.Clone(before.Bindings)
+					target.target.EntryIncarnationID = beforeEntry.Incarnation
+					expected.Bindings[0].DestinationID, expected.Bindings[0].Targets = "app", []contract.OutputTarget{target.target}
+					expected.Routes = []contract.OutputRoute{{EntryIncarnationID: beforeEntry.Incarnation, Destinations: []string{"app"}}}
+					expected.DefaultDestinations = []string{"app"}
+					assertRetirementPreservesOutput(t, selected, expected, q, witness)
 					return admit(ctx, q, control, registry, slot, plain, support, witness, revision, windows, warnings, deadline)
 				}
 				engine, err := NewInstalledRecipientRetirement(installation)

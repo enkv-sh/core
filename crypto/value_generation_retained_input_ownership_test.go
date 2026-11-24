@@ -46,8 +46,8 @@ func TestGeneratedCanonicalAdmissionDoesNotRetainBorrowedOwnerRows(t *testing.T)
 // full_only: false
 func TestGeneratedRetainedInput64BitLayouts(t *testing.T) {
 	// These widths pin the per-producer typed-element envelope:
-	// 512*(392+864+1888+24+48+208+56)+4096*32+512*257*136+
-	// 257*(192+32)+512*(64+152+488)+32*108+8224*104 = 21,085,024.
+	// 512*(400+872+1912+24+48+208+56)+4096*32+512*257*136+
+	// 257*(192+32)+512*(64+152+488)+32*108+8224*104 = 21,105,504.
 	// This excludes slice growth/rounding, maps, outer owners and host work;
 	// it deliberately overcounts mutually exclusive source/current fields.
 	// Canonical owner validation now retains no vector, header or map.
@@ -58,10 +58,10 @@ func TestGeneratedRetainedInput64BitLayouts(t *testing.T) {
 		name      string
 		got, want uintptr
 	}{
-		{"source", unsafe.Sizeof(generatedSource{}), 392},
-		{"canonical source", unsafe.Sizeof(generatedCanonicalSource{}), 864},
+		{"source", unsafe.Sizeof(generatedSource{}), 400},
+		{"canonical source", unsafe.Sizeof(generatedCanonicalSource{}), 872},
 		{"owner facts", unsafe.Sizeof(generatedCanonicalOwnerFacts{}), 64},
-		{"consumer selection", unsafe.Sizeof(contract.ConsumerSelection{}), 1888},
+		{"consumer selection", unsafe.Sizeof(contract.ConsumerSelection{}), 1912},
 		{"KMS binding", unsafe.Sizeof(contract.KMSBinding{}), 152},
 		{"binding table row", unsafe.Sizeof(contract.BindingTableRow{}), 192},
 		{"wrap row", unsafe.Sizeof(contract.WrapRow{}), 136},

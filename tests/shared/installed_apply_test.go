@@ -44,7 +44,7 @@ func TestInstalledSuppliedApplyPreservesInitializationReceiptSupport(t *testing.
 	if err != nil || len(before.Successes) != 1 {
 		t.Fatal("initial receipt support missing", err)
 	}
-	input := []ApplyEntryInput{{Name: "alpha", Recipients: []contract.ID{control.AuthorityRecipientID}, ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, InputBytes: []byte("plain")}}
+	input := []ApplyEntryInput{{Name: "alpha", Recipients: []contract.ID{control.AuthorityRecipientID}, ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain, InputBytes: []byte("plain")}}
 	validator := NewPublicConfigurationValidator(nil)
 	configuration := installedApplyTestConfiguration(t, ctx, selected, input, currentApplyRecipients(selected.registry()), validator)
 	var privateCalls int
@@ -349,7 +349,7 @@ func TestInstalledApplyNoopReturnsFreshAuthenticatedObservationIdentity(t *testi
 	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
 	f := newInstalledApplyTestFixture(t, ctx, contract.AWS, false)
-	input := []ApplyEntryInput{{Name: "plain", Recipients: []contract.ID{f.selected.admission.recipient}, ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, InputBytes: []byte("complete unchanged requested set")}}
+	input := []ApplyEntryInput{{Name: "plain", Recipients: []contract.ID{f.selected.admission.recipient}, ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain, InputBytes: []byte("complete unchanged requested set")}}
 	first := f.engine(t, f.selected, input, nil)
 	changed := first.Apply(ctx, fixtureID(f.env.Domain, "no-work baseline"), input)
 	first.Close()

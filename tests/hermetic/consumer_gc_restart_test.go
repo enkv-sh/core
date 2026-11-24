@@ -56,13 +56,8 @@ func TestConsumerSelectionRestartsAfterUnreadChildLossAndChangedHEAD(t *testing.
 		before.Revision == want.Revision || bytes.Equal(f.session.body, wantHEAD) {
 		t.Fatal("fixture has no distinct selected image and unread child")
 	}
-	configKey, err := contract.StoreConfigurationKeyForID(store.desc.Family, store.desc.Prefix, env.Domain, store.desc.Identity)
-	if err != nil {
-		t.Fatal(err)
-	}
 	wantReads := []processStoreRequest{
 		{Method: "read", Key: store.desc.HeadKey, Maximum: contract.MaxHeadLength},
-		{Method: "read", Key: configKey, Maximum: contract.MaxStoreConfigurationLength},
 		{Method: "read", Key: oldRoot, Maximum: before.RootRef.Length},
 		{Method: "read", Key: store.desc.HeadKey, Maximum: contract.MaxHeadLength},
 		{Method: "read", Key: oldChild, Maximum: before.Root.ValueEntryPages[0].Length},
@@ -84,7 +79,7 @@ func TestConsumerSelectionRestartsAfterUnreadChildLossAndChangedHEAD(t *testing.
 			return
 		}
 		advanceEntered++
-		if advanceEntered != 1 || read.Status != contract.ReadOK || !bytes.Equal(read.Body, f.session.body) || len(source.reads) != 4 {
+		if advanceEntered != 1 || read.Status != contract.ReadOK || !bytes.Equal(read.Body, f.session.body) || len(source.reads) != 3 {
 			t.Fatal("writer did not enter after the exact old root read")
 		}
 		selected := f.session.Select(ctx, candidate)
@@ -139,7 +134,7 @@ func TestConsumerSelectionRestartsAfterUnreadChildLossAndChangedHEAD(t *testing.
 	if !reflect.DeepEqual(selection, wantSelection) {
 		t.Fatal("consumer returned an old or mixed selection after unread child loss")
 	}
-	if !reflect.DeepEqual(source.reads, wantReads) || source.statuses[4] != contract.ReadMissing {
+	if !reflect.DeepEqual(source.reads, wantReads) || source.statuses[3] != contract.ReadMissing {
 		t.Fatal("consumer did not reuse one changed-HEAD gate for one complete replacement image")
 	}
 }

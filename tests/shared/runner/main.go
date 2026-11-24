@@ -48,7 +48,7 @@ func admitTestExecution(ctx context.Context, exclusive bool) (context.Context, e
 }
 
 func runMain() (status int) {
-	channel, err := inheritedRootChannel()
+	channel, err := inheritedRootChannel(3, 4)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1

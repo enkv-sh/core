@@ -153,7 +153,7 @@ func TestGeneratedCleanCapacityChargesCompleteEncodedGraph(t *testing.T) {
 			// the production length and capacity helpers. Include every row.
 			wantLength, templates := 798, 0
 			for _, row := range tc.graph.ValueEntryPlans {
-				wantLength += 240 + len(row.Name)
+				wantLength += 242 + len(row.Name)
 				if row.ValueSource == contract.Generated {
 					wantLength++
 				}

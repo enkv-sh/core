@@ -936,7 +936,7 @@ func TestGeneratedNormalPublicOnlyBacklogAndReadd(t *testing.T) {
 			keys.SetUnavailable(true)
 			defer keys.SetUnavailable(false)
 			public, private := keys.Calls()
-			input := []ApplyEntryInput{{Name: old.Name, ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, Recipients: old.Recipients, InputBytes: []byte("readded plain")}}
+			input := []ApplyEntryInput{{Name: old.Name, ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain, Recipients: old.Recipients, InputBytes: []byte("readded plain")}}
 			parent = admitSuppliedComparison(t, removed, keys, input)
 			if parent == nil || parent.crypto != nil || !time.Now().Before(parent.deadline) {
 				t.Fatal("public-only backlog acquired Crypto custody")
@@ -1711,10 +1711,10 @@ func TestGeneratedNormalHandoffHistoryPreservesCompleteBacklog(t *testing.T) {
 				case 1:
 					input = nil
 				case 2:
-					input = []ApplyEntryInput{{Name: name, ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain,
+					input = []ApplyEntryInput{{Name: name, ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain,
 						Recipients: []contract.ID{selected.admission.recipient}, InputBytes: []byte("normal history re-add")}}
 				default:
-					input = []ApplyEntryInput{{Name: name, ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain,
+					input = []ApplyEntryInput{{Name: name, ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain,
 						Recipients: []contract.ID{selected.admission.recipient}, InputBytes: []byte(fmt.Sprintf("normal history %03d", i))}}
 				}
 				parent := admitSuppliedComparison(t, selected, keys, input, implementation)

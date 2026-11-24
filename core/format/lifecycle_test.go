@@ -95,10 +95,16 @@ func TestEveryRecordRefusesRetiredBinaryVersion(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if body[5] != 0 || body[6] != 11 {
+			version := byte(11)
+			retiredVersions := []byte{1, 4, 6, 7, 8, 9, 10}
+			if tc.name == "head" {
+				version = 12
+				retiredVersions = append(retiredVersions, 11)
+			}
+			if body[5] != 0 || body[6] != version {
 				t.Fatal("current version differs")
 			}
-			for _, retired := range []byte{1, 4, 6, 7, 8, 9, 10} {
+			for _, retired := range retiredVersions {
 				body[6] = retired
 				if err := tc.decode(body); err != ErrFormat {
 					t.Fatalf("retired binary version %d accepted: %v", retired, err)

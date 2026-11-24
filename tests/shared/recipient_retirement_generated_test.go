@@ -69,6 +69,10 @@ func TestInstalledRecipientRetirementRefreshesGeneratedMembershipAndPreservesPar
 		groups:   [][]string{{"generated"}},
 	})
 	selected = f.selected
+	// Installing the output configuration selects base64 delivery for this
+	// entry. Retirement must bind the entry from that selected predecessor.
+	slot, current = lifecycleEntry(t, selected, "generated")
+	before = ownScenarioValueEntry(*current)
 	beforeOutput := installedOutputConfiguration(t, ctx, selected)
 	beforeEntries := make(map[string]contract.ValueEntry, len(selected.root.Names))
 	for _, named := range selected.root.Names {

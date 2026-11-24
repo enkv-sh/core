@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 	"unsafe"
@@ -200,4 +201,25 @@ func TestMetricAdmissionContentionNeverWaitsAndCountsExactLoss(t *testing.T) {
 		t.Fatalf("queued=%d lost=%d rejected=%d", len(points), capability.LostMetrics(), capability.RejectedMetrics())
 	}
 	capability.Deactivate()
+	t.Run("concurrent_producers_with_queue_space", func(t *testing.T) {
+		const producers, perProducer = 16, 128
+		points := make(chan MetricPoint, producers*perProducer)
+		capture := NewCapability(points, nil)
+		var workers sync.WaitGroup
+		start := make(chan struct{})
+		for range producers {
+			workers.Go(func() {
+				<-start
+				for range perProducer {
+					capture.emitMetric(MetricPoint{Name: OperationCalls, Provider: ProviderCore, Operation: OpCoreOpen, IntValue: 1})
+				}
+			})
+		}
+		close(start)
+		workers.Wait()
+		capture.Deactivate()
+		if len(points) != producers*perProducer || capture.LostMetrics() != 0 || capture.RejectedMetrics() != 0 {
+			t.Fatalf("queued=%d lost=%d rejected=%d", len(points), capture.LostMetrics(), capture.RejectedMetrics())
+		}
+	})
 }

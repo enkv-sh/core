@@ -129,11 +129,8 @@ func TestInstalledGeneratedAutomaticCryptoRejectsPostSelectionDrift(t *testing.T
 				process, effects := installedGeneratedRetirementProcess(t, "acknowledged")
 				f := newInstalledApplyTestFixture(t, ctx, contract.GCP, true)
 				f.env.GeneratedProcess = process
-				generation := &contract.GeneratorDeclaredGeneration{Schema: contract.GeneratorDeclaredGenerationSchema, LifecycleMode: contract.GeneratorLifecycleManaged, RetirementMode: contract.GeneratedRetirementManual,
-					ConfigContractID: process.Implementation.ConfigContractID, ResourceContractID: hermeticCloudflareResourceContractID(),
-					CompletionClass: contract.GeneratedCompletionAcknowledged, Intent: bytes.Clone(process.Intent)}
-				input := []ApplyEntryInput{{Name: "generated", ValueSource: contract.Generated, ConfidentialityClass: contract.Secret,
-					Recipients: []contract.ID{f.selected.admission.recipient}, Generated: generation}}
+				input := []ApplyEntryInput{installedGeneratedRetirementEntry(process, f.selected.admission.recipient, 0)}
+				generation := input[0].Generated
 				initialEngine := installedGeneratedTestEngine(t, ctx, f, f.selected, input, currentApplyRecipients(f.selected.registry()), installedGeneratedRetirementCallbacks(t, f, process))
 				initial := initialEngine.Apply(ctx, testID("automatic crypto initial "+stage+damage), input)
 				initialEngine.Close()
@@ -231,11 +228,8 @@ func TestInstalledGeneratedAutomaticCryptoRejectsOmittedSelectionWitness(t *test
 				process, effects := installedGeneratedRetirementProcess(t, "acknowledged")
 				f := newInstalledApplyTestFixture(t, ctx, contract.GCP, true)
 				f.env.GeneratedProcess = process
-				generation := &contract.GeneratorDeclaredGeneration{Schema: contract.GeneratorDeclaredGenerationSchema, LifecycleMode: contract.GeneratorLifecycleManaged, RetirementMode: contract.GeneratedRetirementManual,
-					ConfigContractID: process.Implementation.ConfigContractID, ResourceContractID: hermeticCloudflareResourceContractID(),
-					CompletionClass: contract.GeneratedCompletionAcknowledged, Intent: bytes.Clone(process.Intent)}
-				input := []ApplyEntryInput{{Name: "generated", ValueSource: contract.Generated, ConfidentialityClass: contract.Secret,
-					Recipients: []contract.ID{f.selected.admission.recipient}, Generated: generation}}
+				input := []ApplyEntryInput{installedGeneratedRetirementEntry(process, f.selected.admission.recipient, 0)}
+				generation := input[0].Generated
 				initialEngine := installedGeneratedTestEngine(t, ctx, f, f.selected, input, currentApplyRecipients(f.selected.registry()), installedGeneratedRetirementCallbacks(t, f, process))
 				initial := initialEngine.Apply(ctx, testID("automatic witness initial "+stage+damage), input)
 				initialEngine.Close()

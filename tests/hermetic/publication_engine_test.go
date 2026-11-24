@@ -44,6 +44,7 @@ func hermeticPublicationTargetFacts(t *testing.T, f *fixture, update func(*contr
 	output := &outputApplyInput{}
 	for _, source := range configuration.Bindings {
 		binding := outputApplyBinding{destinationID: source.DestinationID, destination: source.Destination}
+		var capabilities contract.OutputActionCapabilities
 		for _, target := range source.Targets {
 			name, ok := names[target.EntryIncarnationID]
 			if !ok {
@@ -51,8 +52,11 @@ func hermeticPublicationTargetFacts(t *testing.T, f *fixture, update func(*contr
 			}
 			target.EntryIncarnationID = contract.ID{}
 			update(&target)
-			binding.destination.Capabilities = target.Capabilities
+			capabilities |= target.Capabilities
 			binding.targets = append(binding.targets, outputApplyTarget{entryName: name, target: target})
+		}
+		if len(source.Targets) != 0 {
+			binding.destination.Capabilities = capabilities
 		}
 		output.bindings = append(output.bindings, binding)
 	}
@@ -1243,7 +1247,12 @@ func TestPublicationRetirementFailurePersists(t *testing.T) {
 				}
 			}
 			got := publicationEnginePlan(t, f, input, p).execute(t.Context(), p.callbacks(), publicationEngineCurrent(f))
-			if got.state.Reason != CustodyUnavailable || got.state.Outcome != AdmissionRefused || len(p.owners) != 2 {
+			wantState := refused(CustodyUnavailable)
+			if mode == "failed_reserve" {
+				// The immutable conflict outranks the subsequent custody failure.
+				wantState = failure(IntegrityFailure, ImmutableConflict)
+			}
+			if got.state != wantState || len(p.owners) != 2 {
 				t.Fatal("later coordinate erased retirement failure", got.state, len(p.owners))
 			}
 			first := got.output.Entries[0].Actions[0]

@@ -53,7 +53,7 @@ func TestMaintenanceCommandsRejectInvalidSuccessorOutputBeforeExecutor(t *testin
 			}
 			assertSecretAccessGrammarRefusal(t, operation, args)
 		}
-		args := []string{"--source", "/absolute/source.json", "--source-format", "json", "--out", "/first/successor.json", "--out", "/second/successor.json", "--json", "--log-level", "off"}
+		args := []string{"--source", "/absolute/source.json", "--source-format", "json", "--out", "/first/successor.json", "--json", "--out", "/second/successor.json", "--log-level", "off"}
 		if operation == contract.OperationEnvelopeRekey {
 			args = append(args, "--name", "secret")
 		} else {

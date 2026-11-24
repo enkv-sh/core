@@ -15,7 +15,7 @@ import (
 
 type packagedRecoveryCase struct {
 	phase                           string
-	replies                         []string
+	replyKind                       string
 	retirement                      bool
 	signs, heads, decrypts, inboxes int
 	active, done                    bool
@@ -27,23 +27,20 @@ func TestInstalledPackagedNativeRecoveryCandidateCharges(t *testing.T) {
 	for _, phase := range []string{"A0", "A1", "B2"} {
 		for _, script := range []struct {
 			name                            string
-			replies                         []string
+			replyKind                       string
 			signs, heads, decrypts, inboxes int
 		}{
-			{"residue-then-value", []string{"unknown", "complete"}, 7, 6, 6, 1},
-			{"two-unknowns", []string{"unknown", "unknown"}, 6, 5, 3, 0},
-			{"residue-then-owned", []string{"unknown", "owned"}, 6, 5, 4, 1},
-			{"owned-without-value", []string{"owned"}, 4, 3, 3, 1},
+			{"complete", "complete", 5, 4, 5, 1},
+			{"malformed", "unknown", 4, 3, 2, 0},
+			{"provider-rejection", "rejected", 4, 3, 2, 0},
+			{"owned-without-value", "owned", 4, 3, 3, 1},
 		} {
 			t.Run(phase+"/"+script.name, func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(t.Context(), 90*time.Second)
 				defer cancel()
-				fault := packagedRecoveryCase{phase: phase, replies: slices.Clone(script.replies), signs: script.signs, heads: script.heads, decrypts: script.decrypts, inboxes: script.inboxes}
-				if phase == "A0" && script.name == "residue-then-value" {
-					fault.replies[0] = "rejected"
-				}
+				fault := packagedRecoveryCase{phase: phase, replyKind: script.replyKind, signs: script.signs, heads: script.heads, decrypts: script.decrypts, inboxes: script.inboxes}
 				packagedGeneratedSequenceWithRecovery(t, ctx, &fault)
-				if !fault.done || fault.served != len(fault.replies) {
+				if !fault.done || fault.served != 1 {
 					t.Fatal("controlled recovery did not stop at its complete terminal")
 				}
 			})
@@ -53,7 +50,7 @@ func TestInstalledPackagedNativeRecoveryCandidateCharges(t *testing.T) {
 		t.Run(phase, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 90*time.Second)
 			defer cancel()
-			fault := packagedRecoveryCase{phase: phase, replies: []string{"unknown"}, retirement: true, signs: 3, heads: 2, decrypts: 1}
+			fault := packagedRecoveryCase{phase: phase, replyKind: "unknown", retirement: true, signs: 3, heads: 2, decrypts: 1}
 			packagedGeneratedSequenceWithRecovery(t, ctx, &fault)
 			if !fault.done || fault.served != 1 {
 				t.Fatal("original retirement ambiguity did not stop after one send")
@@ -67,14 +64,13 @@ func (c *packagedRecoveryCase) reply(t *testing.T, w http.ResponseWriter, method
 	if c == nil || !c.active {
 		return false
 	}
-	if c.served >= len(c.replies) || (method == http.MethodDelete) != c.retirement {
+	if c.served != 0 || (method == http.MethodDelete) != c.retirement {
 		t.Error("controlled recovery exceeded its native send entitlement")
 		w.WriteHeader(http.StatusBadRequest)
 		return true
 	}
-	reply := c.replies[c.served]
 	c.served++
-	switch reply {
+	switch c.replyKind {
 	case "complete":
 		return false
 	case "unknown":
@@ -95,10 +91,10 @@ func (c *packagedRecoveryCase) reply(t *testing.T, w http.ResponseWriter, method
 	return true
 }
 
-func (c *packagedRecoveryCase) checkWindow(t *testing.T, ctx context.Context, f installedApplyTestFixture, observation *packagedSequenceObservation, command packagedSequenceCommand, firstHead int) {
+func (c *packagedRecoveryCase) checkWindow(t *testing.T, ctx context.Context, f installedApplyTestFixture, observation *packagedSequenceObservation, command packagedSequenceCommand, firstHead int, result PublicApplyResult) {
 	t.Helper()
 	if command.SignEnd-command.SignStart != c.signs || command.DecryptCalls != c.decrypts || command.QualificationCalls != 0 || len(observation.heads)-firstHead != c.heads {
-		t.Fatal("recovery signing, selection or custody count differs", command)
+		t.Fatalf("recovery signing, selection or custody count differs: signs=%d heads=%d decrypts=%d qualifications=%d", command.SignEnd-command.SignStart, len(observation.heads)-firstHead, command.DecryptCalls, command.QualificationCalls)
 	}
 	shapes := packagedSequenceCandidateShapes(t, ctx, f, observation.heads[firstHead:])
 	if len(shapes) != c.heads || c.signs-c.heads != 1 {
@@ -109,6 +105,19 @@ func (c *packagedRecoveryCase) checkWindow(t *testing.T, ctx context.Context, f 
 			t.Fatal("recovery candidate exceeds independent conservative read bound", shape)
 		}
 	}
+	if result.Generated == nil || len(result.Generated.Effects) != 1 {
+		t.Fatal("one original provider call must have one effect")
+	}
+	inbox := result.Generated.Effects[0].Record.InboxID
+	var ambiguity contract.ID
+	if c.retirement {
+		var err error
+		ambiguity, err = contract.GeneratorRetirementAmbiguityID(inbox)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	ambiguityWrites := 0
 	results := map[string]packagedSequenceWrite{}
 	resultSends := map[string]int{}
 	start := command.WriteStart
@@ -120,6 +129,16 @@ func (c *packagedRecoveryCase) checkWindow(t *testing.T, ctx context.Context, f 
 		var objects, bodyBytes uint64
 		for _, write := range observation.writes[start:sign.Writes] {
 			if write.Identity.Namespace == contract.StoreResultObject {
+				if c.retirement && write.Identity.ObjectID == ambiguity {
+					if ambiguityWrites != 0 || write.Status != contract.WriteAcknowledged || write.Length == 0 || write.Length > contract.RetirementAmbiguityMaxLength {
+						t.Fatal("retirement ambiguity must occupy its separate coordinate exactly once")
+					}
+					ambiguityWrites++
+					continue
+				}
+				if write.Identity.ObjectID != inbox {
+					t.Fatal("recovery wrote a foreign result coordinate")
+				}
 				old, repeated := results[write.Key]
 				if repeated {
 					if resultSends[write.Key] != 1 || old.Identity != write.Identity || old.Digest != write.Digest || old.Length != write.Length || write.Status != contract.WritePrecondition {
@@ -144,7 +163,7 @@ func (c *packagedRecoveryCase) checkWindow(t *testing.T, ctx context.Context, f 
 		}
 		start = sign.Writes
 	}
-	if start != command.WriteEnd || len(results) != c.inboxes {
+	if start != command.WriteEnd || len(results) != c.inboxes || c.retirement != (ambiguityWrites == 1) {
 		t.Fatal("recovery writes or result set differ")
 	}
 	for _, sends := range resultSends {
@@ -157,7 +176,7 @@ func (c *packagedRecoveryCase) checkWindow(t *testing.T, ctx context.Context, f 
 func (c *packagedRecoveryCase) checkCreate(t *testing.T, ctx context.Context, f installedApplyTestFixture, heads []packagedSequenceHead, before, closed *StateSession, result PublicApplyResult, implementation contract.GeneratorImplementation) {
 	t.Helper()
 	g := result.Generated
-	if result.Result.Outcome != ObservedCurrent || g == nil || result.Payload == nil || !g.EffectsAvailable || !g.RelatedWorkAvailable || !g.SummaryCountsAvailable || len(g.Effects) != len(c.replies) {
+	if result.Result.Outcome != ObservedCurrent || g == nil || result.Payload == nil || !g.EffectsAvailable || !g.RelatedWorkAvailable || !g.SummaryCountsAvailable || len(g.Effects) != 1 {
 		t.Fatal("native recovery terminal is incomplete", result.Result)
 	}
 	work := mustSelectedGeneratedWork(t, closed)
@@ -175,10 +194,11 @@ func (c *packagedRecoveryCase) checkCreate(t *testing.T, ctx context.Context, f 
 	if work.parent != nil || work.phase != nil || !closed.root.Generated.ActiveOwner.IsZero() || !closed.root.Generated.ActivePhase.IsZero() || !closed.root.Generated.ActiveGraph.IsZero() {
 		t.Fatal("native recovery left an active parent")
 	}
-	last := c.replies[len(c.replies)-1]
+	last := c.replyKind
+	uncertain := last == "unknown" || last == "rejected"
 	selected := last == "complete"
 	canonical, state := uint8(contract.ReceiptCanonicalNotSelected), "effect-terminal-failure"
-	if last == "unknown" {
+	if uncertain {
 		state = "effect-unknown"
 	}
 	wantDuties := 0
@@ -188,34 +208,24 @@ func (c *packagedRecoveryCase) checkCreate(t *testing.T, ctx context.Context, f 
 			wantDuties, state = 1, "retirement-pending"
 		}
 	}
-	wantHazards := len(c.replies)
-	if selected {
-		wantHazards--
+	wantHazards := 0
+	if !selected {
+		wantHazards = 1
 	}
 	if g.CanonicalOutcome != canonical || g.StateResult != state || len(g.Duties) != wantDuties || len(g.Hazards) != wantHazards || int(closed.root.Generated.Hazards) != wantHazards {
 		t.Fatal("native recovery selected the wrong canonical or residue terminal", g.StateResult)
 	}
 	var hazards []contract.ID
 	var effectRows, dutyRows, hazardRows []contract.SupportRecord
-	var lineage contract.ID
 	unknown := uint32(0)
-	for at, effect := range g.Effects {
+	for _, effect := range g.Effects {
 		actual, present := original.attempts[effect.Record.AttemptID]
-		branch := uint8(contract.GeneratorBranchInitial)
-		if at == 1 {
-			branch = contract.GeneratorBranchResidue
-		}
 		x := actual.expected.Template
-		if !present || actual.record != effect.Record || x.Branch != branch || x.AttemptID != effect.Record.AttemptID || x.TransmissionID != effect.Record.TransmissionID || x.ResultID != effect.Record.ResultID || x.InboxID != effect.Record.InboxID || effect.Record.OperationID != result.OperationID || effect.Record.ExecutorID != implementation.ExecutorID || effect.Record.CredentialRouteID != implementation.CredentialRouteID || effect.Record.DescriptorID != implementation.DescriptorID || effect.Action != contract.GeneratorActionCreate || effect.Name != "generated" || effect.Record.Stage != contract.GeneratedStageTerminal {
+		if !present || actual.record != effect.Record || x.Branch != contract.GeneratorBranchInitial || x.AttemptID != effect.Record.AttemptID || x.TransmissionID != effect.Record.TransmissionID || x.ResultID != effect.Record.ResultID || x.InboxID != effect.Record.InboxID || effect.Record.OperationID != result.OperationID || effect.Record.ExecutorID != implementation.ExecutorID || effect.Record.CredentialRouteID != implementation.CredentialRouteID || effect.Record.DescriptorID != implementation.DescriptorID || effect.Action != contract.GeneratorActionCreate || effect.Name != "generated" || effect.Record.Stage != contract.GeneratedStageTerminal {
 			t.Fatal("native recovery lost an original authenticated Attempt tuple")
 		}
-		if at == 0 {
-			lineage = x.LineageID
-		} else if x.LineageID != lineage || x.AttemptID == g.Effects[0].Record.AttemptID || x.TransmissionID == g.Effects[0].Record.TransmissionID || x.ResultID == g.Effects[0].Record.ResultID || x.InboxID == g.Effects[0].Record.InboxID {
-			t.Fatal("native recovery did not use distinct original identities in one lineage")
-		}
 		effectRows = append(effectRows, original.records[generatedRecordKey{contract.GeneratedAttemptSupportKind, x.AttemptID}])
-		if c.replies[at] == "complete" {
+		if selected {
 			if _, present := work.attempts[x.AttemptID]; present {
 				t.Fatal("selected Final retained its completed create Attempt")
 			}
@@ -257,7 +267,7 @@ func (c *packagedRecoveryCase) checkCreate(t *testing.T, ctx context.Context, f 
 		if err != nil || cold != hazard.Record || cold.OriginalOperationID != result.OperationID || cold.ResourceID != x.ResourceIncarnationID || cold.ExecutorID != implementation.ExecutorID || cold.CredentialRouteID != implementation.CredentialRouteID || cold.Fenced != 1 {
 			t.Fatal("native recovery cold Hazard differs from its original Attempt", err)
 		}
-		if c.replies[at] == "owned" {
+		if last == "owned" {
 			targetRows, err := work.vectors.resolve(contract.GeneratedHazardSupportKind, cold.HazardID, contract.GeneratorVectorTargets, cold.Target)
 			if err != nil || len(targetRows) != 1 {
 				t.Fatal("owned recovery Hazard target is absent", err)
@@ -331,30 +341,25 @@ func (c *packagedRecoveryCase) checkCreate(t *testing.T, ctx context.Context, f 
 		t.Fatal("native recovery receipt differs from authenticated terminal facts", err)
 	}
 	wantCounts := [contract.ReceiptSummaryCount]uint32{}
-	wantCounts[contract.ReceiptEffectCount], wantCounts[contract.ReceiptDutyCount], wantCounts[contract.ReceiptHazardCount] = uint32(len(c.replies)), uint32(wantDuties), uint32(wantHazards)
-	if len(c.replies) == 2 {
-		wantCounts[contract.ReceiptPreservedResidueCount] = 1
-	}
+	wantCounts[contract.ReceiptEffectCount], wantCounts[contract.ReceiptDutyCount], wantCounts[contract.ReceiptHazardCount] = 1, uint32(wantDuties), uint32(wantHazards)
 	class := contract.ReceiptSummaryFailureCount
 	if selected {
 		class = contract.ReceiptSummarySuccessCount
-	} else if last == "unknown" {
+	} else if uncertain {
 		class = contract.ReceiptSummaryUnknownCount
 	}
 	wantCounts[class] = 1
-	for at, effect := range g.Effects {
-		wantClass := class
-		if at == 0 && len(c.replies) == 2 {
-			wantClass = contract.ReceiptPreservedResidueCount
-		}
-		if effect.SummaryClass != wantClass {
-			t.Fatal("native recovery changed an entered effect summary class")
-		}
+	if g.Effects[0].SummaryClass != class {
+		t.Fatal("native recovery changed its original effect summary class")
 	}
-	if g.Warnings.PossibleLiveResidue != (len(c.replies) == 2) || g.Warnings.LateEffect != (last == "owned") || g.Warnings.InvalidationNotConfirmed {
+	if g.Warnings.PossibleLiveResidue != uncertain || g.Warnings.LateEffect != (last == "owned") || g.Warnings.InvalidationNotConfirmed {
 		t.Fatal("native recovery current warning classes differ", g.Warnings)
 	}
-	wantWarnings, err := contract.EncodeReceiptWarningBits(contract.OperationApplyDeclaration, preFinal.root.WarningBits, contract.ReceiptWarningPossibleLive)
+	var effectWarnings uint64
+	if !selected {
+		effectWarnings = contract.ReceiptWarningPossibleLive
+	}
+	wantWarnings, err := contract.EncodeReceiptWarningBits(contract.OperationApplyDeclaration, preFinal.root.WarningBits, effectWarnings)
 	if err != nil || receipt.WarningBits != wantWarnings {
 		t.Fatal("native recovery historical warning encoding differs", err)
 	}

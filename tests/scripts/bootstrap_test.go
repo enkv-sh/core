@@ -189,14 +189,15 @@ func TestRunnerArgumentFailureCleansBootstrap(t *testing.T) {
 
 // full_only: false
 func TestLintFindingsExitNonzeroThroughLauncherWorkflowAndMake(t *testing.T) {
-	for _, command := range []string{"lint", "workflow", "make"} {
-		t.Run(command, func(t *testing.T) {
-			root, temporary := bootstrapFixture(t)
-			marker := filepath.Join(t.TempDir(), "witness")
-			// Vet accepts this ordinary unit test; errcheck must reject it without executing it.
-			body := "package telemetry\n\nimport (\n\t\"os\"\n\t\"testing\"\n)\n\n// full_only: false\nfunc TestUnchecked(t *testing.T) {\n\tos.Chdir(\".\")\n\tpanic(\"lint executed a test\")\n}\n"
-			writeBootstrapFixture(t, filepath.Join(root, "telemetry/lint_failure_test.go"), []byte(body), 0600)
-			witness := fmt.Sprintf(`package witness
+	// The three normal entry points run the same complete module analysis.
+	// Share the fixture and the root deadline, with time left for child cleanup.
+	end := time.Now().Add(14 * time.Minute)
+	root, temporary := bootstrapFixture(t)
+	marker := filepath.Join(t.TempDir(), "witness")
+	// Vet accepts this ordinary unit test; errcheck must reject it without executing it.
+	body := "package telemetry\n\nimport (\n\t\"os\"\n\t\"testing\"\n)\n\n// full_only: false\nfunc TestUnchecked(t *testing.T) {\n\tos.Chdir(\".\")\n\tpanic(\"lint executed a test\")\n}\n"
+	writeBootstrapFixture(t, filepath.Join(root, "telemetry/lint_failure_test.go"), []byte(body), 0600)
+	witness := fmt.Sprintf(`package witness
 
 import (
 	"os"
@@ -210,7 +211,9 @@ func TestLintContinuationWitness(t *testing.T) {
 	}
 }
 `, marker)
-			writeBootstrapFixture(t, filepath.Join(root, "telemetry/witness/witness_test.go"), []byte(witness), 0600)
+	writeBootstrapFixture(t, filepath.Join(root, "telemetry/witness/witness_test.go"), []byte(witness), 0600)
+	for _, command := range []string{"lint", "make", "workflow"} {
+		t.Run(command, func(t *testing.T) {
 			program, args := filepath.Join(root, "tests/scripts/test"), []string{command}
 			if command == "workflow" {
 				workflow := filepath.Join(root, "tests/workflows/lint-failure.json")
@@ -219,7 +222,7 @@ func TestLintContinuationWitness(t *testing.T) {
 			} else if command == "make" {
 				program, args = "make", []string{"lint"}
 			}
-			stdout, stderr, status := runBootstrapProcess(t, root, temporary, program, args...)
+			stdout, stderr, status := runBootstrapProcessWithLimit(t, root, temporary, time.Until(end), program, args...)
 			diagnostic := stdout + stderr
 			if status == 0 || !strings.Contains(diagnostic, "errcheck") || !strings.Contains(diagnostic, "os.Chdir") {
 				t.Fatalf("lint finding did not reach command exit: status=%d stdout=%q stderr=%q", status, stdout, stderr)
@@ -310,6 +313,11 @@ func bootstrapFixtureParallel(t *testing.T) int {
 
 func runBootstrapProcess(t *testing.T, directory, temporary, program string, args ...string) (string, string, int) {
 	t.Helper()
+	return runBootstrapProcessWithLimit(t, directory, temporary, 2*time.Minute, program, args...)
+}
+
+func runBootstrapProcessWithLimit(t *testing.T, directory, temporary string, allowance time.Duration, program string, args ...string) (string, string, int) {
+	t.Helper()
 	args = append([]string{}, args...)
 	if strings.HasSuffix(filepath.ToSlash(program), "/tests/scripts/test") && len(args) != 0 {
 		switch args[0] {
@@ -322,12 +330,11 @@ func runBootstrapProcess(t *testing.T, directory, temporary, program string, arg
 	if program == "go" && len(args) != 0 && args[0] == "run" {
 		args = append([]string{"run", fmt.Sprintf("-p=%d", bootstrapFixtureParallel(t))}, args[1:]...)
 	}
-	allowance := 2 * time.Minute
 	if strings.HasSuffix(filepath.ToSlash(program), "/tests/scripts/test") && len(args) != 0 && args[0] == "check" {
 		// Complete check preparation now compiles every selected later owner.
 		allowance = 10 * time.Minute
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), allowance)
+	ctx, cancel := context.WithTimeout(t.Context(), allowance)
 	defer cancel()
 	command := exec.CommandContext(ctx, program, args...)
 	command.Dir = directory
@@ -339,7 +346,7 @@ func runBootstrapProcess(t *testing.T, directory, temporary, program string, arg
 	command.Stdout, command.Stderr = &stdout, &stderr
 	err := command.Run()
 	if ctx.Err() != nil {
-		t.Fatalf("bootstrap process exceeded its time limit: %v; stderr:\n%s", err, stderr.String())
+		t.Fatalf("bootstrap process exceeded its time limit: %v; stdout:\n%s; stderr:\n%s", err, stdout.String(), stderr.String())
 	}
 	status := 0
 	if err != nil {
@@ -576,6 +583,7 @@ func bootstrapFixtureConfigured(t *testing.T, configure func(string)) (root, tem
 	} {
 		copyFile(path)
 	}
+	copyFile("tests/generatorhost/environment.go")
 	copyFile("tests/crypto/admission.go")
 	copyFile("tests/gcp/admission.go")
 	copyFile("tests/gcpcredentials/admission.go")

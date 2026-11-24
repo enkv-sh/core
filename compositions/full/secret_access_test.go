@@ -64,7 +64,7 @@ func TestSecretAccessAdaptersIgnoreValidatedPendingDeclaration(t *testing.T) {
 				check := func(i core.AccessMutationInstallation) {
 					basis, store, err := configurationPublicBasis(model)
 					control, controlErr := basis.ControlCore(model.DomainID, store)
-					if err != nil || controlErr != nil || i.ExpectedDomain != model.DomainID || i.ExpectedStore != store || i.ExpectedControl.AuthorityRecipientID != control.AuthorityRecipientID || i.ExpectedControl.NormalSigning.KeySelector != control.NormalSigning.KeySelector || i.CompositionID != CompatibilityManifest().Identity || i.Store != nil || i.Trust != nil || i.ConfigurationValidator != nil {
+					if err != nil || controlErr != nil || i.ExpectedDomain != model.DomainID || i.ExpectedStore != store || i.ExpectedControl.AuthorityRecipientID != control.AuthorityRecipientID || i.ExpectedControl.NormalSigning.KeySelector != control.NormalSigning.KeySelector || i.CompositionID != CompatibilityManifest().Identity || i.Store != nil || i.Trust != nil || i.ConfigurationValidator == nil {
 						t.Fatal("standalone source mapping lost trust or manufactured capabilities", err, controlErr)
 					}
 				}

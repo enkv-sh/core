@@ -334,7 +334,7 @@ func TestSourceYAMLObjectsRequireValues(t *testing.T) {
 		{"populated-plugin-requirement", sourceSetupYAML + "plugins:\n  generic-json:\n    version: 1.2.3\n", false},
 		{"populated-recipients", strings.Replace(sourceSetupYAML, "recipients: {}\n", "recipients:\n  chosen:\n    display_name: Reader\n    encryption_key: "+sourceEncryptionSelector+"\n", 1), false},
 		{"populated-entries", strings.Replace(sourceSetupYAML, "entries: {}\n", "entries:\n  item:\n    confidentiality: plain\n    recipients: []\n    source:\n      kind: supplied\n      value: example\n", 1), false},
-		{"populated-routing", strings.Replace(sourceSetupYAML, "  routing: {}\n", "  routing:\n    default: {}\n", 1), false},
+		{"populated-routing", strings.Replace(sourceSetupYAML, "  routing: {}\n", "  routing:\n    default: []\n", 1), false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "configuration")
@@ -591,7 +591,7 @@ func TestSourceMalformedBase64ReturnsFirstDiagnostic(t *testing.T) {
 			p.base64(16)
 			err := p.done()
 			var diagnostic *Diagnostic
-			if !errors.Is(err, ErrSourceInvalid) || !errors.As(err, &diagnostic) || diagnostic.Reason != "invalid-base64" || diagnostic.Offset != tc.offset || p.off != tc.offset {
+			if !errors.Is(err, ErrSourceInvalid) || !errors.As(err, &diagnostic) || diagnostic.Reason != "invalid-base64" || diagnostic.Offset != 0 || diagnostic.Line != 1 || diagnostic.Column != 1 || p.off != tc.offset {
 				t.Fatal("malformed Base64 lost its first error or consumed more source", err, p.off)
 			}
 		})

@@ -89,12 +89,12 @@ func initializationCustodyFixture(t *testing.T) (*Runtime, *testKeyAccess, contr
 	}
 	t.Cleanup(runtime.Close)
 	deadline := time.Now().Add(time.Minute)
-	q := contract.CryptoQualifyInitKeysRequest{Context: contract.InitKeyContext{Schema: 3, GenesisProfile: 1, AdmissionID: id("admission"), SessionID: id("session"), DomainID: id("domain"), CompatibilityID: contract.CompatibilityID(), Expiry: uint64(deadline.UnixNano()), InitID: id("init"), DescriptorDigest: id("descriptor"), GenesisPlanDigest: id("plan"), RequestDescriptor: contract.DescriptorVector{Digest: id("request"), Length: contract.GenesisRequestCoreLength, Count: 1}}, Bindings: []contract.BindingTableRow{{SubjectKind: 1, SubjectID: id("authority"), Binding: binding}}, Probes: []contract.InitProbePlanRow{{ProbeID: id("probe"), SubjectKind: 1, SubjectID: id("authority"), BindingID: binding.BindingID, PublicBindingDigest: digest}}}
+	q := contract.CryptoQualifyInitKeysRequest{Context: contract.InitKeyContext{Schema: contract.CryptoSchema, GenesisProfile: 1, AdmissionID: id("admission"), SessionID: id("session"), DomainID: id("domain"), CompatibilityID: contract.CompatibilityID(), Expiry: uint64(deadline.UnixNano()), InitID: id("init"), DescriptorDigest: id("descriptor"), GenesisPlanDigest: id("plan"), RequestDescriptor: contract.DescriptorVector{Digest: id("request"), Length: contract.GenesisRequestCoreLength, Count: 1}}, Bindings: []contract.BindingTableRow{{SubjectKind: 1, SubjectID: id("authority"), Binding: binding}}, Probes: []contract.InitProbePlanRow{{ProbeID: id("probe"), SubjectKind: 1, SubjectID: id("authority"), BindingID: binding.BindingID, PublicBindingDigest: digest}}}
 	body, err := contract.EncodeCryptoQualifyInitKeysRequest(q)
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := contract.CryptoRequest{Schema: 3, Kind: contract.CryptoQualifyInitKeys, RequestID: id("message"), CustodyInstanceID: runtime.InstanceID(), Body: body}
+	request := contract.CryptoRequest{Schema: contract.CryptoSchema, Kind: contract.CryptoQualifyInitKeys, RequestID: id("message"), CustodyInstanceID: runtime.InstanceID(), Body: body}
 	return runtime, access, q, request, deadline
 }
 

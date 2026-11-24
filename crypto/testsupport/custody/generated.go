@@ -30,6 +30,7 @@ type GeneratedCandidate struct {
 	Entries                                              []GeneratedCandidateEntry
 	HeadCore, Conditional, GrantWraps, SourceProtections []byte
 	LiveSourceUses                                       []contract.GeneratorSourceUse
+	UnchangedRegistry                                    *contract.GeneratedUnchangedRegistryRoots
 }
 
 type GeneratedCanonicalSelection = contract.GeneratedCanonicalSelection
@@ -129,7 +130,7 @@ func (f *Fixture) BindGeneratedCandidate(ctx context.Context, id contract.ID, ca
 	c := privatecrypto.TestGeneratedCandidate{ActiveOwner: candidate.ActiveOwner, ActivePhase: candidate.ActivePhase, ActiveGraph: candidate.ActiveGraph,
 		Subject: candidate.Subject, PublicState: candidate.PublicState, CurrentAccess: candidate.CurrentAccess, AccessRecords: candidate.AccessRecords,
 		SupportRecords: candidate.SupportRecords, HeadCore: candidate.HeadCore, GrantWraps: candidate.GrantWraps, Conditional: candidate.Conditional, SourceProtections: candidate.SourceProtections,
-		LiveSourceUses: candidate.LiveSourceUses}
+		LiveSourceUses: candidate.LiveSourceUses, UnchangedRegistry: candidate.UnchangedRegistry}
 	for _, candidateEntry := range candidate.Entries {
 		c.Entries = append(c.Entries, privatecrypto.TestGeneratedCandidateEntry(candidateEntry))
 	}

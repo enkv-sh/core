@@ -881,14 +881,30 @@ func workflowPrepare(t *testing.T, s *workflowServer, cli, path, phase string, p
 
 func workflowRecoveryWraps(t *testing.T, s *workflowServer, selectedRoot stateformat.Root, recovery bool) {
 	t.Helper()
+	head, _ := workflowHead(t, s)
+	grants, err := selectedRoot.GrantSources(head)
+	if err != nil {
+		t.Fatal(err)
+	}
 	recoveryWraps := 0
 	for _, ref := range selectedRoot.CurrentAccess.Core.AccessPageRefs {
-		key, err := stateformat.Key(s.prefix, ref)
+		physical := ref
+		grant, split := grants[ref]
+		if split {
+			physical = grant.Base
+		}
+		key, err := stateformat.Key(s.prefix, physical)
 		if err != nil {
 			t.Fatal(err)
 		}
 		object := s.object(t, key)
+		if contract.Hash(object.body) != physical.Digest {
+			t.Fatal("selected access page digest differs")
+		}
 		page, err := stateformat.DecodeAccessPage(object.body)
+		if err == nil && split {
+			page, _, err = stateformat.RestoreGrantPage(ref, page, grant.Rows)
+		}
 		if err != nil {
 			t.Fatal(err)
 		}

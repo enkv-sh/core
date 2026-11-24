@@ -130,12 +130,12 @@ func TestGCActiveLocalAndMixedGraphPublicReadersProtectAdmittedInboxes(t *testin
 			f := newInstalledApplyTestFixture(t, ctx, contract.GCP, false)
 			author := buildInstalledLocalAuthor(t, false)
 			local := &contract.GeneratorDeclaredGeneration{Schema: contract.GeneratorDeclaredGenerationSchema, LifecycleMode: contract.GeneratorLifecycleNone, ConfigContractID: author.config.Artifact.ConfigContractID, Intent: installedLocalCanonicalIntent()}
-			input := []ApplyEntryInput{{Name: "omega", ValueSource: contract.Generated, ConfidentialityClass: contract.Secret, Recipients: []contract.ID{f.selected.admission.recipient}, Generated: local}}
+			input := []ApplyEntryInput{{Name: "omega", ValueSource: contract.Generated, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Secret, Recipients: []contract.ID{f.selected.admission.recipient}, Generated: local}}
 			if mixed {
 				process, _ := installedGeneratedRetirementProcess(t, "acknowledged")
 				f.env.GeneratedProcess = process
 				remote := &contract.GeneratorDeclaredGeneration{Schema: contract.GeneratorDeclaredGenerationSchema, LifecycleMode: contract.GeneratorLifecycleManaged, RetirementMode: contract.GeneratedRetirementManual, ConfigContractID: process.Implementation.ConfigContractID, ResourceContractID: hermeticCloudflareResourceContractID(), CompletionClass: contract.GeneratedCompletionAcknowledged, Intent: bytes.Clone(process.Intent)}
-				input = append([]ApplyEntryInput{{Name: "alpha", ValueSource: contract.Generated, ConfidentialityClass: contract.Secret, Recipients: []contract.ID{f.selected.admission.recipient}, Generated: remote}}, input...)
+				input = append([]ApplyEntryInput{{Name: "alpha", ValueSource: contract.Generated, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Secret, Recipients: []contract.ID{f.selected.admission.recipient}, Generated: remote}}, input...)
 			}
 			admissions := 0
 			engine := installedLocalEngine(t, ctx, f, f.selected, input, author, &admissions)
@@ -171,11 +171,11 @@ func TestGCActiveLocalAndMixedGraphPublicReadersProtectAdmittedInboxes(t *testin
 								inboxes = append(inboxes, lineage.Templates[0].InboxID)
 								localCount++
 							case lineage.Purpose == contract.GeneratorLineageCreate && lineage.Name == "alpha":
-								if !mixed || lineage.TemplateCount != 5 || lineage.Templates[0].LifecycleMode != contract.GeneratorLifecycleManaged {
+								if !mixed || lineage.TemplateCount != 2 || lineage.Templates[0].LifecycleMode != contract.GeneratorLifecycleManaged {
 									t.Fatal("managed CREATE fixture changed")
 								}
-								for _, branch := range []int{0, 1, 2, 3, 4} {
-									inboxes = append(inboxes, lineage.Templates[branch].InboxID)
+								for _, create := range lineage.Templates[:lineage.TemplateCount] {
+									inboxes = append(inboxes, create.InboxID)
 								}
 								managedCount++
 							case lineage.Purpose == contract.GeneratorLineageCleanup:
@@ -190,9 +190,9 @@ func TestGCActiveLocalAndMixedGraphPublicReadersProtectAdmittedInboxes(t *testin
 						}
 						wantCount := 1
 						if mixed {
-							wantCount = 11
+							wantCount = 5
 						}
-						if localCount != 1 || len(inboxes) != wantCount || mixed && (managedCount != 1 || cleanupCount != 5) {
+						if localCount != 1 || len(inboxes) != wantCount || mixed && (managedCount != 1 || cleanupCount != 2) {
 							t.Fatal("wrong admitted lifecycle closure", localCount, managedCount, cleanupCount, len(inboxes))
 						}
 						want := gcExpectedSelectedKeys(selected)

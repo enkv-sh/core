@@ -78,7 +78,7 @@ func recipientReplacementIdentityFixture(t testing.TB) RecipientReplacementIdent
 func TestRecipientReplacementIdentityMatchesIndependentLiteral(t *testing.T) {
 	p := recipientReplacementIdentityFixture(t)
 	got, err := DeriveRecipientReplacementIdentity(p)
-	if err != nil || got != successionLiteralID(t, "cf96a69fb630173cdf12b9ac6a9052753477068265c31accd8906101c03b1c77") {
+	if err != nil || got != successionLiteralID(t, "0a2569e25ed8960e2ca8dc413c164c3ad70b4d42b565bfb6ea2df52ea857732b") {
 		t.Fatal("independent Recipient replacement graph differs", err)
 	}
 	delta, err := contract.MutationReceiptDeltaPlanDigest(p.Receipt)

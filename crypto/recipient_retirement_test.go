@@ -257,7 +257,7 @@ func TestRecipientRetirementCensusControlsPrivateWork(t *testing.T) {
 	for _, census := range []string{"empty", "unassigned", "plain-only", "plain-with-secrets", "mixed", "secrets"} {
 		t.Run(census, func(t *testing.T) {
 			v := retirementFixture(t, base, census)
-			r, _ := retirementOwner(t, &v)
+			r, owner := retirementOwner(t, &v)
 			comparison := retirementCompare(t, r, v.f)
 			plan := retirementPlan(t, v.f)
 			prepared := retirementPrepare(t, r, v.f, comparison, plan)
@@ -268,6 +268,14 @@ func TestRecipientRetirementCensusControlsPrivateWork(t *testing.T) {
 				}
 			}
 			freeze := retirementFreeze(t, v, r.apply, comparison, plan, prepared)
+			row := receiptHistoryRow(v.f.q.Context.DomainID, "retirement selected", true)
+			row.OperationKind, row.EffectSummary = contract.OperationRetireRecipientIdentity, contract.ReceiptEffectNotApplicable
+			row.OperationID, row.PredecessorRevisionID = plan.Operation, owner.predecessorRevision
+			row.RequestedRevisionID, row.ObservedRevisionID, row.ChangedSubjects = plan.Revision, plan.Revision, retirementExpectedSubjects(t, v, plan)
+			receipt, freeze := retirementReceiptAdmission(t, v, owner, comparison, freeze, row, nil)
+			if err := owner.BindReceipt(v.f.ctx, receipt); err != nil {
+				t.Fatal("bind census receipt", err)
+			}
 			body, err := contract.EncodeCryptoFreezeRequest(freeze)
 			if err != nil {
 				t.Fatal(err)

@@ -99,7 +99,13 @@ func TestPublicNativeRecoveredGeneratorEditsRespectCurrentEpoch(t *testing.T) {
 			args := []string{"apply", "--source", f.path, "--source-format", formatName, "--json"}
 			workflowResult(t, f.run(t, "apply", false, nil, args...), "no-op")
 			beforeHead, _, beforeEntries := f.selected(t)
-			edited := strings.ReplaceAll(readable.String(), `"subject": "token"`, `"subject": "worker"`)
+			from, to := `"subject": "token"`, `"subject": "worker"`
+			epoch0, epoch1 := `"epoch": 0`, `"epoch": 1`
+			if format == configuration.YAML {
+				from, to = "subject: token", "subject: worker"
+				epoch0, epoch1 = "epoch: 0", "epoch: 1"
+			}
+			edited := strings.Replace(readable.String(), from, to, 1)
 			if edited == readable.String() {
 				t.Fatal("recovered settings fixture did not edit subject")
 			}
@@ -126,7 +132,7 @@ func TestPublicNativeRecoveredGeneratorEditsRespectCurrentEpoch(t *testing.T) {
 			if !reflect.DeepEqual(beforeHead, afterConflict) || f.service.Counts() != (testservice.Counts{Tokens: 1, TokenCreates: 1}) {
 				t.Fatal("refused canonical edit selected state or reached an effect")
 			}
-			advanced := strings.ReplaceAll(edited, `"epoch": 0`, `"epoch": 1`)
+			advanced := strings.Replace(edited, epoch0, epoch1, 1)
 			if advanced == edited {
 				t.Fatal("recovered settings fixture did not advance epoch")
 			}

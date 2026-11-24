@@ -49,7 +49,7 @@ func TestInspectionOutputTargetsUseExactSelectedConfiguration(t *testing.T) {
 					coordinate.ActiveBindingIncarnationID = contract.ID{}
 					selected.coordinates[id] = coordinate
 				}
-				config = contract.OutputConfiguration{Schema: 4, DomainID: root.Domain}
+				config = contract.OutputConfiguration{Schema: 5, DomainID: root.Domain}
 				body, err := contract.EncodeOutputConfiguration(config)
 				if err != nil {
 					t.Fatal(err)

@@ -41,7 +41,7 @@ func planningFixture(t *testing.T) (contract.PlanningAdmission, *consumerTestRou
 			t.Fatal(err)
 		}
 		selection := contract.ConsumerSelection{DomainID: a.DomainID, SnapshotID: a.SnapshotID, HEADDigest: a.HEADDigest, AccessRoot: a.AccessRoot, HEADRevision: a.HEADRevision, HEADToken: a.HEADToken, Root: a.Root, Slot: uint16(i), Core: core, Payload: payload, Binding: authority,
-			Entry: contract.ValueEntry{Name: input.Name, Incarnation: core.EntryIncarnationID, ValueState: core.ValueStateID, OriginSnapshot: core.OriginSnapshotID, OriginTransition: core.OriginTransitionID, ValueSource: contract.Supplied, ConfidentialityClass: contract.Secret, Recipients: slices.Clone(f.q.Intent[i].Recipients), InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ContentLength: 0, RetainedLength: 0}}
+			Entry: contract.ValueEntry{Name: input.Name, Incarnation: core.EntryIncarnationID, ValueState: core.ValueStateID, OriginSnapshot: core.OriginSnapshotID, OriginTransition: core.OriginTransitionID, ValueSource: contract.Supplied, ConfidentialityClass: contract.Secret, Recipients: slices.Clone(f.q.Intent[i].Recipients), InputEncoding: core.InputEncoding, OutputEncoding: contract.OutputEncodingRaw, ContentLength: core.ContentLength, RetainedLength: core.RetainedLength}}
 		for _, binding := range f.q.Bindings {
 			wrapCore, err := custody.ValueWrapCore(core, binding)
 			if err != nil {

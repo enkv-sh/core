@@ -50,8 +50,8 @@ func TestRecipientRetirementIdentityMatchesIndependentLiterals(t *testing.T) {
 		identity string
 		plan     string
 	}{
-		{false, "0386da231deab3d0ff56d841f5683f9ee304d7627550513fe697c7a32fee23c8", "cd6b9c51fc4e016d3aa1f5d6d4947fe60943d35b71506007188a82e18856ab10"},
-		{true, "6b17cfc6e5ae7716db0bb3f112ea8c618229a76ce37152172262f900a8c96836", "63aedd8ecbe347ea73ff4c6cba5382c235d9483870d9d8d820ec72152f77dee9"},
+		{false, "26e189c59ef18327302e937fb0da1c3368c329899704247e1f72735e2cef8a7d", "cd6b9c51fc4e016d3aa1f5d6d4947fe60943d35b71506007188a82e18856ab10"},
+		{true, "fcaa425a87e81fe9a6d475afc9e7f6c98a8a8d27e97f5183b8a8bdbfa08e18b8", "63aedd8ecbe347ea73ff4c6cba5382c235d9483870d9d8d820ec72152f77dee9"},
 	} {
 		p := recipientRetirementIdentityFixture(t, tc.fresh)
 		identity, err := DeriveRecipientRetirementIdentity(p)

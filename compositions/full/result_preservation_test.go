@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"os"
 	"reflect"
@@ -61,12 +62,21 @@ func TestMutationDiagnosticCountAndExactEncodedAccount(t *testing.T) {
 	for i := range r.Diagnostics {
 		r.Diagnostics[i] = maximumMutationDiagnostic()
 	}
+	// Frame one and two rows with the standard JSON indenter. Every further
+	// row has the same indentation and separator as the second row.
+	empty := readableExpectedJSON(t, `{"diagnostics":[]}`)
+	one := readableExpectedJSON(t, `{"diagnostics":[`+string(body)+`]}`)
+	two := readableExpectedJSON(t, `{"diagnostics":[`+string(body)+","+string(body)+`]}`)
+	wantBytes := len(one) - len(empty) + (len(r.Diagnostics)-1)*(len(two)-len(one))
 	machine, err := RenderApplyJSON(r)
-	if err != nil || len(machine)-len(baseJSON) != 10524695 {
+	if err != nil || wantBytes != 11020739 || len(machine)-len(baseJSON) != wantBytes {
 		t.Error("complete JSON diagnostic account", len(machine)-len(baseJSON), err)
 	}
 	human, err := RenderApplyHuman(r)
-	if err != nil || len(human)-len(baseHuman) != 10561668 {
+	maximum := maximumMutationDiagnostic()
+	wantRow := fmt.Sprintf("Issue output target %q destination %q; field locator_requires_creation: unable to verify; required-public-fact-unavailable; source %q location 18446744073709551615:18446744073709551615\n", maximum.Subject.Name, maximum.Subject.DestinationID, maximum.SourceLocation.SourceID)
+	if err != nil || len(wantRow) != 2297 || len(human)-len(baseHuman) != len(r.Diagnostics)*len(wantRow) ||
+		bytes.Count(human, []byte(wantRow)) != len(r.Diagnostics) {
 		t.Error("complete human diagnostic account", len(human)-len(baseHuman), err)
 	}
 	generated, err := RenderGeneratedMutationJSON(r, contract.OperationApplyDeclaration)

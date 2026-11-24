@@ -21,7 +21,28 @@ static int enkv_process(int pid, struct proc_bsdinfo *out, int *failure) {
 	errno = 0;
 	int n = proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, out, sizeof(*out));
 	*failure = n <= 0 ? errno : 0;
-	return n;
+	if (n != 0 || *failure != ESRCH) return n;
+
+	// libproc hides exited children before their parent reaps them.
+	int mib[] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, pid};
+	struct kinfo_proc entry = {0};
+	size_t size = sizeof(entry);
+	if (sysctl(mib, 4, &entry, &size, NULL, 0) != 0) {
+		*failure = errno;
+		return 0;
+	}
+	if (size == 0) return 0;
+	if (size != sizeof(entry) || entry.kp_proc.p_pid != pid) {
+		*failure = EIO;
+		return 0;
+	}
+	out->pbi_status = entry.kp_proc.p_stat;
+	out->pbi_ppid = entry.kp_eproc.e_ppid;
+	out->pbi_pgid = entry.kp_eproc.e_pgid;
+	out->pbi_start_tvsec = entry.kp_proc.p_starttime.tv_sec;
+	out->pbi_start_tvusec = entry.kp_proc.p_starttime.tv_usec;
+	*failure = 0;
+	return sizeof(*out);
 }
 
 static int enkv_usage(int pid, struct rusage_info_v4 *out, int *failure) {
@@ -67,8 +88,11 @@ func nativeProcessIdentity(pid int) (processIdentityInfo, error) {
 		return processIdentityInfo{}, nativeMemoryError(failure)
 	}
 	var state byte
-	if bsd.pbi_status == C.SSTOP {
+	switch bsd.pbi_status {
+	case C.SSTOP:
 		state = 'T'
+	case C.SZOMB:
+		state = 'Z'
 	}
 	return processIdentityInfo{identity: processIdentity{pid: pid,
 		start: uint64(bsd.pbi_start_tvsec)*1_000_000 + uint64(bsd.pbi_start_tvusec)},

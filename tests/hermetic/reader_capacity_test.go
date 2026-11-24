@@ -224,7 +224,6 @@ func TestReaderJointMaximumAuthenticatedOperations(t *testing.T) {
 		ctx, cancel := context.WithTimeout(t.Context(), 10*time.Minute)
 		defer cancel()
 		e, _, source := readerEngineFixture(t, env, selected)
-		e.validator = readerCapacityValidator(t, selected)
 		desired := input
 		desired.Entries.Value = slices.Clone(input.Entries.Value)
 		desired.OutputBindings.Value = slices.Clone(input.OutputBindings.Value)
@@ -318,11 +317,19 @@ func TestReaderJointMaximumAuthenticatedOperations(t *testing.T) {
 		if beforeDeclaration != 33554432 || afterDeclaration != 33554432 || beforeRouting != 284869 || afterRouting != 284869 || afterDeclaration+4+afterRouting != 33839305 {
 			t.Fatal("changed policy image does not preserve exact complete output dimensions", beforeDeclaration, afterDeclaration, beforeRouting, afterRouting)
 		}
+		// The local output interpreter derives targets from the proposed policies.
+		// Keep the authenticated Reader source bound to the original policies.
+		var proposedSource StateSession
+		installOutputFixtureSource(t, &proposedSource, maximumOutputApplyInput(t, selected, proposedOutput))
+		e.validator = readerCapacityValidator(t, &proposedSource)
 		slices.SortFunc(want, comparePublicChanges)
 		request := contract.Hash([]byte("joint maximum owned public changes"))
 		got := e.Compare(ctx, request, desired)
 		observation := contract.ComparisonObservation{DomainID: selected.root.Domain, HeadRevisionID: selected.head.Core.Revision, SnapshotID: selected.root.Snapshot}
 		if got.StateResult != contract.ReaderSuccess || got.Verdict != contract.ComparisonMismatch || !got.DiagnosticsComplete || len(got.Diagnostics) != 0 || !reflect.DeepEqual(got.Changes, want) || got.Observation == nil || *got.Observation != observation || got.Result.Evidence != AuthenticatedClosure || source.closes != 1 || e.activeDone != nil {
+			for _, d := range got.Diagnostics {
+				t.Logf("subject=%s name_bytes=%d destination_bytes=%d path=%v reason=%s", d.Subject.Kind, len(d.Subject.Name), len(d.Subject.DestinationID), d.Path, d.Reason)
+			}
 			t.Fatalf("maximum owned public changes lost authenticated facts: state=%s verdict=%s changes=%d diagnostics=%d closed=%d", got.StateResult, got.Verdict, len(got.Changes), len(got.Diagnostics), source.closes)
 		}
 		readerCapacityScope(t, got.CheckedScope, contract.ScopeComplete)

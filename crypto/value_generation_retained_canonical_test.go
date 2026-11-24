@@ -839,7 +839,7 @@ func generatedCanonicalPlanFixtureFrom(t *testing.T, f generatedRuntimeFixture) 
 	}
 	s.SnapshotID = s.Root.Object
 	s.Entry = contract.ValueEntry{Name: core.Name, Incarnation: core.EntryIncarnationID, ValueState: core.ValueStateID,
-		OriginSnapshot: core.OriginSnapshotID, OriginTransition: core.OriginTransitionID, ValueSource: contract.Supplied, ConfidentialityClass: contract.Secret, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ContentLength: 0, RetainedLength: 0}
+		OriginSnapshot: core.OriginSnapshotID, OriginTransition: core.OriginTransitionID, ValueSource: contract.Supplied, ConfidentialityClass: contract.Secret, InputEncoding: core.InputEncoding, OutputEncoding: contract.OutputEncodingRaw, ContentLength: core.ContentLength, RetainedLength: core.RetainedLength}
 	s.Access = contract.AccessRecord{Schema: contract.CanonicalSchema, MaterialKind: 1, MaterialID: core.ValueStateID, PackageCheck: payload.PackageCheck}
 	for _, binding := range f.reservation.Session.Bindings {
 		wrapCore, err := custody.ValueWrapCore(core, binding)

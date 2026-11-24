@@ -257,7 +257,7 @@ func TestInstalledSecretAccessRefusesWrongTargetAndBindingBeforeCustody(t *testi
 	authority, reader := f.selected.admission.recipient, fixtureID(f.env.Domain, "reader")
 	members := []contract.ID{authority, reader}
 	slices.SortFunc(members, func(a, b contract.ID) int { return bytes.Compare(a[:], b[:]) })
-	input := []ApplyEntryInput{sharingSecretNamed(t, f.env, "secret", "refusal target source", members), {Name: "plain", Recipients: []contract.ID{authority}, ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, InputBytes: []byte("plain")}}
+	input := []ApplyEntryInput{sharingSecretNamed(t, f.env, "secret", "refusal target source", members), {Name: "plain", Recipients: []contract.ID{authority}, ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain, InputBytes: []byte("plain")}}
 	setup := f.engine(t, f.selected, input, nil)
 	if result := setup.Apply(ctx, fixtureID(f.env.Domain, "refusal setup"), input); result.Result.Outcome != ObservedCurrent {
 		t.Fatal(result.Result)

@@ -117,15 +117,23 @@ func TestPublicationPreviewRetainsUnroutedCoordinatesWithoutActions(t *testing.T
 			creates, cas, signs := f.store.creates, f.store.cas, f.trust.signs
 			reader := ReaderEngine{validator: validator}
 			preview, _, failed := reader.projectPublicationPreview(ctx, &selected, actual, actual)
-			want := 0
-			if condition == "entry-override" {
-				want = 1
+			if failed.Outcome != 0 || !preview.Complete || preview.ReasonCode != 0 || len(preview.Entries) != len(facts.coordinates) {
+				t.Fatal("preview did not retain both selected coordinates", preview, failed)
 			}
-			if failed.Outcome != 0 || !preview.Complete || preview.ReasonCode != 0 || len(preview.Entries) != want {
-				t.Fatal("non-Authority target became a write or retained-deletion preview", preview, failed)
-			}
-			if want == 1 && (preview.Entries[0].DestinationID == nil || *preview.Entries[0].DestinationID != "authority" || preview.Entries[0].PhysicalTarget != "authority-slot" || !slices.Equal(preview.Entries[0].Actions, []uint8{contract.PublicationCreateWithValue})) {
-				t.Fatal("Authority route changed its exact action or coordinate", preview.Entries)
+			seen := make(map[contract.ID]bool)
+			for _, row := range preview.Entries {
+				coordinate, present := facts.coordinates[row.CoordinateID]
+				if !present || seen[row.CoordinateID] || row.PhysicalTarget != coordinate.CanonicalTarget || row.ServiceContractID != coordinate.ServiceContractID {
+					t.Fatal("preview lost or duplicated a physical coordinate", row)
+				}
+				seen[row.CoordinateID] = true
+				if condition == "entry-override" && row.PhysicalTarget == "authority-slot" {
+					if row.Origin != "both" || row.DestinationID == nil || *row.DestinationID != "authority" || !slices.Equal(row.Actions, []uint8{contract.PublicationCreateWithValue}) {
+						t.Fatal("Authority route changed its exact action", row)
+					}
+				} else if row.Origin != "observed" || row.Basis != "acknowledged-equal" || len(row.Actions) != 0 {
+					t.Fatal("unrouted coordinate acquired an action", row)
+				}
 			}
 			if f.store.creates != creates || f.store.cas != cas || f.trust.signs != signs {
 				t.Fatal("passive publication preview entered mutation authority")

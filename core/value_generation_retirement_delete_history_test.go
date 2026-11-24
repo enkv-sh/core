@@ -29,7 +29,11 @@ func TestGeneratedAcknowledgedRetirementReservationRejectsRetainedContradiction(
 			case "resource":
 				facts.Target, facts.ResourceData = []byte("different target"), bytes.Repeat([]byte{96}, 32)
 			}
-			body, err := contract.EncodeGeneratorSafeFacts(facts)
+			encode := contract.EncodeGeneratorSafeFacts
+			if conflict == "resource" {
+				encode = contract.EncodeRejectedRetirement
+			}
+			body, err := encode(facts)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"os"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -209,6 +211,47 @@ func TestRootChannelRejectsNoncanonicalAndUnboundedFrames(t *testing.T) {
 
 // full_only: false
 func TestRootChannelCancellationJoinsBlockedReadAndAdmission(t *testing.T) {
+	t.Run("inherited runner waiting for admission", func(t *testing.T) {
+		var reply, request [2]int
+		if err := syscall.Pipe(reply[:]); err != nil {
+			t.Fatal(err)
+		}
+		if err := syscall.Pipe(request[:]); err != nil {
+			t.Fatal(errors.Join(err, syscall.Close(reply[0]), syscall.Close(reply[1])))
+		}
+		native := makeRootChannel(os.NewFile(uintptr(request[0]), "test-request"), os.NewFile(uintptr(reply[1]), "test-reply"))
+		runner, err := inheritedRootChannel(reply[0], request[1])
+		if err != nil {
+			t.Fatal(errors.Join(err, native.close()))
+		}
+		t.Cleanup(func() {
+			if err := errors.Join(native.close(), runner.close()); err != nil {
+				t.Error(err)
+			}
+		})
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+		done := make(chan error, 1)
+		go func() {
+			_, err := runner.admit(ctx, rootAdmission{Execution: defaultExecutionPolicy()})
+			done <- err
+		}()
+		if msg, err := native.read(); err != nil || msg.Operation != "phase" {
+			t.Fatal("runner did not request admission", err)
+		}
+		cancel()
+		select {
+		case err := <-done:
+			if err == nil {
+				t.Fatal("canceled inherited admission passed")
+			}
+		case <-time.After(3 * time.Second):
+			// Release the peer before joining even if the regression returns.
+			_ = native.close()
+			<-done
+			t.Fatal("canceled inherited admission did not join")
+		}
+	})
 	for _, mode := range []string{"read", "admission"} {
 		t.Run(mode, func(t *testing.T) {
 			native, runner := rootChannelFixture(t)

@@ -90,7 +90,7 @@ func TestAdministrativeGrammarRefusalDeliveryHasSeparateLifetime(t *testing.T) {
 			case "gc-apply":
 				code = runGCWithExecutors(ctx, []string{"apply", "--json"}, &output, &diagnostic, nil, nil)
 			}
-			if code != 2 || !json.Valid(output.Bytes()) || !bytes.Contains(output.Bytes(), []byte(`"state_result":"refused"`)) || diagnostic.Len() != 0 {
+			if code != 2 || !json.Valid(output.Bytes()) || !bytes.Contains(output.Bytes(), []byte(`"state_result": "refused"`)) || diagnostic.Len() != 0 {
 				t.Error("execution expiry hid the closed grammar refusal", code, diagnostic.String())
 			}
 		})

@@ -157,7 +157,7 @@ func TestInstalledPublicPublicationRefusesStaleBasisAfterAuthorityKEKReplacement
 						if action.Disposition != contract.PublicationOutcomeAcknowledged || action.AttemptID.IsZero() || action.CoreReason != 0 || action.RemoteValueMayRemain != 1 || action.Evidence.Class != contract.PublicationRequestAcknowledged || action.Evidence.Entry != contract.PublicationMayHaveEnteredEntry {
 							t.Fatal("key replacement erased the first acknowledgement", action)
 						}
-					} else if action.Disposition != contract.PublicationNotSent || !action.AttemptID.IsZero() || action.CoreReason != uint16(AdmissionInvalid) || action.RemoteValueMayRemain != 0 || action.Evidence != (contract.PublicationEvidence{}) {
+					} else if action.Disposition != contract.PublicationNotSent || !action.AttemptID.IsZero() || action.CoreReason != uint16(SigningUnavailable) || action.RemoteValueMayRemain != 0 || action.Evidence != (contract.PublicationEvidence{}) {
 						t.Fatal("stale installed basis invented a later effect", action)
 					}
 				}
@@ -358,9 +358,9 @@ func TestApplyPublicationCaptureOwnsAndChargesDistinctBacking(t *testing.T) {
 	if len(h.deletions) != 0 || h.backingBytes != want {
 		t.Fatal("capture did not charge distinct owned backing exactly", h.backingBytes, want)
 	}
-	// Independent specified widths: 512 entries, 8 MiB raw, 4,096 current
+	// Independent specified widths: 512 entries, 11,186,176 retained bytes, 4,096 current
 	// memberships, and 131,584 retained/Recovery wraps, not 4,096 wraps.
-	maximum := uint64(8<<20 + 210*512 + 256*512 + 32*4096 + 1024 + 422 + 256 + 4*32<<20)
+	maximum := uint64(11186176 + 215*512 + 256*512 + 32*4096 + 1024 + 422 + 256 + 4*32<<20)
 	maximum += 131584*(uint64(unsafe.Sizeof(contract.WrapRow{}))+384) + 1024*(8192+8192) + 2048*32
 	if applyPublicationDynamicLimit() != maximum {
 		t.Fatal("capture maximum omitted retained wraps or an output account", applyPublicationDynamicLimit(), maximum)

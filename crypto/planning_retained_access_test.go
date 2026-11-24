@@ -59,7 +59,7 @@ func planningRetainedAccessFixture(t *testing.T, ordinary, current []int, values
 		selection.Slot, selection.Core, selection.Payload = uint16(i), core, payload
 		selection.Entry = contract.ValueEntry{Name: name, Incarnation: core.EntryIncarnationID, ValueState: core.ValueStateID,
 			OriginSnapshot: core.OriginSnapshotID, OriginTransition: core.OriginTransitionID,
-			ValueSource: contract.Supplied, ConfidentialityClass: contract.Secret, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ContentLength: 0, RetainedLength: 0}
+			ValueSource: contract.Supplied, ConfidentialityClass: contract.Secret, InputEncoding: core.InputEncoding, OutputEncoding: contract.OutputEncodingRaw, ContentLength: core.ContentLength, RetainedLength: core.RetainedLength}
 		for _, binding := range bindings[:current[i]] {
 			selection.Entry.Recipients = append(selection.Entry.Recipients, binding.SubjectID)
 		}

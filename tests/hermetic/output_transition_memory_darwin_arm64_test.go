@@ -130,25 +130,34 @@ func testMaximumOutputConfigurationTransition(t *testing.T, operationCtx context
 		t.Fatal("maximum predecessor configuration", result)
 	}
 	want := configuration
-	input := maximumOutputApplyInput(t, before, configuration)
 	convert := ""
 	switch name {
 	case "policy_only":
-		subjects := hermeticChangedPolicyData(t, input.bindings[0].targets[0].target.Policy.Data)
-		input.bindings[0].destination.Policy.Data = subjects
+		subjects := hermeticChangedPolicyData(t, want.Bindings[0].Targets[0].Policy.Data)
 		want.Bindings[0].Destination.Policy.Data = subjects
-		for i := range input.bindings[0].targets {
-			input.bindings[0].targets[i].target.Policy.Data = subjects
+		for i := range want.Bindings[0].Targets {
 			want.Bindings[0].Targets[i].Policy.Data = subjects
 		}
-
 	case "routing_only":
 		i := slices.IndexFunc(want.Routes, func(route contract.OutputRoute) bool { return len(route.Destinations) == 8 })
 		if i < 0 {
 			t.Fatal("maximum fixture lacks an eight-destination route")
 		}
-		want.Routes[i].Destinations = slices.Clone(want.Routes[i].Destinations[:7])
-		input.routes[i].destinations = slices.Clone(want.Routes[i].Destinations)
+		route := &want.Routes[i]
+		removed := route.Destinations[7]
+		route.Destinations = slices.Clone(route.Destinations[:7])
+		// A selected target exists for each effective entry/destination pair.
+		// Removing this pair retains its binding and the other 15 targets.
+		b := slices.IndexFunc(want.Bindings, func(binding contract.OutputBinding) bool { return binding.DestinationID == removed })
+		if b < 0 {
+			t.Fatal("removed route has no selected binding")
+		}
+		targets := want.Bindings[b].Targets
+		j := slices.IndexFunc(targets, func(target contract.OutputTarget) bool { return target.EntryIncarnationID == route.EntryIncarnationID })
+		if j < 0 || len(targets) != 16 {
+			t.Fatal("removed route has no target in the full binding", len(targets))
+		}
+		want.Bindings[b].Targets = slices.Delete(slices.Clone(targets), j, j+1)
 	case "generated_to_supplied_equal":
 		for _, named := range before.root.Names {
 			if before.valueEntry(named.Slot).ValueSource == contract.Generated {
@@ -157,6 +166,7 @@ func testMaximumOutputConfigurationTransition(t *testing.T, operationCtx context
 			}
 		}
 	}
+	input := maximumOutputApplyInput(t, before, want)
 	entries := maximumOutputEntryInputs(t, env, before, convert)
 	memory := startOrdinaryOutputAccounting(proof)
 	sourceUpper, boundErr := maximumOutputOwnedUpper(proof, before, entries)
@@ -396,8 +406,13 @@ func testMaximumOutputConfigurationCancellation(t *testing.T, cut string) {
 	runtime.KeepAlive(wantConfiguration)
 	runtime.KeepAlive(parent)
 	if cut == "last_configuration_read" {
-		last := uint16(36)
-		targetKey, visits := outputConfigurationCancellationTarget(t, before, store, last)
+		declaration, routing := capacityConfigurationLengths(t, configuration)
+		length := declaration + 4 + routing
+		if declaration != 32<<20 || routing != 284869 || uint32(length) != before.root.OutputConfiguration.TotalLength {
+			t.Fatal("last-read fixture configuration dimensions", declaration, routing, before.root.OutputConfiguration.TotalLength)
+		}
+		wantReads := (length + contract.MaxOutputConfigurationSliceBytes - 1) / contract.MaxOutputConfigurationSliceBytes
+		targetKey, visits := outputConfigurationCancellationTarget(t, before, store, uint16(wantReads-1))
 		reads, seen := 0, 0
 		creates, cas, signs := store.creates, store.cas, trust.signs
 		public, private := keys.Calls()
@@ -415,8 +430,8 @@ func testMaximumOutputConfigurationCancellation(t *testing.T, cut string) {
 		comparison, result := before.compareWithOutput(ctx, entries, input, parent)
 		store.readHook = nil
 		want := Result{Outcome: EvidenceUnavailable, Reason: ReadUnavailable, StoreReason: contract.ReasonLimit}
-		if comparison != nil || result != want || reads != 37 || seen != visits || ctx.Err() != context.Canceled || parent.used {
-			t.Fatalf("last configuration read: comparison=%t result=%+v reads=%d want37 seen=%d visits=%d canceled=%t parent_used=%t", comparison != nil, result, reads, seen, visits, ctx.Err() == context.Canceled, parent.used)
+		if comparison != nil || result != want || reads != wantReads || seen != visits || ctx.Err() != context.Canceled || parent.used {
+			t.Fatalf("last configuration read: comparison=%t result=%+v reads=%d want=%d seen=%d visits=%d canceled=%t parent_used=%t", comparison != nil, result, reads, wantReads, seen, visits, ctx.Err() == context.Canceled, parent.used)
 		}
 		if p, k := keys.Calls(); p != public || k != private || creates != store.creates || cas != store.cas || signs != trust.signs {
 			t.Fatalf("configuration cancellation call deltas: public=%d private=%d creates=%d CAS=%d signs=%d", p-public, k-private, store.creates-creates, store.cas-cas, trust.signs-signs)

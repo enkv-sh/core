@@ -21,9 +21,9 @@ import (
 func RunOrdinaryLiveParentInvocation(t *testing.T, family contract.Family, helper string) {
 	t.Helper()
 	_, resources, _ := ChooseResources(t, family)
-	provider, domain, authority := "aws", "c8f317c09fb984bec0ec7833eecdf3c10dca249177afc774e8db471cd9eaeae0", "arn:aws:kms:us-west-2:210987654321:key/e8f68876-3b1e-9ce0-176c-baff4815e541"
+	provider, domain, authority := "aws", "2798e91fd82fb9d967c6e53473b215b89acefd2424d676badd3142080e14acb9", "arn:aws:kms:us-west-2:210987654321:key/e8f68876-3b1e-9ce0-176c-baff4815e541"
 	if family == contract.GCP {
-		provider, domain, authority = "gcp", "c9855ad26552404413afa4d12cd297d5d0830b8762996282d4089c06c4bd4c27", "projects/authority-project/locations/europe-west1/keyRings/fixture/cryptoKeys/key-dc01e70e2c2447b500e46fdb0b18f5e4/cryptoKeyVersions/1"
+		provider, domain, authority = "gcp", "6cd57eb53fc8ec9ade80eee27644062665fb17a8e0da1b7a2a349a72a368bfa0", "projects/authority-project/locations/europe-west1/keyRings/fixture/cryptoKeys/key-dc01e70e2c2447b500e46fdb0b18f5e4/cryptoKeyVersions/1"
 	}
 	encoded, err := hex.DecodeString(domain)
 	if err != nil {

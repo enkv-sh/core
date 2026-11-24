@@ -742,5 +742,5 @@ func TestStockGCPStorePrefixKeepsBucketReusableAcrossRuns(t *testing.T) {
 }
 
 func openStockVersionReader(context.Context, liveRunInput, string, *runBudget, contract.ID) (stockOriginalReader, error) {
- return nil, errInventory
+	return nil, errInventory
 }

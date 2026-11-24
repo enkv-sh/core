@@ -30,6 +30,7 @@ func overlayFixture(t *testing.T) (string, string, string) {
 	if err := os.WriteFile(filepath.Join(root, "core/go.mod"), []byte("module "+componentPackage+"\n\ngo 1.27.0\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
+	writeLocalGoFixture(t, root, "tests/generatorhost/environment.go", "package generatorhost\n")
 	if err := os.WriteFile(filepath.Join(root, "tests/crypto/admission.go"), []byte("package crypto\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -76,9 +77,9 @@ func TestAssemblyOverlaySeparatesHermeticAndEachProvider(t *testing.T) {
 		if json.Unmarshal(body, &overlay) != nil {
 			t.Fatal("overlay record invalid")
 		}
-		want := 6
+		want := 7
 		if spec.suite == "live" {
-			want = 9
+			want = 10
 		}
 		if len(overlay.Replace) != want {
 			t.Fatalf("assembly source count: %d", len(overlay.Replace))
@@ -88,6 +89,9 @@ func TestAssemblyOverlaySeparatesHermeticAndEachProvider(t *testing.T) {
 				if spec.suite != "live" {
 					t.Fatal("live custody reached hermetic assembly")
 				}
+				continue
+			}
+			if target == filepath.Join(root, "compositions/generatorhost/zz_test_environment.go") && source == filepath.Join(root, "tests/generatorhost/environment.go") {
 				continue
 			}
 			if target == filepath.Join(root, "crypto/zz_test_admission.go") && source == filepath.Join(root, "tests/crypto/admission.go") {
@@ -292,7 +296,8 @@ func TestCryptoOverlayOwnsOnlyExactAdmissionSources(t *testing.T) {
 	}
 	body, err := os.ReadFile(path)
 	var overlay struct{ Replace map[string]string }
-	if err != nil || json.Unmarshal(body, &overlay) != nil || len(overlay.Replace) != 5 ||
+	if err != nil || json.Unmarshal(body, &overlay) != nil || len(overlay.Replace) != 6 ||
+		overlay.Replace[filepath.Join(root, "compositions/generatorhost/zz_test_environment.go")] != filepath.Join(root, "tests/generatorhost/environment.go") ||
 		overlay.Replace[filepath.Join(root, "crypto/zz_test_admission.go")] != filepath.Join(root, "tests/crypto/admission.go") ||
 		overlay.Replace[filepath.Join(root, "crypto/zz_test_cloudflare_process_test.go")] != filepath.Join(root, "tests/crypto/cloudflare_process_test.go") ||
 		overlay.Replace[filepath.Join(root, "providers/gcp/zz_test_admission.go")] != filepath.Join(root, "tests/gcp/admission.go") ||
@@ -522,8 +527,8 @@ func TestLiveAssemblyFailureSourcesUseExactOverlayAndModuleIdentity(t *testing.T
 		t.Fatal(err)
 	}
 	closure := assemblyClosure{BinarySHA256: binaryHash, OverlaySHA256: overlayHash, ResolvedModules: []moduleIdentity{{Path: modulePrefix + "core", Version: "local"}, {Path: modulePrefix + "crypto", Version: "v0.0.0"}, {Path: modulePrefix + "compositions/full", Version: "v0.0.0"}}, CompiledImports: []string{modulePrefix + "core [" + modulePrefix + "core.test]", modulePrefix + "crypto", modulePrefix + "crypto/testsupport/custody", modulePrefix + "compositions/full"}}
-	closure.ResolvedModules = append(closure.ResolvedModules, moduleIdentity{Path: modulePrefix + "providers/gcp", Version: "v0.0.0"})
-	closure.CompiledImports = append(closure.CompiledImports, modulePrefix+"providers/gcp/credentials")
+	closure.ResolvedModules = append(closure.ResolvedModules, moduleIdentity{Path: modulePrefix + "providers/gcp", Version: "v0.0.0"}, moduleIdentity{Path: modulePrefix + "compositions/generatorhost", Version: "v0.0.0"})
+	closure.CompiledImports = append(closure.CompiledImports, modulePrefix+"providers/gcp/credentials", modulePrefix+"compositions/generatorhost")
 	binding, err := buildFailureSources(root, overlay, build, closure)
 	if err != nil {
 		t.Fatal(err)
@@ -533,12 +538,13 @@ func TestLiveAssemblyFailureSourcesUseExactOverlayAndModuleIdentity(t *testing.T
 		t.Fatal(err)
 	}
 	for caller, want := range map[string]string{
-		modulePrefix + "crypto@v0.0.0/testsupport/custody/zz_test_output_box.go": "tests/live/custody/output_box.go",
-		modulePrefix + "providers/gcp@v0.0.0/credentials/zz_test_admission.go":   "tests/gcpcredentials/admission.go",
-		modulePrefix + "core/tests_shared_file_with_underscores_test.go":         "tests/shared/file_with_underscores_test.go",
-		modulePrefix + "crypto@v0.0.0/testsupport/custody/live.go":               "crypto/testsupport/custody/live.go",
-		modulePrefix + "crypto@v0.0.0/zz_test_admission.go":                      "tests/crypto/admission.go",
-		modulePrefix + "compositions/full@v0.0.0/zz_test_admission.go":           "tests/full/admission.go",
+		modulePrefix + "compositions/generatorhost@v0.0.0/zz_test_environment.go": "tests/generatorhost/environment.go",
+		modulePrefix + "crypto@v0.0.0/testsupport/custody/zz_test_output_box.go":  "tests/live/custody/output_box.go",
+		modulePrefix + "providers/gcp@v0.0.0/credentials/zz_test_admission.go":    "tests/gcpcredentials/admission.go",
+		modulePrefix + "core/tests_shared_file_with_underscores_test.go":          "tests/shared/file_with_underscores_test.go",
+		modulePrefix + "crypto@v0.0.0/testsupport/custody/live.go":                "crypto/testsupport/custody/live.go",
+		modulePrefix + "crypto@v0.0.0/zz_test_admission.go":                       "tests/crypto/admission.go",
+		modulePrefix + "compositions/full@v0.0.0/zz_test_admission.go":            "tests/full/admission.go",
 	} {
 		if sources.Paths[caller] != want {
 			t.Fatal("exact overlay or resolved module source was lost", caller)

@@ -63,11 +63,11 @@ func TestPublicNativeGeneratedContinuityAndExactAbandonment(t *testing.T) {
 				pair := workflowReadNamedPair(t, source, localName)
 				restore := workflowReadOnlyPair(t, source, pair)
 				defer restore()
-				inputFlag := "--source"
+				inputFlag, formatFlag := "--source", "--source-format"
 				if len(args) > 0 && args[0] == "plan" {
-					inputFlag = "--trusted"
+					inputFlag, formatFlag = "--trusted", "--trusted-format"
 				}
-				args = append(args, inputFlag, source, "--source-format", "json")
+				args = append(args, inputFlag, source, formatFlag, "json")
 				policy.RecoverySigner = recoverySigner
 				environment := preparedEnvironment
 				if environment == nil && len(args) > 0 && args[0] == "apply" {
@@ -177,7 +177,7 @@ func TestPublicNativeGeneratedContinuityAndExactAbandonment(t *testing.T) {
 			}
 			dependency := preparation.Dependencies.Requirements[0]
 			configContract := sha256.Sum256([]byte("ENKV/CLOUDFLARE-ACCOUNT-TOKEN/CONFIG/v1\x00https://api.cloudflare.com/client/v4"))
-			if dependency.Role != "generator" || dependency.Plugin != nil || dependency.Contract != hex.EncodeToString(configContract[:]) || dependency.ProtocolVersion != 3 || dependency.Artifact != nil || dependency.Status != "missing" || dependency.Reason != "not-installed" {
+			if dependency.Role != "generator" || dependency.Plugin != nil || dependency.Contract != hex.EncodeToString(configContract[:]) || dependency.ProtocolVersion != 5 || dependency.Artifact != nil || dependency.Status != "missing" || dependency.Reason != "selection-required" {
 				t.Fatal("generated preparation changed the exact unselected canonical requirement")
 			}
 			var recoveredEditable map[string]any

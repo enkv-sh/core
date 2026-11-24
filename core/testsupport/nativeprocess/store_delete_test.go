@@ -147,7 +147,7 @@ func TestNativeStoreEnumerationDeleteProbe(t *testing.T){
   if mode=="before-send"{nativeProbeBlockBeforeSend(s)}
   got:=s.DeleteIfToken(ctx,key,nativeProbeToken());want:=contract.WriteAcknowledged;if mode=="lost-reply"||mode=="before-send"{want=contract.WriteUnknown};if mode=="credentials"{want=contract.WriteRefused}
   wantCalls:=1;if mode=="before-send"||mode=="credentials"{wantCalls=0}
-  if got.Status!=want||calls!=wantCalls||(mode=="before-send")!=got.NotSent{t.Fatal("delete result/transmission differs",mode,got,calls)}
+  if got.Status!=want||calls!=wantCalls||(mode=="before-send"||mode=="credentials")!=got.NotSent{t.Fatal("delete result/transmission differs",mode,got,calls)}
  }
  gate:=&nativeProbeClose{entered:make(chan struct{}),release:make(chan struct{})}
  s=nativeProbeStore(t,func(r *http.Request)(*http.Response,error){reply:=nativeProbeReply(r,200,false);reply.StatusCode=204;reply.Body=io.NopCloser(bytes.NewReader(nil));reply.ContentLength=0;reply.Header.Set("Content-Length","0");gate.ReadCloser=reply.Body;reply.Body=gate;return reply,nil},false)

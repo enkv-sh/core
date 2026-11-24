@@ -392,11 +392,11 @@ func publicationThreeCoordinateExits(t *testing.T, env fixtureEnvironment, prefi
 		// Coordinate bodies use 648 fixed bytes plus 124 fixture bytes. Markers
 		// use 763 fixed bytes, 128 hex-ID bytes and 20 birth-identity bytes.
 		// Configuration images use 225 fixed bytes plus 143 per target; the
-		// slice adds 78 bytes. Page/row framing adds 75/37, totaling 6265 here.
+		// slice adds 78 bytes. Page/row framing adds 75/37, totaling 6197 here.
 		// A receipt/index pair adds 299 bytes plus 508+72 per retained outcome.
 		n := len(windows.Successes) + len(windows.Failures)
 		wantChildren := uint32(6)
-		wantSupport := uint64(6265)
+		wantSupport := uint64(6197)
 		wantIndex := uint32(2681 - 335*ended)
 		wantRows := uint32(7 - ended)
 		if n != 0 {
@@ -671,11 +671,11 @@ func TestPublicationEveryMarkerExitRetainsRemainingExits(t *testing.T) {
 			recipientBytes += uint64(ref.Length)
 		}
 	}
-	// The three publication pages total502165; receipt/index framing adds299
+	// The three publication pages total502097; receipt/index framing adds299
 	// plus508+72 per outcome. Two mandatory pages add267+37*N index bytes.
-	initialSupport := uint64(502165 + 299 + 580*incomingCount)
+	initialSupport := uint64(502097 + 299 + 580*incomingCount)
 	initialIndex := uint32(183815 + 267 + 37*incomingCount)
-	if receiptRows != incomingCount || indexRows != 1 || receiptPage == receiptIndex || receiptPage.Length != uint32(75+508*incomingCount) || receiptIndex.Length != uint32(224+72*incomingCount) || recipientPages != 1 || original.Root.ChildEncodedBytes != valueBytes+recipientBytes+initialSupport+uint64(initialIndex) || valuePages != 17 || valueBytes != 50643 || len(original.Root.RequiredSupport) != 5 || original.Root.RequiredSupportRecordCount != uint32(529+incomingCount+1) || len(original.AdministrativeIndex.Groups) != 528 || len(markerLocations) != 264 || coordinatePage.Length != 213651 || markerPage.Length != 250347 || configurationPage.Length != 38167 || original.Root.ChildCount != 24 || original.Root.AdministrativeIndex.Length != initialIndex || len(original.Root.AdministrativeIndexShards) != 0 {
+	if receiptRows != incomingCount || indexRows != 1 || receiptPage == receiptIndex || receiptPage.Length != uint32(75+508*incomingCount) || receiptIndex.Length != uint32(224+72*incomingCount) || recipientPages != 1 || original.Root.ChildEncodedBytes != valueBytes+recipientBytes+initialSupport+uint64(initialIndex) || valuePages != 17 || valueBytes != 53283 || len(original.Root.RequiredSupport) != 5 || original.Root.RequiredSupportRecordCount != uint32(529+incomingCount+1) || len(original.AdministrativeIndex.Groups) != 528 || len(markerLocations) != 264 || coordinatePage.Length != 213651 || markerPage.Length != 250347 || configurationPage.Length != 38099 || original.Root.ChildCount != 24 || original.Root.AdministrativeIndex.Length != initialIndex || len(original.Root.AdministrativeIndexShards) != 0 {
 		t.Fatal("accumulated publication exact initial encoded shape")
 	}
 	coordinateNow, expectedPhysicalRows := publicationCoordinatePhysicalRows(t, f.session)
@@ -797,7 +797,7 @@ func TestPublicationEveryMarkerExitRetainsRemainingExits(t *testing.T) {
 		}
 		n, successes := i+1, min(len(incoming.Successes)+i+1, 256)
 		wantChildren := uint32(24)
-		wantSupport := uint64(502464 + 580*successes)
+		wantSupport := uint64(502396 + 580*successes)
 		wantIndex := uint32(183966 - 335*n + 37*successes + 116)
 		if n == 264 {
 			wantChildren--

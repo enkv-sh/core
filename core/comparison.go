@@ -156,10 +156,16 @@ func (s *StateSession) compareEntryInputsWithRetirement(ctx context.Context, inp
 		if memberships > contract.CryptoMaxMemberships {
 			return nil, refused(CapacityExceeded)
 		}
-		content, inputErr := contract.InputContentLength(v.InputEncoding, v.InputBytes)
-		n := int(content)
-		if v.ConfidentialityClass == contract.Plain && inputErr != nil {
-			return nil, refused(InvalidIntent)
+		var n int
+		if v.ConfidentialityClass == contract.Plain {
+			content, err := contract.InputContentLength(v.InputEncoding, v.InputBytes)
+			if err == contract.ErrRecordCapacity {
+				return nil, refused(CapacityExceeded)
+			}
+			if err != nil {
+				return nil, refused(InvalidIntent)
+			}
+			n = int(content)
 		}
 		if v.Retained != nil {
 			if v.ValueSource != contract.Supplied || v.ConfidentialityClass != contract.Secret || len(v.InputBytes) != 0 || v.Retained.Incarnation.IsZero() || v.Retained.Material.IsZero() {

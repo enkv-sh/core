@@ -397,48 +397,65 @@ func TestGeneratedDeleteHazardDoesNotUseCreateEvidenceAsOriginalResult(t *testin
 // full_only: false
 func TestGeneratedDeleteHazardRetainsContradictionWithoutCleanupEligibility(t *testing.T) {
 	for _, conflict := range []string{"identity reason", "different token"} {
-		for _, eligible := range []uint8{0, contract.GeneratedExposurePossibleLive} {
-			t.Run(fmt.Sprintf("%s/eligible%d", conflict, eligible), func(t *testing.T) {
-				s, a, h, target := generatedDeleteHazardState(t, 0)
-				selected, err := s.selectedGeneratedWork(stdcontext.Background())
-				if err != nil {
-					t.Fatal(err)
-				}
-				facts := generatedRetirementFactsFixture(t, s, a, contract.GeneratorDispositionUnknown)
-				if conflict == "identity reason" {
-					facts.Reason = 10
-				} else {
-					facts.Target, facts.ResourceData = []byte("fixture-target"), bytes.Repeat([]byte{96}, 32)
-				}
-				body, err := contract.EncodeGeneratorSafeFacts(facts)
-				if err != nil {
-					t.Fatal(err)
-				}
-				body, err = contract.EncodeGeneratorFactsRow(contract.GeneratorFactsRow{Schema: 1, ResultID: a.record.ResultID, Facts: body})
-				if err != nil {
-					t.Fatal(err)
-				}
-				var carriers []contract.SupportRecord
-				a.record.Facts, carriers = generatedVectorRows(t, 9, a.record.AttemptID, contract.GeneratorVectorFacts, [][]byte{body})
-				for _, row := range carriers {
-					s.support[len(s.support)-1].Records = append(s.support[len(s.support)-1].Records, contract.SupportRecordView(row))
-				}
-				body, err = contract.EncodeGeneratedAttemptRecord(a.record)
-				if err != nil {
-					t.Fatal(err)
-				}
-				generatedReplaceRecord(t, s, 9, a.record.AttemptID, body)
-				h.Eligibility = eligible
-				generatedReplaceDetachedHazard(t, s, h, target, false)
-				if eligible == 0 {
-					generatedRepackSupport(t, s, s.supportRecords(), selected.bundles)
-				}
-				_, err = s.selectedGeneratedWork(stdcontext.Background())
-				if (err == nil) != (eligible == 0) {
-					t.Fatal("contradictory facts were discarded or permitted cleanup", err)
-				}
-			})
-		}
+		t.Run(conflict, func(t *testing.T) {
+			ctx := t.Context()
+			s, original, h, target := generatedDeleteHazardState(t, 0)
+			selected := mustSelectedGeneratedWork(t, s)
+			source, err := contract.InspectGeneratedDeleteSource(selected.records[generatedRecordKey{contract.GeneratedHazardSupportKind, h.HazardID}])
+			if err != nil {
+				t.Fatal(err)
+			}
+			reservation, err := s.deriveGeneratedReservation(ctx, generatedOrdinaryCleanupReservationInput(t, s, source, generatedVectorID(178)))
+			if err != nil {
+				t.Fatal(err)
+			}
+			active := reservation.state
+			work := mustSelectedGeneratedWork(t, active)
+			attempt := work.attempts[work.phase.FrontierAttemptID]
+			facts := generatedRetirementFactsFixture(t, active, attempt, contract.GeneratorDispositionUnknown)
+			encode := contract.EncodeGeneratorSafeFacts
+			if conflict == "identity reason" {
+				facts.Reason = contract.GeneratorReasonIdentityConflict
+			} else {
+				facts.Target, facts.ResourceData = []byte("fixture-target"), bytes.Repeat([]byte{96}, 32)
+				encode = contract.EncodeRejectedRetirement
+			}
+			body, err := encode(facts)
+			if err != nil {
+				t.Fatal(err)
+			}
+			plan, err := active.generatedOrdinaryCleanupAmbiguityPlan(ctx, attempt.record.AttemptID, body, generatedLifecycleFixture(t, active))
+			if err != nil {
+				t.Fatal(err)
+			}
+			parked, err := active.deriveGeneratedOrdinaryCleanupAmbiguity(ctx, plan)
+			if err != nil {
+				t.Fatal(err)
+			}
+			state := parked.state
+			closed := mustSelectedGeneratedWork(t, state)
+			retained, err := contract.InspectGeneratedDeleteSource(closed.records[generatedRecordKey{contract.GeneratedHazardSupportKind, h.HazardID}])
+			current := closed.attempts[attempt.record.AttemptID]
+			if err != nil || retained.Hazard.Eligibility != 0 || retained.Hazard.Fenced != 1 ||
+				closed.attempts[original.record.AttemptID].record.State != contract.GeneratedEffectClosedWithResidue ||
+				current.record.State != contract.GeneratedEffectUnknown || current.record.Stage != contract.GeneratedStageTerminal || len(current.result) != 0 {
+				t.Fatal("contradictory observation lost the original hazard or admitted cleanup", err)
+			}
+			rows, err := closed.vectors.resolve(contract.GeneratedAttemptSupportKind, attempt.record.AttemptID, contract.GeneratorVectorFacts, current.record.Facts)
+			if err != nil || len(rows) != 1 {
+				t.Fatal("missing contradiction facts", err)
+			}
+			row, err := contract.InspectGeneratorFactsRow(rows[0])
+			if err != nil || row.ResultID != attempt.record.ResultID || !bytes.Equal(row.Facts, body) {
+				t.Fatal("contradiction facts changed", err)
+			}
+			damaged := retained.Hazard
+			damaged.Eligibility = contract.GeneratedExposurePossibleLive
+			generatedReplaceDetachedHazard(t, state, damaged, target, false)
+			if _, err := state.selectedGeneratedWork(ctx); err == nil {
+				t.Fatal("changed hazard eligibility accepted")
+			}
+		})
 	}
 }
 

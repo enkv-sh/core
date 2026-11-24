@@ -872,7 +872,7 @@ func publicationBoundaryBacklog(t *testing.T, count, publicationCount int) (*Sta
 		// it does not ask the bundle-length implementation for its expectation.
 		want := 2 + 3*4 + 348 + 168 + 248 + 5*4
 		for _, plan := range bundle.ValueEntryPlans {
-			want += 4 + 236 + len(plan.Name)
+			want += 4 + 238 + len(plan.Name)
 			if plan.ValueSource == contract.Generated {
 				want++ // Generated plans carry one lifecycle tag.
 			}

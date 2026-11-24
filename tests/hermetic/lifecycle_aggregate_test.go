@@ -33,6 +33,7 @@ func TestSignedAggregateRejectsOversizedPageClosureBeforeFetch(t *testing.T) {
 				page.Object = testID(string(rune(i)) + " oversized page")
 				for _, entry := range page.Slots {
 					entry.ValueBytes = bytes.Repeat([]byte{42}, contract.CryptoMaxRawValue)
+					entry.ContentLength, entry.RetainedLength = contract.CryptoMaxRawValue, contract.CryptoMaxRawValue
 				}
 			}
 			// Each page is valid; the signed root still declares the admitted eight MiB.
@@ -103,6 +104,8 @@ func TestSignedAggregateChecksDecodedPageBeforeCaching(t *testing.T) {
 				// The valid control keeps the closed signed projection well formed.
 				state.Pages[0].Slots[0].Name = ""
 				state.Pages[0].Slots[0].ValueBytes = bytes.Repeat([]byte{42}, contract.CryptoMaxName+1)
+				state.Pages[0].Slots[0].RetainedLength = contract.CryptoMaxName + 1
+				state.Pages[0].Slots[0].ContentLength = contract.CryptoMaxName + 1
 			}
 			state.Root.MembershipCount = 1
 			storeContractClosure(t, f, state)

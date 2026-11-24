@@ -46,7 +46,7 @@ func TestRecipientRetirementAdapterUsesExactReferenceAndIgnoresValidPendingInten
 					control, controlErr := basis.ControlCore(model.DomainID, store)
 					binding, bindingErr := configurationApplyBinding(model.Provider, model.Recipients[0].Encryption)
 					digest, digestErr := contract.PublicBindingDigest(binding)
-					if err != nil || controlErr != nil || bindingErr != nil || digestErr != nil || i.ExpectedDomain != model.DomainID || i.ExpectedStore != store || i.ExpectedControl.AuthorityRecipientID != control.AuthorityRecipientID || i.Recipient != (contract.RecipientBindingReference{RecipientID: model.Recipients[0].ID, PublicBindingDigest: digest}) || i.CompositionID != CompatibilityManifest().Identity || i.Store != nil || i.Trust != nil || i.ConfigurationValidator != nil || i.AdmitCustody != nil {
+					if err != nil || controlErr != nil || bindingErr != nil || digestErr != nil || i.ExpectedDomain != model.DomainID || i.ExpectedStore != store || i.ExpectedControl.AuthorityRecipientID != control.AuthorityRecipientID || i.Recipient != (contract.RecipientBindingReference{RecipientID: model.Recipients[0].ID, PublicBindingDigest: digest}) || i.CompositionID != CompatibilityManifest().Identity || i.Store != nil || i.Trust != nil || i.ConfigurationValidator == nil || i.AdmitCustody != nil {
 						t.Fatal("retirement lost exact trust/reference or acquired proposal capabilities", err, controlErr, bindingErr, digestErr)
 					}
 					return nil, ErrCell

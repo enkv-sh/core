@@ -275,6 +275,9 @@ func publicPublicationWriteAndDelete(t *testing.T, f *fixture, env fixtureEnviro
 	selected := publicPublicationJointReopen(t, f)
 	beforeEffects := len(controlled.owners)
 	result := publicPublicationJointPublish(t, f, controlled.callbacks(), "joint new actions", PublicationRequest{Names: publicPublicationNames(remaining), DeleteCoordinates: deletes})
+	if result.Summary != contract.PublicationSummaryComplete {
+		t.Logf("joint writes and deletes: expected=%d entered=%d", coordinates, len(controlled.owners)-beforeEffects)
+	}
 	assertInstalledPublicationVector(t, result, contract.PublicationSummaryComplete, coordinates)
 	after := publicPublicationJointReopen(t, f)
 	writes, removals := 0, 0
@@ -498,8 +501,8 @@ func TestInstalledPublicPublicationRawAndBase64ExactGroupBoundary(t *testing.T) 
 				rawLength = 49152
 			}
 			entries := []ApplyEntryInput{
-				{Name: "alpha", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, Recipients: []contract.ID{f.session.admission.recipient}, InputBytes: bytes.Repeat([]byte{0xa5}, rawLength)},
-				{Name: "omega", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, Recipients: []contract.ID{f.session.admission.recipient}, InputBytes: bytes.Repeat([]byte{0x5a}, rawLength)},
+				{Name: "alpha", ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain, Recipients: []contract.ID{f.session.admission.recipient}, InputBytes: bytes.Repeat([]byte{0xa5}, rawLength)},
+				{Name: "omega", ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain, Recipients: []contract.ID{f.session.admission.recipient}, InputBytes: bytes.Repeat([]byte{0x5a}, rawLength)},
 			}
 			output := nativePublicationOutput(entries, []uint64{1, 9})
 			for i := range output.bindings[0].targets {

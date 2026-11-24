@@ -337,7 +337,7 @@ func packagedPublicationSequence(t *testing.T, ctx context.Context, f *installed
 	}
 	apply("outputs-A-apply", "enkv first secret test value", custody.StandardValue, 2*len(rows))
 	if f.env.Trust.Family() == contract.AWS {
-		publish("outputs-A-publish", first, false, false, 5, 4, 10)
+		publish("outputs-A-publish", first, false, false, 5, 4, 9)
 	} else {
 		publish("outputs-A-publish", first, false, false, 2, 1, 2)
 	}
@@ -354,9 +354,9 @@ func packagedPublicationSequence(t *testing.T, ctx context.Context, f *installed
 		}
 	}
 	if f.env.Trust.Family() == contract.AWS {
-		publish("outputs-B-publish", second, true, false, 4, 4, 8)
+		publish("outputs-B-publish", second, true, false, 4, 4, 7)
 		retireBindings()
-		publish("outputs-cleanup", second, true, true, 4, 0, 5)
+		publish("outputs-cleanup", second, true, true, 4, 0, 4)
 	} else {
 		publish("outputs-B-publish", second, true, false, 1, 1, 1)
 		retireBindings()
@@ -376,7 +376,7 @@ func packagedPublicationCandidateCharges(t *testing.T, family contract.Family) {
 	var fixture installedApplyTestFixture
 	var observation *packagedSequenceObservation
 	var commands []packagedSequenceCommand
-	wantResults, wantRequests, wantKeyScopes := uint64(6), 23, 3
+	wantResults, wantRequests, wantKeyScopes := uint64(6), 20, 3
 	if family == contract.AWS {
 		fixture, observation, commands = packagedGeneratedSequence(t, ctx)
 	} else {
@@ -395,7 +395,7 @@ func packagedPublicationCandidateCharges(t *testing.T, family contract.Family) {
 	defer server.mu.Unlock()
 	wantIdentityReads := 0
 	if family == contract.AWS {
-		wantIdentityReads = 4
+		wantIdentityReads = 1
 	}
 	if server.identityReads != wantIdentityReads {
 		t.Fatal("publication AWS account qualification count differs")

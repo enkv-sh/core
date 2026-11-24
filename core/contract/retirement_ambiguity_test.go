@@ -2,22 +2,13 @@ package contract
 
 import (
 	"bytes"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
 	"encoding/hex"
 	"testing"
 )
 
 // full_only: false
 func TestRetirementAmbiguityProofScopeAndBounds(t *testing.T) {
-	scalar := make([]byte, 32)
-	scalar[31] = 1
-	key, err := ecdsa.ParseRawPrivateKey(elliptic.P256(), scalar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	pub, err := key.PublicKey.Bytes()
+	pub, err := hex.DecodeString("046b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c2964fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +29,9 @@ func TestRetirementAmbiguityProofScopeAndBounds(t *testing.T) {
 	if err != nil || hex.EncodeToString(commitment[:]) != "7fee25f74c270e2238b99e70961048dbd00f5567211abedd40a8a30c02809648" {
 		t.Fatal("pre-effect key commitment", commitment, err)
 	}
-	v.Signature, err = ecdsa.SignASN1(rand.Reader, key, digest[:])
+	// Public test vector with d = k = 1: r is the base point's x coordinate
+	// and s = (digest + r) mod the P-256 group order.
+	v.Signature, err = hex.DecodeString("304502206b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296022100fe737afd462f66ae5c0efe3a87c3b358d1580bcc2ae24f085639da8c752ce2e4")
 	if err != nil {
 		t.Fatal(err)
 	}

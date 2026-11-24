@@ -628,12 +628,13 @@ func TestSavedSuitesUseConcreteScenarios(t *testing.T) {
 		smokePolicies[suite.Name] = policy
 		for _, scenario := range suite.Scenarios {
 			if owner, exists := owners[scenario]; exists {
-				// The diagnostic suite intentionally includes the ordinary
-				// point32 witness; all other focused ownership stays unique.
 				diagnosticOverlap := scenario == "state.single-value-update-preserves-other-values/members_32" &&
 					(owner == "state-smoke" && suite.Name == "state-point-diagnostic" || owner == "state-point-diagnostic" && suite.Name == "state-smoke")
 				publicOverlap := strings.HasPrefix(scenario, "public-configuration.") && (owner == "public-configuration" && suite.Name == "public-configuration-functional" || owner == "public-configuration-functional" && suite.Name == "public-configuration")
-				if !diagnosticOverlap && !publicOverlap {
+				// The dedicated AWS login exercises the same stock plugin scenario.
+				stockOverlap := scenario == "public-configuration.plugin-contracts/plugin_contracts" &&
+					(owner == "stock-plugin-acceptance" && suite.Name == "daily-retirement-browser-login" || owner == "daily-retirement-browser-login" && suite.Name == "stock-plugin-acceptance")
+				if !diagnosticOverlap && !publicOverlap && !stockOverlap {
 					t.Errorf("scenario %s occurs in both %s and %s", scenario, owner, suite.Name)
 				}
 			}
@@ -646,6 +647,11 @@ func TestSavedSuitesUseConcreteScenarios(t *testing.T) {
 		}
 	}
 
+	for _, name := range []string{"stock-plugin-acceptance", "daily-retirement-browser-login"} {
+		if !slices.Equal(saved[name], []string{"public-configuration.plugin-contracts/plugin_contracts"}) {
+			t.Fatal("stock plugin suite scope differs", name, saved[name])
+		}
+	}
 	diagnostic := saved["state-point-diagnostic"]
 	if len(diagnostic) != 64 {
 		t.Fatal("point diagnostic suite must enumerate all 64 leaves", len(diagnostic))

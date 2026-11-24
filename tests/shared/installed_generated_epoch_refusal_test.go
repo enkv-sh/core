@@ -50,7 +50,7 @@ func TestInstalledGeneratedEpochConflictsRefuseBeforeAnyProducer(t *testing.T) {
 					fresh.Epoch, fresh.Intent = 0, bytes.Clone(process.Intent)
 					fresh.RetirementMode = contract.GeneratedRetirementManual
 					input = append([]ApplyEntryInput{{Name: "aaa-new-generated", Recipients: slices.Clone(current.Recipients),
-						ValueSource: contract.Generated, ConfidentialityClass: contract.Secret, Generated: &fresh}}, input...)
+						ValueSource: contract.Generated, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Secret, Generated: &fresh}}, input...)
 				}
 				desired := currentApplyRecipients(selected.registry())
 				configuration := installedApplyTestConfiguration(t, ctx, selected, input, desired, validator)

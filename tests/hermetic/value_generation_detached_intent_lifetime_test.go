@@ -48,7 +48,7 @@ func TestGeneratedFinalPreservesDetachedIntentLifetime(t *testing.T) {
 		sources := make([]contract.GeneratorDeclarationEntry, 124)
 		for i := range sources {
 			payload := bytes.Repeat([]byte{byte(i + 1)}, 65536)
-			sources[i] = contract.GeneratorDeclarationEntry{Schema: contract.GeneratorDeclarationEntrySchema, Kind: contract.GeneratorDeclarationPlain,
+			sources[i] = contract.GeneratorDeclarationEntry{Schema: contract.GeneratorDeclarationEntrySchema, Kind: contract.GeneratorDeclarationPlain, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw,
 				Name: fmt.Sprintf("plain-%03d", i), Recipients: []contract.ID{before.admission.recipient}, Payload: payload}
 		}
 		oldIntent := hermeticSizedGeneratorIntent("detached old intent", 'x', 393216)

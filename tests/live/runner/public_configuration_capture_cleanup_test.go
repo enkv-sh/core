@@ -561,11 +561,7 @@ func TestPublicCaptureOwnershipRequiresOriginalJoinedEvidence(t *testing.T) {
 func TestPublicCaptureReceiptRequiresIntentBeforeChildEntry(t *testing.T) {
 	for _, preflight := range []bool{false, true} {
 		t.Run(fmt.Sprint(preflight), func(t *testing.T) {
-			directory, err := filepath.EvalSymlinks(t.TempDir())
-			if err != nil {
-				t.Fatal(err)
-			}
-			inv := records.Invocation{StateDir: directory, RunID: liveProtocolRun, Worker: "writer", Nonce: strings.Repeat("a", 32), Role: "writer"}
+			inv, _ := liveProtocolInvocation(t, "writer")
 			ledger := publicOwnership{Version: 1, RunID: inv.RunID, PreflightEmpty: preflight}
 			if records.WriteJSON(publicLedgerPath(inv), ledger, 0600) != nil {
 				t.Fatal("capture ledger fixture unavailable")
@@ -582,7 +578,7 @@ func TestPublicCaptureReceiptRequiresIntentBeforeChildEntry(t *testing.T) {
 			if publicCaptureReceiptUpdate(inv, registration, true) == nil {
 				t.Fatal("child return acquired ownership without original pre-entry intent")
 			}
-			err = publicCaptureReceiptUpdate(inv, registration, false)
+			err := publicCaptureReceiptUpdate(inv, registration, false)
 			if (err == nil) != preflight {
 				t.Fatal("capture entry did not require empty-prefix ownership")
 			}

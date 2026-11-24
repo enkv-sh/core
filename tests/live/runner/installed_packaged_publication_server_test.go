@@ -130,12 +130,12 @@ func (s *packagedPublicationServer) serve(w http.ResponseWriter, r *http.Request
 		refuse("output-request-replay-boundary")
 		return
 	}
-	awsEffects := s.effects["aws-create"] + s.effects["aws-write"] + s.effects["aws-delete"]
+	qualifiedCreates := s.effects["aws-create"]
 	if r.Header.Get("Content-Type") == "application/x-www-form-urlencoded" {
 		if r.Method != "POST" || r.URL.RequestURI() != "/" || r.Header.Get("X-Amz-Target") != "" ||
 			!strings.HasPrefix(r.Header.Get("Authorization"), "AWS4-HMAC-SHA256 ") ||
 			!strings.Contains(r.Header.Get("Authorization"), "/us-east-1/sts/aws4_request") ||
-			string(body) != "Action=GetCallerIdentity&Version=2011-06-15" || s.identityReads != awsEffects {
+			string(body) != "Action=GetCallerIdentity&Version=2011-06-15" || s.identityReads != qualifiedCreates {
 			refuse("aws-identity-request")
 			return
 		}
@@ -147,8 +147,13 @@ func (s *packagedPublicationServer) serve(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if strings.HasPrefix(r.Header.Get("X-Amz-Target"), "secretsmanager.") {
-		// Each native action qualifies its captured credentials before one effect.
-		if r.Method != "POST" || r.URL.RequestURI() != "/" || !strings.HasPrefix(r.Header.Get("Authorization"), "AWS4-HMAC-SHA256 ") || s.identityReads != awsEffects+1 {
+		// Name-based creation needs a fresh qualification. A retained full ARN
+		// identifies the account for subsequent writes and owned deletes.
+		wantIdentityReads := qualifiedCreates
+		if r.Header.Get("X-Amz-Target") == "secretsmanager.CreateSecret" {
+			wantIdentityReads++
+		}
+		if r.Method != "POST" || r.URL.RequestURI() != "/" || !strings.HasPrefix(r.Header.Get("Authorization"), "AWS4-HMAC-SHA256 ") || s.identityReads != wantIdentityReads {
 			refuse("aws-request")
 			return
 		}

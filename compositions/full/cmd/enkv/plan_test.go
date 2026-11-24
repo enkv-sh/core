@@ -303,12 +303,11 @@ type commandShortWriter struct{}
 
 func (commandShortWriter) Write(body []byte) (int, error) { return len(body) - 1, nil }
 
-type commandNewlineShortWriter struct{ writes int }
+type commandNewlineShortWriter struct{}
 
 func (w *commandNewlineShortWriter) Write(body []byte) (int, error) {
-	w.writes++
-	if w.writes == 2 {
-		return 0, nil
+	if len(body) > 0 && body[len(body)-1] == '\n' {
+		return len(body) - 1, nil
 	}
 	return len(body), nil
 }

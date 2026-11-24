@@ -418,7 +418,11 @@ func TestLocalEnvironmentRefusalRequiresJoinedStatus(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer reader.Close()
+			t.Cleanup(func() {
+				if err := reader.Close(); err != nil {
+					t.Error(err)
+				}
+			})
 			// The fixture reports a transport failure independently of delivery.
 			launcher.writeEnvironment = func(w io.Writer, frame protocol.Frame) error {
 				if tc.name == "buffered command refusal" {

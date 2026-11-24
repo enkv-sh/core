@@ -91,7 +91,14 @@ func TestPublicationPreviewUsesSharedEffectiveRoute(t *testing.T) {
 			entry.Class, entry.PlainValue = publicPresent(contract.Plain), publicPresent([]byte("value"))
 			entry.Memberships = publicPresent([]contract.ID{authority, other})
 			input.Entries = publicPresent([]contract.PublicEntry{entry})
-			input.OutputBindings = publicPresent([]contract.PublicOutputBinding{publicFixtureBinding("authority", publicFixtureTarget("entry", "authority-slot")), publicFixtureBinding("other", publicFixtureTarget("entry", "other-slot"))})
+			bindings := []contract.PublicOutputBinding{publicFixtureBinding("authority"), publicFixtureBinding("other")}
+			switch condition {
+			case "inherited":
+				bindings[0] = publicFixtureBinding("authority", publicFixtureTarget("entry", "authority-slot"))
+			case "replacement":
+				bindings[1] = publicFixtureBinding("other", publicFixtureTarget("entry", "other-slot"))
+			}
+			input.OutputBindings = publicPresent(bindings)
 			input.Routing = publicPresent([]contract.PublicRoutingRule{{Key: contract.PublicRoutingKey{EntrySelector: contract.PublicDefaultRoute}, Destinations: publicPresent([]string{"authority"})}})
 			if condition != "inherited" {
 				destinations := []string{"other"}

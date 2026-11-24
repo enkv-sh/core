@@ -32,7 +32,7 @@ func TestPendingOutputOperationKeepsSharedBlobAcrossIntentRelocationAndExactEndi
 	meta := func() *contract.GeneratorDeclaredGeneration {
 		return &contract.GeneratorDeclaredGeneration{Schema: contract.GeneratorDeclaredGenerationSchema, Epoch: 0, RetirementMode: contract.GeneratedRetirementManual, CompletionClass: contract.GeneratedCompletionAcknowledged, Intent: bytes.Clone(process.Intent), ConfigContractID: implementation.ConfigContractID, ResourceContractID: hermeticCloudflareResourceContractID(), LifecycleMode: contract.GeneratorLifecycleManaged}
 	}
-	input := []ApplyEntryInput{{Name: "current", ValueSource: contract.Generated, ConfidentialityClass: contract.Secret, Recipients: []contract.ID{authority}, Generated: meta()}, plain}
+	input := []ApplyEntryInput{{Name: "current", ValueSource: contract.Generated, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Secret, Recipients: []contract.ID{authority}, Generated: meta()}, plain}
 	currentEngine := publicGeneratedOutputEngine(t, ctx, f, input, &outputApplyInput{}, installedGeneratedTestCallbacks(t, f, process))
 	currentResult := currentEngine.Apply(ctx, fixtureID(f.env.Domain, "kind8 shared independent current"), input)
 	currentEngine.Close()

@@ -152,8 +152,8 @@ func applyPublicationGeneratedFixture(t *testing.T, ctx context.Context) (instal
 	f.env.GeneratedProcess = process
 	g := process.Implementation
 	input := []ApplyEntryInput{
-		{Name: "generated", ValueSource: contract.Generated, ConfidentialityClass: contract.Secret, Recipients: []contract.ID{f.selected.admission.recipient}, Generated: &contract.GeneratorDeclaredGeneration{Schema: contract.GeneratorDeclaredGenerationSchema, Epoch: 0, RetirementMode: contract.GeneratedRetirementManual, CompletionClass: contract.GeneratedCompletionAcknowledged, Intent: bytes.Clone(process.Intent), ConfigContractID: g.ConfigContractID, ResourceContractID: hermeticCloudflareResourceContractID(), LifecycleMode: contract.GeneratorLifecycleManaged}},
-		{Name: "plain", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, Recipients: []contract.ID{f.selected.admission.recipient}, InputBytes: []byte("private data")},
+		{Name: "generated", ValueSource: contract.Generated, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingBase64, ConfidentialityClass: contract.Secret, Recipients: []contract.ID{f.selected.admission.recipient}, Generated: &contract.GeneratorDeclaredGeneration{Schema: contract.GeneratorDeclaredGenerationSchema, Epoch: 0, RetirementMode: contract.GeneratedRetirementManual, CompletionClass: contract.GeneratedCompletionAcknowledged, Intent: bytes.Clone(process.Intent), ConfigContractID: g.ConfigContractID, ResourceContractID: hermeticCloudflareResourceContractID(), LifecycleMode: contract.GeneratorLifecycleManaged}},
+		{Name: "plain", ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain, Recipients: []contract.ID{f.selected.admission.recipient}, InputBytes: []byte("private data")},
 	}
 	output := nativePublicationOutput(input, []uint64{1, 9})
 	for i := range output.bindings[0].targets {
@@ -532,9 +532,9 @@ func TestApplyPublicationLateRelevantConflictPreservesEarlierAcknowledgement(t *
 			f, env, _, private, _ := nativePublicationFixture(t, false)
 			authority := f.session.admission.recipient
 			entries := []ApplyEntryInput{
-				{Name: "alpha", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, Recipients: []contract.ID{authority}, InputBytes: []byte("private data")},
-				{Name: "beta", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, Recipients: []contract.ID{authority}, InputBytes: []byte("private data")},
-				{Name: "outside", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, Recipients: []contract.ID{authority}, InputBytes: []byte("unrouted value")},
+				{Name: "alpha", ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain, Recipients: []contract.ID{authority}, InputBytes: []byte("private data")},
+				{Name: "beta", ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain, Recipients: []contract.ID{authority}, InputBytes: []byte("private data")},
+				{Name: "outside", ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain, Recipients: []contract.ID{authority}, InputBytes: []byte("unrouted value")},
 			}
 			outputFor := func(input []ApplyEntryInput, grouped bool, changedTarget string) *outputApplyInput {
 				var routed []ApplyEntryInput

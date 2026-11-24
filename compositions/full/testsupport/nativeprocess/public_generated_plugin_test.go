@@ -191,8 +191,8 @@ func nativeGeneratedPluginInvocations(t *testing.T, path, label string, metadata
 		t.Fatal("independent generator marker is not a bounded private image", statErr, readErr, closeErr)
 	}
 	var rows []nativeGeneratedPluginInvocation
-	if json.Unmarshal(body, &rows) != nil || len(rows) != 2 {
-		t.Fatal("unknown-work graph did not enter exactly initial and residue Attempts")
+	if json.Unmarshal(body, &rows) != nil || len(rows) != 1 {
+		t.Fatal("unknown-work graph must enter exactly one initial Attempt")
 	}
 	family, err := metadata.GeneratorFacts()
 	if err != nil {
@@ -215,25 +215,16 @@ func nativeGeneratedPluginInvocations(t *testing.T, path, label string, metadata
 			Target json.RawMessage            `json:"target"`
 		} `json:"effects"`
 	}
-	if json.Unmarshal(child.out, &public) != nil || len(public.Effects) != 2 {
+	if json.Unmarshal(child.out, &public) != nil || len(public.Effects) != 1 {
 		t.Fatal("independent generator result lost exact entered Attempts")
 	}
-	seen := map[protocol.ID]bool{}
 	for index, row := range rows {
 		command := row.Command
-		branch := uint8(0)
-		if index == 1 {
-			branch = 2
-		}
-		attempt, err := contract.GeneratorAttemptID(contract.ID(command.LineageID), branch)
-		if err != nil || command.AttemptID != protocol.ID(attempt) || row.Build != label || row.PID <= 1 || !row.SDKReturned || seen[command.AttemptID] || command.Action != protocol.ActionCreate ||
+		attempt, err := contract.GeneratorAttemptID(contract.ID(command.LineageID), 0)
+		if err != nil || command.AttemptID != protocol.ID(attempt) || row.Build != label || row.PID <= 1 || !row.SDKReturned || command.Action != protocol.ActionCreate ||
 			command.ExecutorID != protocol.ID(family.ExecutorID) || command.DescriptorID != protocol.ID(family.DescriptorID) || !bytes.Equal(command.Intent, nativeGeneratedPluginIntent()) ||
 			command.IntentDigest != nativeGeneratedPluginDigest("intent-v3", command.Intent) || command.RequestDigest.IsZero() || command.CredentialRouteID != protocol.ID(routeID) {
 			t.Fatal("independent generator invocation changed exact graph, build, recipe or SDK terminal", index, err)
-		}
-		seen[command.AttemptID] = true
-		if index == 1 && (command.DomainID != rows[0].Command.DomainID || command.OperationID != rows[0].Command.OperationID || command.LineageID != rows[0].Command.LineageID || command.RequestIdentityDigest != rows[0].Command.RequestIdentityDigest || command.PlanGraphID != rows[0].Command.PlanGraphID) {
-			t.Fatal("fixed residue successor changed its admitted operation")
 		}
 		if process, err := os.FindProcess(row.PID); err != nil {
 			t.Fatal(err)

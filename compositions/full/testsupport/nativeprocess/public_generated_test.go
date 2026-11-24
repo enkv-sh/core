@@ -1173,7 +1173,7 @@ func TestPublicNativeGeneratedRetainedBuildSurvivesCurrentSelectionAndRestart(t 
 			_, headBefore := workflowHead(t, s)
 			before, resourcesBefore := cloudflare.snapshot()
 			child := run("generated retire", nativeGeneratedBearerA, "--duty", duty)
-			nativeGeneratedOutcome(t, child, "unavailable", 3)
+			nativeGeneratedOutcome(t, child, "refused", 2)
 			_, headAfter := workflowHead(t, s)
 			after, resourcesAfter := cloudflare.snapshot()
 			for _, event := range child.capture.Events {
@@ -1574,8 +1574,8 @@ func TestPublicNativeGeneratedCustodyLedgerKeepsActualResultsAndLostOutput(t *te
 			}
 			if condition == "pre-entry-persistence-refused" || condition == "allowance-exhausted" {
 				nativeGeneratedOutcome(t, child, "effect-unknown", 3)
-				if len(after) != len(before) || len(events) != 2 || events[0].Kind != "generator-refused" || events[1].Kind != "generator-refused" || events[0].GeneratorAttempt == events[1].GeneratorAttempt {
-					t.Fatalf("ledger admission did not refuse the two distinct graph Attempts before provider entry: events=%d requests=%d", len(events), len(after)-len(before))
+				if len(after) != len(before) || len(events) != 1 || events[0].Kind != "generator-refused" {
+					t.Fatalf("ledger admission did not refuse the initial graph Attempt before provider entry: events=%d requests=%d", len(events), len(after)-len(before))
 				}
 				if condition == "pre-entry-persistence-refused" {
 					if _, err := os.Lstat(ledgerPath); !os.IsNotExist(err) {
@@ -1584,10 +1584,7 @@ func TestPublicNativeGeneratedCustodyLedgerKeepsActualResultsAndLostOutput(t *te
 					return
 				}
 			} else {
-				wantEntries := 1
-				if condition == "unqualified-provider-reply" {
-					wantEntries = 2
-				}
+				const wantEntries = 1
 				if len(after) != len(before)+wantEntries || len(events) != 2*wantEntries {
 					t.Fatalf("custody did not retain the exact complete provider-entry transcript: events=%d requests=%d expected_entries=%d", len(events), len(after)-len(before), wantEntries)
 				}
@@ -1640,28 +1637,12 @@ func TestPublicNativeGeneratedCustodyLedgerKeepsActualResultsAndLostOutput(t *te
 					}
 					ledgerPath += ".retained"
 				case "unqualified-provider-reply":
-					out := nativeGeneratedOutcome(t, child, "success", 0)
-					if out.Canonical != "selected" || out.EffectSummary != "effect-complete" || out.Receipt == "" || len(out.Effects) != 2 || len(out.Duties) != 0 || len(out.Hazards) != 1 || out.Hazards[0].Facts.OriginalAttemptID != events[0].GeneratorAttempt {
-						t.Fatal("successful successor erased the original unknown effect or its exact retained Hazard")
-					}
-					seenEffects := map[string]bool{}
-					for _, effect := range out.Effects {
-						if seenEffects[effect.Facts.AttemptID] {
-							t.Fatal("successful successor returned a duplicate effect Attempt")
-						}
-						seenEffects[effect.Facts.AttemptID] = true
-						switch effect.Facts.AttemptID {
-						case events[0].GeneratorAttempt:
-							if effect.Facts.State != "closed-with-residue" {
-								t.Fatal("original unqualified effect became successful evidence")
-							}
-						case events[2].GeneratorAttempt:
-							if effect.Facts.State != "succeeded" || effect.Target.TokenID != hex.EncodeToString([]byte(events[3].GeneratorTarget)) {
-								t.Fatal("successful successor effect lost its exact owned target")
-							}
-						default:
-							t.Fatal("successful successor returned an unrelated effect Attempt")
-						}
+					out := nativeGeneratedOutcome(t, child, "effect-unknown", 3)
+					if out.Canonical != "not-selected" || out.EffectSummary != "effect-unknown" || out.Receipt == "" ||
+						len(out.Current) != 0 || len(out.Effects) != 1 || len(out.Duties) != 0 || len(out.Hazards) != 1 ||
+						out.Hazards[0].Facts.OriginalAttemptID != events[0].GeneratorAttempt ||
+						out.Effects[0].Facts.AttemptID != events[0].GeneratorAttempt || out.Effects[0].Facts.State != "closed-with-residue" || out.Effects[0].Target.TokenID != "" {
+						t.Fatal("unqualified reply lost the original unknown effect or attributed an owned target")
 					}
 				default:
 					if child.code != 0 {
@@ -1693,8 +1674,8 @@ func TestPublicNativeGeneratedCustodyLedgerKeepsActualResultsAndLostOutput(t *te
 					t.Fatal("missing terminal ledger evidence erased the exact conservative entered intent")
 				}
 			case "unqualified-provider-reply":
-				if len(ledger.Pending) != 1 || ledger.Pending[0] != events[0].GeneratorAttempt || len(ledger.Resources) != 1 || ledger.Resources[0].Attempt != events[2].GeneratorAttempt || ledger.Resources[0].ID != events[3].GeneratorTarget || ledger.Resources[0].Disposition != "owned" {
-					t.Fatal("ledger did not preserve the exact unknown original and independently owned successor")
+				if len(ledger.Pending) != 1 || ledger.Pending[0] != events[0].GeneratorAttempt || len(ledger.Resources) != 0 {
+					t.Fatal("ledger changed the pending original Attempt or recorded an owned resource")
 				}
 			default:
 				if len(ledger.Pending) != 0 || len(ledger.Resources) != 1 || ledger.Resources[0].Attempt != events[0].GeneratorAttempt || ledger.Resources[0].ID != events[1].GeneratorTarget || ledger.Resources[0].Disposition != "owned" {

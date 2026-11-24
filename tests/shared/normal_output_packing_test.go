@@ -41,7 +41,7 @@ func TestNormalSupportPackingSelectsChangedOutputRows(t *testing.T) {
 	}
 	wantTarget := intent.bindings[0].targets[0].target
 	wantTarget.EntryIncarnationID = entry.Incarnation
-	wantImage, err := contract.EncodeOutputConfiguration(contract.OutputConfiguration{Schema: 4, DomainID: selected.root.Domain,
+	wantImage, err := contract.EncodeOutputConfiguration(contract.OutputConfiguration{Schema: 5, DomainID: selected.root.Domain,
 		Bindings: []contract.OutputBinding{{DestinationID: "app", IncarnationID: p.outputBindings["app"],
 			Destination: outputFixtureDestination("app", "controlled-provider", 63, contract.OutputPolicy{}),
 			Targets:     []contract.OutputTarget{wantTarget}}}, Groups: [][]contract.ID{{entry.Incarnation}}, Routes: []contract.OutputRoute{{EntryIncarnationID: entry.Incarnation, Destinations: []string{"app"}}}})

@@ -56,7 +56,7 @@ func TestInstalledApplyCreatesRecipientWithPlainAndSecretMembershipAtomically(t 
 				t.Fatal("prepared recipient source sealing", code)
 			}
 			source := bytes.Clone(sealed)
-			input := []ApplyEntryInput{{Name: "plain", Recipients: slices.Clone(readers), ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, InputBytes: []byte("public value")}, {Name: "secret", Recipients: slices.Clone(readers), ValueSource: contract.Supplied, ConfidentialityClass: contract.Secret, InputBytes: sealed}}
+			input := []ApplyEntryInput{{Name: "plain", Recipients: slices.Clone(readers), ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain, InputBytes: []byte("public value")}, {Name: "secret", Recipients: slices.Clone(readers), ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Secret, InputBytes: sealed}}
 			store := f.env.Store.(*memoryStore)
 			cas := store.cas
 			public, _ := f.keys.Calls()

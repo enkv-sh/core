@@ -319,12 +319,13 @@ func TestConfigurationGCRecognizedRefusalsRetainPreAdmissionIdentity(t *testing.
 				}
 				data := body.Bytes()
 				if human {
-					at := bytes.Index(data, []byte("\nresult: "))
-					if at < 0 {
-						t.Error("human refusal lost its complete record")
-						continue
+					if !bytes.Contains(data, []byte(core.GCApplyOperation+": "+state+"\n")) ||
+						!bytes.Contains(data, []byte("Operation: "+readerID(result.Operation.OperationID)+".\n")) ||
+						!bytes.Contains(data, []byte("Admission: "+stage+" / "+code+".\n")) ||
+						bytes.Contains(data, []byte("private-envelope-sentinel")) {
+						t.Error("human GC result lost the refusal identity or disclosed private input")
 					}
-					data = data[at+len("\nresult: "):]
+					continue
 				}
 				var record map[string]json.RawMessage
 				if json.Unmarshal(data, &record) != nil {

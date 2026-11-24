@@ -31,6 +31,7 @@ type generatedCandidate struct {
 	SourceProtections                     []byte
 	LiveSourceUses                        []contract.GeneratorSourceUse
 	Registry                              *contract.GeneratedCandidateRegistryInput
+	UnchangedRegistry                     *contract.GeneratedUnchangedRegistryRoots
 }
 
 type generatedCandidateFacts struct {

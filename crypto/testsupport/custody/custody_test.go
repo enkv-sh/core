@@ -38,7 +38,7 @@ func TestInitRoutesReopenWithoutPrivateProcessFacts(t *testing.T) {
 			}
 		}
 		deadline := time.Now().Add(time.Minute)
-		q := contract.CryptoQualifyInitKeysRequest{Context: contract.InitKeyContext{Schema: 3, GenesisProfile: 1, AdmissionID: id("admission"), SessionID: id("session"), DomainID: id("domain"), CompatibilityID: contract.CompatibilityID(), Expiry: uint64(deadline.UnixNano()), InitID: id("init"), DescriptorDigest: id("descriptor"), GenesisPlanDigest: id("plan"), RequestDescriptor: contract.DescriptorVector{Digest: id("request"), Length: contract.GenesisRequestCoreLength, Count: 1}}, Bindings: rows}
+		q := contract.CryptoQualifyInitKeysRequest{Context: contract.InitKeyContext{Schema: contract.CryptoSchema, GenesisProfile: 1, AdmissionID: id("admission"), SessionID: id("session"), DomainID: id("domain"), CompatibilityID: contract.CompatibilityID(), Expiry: uint64(deadline.UnixNano()), InitID: id("init"), DescriptorDigest: id("descriptor"), GenesisPlanDigest: id("plan"), RequestDescriptor: contract.DescriptorVector{Digest: id("request"), Length: contract.GenesisRequestCoreLength, Count: 1}}, Bindings: rows}
 		for _, subject := range []contract.ID{id("authority"), f.RecoveryID()} {
 			for _, row := range rows {
 				if row.SubjectID != subject {
@@ -58,7 +58,7 @@ func TestInitRoutesReopenWithoutPrivateProcessFacts(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		r := f.Crypto().Exchange(context.Background(), contract.CryptoRequest{Schema: 3, Kind: contract.CryptoQualifyInitKeys, RequestID: id("message"), CustodyInstanceID: f.Crypto().InstanceID(), Body: body})
+		r := f.Crypto().Exchange(context.Background(), contract.CryptoRequest{Schema: contract.CryptoSchema, Kind: contract.CryptoQualifyInitKeys, RequestID: id("message"), CustodyInstanceID: f.Crypto().InstanceID(), Body: body})
 		if r.ResultCode != contract.CryptoSuccess {
 			t.Fatalf("qualification refused: %v", r.ResultCode)
 		}

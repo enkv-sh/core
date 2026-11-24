@@ -285,7 +285,7 @@ func TestPublicConfigurationOwnsEarlyFailureSubjects(t *testing.T) {
 	name := backing[100:101]
 	entry := publicFixtureEntry(input, name)
 	entry.Class = publicPresent(contract.Plain)
-	entry.PlainValue = publicPresent(make([]byte, contract.CryptoMaxRawValue+1))
+	entry.PlainValue = publicPresent(make([]byte, contract.CryptoMaxRetainedValue+1))
 	input.Entries = publicPresent([]contract.PublicEntry{entry})
 	v := NewPublicConfigurationValidator(nil)
 	got := v.Validate(context.Background(), input)
@@ -330,7 +330,12 @@ func TestPublicConfigurationAcceptsEmptyAndOwnsExactBytes(t *testing.T) {
 	}
 	input.Entries = publicPresent([]contract.PublicEntry{{Name: "", Class: publicPresent(contract.Plain), Source: publicPresent(contract.Supplied), PlainValue: publicPresent([]byte{0, '\n'}), Memberships: publicPresent([]contract.ID{input.Authority.RecipientID.Value})}, {Name: "A", Class: publicPresent(contract.Secret), Source: publicPresent(contract.Supplied), Memberships: publicPresent([]contract.ID{input.Authority.RecipientID.Value})}, {Name: "a", Class: publicPresent(contract.Plain), Source: publicPresent(contract.Supplied), PlainValue: publicPresent([]byte{}), Memberships: publicPresent([]contract.ID{input.Authority.RecipientID.Value})}})
 	got = validator.Validate(context.Background(), input)
-	if !got.Valid || !got.Complete || !reflect.DeepEqual(got.Configuration.Entries.Value, input.Entries.Value) {
+	want := slices.Clone(input.Entries.Value)
+	for i := range want {
+		want[i].InputEncoding = publicPresent(uint8(contract.InputEncodingRaw))
+		want[i].OutputEncoding = publicPresent(uint8(contract.OutputEncodingRaw))
+	}
+	if !got.Valid || !got.Complete || !reflect.DeepEqual(got.Configuration.Entries.Value, want) {
 		t.Fatalf("exact input refused: %+v", got.Diagnostics)
 	}
 	input.Entries.Value[0].PlainValue.Value[0] = 9
@@ -620,7 +625,7 @@ func TestPublicConfigurationExactSmallBoundaries(t *testing.T) {
 	if got := v.Validate(context.Background(), input); !got.Complete {
 		t.Fatal("exact raw limit refused", got.Diagnostics)
 	}
-	input.Entries.Value[0].PlainValue.Value = make([]byte, contract.CryptoMaxRawValue+1)
+	input.Entries.Value[0].PlainValue.Value = make([]byte, contract.CryptoMaxRetainedValue+1)
 	got := v.Validate(context.Background(), input)
 	if got.Valid || got.Complete || len(got.Diagnostics) != 1 || got.Diagnostics[0].Reason != contract.ReasonLimitExceeded {
 		t.Fatal("raw one-over accepted", got.Diagnostics)

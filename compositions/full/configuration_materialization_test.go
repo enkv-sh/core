@@ -255,7 +255,7 @@ func TestConfigurationMaterializationPreAdmissionRefusalsKeepLocalIdentity(t *te
 					case "missing-selection":
 						request.Names = []string{"ABSENT"}
 					case "unauthorized-selection":
-						request.RecipientID = contract.ID{}
+						request.RecipientID = contract.Hash([]byte("absent test recipient"))
 						wantReason = contract.MaterializationUnauthorizedSelection
 					case "required-read-unavailable":
 						wantStage = contract.MaterializationLoad
@@ -294,7 +294,14 @@ func TestConfigurationMaterializationPreAdmissionRefusalsKeepLocalIdentity(t *te
 							}
 							body := output.Bytes()
 							if human {
-								_, body, _ = bytes.Cut(body, []byte("\nresult: "))
+								if !bytes.Contains(body, []byte("materialize: "+string(wantState)+"\n")) ||
+									!bytes.Contains(body, []byte("Operation: "+readerID(result.OperationID)+".\n")) ||
+									!bytes.Contains(body, []byte("Admission: observation / "+wantCode+".\n")) ||
+									!bytes.Contains(body, []byte("Failure: "+string(wantStage)+" / "+string(wantReason)+".\n")) ||
+									bytes.Contains(body, []byte("raw-error-sentinel")) || bytes.Contains(body, []byte("secret-sentinel")) {
+									t.Fatal("human refusal lost the observed failure or disclosed private input")
+								}
+								continue
 							}
 							var record struct {
 								OperationID string                     `json:"operation_id"`

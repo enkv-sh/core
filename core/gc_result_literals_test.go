@@ -29,20 +29,20 @@ func gcEmptyResultLiteral(t testing.TB) PublicGCResult {
 	plan := gcEmptyPlanLiteral(t)
 	return PublicGCResult{
 		Operation: GCApplyOperation, RequestID: contract.ID{13}, OperationID: plan.OperationID, DomainID: plan.DomainID,
-		RequestIdentity: gcResultLiteralDigest(t, "e0406db5db851d953b809ecf1e6453b1cdc523b752aa7aa7a01b9d435d55ed78"),
+		RequestIdentity: gcResultLiteralDigest(t, "2d9182ecc76b9b9e0bd5e5cd1b8b35bd30ce92c9d0d3392dcd3931e022d353a0"),
 		Result:          Result{Outcome: Unchanged, Evidence: AuthenticatedClosure, ObservedRevision: plan.HeadRevisionID, ObservedSnapshotID: plan.SnapshotID},
 		StateResult:     "no-op", EffectSummary: contract.ReceiptEffectNoChange, OutputSummary: contract.ReceiptOutputNotApplicable, EvidenceCeiling: contract.ReceiptEvidenceCanonical,
 		Payload: &GCCleanupPayload{
-			PlanDigest:      gcResultLiteralDigest(t, "4af009b37bc1030609da34e4ab4b9362ae794ad3c40d92d51309660b0f306f01"),
-			RequestIdentity: gcResultLiteralDigest(t, "fd71d65af3ff3c9a9a5725794c1f5be5314d0a6361bd336d8d512426cd7d94b1"),
+			PlanDigest:      gcResultLiteralDigest(t, "41966ad01a9a484655786dd6e86d33584288355bfb4752ef20a6c9ab2cb0cf7f"),
+			RequestIdentity: gcResultLiteralDigest(t, "94b36db1fae69eb3361101f1db7904142b4b388d87cf6ed68779d3255e131973"),
 			MarkDigest:      plan.MarkDigest, EnumerationDigest: plan.EnumerationDigest,
 			TargetsDescriptor: contract.GCDescriptor{Digest: plan.TargetsDigest, Length: 21, Count: 0},
-			SiblingResults:    GCSiblingCommitment{Count: 0, RootDigest: gcResultLiteralDigest(t, "021d7e9f69f2a74856f7538789360a9dce73eb66444ef3279189f4e246a00672")},
+			SiblingResults:    GCSiblingCommitment{Count: 0, RootDigest: gcResultLiteralDigest(t, "dc63fb71815ffc0cf005d4a0be512e734fefb0193cae4790ac517077bf14a23a")},
 			Observation:       PublicObservation{DomainID: plan.DomainID, HeadRevisionID: plan.HeadRevisionID, SnapshotID: plan.SnapshotID, RootDigest: plan.RootDigest},
 			NoWork: &GCNoWorkObservation{
 				FullHEADDigest: plan.FullHEADDigest,
 				TokenDigest:    gcResultLiteralDigest(t, "3e99bbae266a6b3ebcf402527ac157d1fd347b556ee254ad53c2356bc1e7424f"),
-				Snapshot:       contract.Ref{Kind: contract.RootKind, Format: 10, Domain: plan.DomainID, Object: plan.SnapshotID, Digest: plan.RootDigest, Length: 2048},
+				Snapshot:       contract.Ref{Kind: contract.RootKind, Format: 11, Domain: plan.DomainID, Object: plan.SnapshotID, Digest: plan.RootDigest, Length: 2048},
 			},
 			Candidates: plan.Candidates,
 		},

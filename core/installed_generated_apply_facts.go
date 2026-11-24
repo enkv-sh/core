@@ -553,8 +553,25 @@ func (s *StateSession) installedGeneratedCandidate(ctx context.Context, reservat
 			registry.ReceiptDelta = &contract.GeneratedRecipientReceiptInput{Plan: delta, After: after, ChangedSubjects: subjects}
 		}
 		out.Registry = registry
+	} else if len(out.GrantWraps) != 0 {
+		out.UnchangedRegistry, err = s.unchangedRegistryGrantRoots(next)
+		if err != nil {
+			return out, err
+		}
 	}
 	return out, nil
+}
+
+func (s *StateSession) unchangedRegistryGrantRoots(next *StateSession) (*contract.GeneratedUnchangedRegistryRoots, error) {
+	before, err := format.EncodeRoot(s.root)
+	if err != nil {
+		return nil, err
+	}
+	after, err := format.EncodeRoot(next.root)
+	if err != nil {
+		return nil, err
+	}
+	return &contract.GeneratedUnchangedRegistryRoots{Before: before, After: after}, nil
 }
 
 func (s *StateSession) installedGeneratedControlledPredecessor(ctx context.Context, g *generatedSelection, source contract.GeneratedDeleteSource) (*contract.GeneratedControlledPredecessor, error) {

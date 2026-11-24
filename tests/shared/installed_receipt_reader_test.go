@@ -38,7 +38,7 @@ func installedReceiptFixture(t *testing.T, f installedApplyTestFixture) (*Instal
 func installedReceiptAppliedFixture(t *testing.T, ctx context.Context) installedApplyTestFixture {
 	t.Helper()
 	f := newInstalledApplyTestFixture(t, ctx, contract.GCP, false)
-	input := []ApplyEntryInput{{Name: "plain", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, Recipients: []contract.ID{f.selected.admission.recipient}, InputBytes: []byte("current")}}
+	input := []ApplyEntryInput{{Name: "plain", ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain, Recipients: []contract.ID{f.selected.admission.recipient}, InputBytes: []byte("current")}}
 	engine := f.engine(t, f.selected, input, nil)
 	out := engine.Apply(ctx, testID("receipt current selected input"), input)
 	engine.Close()

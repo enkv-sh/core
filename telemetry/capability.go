@@ -29,7 +29,7 @@ type Capability struct {
 	recorder        *Recorder
 	tracers         map[Provider]trace.Tracer
 	closed          atomic.Bool
-	metricMu        sync.Mutex
+	metricMu        sync.RWMutex
 	lostMetrics     atomic.Uint64
 	rejectedMetrics atomic.Uint64
 	lostTraces      atomic.Uint64
@@ -135,11 +135,11 @@ func (capability *Capability) emitMetric(point MetricPoint) {
 		capability.lostMetrics.Add(1)
 		return
 	}
-	if !capability.metricMu.TryLock() {
+	if !capability.metricMu.TryRLock() {
 		capability.lostMetrics.Add(1)
 		return
 	}
-	defer capability.metricMu.Unlock()
+	defer capability.metricMu.RUnlock()
 	if capability.closed.Load() {
 		capability.lostMetrics.Add(1)
 		return

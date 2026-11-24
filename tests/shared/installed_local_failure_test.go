@@ -50,9 +50,10 @@ func TestInstalledLocalGeneratorJoinedEntropyFailureHasNoRemoteOwner(t *testing.
 			author, fault := tc.author, tc.fault
 			var pipeFaults custody.GeneratedPipeFault
 			resumeAfterPipeFailure := tc.name == "result pipe unavailable" || tc.name == "environment pipe closed"
-			if tc.name == "result pipe unavailable" {
+			switch tc.name {
+			case "result pipe unavailable":
 				author.refuseResultPipe = &pipeFaults
-			} else if tc.name == "environment pipe closed" {
+			case "environment pipe closed":
 				author.config.ReportEnvironmentPipeClosed = &pipeFaults
 			}
 			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)

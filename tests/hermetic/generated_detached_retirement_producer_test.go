@@ -92,9 +92,9 @@ func TestActualFreshNameFinalAccumulatesDetachedRetirements(t *testing.T) {
 				t.Fatal("detached retirement changed its exact original owner or started an effect", err)
 			}
 			// Facts:115 framing+24 target+32 resource+1 provider=172 bytes.
-			// Evidence:88 framing+452 result+172 facts=712 bytes.
+			// Evidence:120 framing+452 result+172 facts=744 bytes.
 			evidenceRow, present := work.records[generatedRecordKey{contract.GeneratedCreateEvidenceSupportKind, old.entry.Generated.CreateResultID}]
-			if !present || !bytes.Equal(evidenceRow.Body, old.evidence) || len(evidenceRow.Body) != 712 {
+			if !present || !bytes.Equal(evidenceRow.Body, old.evidence) || len(evidenceRow.Body) != 744 {
 				t.Fatal("detached retirement lost its exact compact original CreateEvidence")
 			}
 			evidence, err := contract.InspectGeneratedCreateEvidence(evidenceRow.Body)

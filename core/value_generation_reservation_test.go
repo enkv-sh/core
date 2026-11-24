@@ -199,8 +199,8 @@ func TestGeneratedFixtureOutputConfigurationRead(t *testing.T) {
 
 // full_only: false
 func TestGeneratedSelectedFixtureConstructorsPreserveEmptyConfiguration(t *testing.T) {
-	// Schema 4, zero bindings and groups, routing length 6, schema 2, zero routes.
-	want, err := hex.DecodeString("00040000000000000006000200000000")
+	// Schema 5, zero bindings and groups, routing length 5, schema 3, empty selectors.
+	want, err := hex.DecodeString("000500000000000000050003000000")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -216,7 +216,7 @@ func TestGeneratedSelectedFixtureConstructorsPreserveEmptyConfiguration(t *testi
 				s = generatedSelectedEntryOrigin(t, generatedVectorID(10), generatedVectorID(11), 0)
 			}
 			d := s.root.OutputConfiguration
-			if d.Schema != contract.OutputConfigurationSchema || d.SliceCount != 1 || d.TotalLength != 16 || d.BindingCount != 0 || d.RoutingLength != 6 || s.admission.store.Prefix != "fixture" {
+			if d.Schema != contract.OutputConfigurationSchema || d.SliceCount != 1 || d.TotalLength != 15 || d.BindingCount != 0 || d.RoutingLength != 5 || s.admission.store.Prefix != "fixture" {
 				t.Fatal("selected fixture omitted the canonical empty configuration")
 			}
 			rows := 0

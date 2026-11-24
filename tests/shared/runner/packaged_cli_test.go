@@ -269,13 +269,21 @@ func prepareStockCLIProductionFixture(t *testing.T, ctx context.Context) stockCL
 	if err := prepared.verify(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if prepared.packaging.Status != "passed" || !prepared.packaging.Started || !prepared.packaging.Joined || !prepared.build.Started || !prepared.build.Joined || len(prepared.members) != 3 {
+	if prepared.packaging.Status != "passed" || !prepared.packaging.Started || !prepared.packaging.Joined || !prepared.build.Started || !prepared.build.Joined || len(prepared.members) != 4 {
 		t.Fatal("actual production/source/legal construction incomplete")
 	}
-	// The main owner has no NOTICE source today. A future owner change must
-	// update this independently expected current member set.
-	if _, present := prepared.members["NOTICE"]; present {
-		t.Fatal("production archive invented main NOTICE")
+	for _, name := range []string{"LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md", "enkv"} {
+		if _, ok := prepared.members[name]; !ok {
+			t.Fatal("missing production archive member", name)
+		}
+	}
+	notice, err := os.ReadFile(filepath.Join(root, "compositions/full/NOTICE"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	archivedNotice, err := os.ReadFile(filepath.Join(filepath.Dir(prepared.executable), "NOTICE"))
+	if err != nil || len(notice) == 0 || bytes.Count(archivedNotice, notice) != 1 {
+		t.Fatal("archived NOTICE must contain the full composition notice exactly once", err)
 	}
 	return stockCLIProductionFixture{ctx: ctx, prepared: prepared, construction: construction, binding: binding, directory: directory}
 }

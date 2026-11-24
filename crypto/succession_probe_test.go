@@ -86,7 +86,7 @@ func TestSuccessorPrivateProbeChecksPacketAndClearsCapacity(t *testing.T) {
 					var code contract.CryptoResultCode
 					var uses KeyUses
 					if genesis {
-						init := contract.InitKeyContext{Schema: 3, GenesisProfile: 1, AdmissionID: c.AdmissionID, SessionID: c.SessionID, DomainID: c.DomainID, CompatibilityID: c.CompatibilityID, Expiry: 1, InitID: id("init"), DescriptorDigest: id("descriptor"), GenesisPlanDigest: id("plan"), RequestDescriptor: contract.DescriptorVector{Digest: id("request"), Length: contract.GenesisRequestCoreLength, Count: 1}}
+						init := contract.InitKeyContext{Schema: contract.CryptoSchema, GenesisProfile: 1, AdmissionID: c.AdmissionID, SessionID: c.SessionID, DomainID: c.DomainID, CompatibilityID: c.CompatibilityID, Expiry: 1, InitID: id("init"), DescriptorDigest: id("descriptor"), GenesisPlanDigest: id("plan"), RequestDescriptor: contract.DescriptorVector{Digest: id("request"), Length: contract.GenesisRequestCoreLength, Count: 1}}
 						plan := contract.InitProbePlanRow{ProbeID: probe.ProbeID, SubjectKind: kind, SubjectID: row.SubjectID, BindingID: binding.BindingID, PublicBindingDigest: digest}
 						code, uses = probeInit(ctx, init, contract.CryptoSupportID(), plan, row, route)
 					} else {

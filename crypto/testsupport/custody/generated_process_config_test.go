@@ -24,7 +24,7 @@ func normalGeneratedProcessConfig(t *testing.T) (GeneratedProcessConfig, contrac
 	if err != nil {
 		t.Fatal(err)
 	}
-	descriptor := artifact.Descriptor{Schema: 1, Name: "private-custody-generator", Role: "generator", Version: "0.0.0", Wire: artifact.Contract{Kind: "wire", Identity: artifact.Digest(protocol.ProtocolID()).String(), Version: 3}, Generator: &artifact.GeneratorDeclaration{ConfigContractID: artifact.Digest{3}, CredentialRoute: route}}
+	descriptor := artifact.Descriptor{Schema: 1, Name: "private-custody-generator", Role: "generator", Version: "0.0.0", Wire: artifact.Contract{Kind: "wire", Identity: artifact.Digest(protocol.ProtocolID()).String(), Version: uint32(protocol.Version)}, Generator: &artifact.GeneratorDeclaration{ConfigContractID: artifact.Digest{3}, CredentialRoute: route}}
 	main := "example.test/generator"
 	options := []artifact.BuildOption{{Name: "-buildmode", Value: "exe"}, {Name: "-compiler", Value: "gc"}, {Name: "-trimpath", Value: "true"}, {Name: "CGO_ENABLED", Value: "0"}, {Name: "GOARCH", Value: runtime.GOARCH}}
 	if runtime.GOARCH == "arm64" {

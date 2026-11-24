@@ -17,8 +17,8 @@ func TestInstalledCombinedPublicationRetainsApplyWhenDeletionSupportIsUnavailabl
 			defer cancel()
 			f := newInstalledApplyTestFixture(t, ctx, contract.GCP, false)
 			entries := []ApplyEntryInput{
-				{Name: "old-output", Recipients: []contract.ID{f.selected.admission.recipient}, ConfidentialityClass: contract.Plain, ValueSource: contract.Supplied, InputBytes: []byte("published value")},
-				{Name: "unrelated", Recipients: []contract.ID{f.selected.admission.recipient}, ConfidentialityClass: contract.Plain, ValueSource: contract.Supplied, InputBytes: []byte("before")},
+				{Name: "old-output", Recipients: []contract.ID{f.selected.admission.recipient}, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain, ValueSource: contract.Supplied, InputBytes: []byte("published value")},
+				{Name: "unrelated", Recipients: []contract.ID{f.selected.admission.recipient}, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain, ValueSource: contract.Supplied, InputBytes: []byte("before")},
 			}
 			target := hermeticNativeOutputTarget("retained-slot", "retained-slot", contract.OutputEncodingRaw, contract.OutputPolicy{})
 			f.selected = selectAdmittedOutputConfiguration(t, ctx, f.selected, f.env, f.keys, entries, &outputApplyInput{

@@ -33,7 +33,7 @@ func TestInstalledApplyReservationPreservesSelectedReadFailureCategory(t *testin
 			defer cancel()
 			f := newInstalledApplyTestFixture(t, ctx, contract.AWS, false)
 			s := f.selected
-			input := []ApplyEntryInput{{Name: "plain", Recipients: []contract.ID{s.admission.recipient}, ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, InputBytes: []byte("value")}}
+			input := []ApplyEntryInput{{Name: "plain", Recipients: []contract.ID{s.admission.recipient}, ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain, InputBytes: []byte("value")}}
 			public, result := s.compareEntryInputs(input)
 			if public == nil {
 				t.Fatal(result)
@@ -145,7 +145,7 @@ func TestInstalledApplyPlanPreservesSelectedReadCancellationCategory(t *testing.
 	defer cancel()
 	f := newInstalledApplyTestFixture(t, ctx, contract.AWS, false)
 	s := f.selected
-	input := []ApplyEntryInput{{Name: "plain", Recipients: []contract.ID{s.admission.recipient}, ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, InputBytes: []byte("value")}}
+	input := []ApplyEntryInput{{Name: "plain", Recipients: []contract.ID{s.admission.recipient}, ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain, InputBytes: []byte("value")}}
 	public, result := s.compareEntryInputs(input)
 	if public == nil {
 		t.Fatal(result)

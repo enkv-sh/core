@@ -759,6 +759,7 @@ func TestGeneratedOutputRoutingAdmission(t *testing.T) {
 			other := plain
 			other.Name, other.Incarnation, other.ValueState = "other", consumerID("other entry"), consumerID("other value")
 			other.ValueBytes = []byte("other")
+			other.ContentLength, other.RetainedLength = uint32(len(other.ValueBytes)), uint32(len(other.ValueBytes))
 			// Keep canonical name order and independent physical targets.
 			f.entries = []generatedCandidateEntry{{Slot: 0, Entry: other}, {Slot: 1, Entry: plain}}
 			configuration := f.reservation.Session.Output.Before

@@ -286,6 +286,7 @@ func TestConfigurationTrustedUnresolvedSourcePrecedesMalformedCandidate(t *testi
 			if err := json.Unmarshal(source.editableBytes, &editable); err != nil {
 				t.Fatal(err)
 			}
+			editable["outputs"] = map[string]any{"destinations": map[string]any{}, "routing": map[string]any{}}
 			delete(editable, "generated")
 			body, err := json.Marshal(editable)
 			if err != nil {

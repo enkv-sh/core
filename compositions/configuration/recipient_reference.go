@@ -132,7 +132,7 @@ func recipientJoinDigest(m *Model, oldReference, newReference string) [sha256.Si
 	}
 	name := func(s string) {
 		number(len(s))
-		io.WriteString(h, s)
+		h.Write([]byte(s))
 	}
 	h.Write(m.Authority.ID[:])
 	for _, rows := range [][]Recipient{m.Recipients, m.GeneratedRecipients} {

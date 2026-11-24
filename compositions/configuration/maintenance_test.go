@@ -657,7 +657,7 @@ func TestMaintenanceRetirementPreservesYAMLSequenceLayout(t *testing.T) {
 				t.Errorf("empty sequence layout differs: got %q want membership %q", body, wantMembership)
 			}
 			after := readback.Model
-			if len(after.Entries) != 1 || after.Entries[0].Name != "pending" || string(after.Entries[0].Plain) != "unchanged" || len(after.Entries[0].Recipients) != 0 || len(after.Recipients) != 0 || len(after.GeneratedRecipients) != 1 || after.GeneratedRecipients[0].Reference != "unreferenced" || !reflect.DeepEqual(after.Routes, []Route{{EntryName: "pending", Destinations: []string{"sink"}}}) || len(after.Outputs) != 0 {
+			if len(after.Entries) != 1 || after.Entries[0].Name != "pending" || string(after.Entries[0].Plain) != "unchanged" || len(after.Entries[0].Recipients) != 0 || len(after.Recipients) != 0 || len(after.GeneratedRecipients) != 1 || after.GeneratedRecipients[0].Reference != "unreferenced" || len(after.Routes) != 0 || len(after.Outputs) != 0 {
 				t.Fatal("retirement changed unrelated whole-pair meaning")
 			}
 			beforeSecrets := generated[bytes.Index(generated, []byte(`"secrets":`)):bytes.Index(generated, []byte(`,"public_basis":`))]

@@ -66,7 +66,7 @@ func TestGeneratorTemplateBranchesAndDamage(t *testing.T) {
 			func(v *GeneratorAttemptTemplate) { v.PredecessorAttemptID[0] ^= 1 },
 			func(v *GeneratorAttemptTemplate) { v.TransmissionID[0] ^= 1 },
 			func(v *GeneratorAttemptTemplate) { v.NoEffectBudget ^= 1 },
-			func(v *GeneratorAttemptTemplate) { v.ResidueBudget ^= 1 },
+			func(v *GeneratorAttemptTemplate) { v.ResidueBudget = 2 },
 			func(v *GeneratorAttemptTemplate) { v.RequiredAuthoritySet = 0 },
 			func(v *GeneratorAttemptTemplate) { v.TargetSourceID[0] ^= 1 },
 			func(v *GeneratorAttemptTemplate) { v.TargetKind = 3 },

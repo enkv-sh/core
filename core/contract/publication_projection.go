@@ -201,7 +201,11 @@ func PublicationProjectionCommitment(v PublicationProjection) (ID, error) {
 	if err != nil {
 		return ID{}, err
 	}
+	return publicationProjectionDigest(body), nil
+}
+
+func publicationProjectionDigest(body []byte) ID {
 	w := cryptoHashWriter("ENKV/PUBLICATION/PROJECTION/v4\x00")
 	w.raw(body)
-	return w.result(0).Digest, nil
+	return w.result(0).Digest
 }

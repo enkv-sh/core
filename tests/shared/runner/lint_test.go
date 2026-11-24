@@ -42,7 +42,7 @@ func lintFixture(t *testing.T, directory string) (string, string) {
 		moduleFiles = append(moduleFiles, module+"/go.mod")
 		code := "package fixture\n"
 		switch module {
-		case "telemetry", "sdk/manifest-generator":
+		case "telemetry", "sdk/manifest-generator", "compositions/internal/nativeprocess":
 		case "sdk/output":
 			code = "package output\n\nimport _ \"" + "enkv.sh/sdk/protocols/output\"\n"
 		case "plugins/manifest-generators/generic-json", "plugins/manifest-generators/opentofu-tfvars-json":
@@ -136,6 +136,7 @@ func lintFixture(t *testing.T, directory string) (string, string) {
 	writeLocalGoFixture(t, root, "plugins/cloudflare/internal/cloudflare/testartifact.go", "//go:build enkv_cloudflare_testartifact\n\npackage cloudflare\n")
 	writeLocalGoFixture(t, root, "plugins/cloudflare/cmd/enkv-generator-cloudflare/main.go", "package main\n\nimport _ \""+"enkv.sh/plugins/generators/cloudflare-account-token/internal/cloudflare\"\n\nfunc main() {}\n")
 	writeLocalGoFixture(t, root, "plugins/cloudflare/cmd/enkv-generator-cloudflare-test/main.go", "//go:build enkv_cloudflare_testartifact\n\npackage main\n\nimport _ \""+"enkv.sh/plugins/generators/cloudflare-account-token/internal/cloudflare\"\n\nfunc main() {}\n")
+	writeLocalGoFixture(t, root, "tests/generatorhost/environment.go", "package generatorhost\n")
 	writeLocalGoFixture(t, root, "tests/crypto/admission.go", "package crypto\n")
 	writeLocalGoFixture(t, root, "tests/crypto/cloudflare_process_test.go", "package crypto\n")
 	writeLocalGoFixture(t, root, "tests/gcp/admission.go", "package gcp\n")
@@ -782,6 +783,7 @@ func TestLintAssemblyIsExactPrivateSourceCopy(t *testing.T) {
 		{copyRoot, "providers/gcp/zz_test_admission.go"},
 		{copyRoot, "providers/gcp/credentials/zz_test_admission.go"},
 		{copyRoot, "compositions/full/zz_test_admission.go"},
+		{copyRoot, "compositions/generatorhost/zz_test_environment.go"},
 		{root, "tests/shared/fixture_test.go"}, {root, "tests/hermetic/fixture_test.go"},
 		{copyRoot, "core/tests_shared_fixture_test.go"}, {copyRoot, "core/tests_hermetic_fixture_test.go"},
 		{root, "tests/shared/records/fixture.go"}, {root, "tests/shared/catalog/fixture.go"},

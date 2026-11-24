@@ -19,7 +19,34 @@ func generatedReceiptWindowsEqual(left, right contract.MutationReceiptWindows) b
 
 func (a *generatedAdmission) candidateRegistryMatches(c generatedCandidate, head format.HeadCore) bool {
 	if a.registry == nil {
-		return c.Registry == nil && a.candidateGrantsMatch(c, head, nil)
+		if c.Registry != nil {
+			return false
+		}
+		if c.UnchangedRegistry == nil {
+			return a.candidateGrantsMatch(c, head, nil)
+		}
+		if a.graph.Request.Schema != contract.GeneratorRequestCoreSchema || a.purpose.final == nil ||
+			a.purpose.final.nonselecting || c.Subject.Purpose != contract.GeneratorAuthorityFinal || head.GrantDigest.IsZero() {
+			return false
+		}
+		beforeRef, err := contract.DecodeRef(a.request.Context.PredecessorRootRef[:], contract.CanonicalSchema)
+		if err != nil || format.CheckReference(beforeRef, c.UnchangedRegistry.Before) != nil || format.CheckReference(head.Root, c.UnchangedRegistry.After) != nil {
+			return false
+		}
+		before, err := format.DecodeRoot(c.UnchangedRegistry.Before)
+		if err != nil || before.CurrentAccess.AccessRoot != a.request.Context.CurrentAccessRoot {
+			return false
+		}
+		after, err := format.DecodeRoot(c.UnchangedRegistry.After)
+		if err != nil || after.Domain != before.Domain || after.Domain != c.PublicState.Domain ||
+			after.CurrentAccess.AccessRoot != c.PublicState.AccessRoot || after.RecipientCount != before.RecipientCount ||
+			after.CurrentAccess.Core.RecipientRefsDescriptor != before.CurrentAccess.Core.RecipientRefsDescriptor {
+			return false
+		}
+		return a.candidateGrantsMatch(c, head, &after)
+	}
+	if c.UnchangedRegistry != nil {
+		return false
 	}
 	v := c.Registry
 	if v == nil || !bytes.Equal(v.Image, a.registry.image) {

@@ -45,7 +45,7 @@ func TestInstalledGeneratedFinalStopsAfterNonCurrentSelection(t *testing.T) {
 						ResourceContractID: hermeticCloudflareResourceContractID(), RetirementMode: contract.GeneratedRetirementManual,
 						CompletionClass: contract.GeneratedCompletionAcknowledged, Intent: bytes.Clone(process.Intent)}
 					input := []ApplyEntryInput{{Name: "generated", Recipients: []contract.ID{f.selected.admission.recipient},
-						ValueSource: contract.Generated, ConfidentialityClass: contract.Secret, Generated: generation}}
+						ValueSource: contract.Generated, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Secret, Generated: generation}}
 					if path == "anchor" {
 						initial := installedGeneratedTestEngine(t, ctx, f, f.selected, input, currentApplyRecipients(f.selected.registry()), installedGeneratedRetirementCallbacks(t, f, process))
 						result := initial.Apply(ctx, testID("final selection initial"), input)

@@ -240,6 +240,9 @@ func TestInvocationArtifactConstructionAndBorrowing(t *testing.T) {
 	if err := os.WriteFile(executable, []byte("shared executable"), 0555); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.Chmod(executable, 0555); err != nil {
+		t.Fatal(err)
+	}
 	retained := filepath.Join(t.TempDir(), "plugin")
 	if err := os.Link(executable, retained); err != nil {
 		t.Fatal(err)

@@ -247,7 +247,11 @@ func hermeticCheckTelemetry(t *testing.T, inv records.Invocation, enabled bool) 
 		t.Fatal(err)
 	}
 	if result.Telemetry.Status != "complete" || len(snapshots) != len(result.Phases)+1 || snapshots[len(snapshots)-1].Phase != "final" {
-		t.Fatalf("phase or final telemetry missing: %+v", result)
+		delivery, err := json.Marshal(result.Deliveries)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Fatalf("worker %s telemetry %s (%s), %d snapshots for %d phases, delivery %s", inv.Worker, result.Telemetry.Status, result.Telemetry.FailureClass, len(snapshots), len(result.Phases), delivery)
 	}
 	for index, snapshot := range snapshots {
 		if snapshot.Worker != inv.Worker || snapshot.RunID != inv.RunID || snapshot.Sequence != uint64(index+1) || snapshot.Status != "complete" || snapshot.Temporality != "delta" {
@@ -497,12 +501,23 @@ func TestHermeticWorkerFailureRetainsAssertionWithoutTelemetry(t *testing.T) {
 		}
 	}
 	// Pin the missing-binding assertion, not any Fatal in the same phase.
-	hermeticCheckFailureMarker(t, inv, "tests/hermetic/run_test.go", 282, 4, records.CompletedCheckpoint{Code: "verification", Sequence: 3})
+	hermeticCheckFailureMarker(t, inv, "tests/hermetic/run_test.go", "if index >= len(inv.FreshBefore) {\n\t\tt.Fatal(\"fresh child binding unavailable\")", 4, records.CompletedCheckpoint{Code: "verification", Sequence: 3})
 	hermeticCheckTelemetry(t, inv, false)
 }
 
-func hermeticCheckFailureMarker(t *testing.T, inv records.Invocation, source string, line int, sequence uint64, completed records.CompletedCheckpoint) {
+func hermeticCheckFailureMarker(t *testing.T, inv records.Invocation, source, assertion string, sequence uint64, completed records.CompletedCheckpoint) {
 	t.Helper()
+	body, err := os.ReadFile(source)
+	if os.IsNotExist(err) {
+		body, err = os.ReadFile(filepath.Join("..", source))
+	}
+	// Match both the condition and its Fatal so edits above the assertion do
+	// not move the test's expected failure to an unrelated source line.
+	before, after, found := strings.Cut(string(body), assertion)
+	if err != nil || !found || strings.Contains(after, assertion) {
+		t.Fatal("expected unique assertion source unavailable", source, err)
+	}
+	line := 1 + strings.Count(before, "\n") + strings.Count(assertion, "\n")
 	sources, err := records.ReadFailureSources(*inv.FailureSources)
 	if err != nil {
 		t.Fatal("failure source mapping unavailable")
@@ -574,7 +589,7 @@ func TestHermeticWorkerFailedOracleRetainsFinalEvidence(t *testing.T) {
 				t.Fatal("failed oracle lost failure evidence")
 			}
 			// Pin assertStateImage's value mismatch assertion.
-			hermeticCheckFailureMarker(t, after, "tests/shared/state_oracle_test.go", 359, 1, records.CompletedCheckpoint{Code: "none"})
+			hermeticCheckFailureMarker(t, after, "tests/shared/state_oracle_test.go", "if err := stateImageDifference(got, want); err != nil {\n\t\tt.Fatal(err)", 1, records.CompletedCheckpoint{Code: "none"})
 			hermeticCheckTelemetry(t, after, telemetry == "1")
 		})
 	}

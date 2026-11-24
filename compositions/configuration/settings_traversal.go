@@ -1,7 +1,9 @@
 package configuration
 
 import (
+	"cmp"
 	"encoding/json"
+	"slices"
 	"strings"
 
 	generator "enkv.sh/sdk/protocols/generator"
@@ -11,12 +13,18 @@ import (
 // iterative collection lifetime. Their admitted depth is independent of the
 // configuration envelope's sixteen structural frames.
 func parseSettingsIterative(p *parser, limit int) []byte {
+	type memberKey struct {
+		name         string
+		offset       int64
+		line, column uint64
+	}
 	type frame struct {
 		kind        byte
 		flow, after bool
 		col         uint64
 		count       int
 		first       *parsedObjectKey
+		keys        []memberKey
 		owner       valueOwner
 		indent      uint64
 	}
@@ -54,6 +62,24 @@ func parseSettingsIterative(p *parser, limit int) []byte {
 	}
 	closeFrame := func() {
 		current := stack[len(stack)-1]
+		slices.SortFunc(current.keys, func(a, b memberKey) int {
+			if order := strings.Compare(a.name, b.name); order != 0 {
+				return order
+			}
+			return cmp.Compare(a.offset, b.offset)
+		})
+		var duplicate *memberKey
+		for i := 1; i < len(current.keys); i++ {
+			key := &current.keys[i]
+			if key.name == current.keys[i-1].name && (duplicate == nil || key.offset < duplicate.offset) {
+				duplicate = key
+			}
+		}
+		if duplicate != nil {
+			p.token = Span{Offset: duplicate.offset, Line: duplicate.line, Column: duplicate.column}
+			p.failValue("duplicate-key")
+			return
+		}
 		if current.flow {
 			p.flowDepth--
 		}
@@ -64,6 +90,7 @@ func parseSettingsIterative(p *parser, limit int) []byte {
 			close = ']'
 		}
 		writer.raw(string(close))
+		stack[len(stack)-1] = frame{}
 		stack = stack[:len(stack)-1]
 	}
 	openFrame := func(kind byte, first *parsedObjectKey) {
@@ -217,6 +244,23 @@ func parseSettingsIterative(p *parser, limit int) []byte {
 			} else {
 				key = p.text(limit, true, false)
 			}
+			if p.err != nil {
+				break
+			}
+			// One encoded member consumes at least four bytes. A key index row
+			// is 40 bytes. Exact doubling bounds simultaneous old and new arrays
+			// to 120 bytes/member, plus the decoded key text (at most L bytes).
+			if len(current.keys) == cap(current.keys) {
+				size := min(max(1, 2*len(current.keys)), limit/4)
+				if size <= len(current.keys) {
+					p.fail("settings-limit")
+					break
+				}
+				next := make([]memberKey, len(current.keys), size)
+				copy(next, current.keys)
+				current.keys = next
+			}
+			current.keys = append(current.keys, memberKey{key, member.Offset, member.Line, member.Column})
 			p.skip()
 			if p.format == YAML && p.line != keyLine {
 				p.fail("complex-key")

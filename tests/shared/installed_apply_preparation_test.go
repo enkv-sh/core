@@ -149,7 +149,7 @@ func TestInstalledApplyPreparationRetainsActualImmutableEvidence(t *testing.T) {
 				return read
 			}
 			f.env.Store = store
-			input := []ApplyEntryInput{{Name: "plain", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, Recipients: []contract.ID{f.selected.admission.recipient}, InputBytes: []byte("preparation evidence")}}
+			input := []ApplyEntryInput{{Name: "plain", ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain, Recipients: []contract.ID{f.selected.admission.recipient}, InputBytes: []byte("preparation evidence")}}
 			engine := f.engine(t, f.selected, input, nil)
 			out := engine.Apply(ctx, testID("immutable preparation "+test.name), input)
 			engine.Close()

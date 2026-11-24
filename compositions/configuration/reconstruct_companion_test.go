@@ -136,7 +136,11 @@ func TestCompanionMergeRestoresAcceptedRecipientCreation(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer pair.Close()
+			t.Cleanup(func() {
+				if err := pair.Close(); err != nil {
+					t.Error(err)
+				}
+			})
 			restored, err := ParseForAcceptedWork(t.Context(), pair)
 			if err != nil || len(restored.Recipients) != 1 {
 				t.Fatal("fresh accepted-work invocation could not read the pair", err)

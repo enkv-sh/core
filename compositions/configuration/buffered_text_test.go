@@ -72,7 +72,7 @@ func TestBufferedQuotedTextPreservesScannerContract(t *testing.T) {
 		{"excess-json", `"abcd"`, "abc", "scalar-limit", JSON, 3, 5, 2, 8},
 		{"escaped-json", `"a\u0062"`, "ab", "", JSON, 8, 9, 2, 12},
 		{"utf8-yaml", `"雪"`, "雪", "", YAML, 8, 5, 2, 8},
-		{"invalid-utf8-json", "\"a\xff\"", "a\xff", "invalid-unicode", JSON, 8, 3, 2, 6},
+		{"invalid-utf8-json", "\"a\xff\"", "a", "invalid-unicode", JSON, 8, 3, 2, 6},
 		{"spaces-yaml", `"a b "`, "a b ", "", YAML, 8, 6, 2, 9},
 		{"folded-yaml", "\"a\n  b\"", "a b", "", YAML, 8, 7, 3, 5},
 		{"single-yaml", `'it''s'`, "it's", "", YAML, 8, 7, 2, 10},
@@ -132,7 +132,7 @@ func TestBufferedQuotedTextPreservesScannerContract(t *testing.T) {
 			}
 		})
 		var diagnostic *Diagnostic
-		if !errors.As(p.done(), &diagnostic) || diagnostic.Reason != "duplicate-key" || diagnostic.Offset != 21 || calls != 1 {
+		if !errors.As(p.done(), &diagnostic) || diagnostic.Reason != "duplicate-key" || diagnostic.Offset != 13 || diagnostic.Line != 2 || diagnostic.Column != 12 || calls != 1 {
 			t.Fatal("ordinary and escaped keys lost duplicate detection or exact location", p.err, calls)
 		}
 	})

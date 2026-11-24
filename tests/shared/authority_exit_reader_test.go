@@ -596,7 +596,7 @@ func TestAdministrativeEndWorkDiscardsUnreadableExclusiveCanonicalEvidence(t *te
 
 // The signer controls this deliberately invalid image. This is an authenticated
 // relation test, not a claim that Store alone can produce a valid signature.
-func retainedReaderSignedAccess(t *testing.T, f retainedReaderFixture, material contract.ID, change func(*contract.AccessRecord)) *memoryStore {
+func retainedReaderSignedAccess(t *testing.T, f retainedReaderFixture, material contract.ID, grants map[contract.ID][]contract.ID, change func(*contract.AccessRecord)) *memoryStore {
 	t.Helper()
 	original := f.env.Store.(*memoryStore)
 	store := &memoryStore{desc: original.desc, configuration: original.configuration, generation: original.generation, objects: make(map[string]stored)}
@@ -606,8 +606,22 @@ func retainedReaderSignedAccess(t *testing.T, f retainedReaderFixture, material 
 	}
 	bad := *f.selected
 	bad.root.CurrentAccess.Core.AccessPageRefs = slices.Clone(bad.root.CurrentAccess.Core.AccessPageRefs)
+	bad.root.GrantPages = nil
+	var grantRows []byte
 	var records []contract.AccessRecord
 	changed := false
+	encode := func(page format.AccessPage) (format.Ref, []byte) {
+		t.Helper()
+		body, err := format.EncodeAccessPage(page)
+		if err != nil {
+			t.Fatal("signed test access encoding", err)
+		}
+		ref, err := format.Reference(format.AccessKind, page.Domain, page.Object, page.Index, body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return ref, body
+	}
 	for i, ref := range bad.root.CurrentAccess.Core.AccessPageRefs {
 		page := *bad.access[ref.Index]
 		page.Records = slices.Clone(page.Records)
@@ -618,20 +632,27 @@ func retainedReaderSignedAccess(t *testing.T, f retainedReaderFixture, material 
 				changed = true
 			}
 		}
-		body, err := format.EncodeAccessPage(page)
-		if err != nil {
-			t.Fatal("signed test access encoding", err)
-		}
-		ref, err = format.Reference(format.AccessKind, page.Domain, page.Object, page.Index, body)
-		if err != nil {
-			t.Fatal(err)
-		}
+		ref, body := encode(page)
 		bad.access[ref.Index], bad.root.CurrentAccess.Core.AccessPageRefs[i] = &page, ref
+		if len(grants) != 0 {
+			base, rows, err := format.SplitGrantPage(page, grants)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(rows) != 0 {
+				ref, body = encode(base)
+				bad.root.GrantPages = append(bad.root.GrantPages, ref)
+				grantRows = append(grantRows, rows...)
+			}
+		}
 		store.put(mustKey(t, store.desc.Prefix, ref), body)
 		records = append(records, page.Records...)
 	}
 	if !changed {
 		t.Fatal("signed test material is absent")
+	}
+	if !bytes.Equal(grantRows, bad.head.GrantWraps) {
+		t.Fatal("changing the access relation changed the selected grant")
 	}
 	slices.SortFunc(records, func(a, b contract.AccessRecord) int {
 		return compareMaterial(a.MaterialKind, a.MaterialID, b.MaterialKind, b.MaterialID)
@@ -714,7 +735,7 @@ func TestAdministrativeEndWorkRemovesAuthenticatedUnsupportedRetainedWrap(t *tes
 	for _, recovery := range []bool{false, true} {
 		t.Run(fmt.Sprintf("recovery=%t", recovery), func(t *testing.T) {
 			f := newRetainedReaderFixture(t, recovery, 3)
-			store := retainedReaderSignedAccess(t, f, f.value.ValueState, func(row *contract.AccessRecord) { retainedReaderAddUnsupportedWrap(t, f, row) })
+			store := retainedReaderSignedAccess(t, f, f.value.ValueState, nil, func(row *contract.AccessRecord) { retainedReaderAddUnsupportedWrap(t, f, row) })
 			admission := OpenContext{admission: &f.selected.admission}
 			if full, result := Open(t.Context(), admission, store); full != nil || result.Outcome != IntegrityFailure || result.Reason != InvalidRelation {
 				t.Fatal("complete reader accepted an authenticated unsupported ordinary wrap", result)
@@ -758,6 +779,7 @@ func TestAdministrativeReaderRefusesMandatoryAccessViolationsWithSkippedCanonica
 	for _, fault := range []string{"missing current wrap", "wrong current binding", "unsupported current-only wrap"} {
 		t.Run(fault, func(t *testing.T) {
 			f := newRetainedReaderFixture(t, false, 3)
+			var grants map[contract.ID][]contract.ID
 			if fault == "missing current wrap" {
 				// Keep the signed access record structurally valid after removing
 				// Authority. A real grant gives the current material two readers.
@@ -776,6 +798,7 @@ func TestAdministrativeReaderRefusesMandatoryAccessViolationsWithSkippedCanonica
 					}
 				}
 				f.current, f.currentAccess = ownScenarioValueEntry(*current), access
+				grants = map[contract.ID][]contract.ID{current.ValueState: {fixtureID(f.env.Domain, "reader-002")}}
 				f.retainedRef = format.Ref{}
 				for i, page := range f.selected.support {
 					for _, row := range page.Records {
@@ -802,7 +825,7 @@ func TestAdministrativeReaderRefusesMandatoryAccessViolationsWithSkippedCanonica
 					}
 				}
 			}
-			store := retainedReaderSignedAccess(t, f, material, func(row *contract.AccessRecord) {
+			store := retainedReaderSignedAccess(t, f, material, grants, func(row *contract.AccessRecord) {
 				if fault == "unsupported current-only wrap" {
 					retainedReaderAddUnsupportedWrap(t, f, row)
 					return

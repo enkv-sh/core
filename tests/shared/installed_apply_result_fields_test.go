@@ -64,7 +64,7 @@ func TestInstalledApplyInterruptionRetainsActualStage(t *testing.T) {
 			memory := requireAdmittedMemoryStore(t, f.env.Store)
 			store := &installedApplyInterruptionStore{Store: f.env.Store, memory: memory}
 			f.env.Store = store
-			input := []ApplyEntryInput{{Name: "plain", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, Recipients: []contract.ID{f.selected.admission.recipient}, InputBytes: []byte("interrupted value")}}
+			input := []ApplyEntryInput{{Name: "plain", ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain, Recipients: []contract.ID{f.selected.admission.recipient}, InputBytes: []byte("interrupted value")}}
 			engine := f.engine(t, f.selected, input, nil)
 			switch stage {
 			case "before-admission":
@@ -186,7 +186,7 @@ func TestInstalledApplyPostPersistenceFieldsMatchExactEvidence(t *testing.T) {
 				case "competing-selection":
 					competitor := f
 					competitor.env.Store = base
-					other := []ApplyEntryInput{{Name: "competitor", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, Recipients: []contract.ID{before.admission.recipient}, InputBytes: []byte("other value")}, plain}
+					other := []ApplyEntryInput{{Name: "competitor", ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain, Recipients: []contract.ID{before.admission.recipient}, InputBytes: []byte("other value")}, plain}
 					competing := competitor.engine(t, before, other, nil)
 					selected := competing.Apply(ctx, testID("competing selection"), other)
 					competing.Close()

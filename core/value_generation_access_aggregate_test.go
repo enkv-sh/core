@@ -11,7 +11,7 @@ import (
 func TestGeneratedRetainedReaderUnionDoesNotRequireAnotherMaterial(t *testing.T) {
 	root := format.Root{ValueEntryCount: 1, SecretCount: 1, MembershipCount: 1, SecretOrdinaryWrapCount: 1,
 		AccessRecordCount: 1, Names: []format.NameEntry{{Name: "value"}}}
-	root.ValueEntryPages[0] = &format.Ref{Length: uint32(75 + contract.ValueEntryFixedLength + len("value") + 32 + 210)}
+	root.ValueEntryPages[0] = &format.Ref{Length: uint32(75 + contract.ValueEntryFixedLength + len("value") + 32 + 215)}
 	root.CurrentAccess.Core.AccessPageRefs = []contract.Ref{{Length: 75 + 102 + 489}}
 	if !validAggregate(root) {
 		t.Fatal("current-only material refused")

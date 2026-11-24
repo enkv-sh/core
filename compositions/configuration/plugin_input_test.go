@@ -139,6 +139,7 @@ func TestPluginSettingsKeysUseSameRulesFirstAndLater(t *testing.T) {
 		{"first-typed", "true: value\n", "", "string-required"},
 		{"later-typed", "first: value\ntrue: other\n", "", "string-required"},
 		{"duplicate", "first: value\nfirst: other\n", "", "duplicate-key"},
+		{"independent-objects", "{one: {key: first}, two: {key: second}}", `{"one":{"key":"first"},"two":{"key":"second"}}`, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			p := newParser(t.Context(), strings.NewReader(tc.source), YAML)
@@ -153,6 +154,27 @@ func TestPluginSettingsKeysUseSameRulesFirstAndLater(t *testing.T) {
 				t.Fatal("literal settings key changed", string(got), tc.want, err)
 			}
 		})
+	}
+}
+
+// full_only: false
+func TestSettingsDuplicateKeyIdentifiesSecondMember(t *testing.T) {
+	for _, tc := range []struct {
+		format            Format
+		source, duplicate string
+		line, column      uint64
+	}{
+		{YAML, "first: value\nfirst: other\n", "first: other", 2, 1},
+		{YAML, "{box: {key: 1, 'key': 2}}", "'key'", 1, 16},
+		{JSON, `{"box":{"key":1,"k\u0065y":2}}`, `"k\u0065y"`, 1, 17},
+	} {
+		p := newParser(t.Context(), strings.NewReader(tc.source), tc.format)
+		parseSettings(p, 1024)
+		var d *Diagnostic
+		if !errors.As(p.done(), &d) || d.Reason != "duplicate-key" || d.Context ||
+			d.Offset != int64(strings.LastIndex(tc.source, tc.duplicate)) || d.Line != tc.line || d.Column != tc.column {
+			t.Fatalf("duplicate key position differs: %+v", d)
+		}
 	}
 }
 

@@ -6,7 +6,7 @@ path at commit `ba1345cd1ab92b19e56ba3ad1f34a6e1b92887f3`.
 The original file SHA-256 is
 `5e496824102d09d010787efe26c34f104708183e8ae81ecb5511594bad5ec8d0`.
 
-Contexts use canonical schema-10 `WrapCore` literals. All public field
+Contexts use canonical schema-11 `WrapCore` literals. All public field
 facts, test key bytes, packet kinds and lengths are unchanged. The WrapCore
 layout is still 278 bytes; wrap profile and private packet version remain 2.
 
@@ -29,8 +29,11 @@ The schema-8 packet file SHA-256 was
 The schema-10 calculation used Node/OpenSSL with the same explicit field
 widths. It first reproduced all four schema-8 contexts, packets and hashes,
 then changed the canonical schema to 10 and repeated the formulas above.
-The current packet file SHA-256 is
+The schema-10 packet file SHA-256 was
 `a32452f0a9b7197e2bbf10e187712686685e958e8bd9b008db153a59b1bd3525`.
+A local Python calculation reproduced all four schema-10 digests, packets and hashes,
+then repeated the calculation with stored schema 11. The current file SHA-256 is
+`8426680061a8af8d795f7061969748251f43539a09930eb6c07e4b1b8d77f989`.
 Expected packets remain 100 bytes for value-authority/value-recovery and 68
 bytes for source/proof. No production encoder supplies expected bytes.
 

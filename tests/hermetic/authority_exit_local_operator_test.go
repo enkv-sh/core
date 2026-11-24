@@ -280,9 +280,9 @@ func TestLocalAuthorityColdBodylessFragmentReadsKeepTypedFailures(t *testing.T) 
 	}
 	filler := []ApplyEntryInput{
 		{Name: "a-seed", Recipients: []contract.ID{sourceB.admission.recipient}, ValueSource: format.Supplied,
-			ConfidentialityClass: format.Plain, InputBytes: []byte{0}},
+			InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: format.Plain, InputBytes: []byte{0}},
 		{Name: "b-filler", Recipients: []contract.ID{sourceB.admission.recipient}, ValueSource: format.Supplied,
-			ConfidentialityClass: format.Plain, InputBytes: []byte{1}},
+			InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: format.Plain, InputBytes: []byte{1}},
 	}
 	comparison, result := sourceB.Compare(ctx, filler, admitSuppliedComparison(t, sourceB, nil, filler))
 	if comparison == nil || result.Outcome != ObservedCurrent {

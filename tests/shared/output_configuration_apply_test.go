@@ -93,7 +93,14 @@ func outputFixtureDestination(name, service string, capabilities contract.Output
 }
 
 func outputFixtureTarget(service, physical, locator string, encoding uint8, capabilities contract.OutputActionCapabilities, policy contract.OutputPolicy) contract.OutputTarget {
-	return contract.OutputTarget{ServiceContractID: service, TargetContractID: "fixture/target/v1", CanonicalTarget: physical, ConsumerLocator: locator, TargetData: []byte("target:" + physical), PayloadEncoding: encoding, Capabilities: capabilities, CreateValueBounds: contract.OutputPayloadBounds{Maximum: 65536}, WriteValueBounds: contract.OutputPayloadBounds{Maximum: 65536}, Policy: policy}
+	target := contract.OutputTarget{ServiceContractID: service, TargetContractID: "fixture/target/v1", CanonicalTarget: physical, ConsumerLocator: locator, TargetData: []byte("target:" + physical), PayloadEncoding: encoding, Capabilities: capabilities, Policy: policy}
+	if capabilities&contract.OutputCapabilityCreateWithValue != 0 {
+		target.CreateValueBounds.Maximum = 65536
+	}
+	if capabilities&contract.OutputCapabilityWriteValue != 0 {
+		target.WriteValueBounds.Maximum = 65536
+	}
+	return target
 }
 
 func installOutputFixtureSource(t testing.TB, s *StateSession, input *outputApplyInput) {

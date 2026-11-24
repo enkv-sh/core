@@ -140,7 +140,7 @@ func TestInstalledGeneratedListKeepsFixedObservationAcrossHEADChange(t *testing.
 	}
 	headKey := memory.Descriptor().HeadKey
 	beforeHead := memory.objects[headKey]
-	input := []ApplyEntryInput{{Name: "plain", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain,
+	input := []ApplyEntryInput{{Name: "plain", ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain,
 		Recipients: []contract.ID{f.selected.admission.recipient}, InputBytes: []byte("selected successor")}}
 	apply := f.engine(t, f.selected, input, nil)
 	changed := apply.Apply(ctx, testID("concurrent selected successor"), input)

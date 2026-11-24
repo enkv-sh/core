@@ -98,6 +98,7 @@ func TestCoreTelemetryCompleteChain(t *testing.T) {
 		{"core.select", "observed_current"}:                   1,
 		{"core.store.read", "read_ok"}:                        int64(configurationReads + readbacks + selectionReads + coldReads + len(processPlainReceiptIndexReadRequests(t, f.store.desc, image))),
 		{"core.store.create", "write_acknowledged"}:           creates,
+		{"core.store.persist_immutable", "immutable_created"}: creates,
 		{"core.store.compare_and_swap", "write_acknowledged"}: 1,
 		{"core.trust.sign", "sign_ok"}:                        1,
 	})
@@ -209,12 +210,14 @@ func TestCoreTelemetryImmutableReadback(t *testing.T) {
 		coreLabel     string
 		writeLabel    string
 		readLabel     string
+		persistLabel  string
+		persists      int64
 		writes, reads int64
 	}{
-		{"lost-before", false, Result{Outcome: EvidenceUnavailable, Reason: ReadUnavailable, StoreReason: contract.ReasonTransport}, "evidence_unavailable", "write_unknown", "read_missing", 3, 3},
-		{"conflict", false, Result{Outcome: IntegrityFailure, Reason: ImmutableConflict}, "integrity_failure", "write_precondition", "read_ok", 1, 1},
-		{"lost-after", true, Result{Outcome: ObservedCurrent}, "observed_current", "write_unknown", "read_ok", immutableObjects, immutableObjects},
-		{"equal", true, Result{Outcome: ObservedCurrent}, "observed_current", "write_precondition", "read_ok", immutableObjects, immutableObjects},
+		{"lost-before", false, Result{Outcome: EvidenceUnavailable, Reason: ReadUnavailable, StoreReason: contract.ReasonTransport}, "evidence_unavailable", "write_unknown", "read_missing", "evidence_unavailable", 1, 3, 3},
+		{"conflict", false, Result{Outcome: IntegrityFailure, Reason: ImmutableConflict}, "integrity_failure", "verification_pending", "read_ok", "integrity_failure", 1, 1, 1},
+		{"lost-after", true, Result{Outcome: ObservedCurrent}, "observed_current", "write_unknown", "read_ok", "immutable_verified", immutableObjects, immutableObjects, immutableObjects},
+		{"equal", true, Result{Outcome: ObservedCurrent}, "observed_current", "verification_pending", "read_ok", "immutable_reused", immutableObjects, immutableObjects, immutableObjects},
 	} {
 		t.Run(tc.mode, func(t *testing.T) {
 			ctx, reader, _ := coreTelemetryReader(t)
@@ -242,9 +245,10 @@ func TestCoreTelemetryImmutableReadback(t *testing.T) {
 				t.Fatalf("Prepare candidate present = %t, result = %+v; want present = %t, result = %+v", candidate != nil, result, tc.prepared, want)
 			}
 			metrics := map[[2]string]int64{
-				{"core.prepare", tc.coreLabel}:       1,
-				{"core.store.create", tc.writeLabel}: tc.writes,
-				{"core.store.read", tc.readLabel}:    tc.reads,
+				{"core.prepare", tc.coreLabel}:                    1,
+				{"core.store.create", tc.writeLabel}:              tc.writes,
+				{"core.store.persist_immutable", tc.persistLabel}: tc.persists,
+				{"core.store.read", tc.readLabel}:                 tc.reads,
 			}
 			metrics[[2]string{"core.store.read", "read_ok"}] += 2
 			if tc.prepared {
@@ -359,10 +363,11 @@ func TestCoreTelemetrySignerFailures(t *testing.T) {
 				t.Fatalf("sign calls = %d, request = %+v; want one valid lifecycle request", trust.calls, trust.request)
 			}
 			assertCoreTelemetryResults(t, coreTelemetrySnapshot(t, reader), map[[2]string]int64{
-				{"core.prepare", tc.coreLabel}:              1,
-				{"core.store.create", "write_acknowledged"}: immutableObjects,
-				{"core.store.read", "read_ok"}:              2 + immutableObjects,
-				{"core.trust.sign", tc.trustLabel}:          1,
+				{"core.prepare", tc.coreLabel}:                        1,
+				{"core.store.create", "write_acknowledged"}:           immutableObjects,
+				{"core.store.persist_immutable", "immutable_created"}: immutableObjects,
+				{"core.store.read", "read_ok"}:                        2 + immutableObjects,
+				{"core.trust.sign", tc.trustLabel}:                    1,
 			})
 		})
 	}

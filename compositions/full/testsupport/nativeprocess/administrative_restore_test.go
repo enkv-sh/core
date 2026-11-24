@@ -224,8 +224,7 @@ func administrativeReplacementDiagnostics(body []byte, family string, enabled bo
 		level                                          int
 		pathKind, path, errorStatus                    string
 	}
-	applicationFailure := consoleResult{severity: "ERROR", level: 17, component: "application", operation: "application.invocation", result: "failure", reason: "uncertain"}
-	rows := []consoleResult{applicationFailure}
+	rows := []consoleResult{{severity: "WARN", level: 13, component: "application", operation: "application.invocation", result: "admission_refused", reason: "admission_refused"}}
 	if enabled {
 		rows = []consoleResult{
 			{severity: "WARN", level: 13, component: family, operation: "store.compare_and_swap", result: "write_unknown", reason: "uncertain", pathKind: "state_head", path: "HEAD", errorStatus: "unavailable"},
@@ -236,7 +235,7 @@ func administrativeReplacementDiagnostics(body []byte, family string, enabled bo
 				consoleResult{severity: "ERROR", level: 17, component: family, operation: "store.read", result: "read_unavailable", reason: "evidence_unavailable", pathKind: "state_head", path: "HEAD", errorStatus: "unavailable"},
 				consoleResult{severity: "ERROR", level: 17, component: "core", operation: "core.store.read", result: "read_unavailable", reason: "evidence_unavailable"},
 				consoleResult{severity: "WARN", level: 13, component: "core", operation: "core.replace_authority_keys", result: "unresolved_commit", reason: "read_unavailable"},
-				applicationFailure,
+				consoleResult{severity: "WARN", level: 13, component: "application", operation: "application.invocation", result: "unresolved_commit", reason: "uncertain"},
 			)
 		}
 	}

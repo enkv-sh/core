@@ -91,7 +91,7 @@ func TestSuppliedApplyReceiptReservationKeepsExistingFastPath(t *testing.T) {
 					}
 				}
 			}
-			comparison, result := source.compareEntryInputs([]ApplyEntryInput{{Name: "capacity-fast-plain", Recipients: []contract.ID{source.admission.recipient}, ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, InputBytes: []byte("public supplied value")}})
+			comparison, result := source.compareEntryInputs([]ApplyEntryInput{{Name: "capacity-fast-plain", Recipients: []contract.ID{source.admission.recipient}, ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain, InputBytes: []byte("public supplied value")}})
 			if comparison == nil || result.Outcome != ObservedCurrent {
 				t.Fatal("public Apply comparison", result)
 			}

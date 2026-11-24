@@ -414,7 +414,7 @@ func TestPublicMaterializationFileObservationChecksExactBytesModeAndWholeSet(t *
 					t.Fatal("synthetic mode unavailable")
 				}
 			case "special-mode":
-				if os.Chmod(path, os.ModeSetuid|0600) != nil {
+				if os.Chmod(path, os.ModeSticky|0600) != nil {
 					t.Fatal("synthetic special mode unavailable")
 				}
 			case "extra-file":

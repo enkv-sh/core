@@ -180,12 +180,12 @@ func nativePlanSourceCostRecord(elapsed time.Duration, complete bool) (resultErr
  return err
 }
 `)
-	add("compositions/full/cmd/enkv/plan.go", "import (", "import (\n \"encoding/json\"\n \"errors\"\n \"runtime\"", "")
-	plan := "func runPlanContext(ctx context.Context, args []string, out, diagnostic io.Writer) int {"
-	add("compositions/full/cmd/enkv/plan.go", plan, `func runPlanContext(ctx context.Context, args []string, out, diagnostic io.Writer) (resultCode int) {
+	add("compositions/full/cmd/enkv/plan.go", "import (", "import (\n \"encoding/json\"\n \"runtime\"", "")
+	plan := "func runPlanContext(ctx context.Context, args []string, out, diagnostic io.Writer) (code int) {"
+	add("compositions/full/cmd/enkv/plan.go", plan, `func runPlanContext(ctx context.Context, args []string, out, diagnostic io.Writer) (code int) {
  finishCost := nativePlanCommandCost(ctx)
  defer func() {
-  if err := finishCost(); err != nil { resultCode = commandDiagnosticExit(diagnostic, "plan measurement failed", 2) }
+  if err := finishCost(); err != nil { code = commandDiagnosticExit(diagnostic, "plan measurement failed", 2) }
  }()`, `
 func nativePlanCommandCost(ctx context.Context) func() error {
  var before runtime.MemStats

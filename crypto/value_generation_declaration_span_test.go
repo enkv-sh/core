@@ -27,9 +27,9 @@ func TestGeneratedAdmissionUsesExactDeclarationPayloadSpans(t *testing.T) {
 				if err != nil || offset != 74 || string(entry.Name) != "alpha" || len(entry.RecipientIDs) != 64 {
 					t.Fatal("independent first-entry framing", offset, err)
 				}
-				// Header70 + entry frame4 + fixed13 + name5 + two recipient IDs64.
+				// Header70 + entry frame4 + fixed15 + name5 + two recipient IDs64.
 				// Recovery is a separate binding, so it adds no ordinary recipient.
-				const payloadOffset = 156
+				const payloadOffset = 158
 				r := f.reservationRuntime(t)
 				defer r.retireGenerated()
 				plan := r.generated.purpose.plan()

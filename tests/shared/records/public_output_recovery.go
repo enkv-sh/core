@@ -1,10 +1,12 @@
 package records
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/json/jsontext"
 	jsonv2 "encoding/json/v2"
 	"fmt"
 	"io"
@@ -536,40 +538,84 @@ type PublicOutputRecoveryPreparedPair struct {
 }
 
 func (v PublicOutputRecoveryPair) OutputContracts() ([]string, error) {
+	contracts, err := v.outputContractsInSourceOrder()
+	if err != nil {
+		return nil, err
+	}
+	slices.Sort(contracts)
+	return slices.Compact(contracts), nil
+}
+
+func (v PublicOutputRecoveryPair) outputContractsInSourceOrder() ([]string, error) {
 	var source struct {
-		Outputs struct {
-			Destinations map[string]map[string]any `json:"destinations"`
+		Generated string `json:"generated"`
+		Outputs   struct {
+			Destinations jsontext.Value `json:"destinations"`
 		} `json:"outputs"`
 	}
+	files := make(map[string][]byte, len(v.Files))
 	for _, file := range v.Files {
-		if file.Path != "configuration.json" {
-			continue
-		}
-		if jsonv2.Unmarshal(file.Data, &source) != nil || source.Outputs.Destinations == nil {
+		if _, exists := files[file.Path]; exists {
 			return nil, errRecord
 		}
-		contracts := []string{}
-		for name, output := range source.Outputs.Destinations {
-			plugin, present := output["plugin"]
-			canonical, ok := output["canonical"].(map[string]any)
-			encoded, text := canonical["binding_base64"].(string)
-			if len(output) != 2 || !present || plugin != nil || !ok || len(canonical) != 1 || !text {
-				return nil, errRecord
-			}
-			body, err := base64.StdEncoding.Strict().DecodeString(encoded)
-			if err != nil || base64.StdEncoding.EncodeToString(body) != encoded {
-				return nil, errRecord
-			}
-			binding, err := contract.InspectNormalOutputBinding(body)
-			if err != nil || binding.DestinationID != name {
-				return nil, errRecord
-			}
-			contracts = append(contracts, binding.Destination.ConfigContractID)
-		}
-		slices.Sort(contracts)
-		return slices.Compact(contracts), nil
+		files[file.Path] = file.Data
 	}
-	return nil, errRecord
+	if jsonv2.Unmarshal(files["configuration.json"], &source) != nil || source.Generated == "" || source.Generated == "configuration.json" {
+		return nil, errRecord
+	}
+	var generated struct {
+		CanonicalRecords struct {
+			Outputs map[string]string `json:"outputs"`
+		} `json:"canonical_records"`
+	}
+	if jsonv2.Unmarshal(files[source.Generated], &generated) != nil || len(generated.CanonicalRecords.Outputs) > contract.MaxOutputBindings {
+		return nil, errRecord
+	}
+	contracts := []string{}
+	decoder := jsontext.NewDecoder(bytes.NewReader(source.Outputs.Destinations))
+	if token, err := decoder.ReadToken(); err != nil || token.Kind() != '{' {
+		return nil, errRecord
+	}
+	for decoder.PeekKind() != '}' {
+		key, err := decoder.ReadToken()
+		if err != nil || key.Kind() != '"' || len(contracts) >= contract.MaxOutputBindings {
+			return nil, errRecord
+		}
+		name := key.String()
+		var output struct {
+			Plugin    jsontext.Value `json:"plugin"`
+			Canonical struct {
+				Settings jsontext.Value `json:"settings"`
+			} `json:"canonical"`
+		}
+		if jsonv2.UnmarshalDecode(decoder, &output, jsonv2.RejectUnknownMembers(true)) != nil || !bytes.Equal(output.Plugin, []byte("null")) {
+			return nil, errRecord
+		}
+		encoded, ok := generated.CanonicalRecords.Outputs[name]
+		if !ok || len(encoded) > base64.StdEncoding.EncodedLen(contract.MaxNormalOutputBindingBytes) {
+			return nil, errRecord
+		}
+		body, err := base64.StdEncoding.Strict().DecodeString(encoded)
+		if err != nil || base64.StdEncoding.EncodeToString(body) != encoded {
+			return nil, errRecord
+		}
+		binding, err := contract.InspectNormalOutputBinding(body)
+		if err != nil || binding.DestinationID != name {
+			return nil, errRecord
+		}
+		// Reconstruction emits the same settings with editable JSON layout.
+		// Keep every numeric literal exact, including integers above 2^53.
+		expected := jsontext.Value(binding.Destination.CanonicalSettings).Clone()
+		if expected.Format(jsontext.ReorderRawObjects(true)) != nil || output.Canonical.Settings.Format(jsontext.ReorderRawObjects(true)) != nil ||
+			!bytes.Equal(expected, output.Canonical.Settings) {
+			return nil, errRecord
+		}
+		contracts = append(contracts, binding.Destination.ConfigContractID)
+	}
+	if _, err := decoder.ReadToken(); err != nil || len(contracts) != len(generated.CanonicalRecords.Outputs) {
+		return nil, errRecord
+	}
+	return contracts, nil
 }
 
 // ValidateResult checks the delivered pair independently of effect-plugin readiness.
@@ -596,16 +642,27 @@ func (v PublicOutputRecoveryPreparedPair) ValidateResult(code int, domain contra
 	if jsonv2.Unmarshal(files["configuration.json"].Data, &source) != nil || source.Generated == "" || files[source.Generated].Path == "" {
 		return errRecord
 	}
+	delivered, err := v.Pair.outputContractsInSourceOrder()
+	if err != nil {
+		return errRecord
+	}
+	subjects := make(map[string][]any)
+	for index, id := range delivered {
+		subjects[id] = append(subjects[id], float64(index))
+	}
 	contracts = slices.Clone(contracts)
 	slices.Sort(contracts)
 	contracts = slices.Compact(contracts)
 	requirements, diagnostics := []any{}, []any{}
 	outcome, expectedCode := "complete", 0
+	if len(subjects) != len(contracts) {
+		return errRecord
+	}
 	for _, id := range contracts {
-		if id == "" {
+		if id == "" || len(subjects[id]) == 0 {
 			return errRecord
 		}
-		requirements = append(requirements, map[string]any{"role": "output", "plugin": nil, "contract": id, "protocol_version": float64(4), "artifact": nil, "status": "missing", "reason": "not-installed"})
+		requirements = append(requirements, map[string]any{"role": "output", "plugin": nil, "contract": id, "protocol_version": float64(6), "subjects": subjects[id], "artifact": nil, "status": "missing", "reason": "selection-required"})
 	}
 	if len(contracts) != 0 {
 		outcome, expectedCode = "incomplete", 2
@@ -616,8 +673,8 @@ func (v PublicOutputRecoveryPreparedPair) ValidateResult(code int, domain contra
 		"recovery": map[string]any{"status": "complete", "domain": hex.EncodeToString(domain[:]), "head": v.HeadSHA256},
 		"local_delivery": map[string]any{"outcome": "recorded", "editable_path": v.Pair.Source, "generated_path": filepath.Join(filepath.Dir(v.Pair.Source), filepath.FromSlash(source.Generated)), "cleanup_failed": false,
 			"readback": map[string]any{"editable_digest": files["configuration.json"].SHA256, "generated_digest": files[source.Generated].SHA256}},
-		"dependencies": map[string]any{"assessment": "complete", "minimum_administrative_ready": true, "all_declared_ready": len(contracts) == 0, "requirements": requirements, "installations": []any{}},
-		"diagnostics":  diagnostics,
+		"dependencies":   map[string]any{"assessment": "complete", "minimum_administrative_ready": true, "all_declared_ready": len(contracts) == 0, "requirements": requirements, "installations": []any{}, "settings_failure": nil},
+		"missing_inputs": []any{}, "diagnostics": diagnostics,
 	}
 	if code != expectedCode || !reflect.DeepEqual(actual, expected) {
 		return errRecord

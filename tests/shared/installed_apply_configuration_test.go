@@ -231,11 +231,11 @@ func TestInstalledApplyPublicConfigurationMatchesCompleteCarriers(t *testing.T) 
 	validator := NewPublicConfigurationValidator(nil)
 	configuration := installedApplyPassiveConfiguration(t, ctx, f.selected, validator)
 	authority := f.selected.admission.recipient
-	configuration.Entries.Value = []contract.PublicEntry{{Name: "proposed", Class: observedPublicField(contract.Plain), Source: observedPublicField(contract.Supplied), PlainValue: observedPublicField([]byte("plain proposal")), Memberships: observedPublicField([]contract.ID{authority})}}
+	configuration.Entries.Value = []contract.PublicEntry{{Name: "proposed", Class: observedPublicField(contract.Plain), Source: observedPublicField(contract.Supplied), InputEncoding: observedPublicField(contract.InputEncodingRaw), OutputEncoding: observedPublicField(contract.OutputEncodingRaw), PlainValue: observedPublicField([]byte("plain proposal")), Memberships: observedPublicField([]contract.ID{authority})}}
 	for _, condition := range []string{"exact", "display", "missing-validator", "incomplete", "name", "class", "source", "plain", "membership", "registry", "control", "store"} {
 		t.Run(condition, func(t *testing.T) {
 			proposal := ownPublicConfiguration(configuration)
-			input := []ApplyEntryInput{{Name: "proposed", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, InputBytes: []byte("plain proposal"), Recipients: []contract.ID{authority}}}
+			input := []ApplyEntryInput{{Name: "proposed", ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain, InputBytes: []byte("plain proposal"), Recipients: []contract.ID{authority}}}
 			desired := installedApplyPassiveRecipients(f.selected)
 			installedValidator := validator
 			switch condition {

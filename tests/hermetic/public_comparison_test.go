@@ -358,26 +358,26 @@ func TestReaderComparisonProjectsCompleteOutputAndRouting(t *testing.T) {
 				desired.Routing.Value[0].Key.EntryName = ""
 			case "changed-contract":
 				desired.OutputBindings.Value[0].Destination.Value.ConfigContractID = "other-contract"
-				field = contract.FieldDestination
+				verdict, field, reason = contract.ComparisonUnable, contract.FieldTargets, contract.ReasonInvalidInput
 				subject = contract.DiagnosticSubject{Kind: contract.SubjectOutputBinding, DestinationID: "destination"}
 			case "without-interpreter":
 				e.validator = NewPublicConfigurationValidator(nil)
-				verdict = contract.ComparisonMatch
-
+				verdict, field, reason = contract.ComparisonUnable, contract.FieldTargets, contract.ReasonPublicFactUnavailable
+				subject = contract.DiagnosticSubject{Kind: contract.SubjectOutputBinding, DestinationID: "destination"}
 			}
 			public, private := env.Custody.Calls()
 			store := env.Store.(*memoryStore)
 			creates, cas := store.creates, store.cas
 			got := e.Compare(ctx, contract.Hash([]byte("output projection request")), desired)
 			var want []contract.Diagnostic
-			if kind != "equal" && kind != "without-interpreter" {
+			if kind != "equal" {
 				outcome := contract.DiagnosticDifference
 				if verdict == contract.ComparisonUnable {
 					outcome = contract.DiagnosticUnable
 				}
 				want = []contract.Diagnostic{{Subject: subject, Path: []contract.DiagnosticField{field}, Outcome: outcome, Reason: reason}}
 			}
-			if kind == "locator" || kind == "policy" {
+			if kind == "locator" || kind == "policy" || kind == "changed-contract" {
 				want = append(want, contract.Diagnostic{Subject: contract.DiagnosticSubject{Kind: contract.SubjectOutputBinding, DestinationID: "destination"}, Path: []contract.DiagnosticField{contract.FieldDestination}, Outcome: contract.DiagnosticDifference, Reason: contract.ReasonFieldDiffers})
 			}
 
@@ -755,9 +755,12 @@ func TestReaderComparisonWithoutInterpreterKeepsCanonicalGroups(t *testing.T) {
 			}
 			var want []contract.Diagnostic
 			verdict := contract.ComparisonMatch
+			if condition != "healthy" {
+				verdict = contract.ComparisonUnable
+				want = append(want, contract.Diagnostic{Subject: contract.DiagnosticSubject{Kind: contract.SubjectOutputBinding, DestinationID: "d"}, Path: []contract.DiagnosticField{contract.FieldTargets}, Outcome: contract.DiagnosticUnable, Reason: contract.ReasonPublicFactUnavailable})
+			}
 			if condition == "independent-difference" {
-				verdict = contract.ComparisonMismatch
-				want = []contract.Diagnostic{{Subject: contract.DiagnosticSubject{Kind: contract.SubjectEntry, Name: "alpha"}, Path: []contract.DiagnosticField{contract.FieldPlainValue}, Outcome: contract.DiagnosticDifference, Reason: contract.ReasonBytesDiffer}}
+				want = append(want, contract.Diagnostic{Subject: contract.DiagnosticSubject{Kind: contract.SubjectEntry, Name: "alpha"}, Path: []contract.DiagnosticField{contract.FieldPlainValue}, Outcome: contract.DiagnosticDifference, Reason: contract.ReasonBytesDiffer})
 			}
 
 			got := e.Compare(ctx, contract.Hash([]byte("canonical groups "+condition)), desired)

@@ -660,7 +660,7 @@ func TestMaterializationCustodyMaximumRetainedAccessOwnership(t *testing.T) {
 			}
 			before := route.privateCalls
 			out := c.Materialize(ctx)
-			if out.Validate() != nil || route.privateCalls-before != 512 || len(backing) != 8_388_608 || ownedEntries != 8_496_128 || ownedRSA != 50_528_256 || wrapCount != 131_584 || membershipCount != 4096 {
+			if out.Validate() != nil || route.privateCalls-before != 512 || len(backing) != 8_388_608 || ownedEntries != 8_498_688 || ownedRSA != 50_528_256 || wrapCount != 131_584 || membershipCount != 4096 {
 				t.Fatal("maximum simultaneous owners were not exercised", out)
 			}
 			if c.raw != nil || c.route != nil || c.target != nil || c.admission.Entries != nil || !bytes.Equal(backing, make([]byte, len(backing))) || !bytes.Equal(route.returned, make([]byte, len(route.returned))) {
@@ -681,7 +681,7 @@ func TestMaterializationCustodyMaximumRetainedAccessOwnership(t *testing.T) {
 				}
 			}
 			t.Run(fmt.Sprintf("input-capacity-bytes_entry-%d_payload-%d_rsa-%d_wrap-descriptors-%d", inputEntries, inputPayloads, inputRSA, inputWrapRows*int(unsafe.Sizeof(contract.WrapRow{}))), func(t *testing.T) {
-				if inputEntries != 8_496_128 || inputPayloads != 8_396_800 || inputRSA != 50_528_256 || inputWrapRows < 131_584 || inputWrapRows > 512*1024 {
+				if inputEntries != 8_498_688 || inputPayloads != 8_396_800 || inputRSA != 50_528_256 || inputWrapRows < 131_584 || inputWrapRows > 512*1024 {
 					t.Fatal("selected input backing exceeded its finite account")
 				}
 			})

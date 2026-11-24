@@ -56,7 +56,7 @@ func TestSelectionFactsAgreeWithPublicationAfterLockCompletionFailure(t *testing
 		return nil
 	}
 	session, rows, err := c.Resolve(t.Context(), r)
-	if err == nil || session != nil || !interleaved || len(rows) != 1 {
+	if err == nil || !interleaved || len(rows) != 1 {
 		t.Fatalf("completion failure was not exercised %#v %v", rows, err)
 	}
 	body, readErr := os.ReadFile(path)
@@ -68,13 +68,14 @@ func TestSelectionFactsAgreeWithPublicationAfterLockCompletionFailure(t *testing
 		t.Fatal(decodeErr)
 	}
 	row := rows[0]
+	installed, captured := session.Lookup("private-renderer")
 	switch record.Selections[0].Artifact {
 	case two.identity:
-		if !row.Changed || row.Status != "verified" || row.Version != "2.0.0" || row.Artifact == nil || *row.Artifact != two.identity || row.Previous == nil || row.Previous.Artifact != one.identity {
+		if !recordWasPublished(err) || !captured || installed.Identity() != two.identity || !row.Changed || row.Status != "verified" || row.Version != "2.0.0" || row.Artifact == nil || *row.Artifact != two.identity || row.Previous == nil || row.Previous.Artifact != one.identity {
 			t.Fatalf("visible publication lost its facts %#v", row)
 		}
 	case one.identity:
-		if row.Changed || row.Status == "verified" || row.Previous == nil || row.Previous.Artifact != one.identity {
+		if captured || recordWasPublished(err) || row.Changed || row.Status == "verified" || row.Previous == nil || row.Previous.Artifact != one.identity {
 			t.Fatalf("prepublication refusal lost previous facts %#v", row)
 		}
 	default:

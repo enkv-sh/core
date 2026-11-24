@@ -125,7 +125,7 @@ func TestApplyFacadePinsProducerAndPrivateRuntime(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		call := contract.CryptoRequest{Schema: 3, Kind: contract.CryptoCompare, RequestID: id("compare message"), CustodyInstanceID: f.Crypto().InstanceID(), Body: body}
+		call := contract.CryptoRequest{Schema: contract.CryptoSchema, Kind: contract.CryptoCompare, RequestID: id("compare message"), CustodyInstanceID: f.Crypto().InstanceID(), Body: body}
 		if got := fresh.Crypto().Exchange(context.Background(), call); got.ResultCode != contract.CryptoInvalidAdmission {
 			t.Fatalf("wrong runtime accepted request: %v", got.ResultCode)
 		}

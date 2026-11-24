@@ -25,7 +25,7 @@ func TestPublicNativeInspectionAndReceiptsUseOnlyObjectReads(t *testing.T) {
 				expectedChildren := 10
 				oldFormat := family == "aws" && !recovery
 				if oldFormat {
-					expectedChildren += 3
+					expectedChildren += 4
 				}
 				s.childLimit = expectedChildren
 				f := nativeSequenceSetupOnServer(t, cli, s, recovery)
@@ -153,10 +153,10 @@ func TestPublicNativeInspectionAndReceiptsUseOnlyObjectReads(t *testing.T) {
 					}
 				}
 				if oldFormat {
-					if len(beforeHead.body) < 7 || beforeHead.body[5] != 0 || beforeHead.body[6] != 11 {
+					if len(beforeHead.body) < 7 || beforeHead.body[5] != 0 || beforeHead.body[6] != 12 {
 						t.Fatal("fixture is not current canonical schema")
 					}
-					for _, retired := range []byte{8, 9, 10} {
+					for _, retired := range []byte{8, 9, 10, 11} {
 						old := beforeHead
 						old.body = bytes.Clone(old.body)
 						old.body[6] = retired

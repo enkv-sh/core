@@ -133,6 +133,9 @@ func (h *AdministrativeReadHTTP) failureResponse(w http.ResponseWriter, status i
 	} else {
 		w.Header().Set("Content-Type", "application/json")
 		body = `{"error":{"code":` + strconv.Itoa(status) + `,"message":"local fixture refusal"}}`
+		if status == http.StatusNotFound {
+			body = `{"error":{"code":404,"message":"local fixture refusal","errors":[{"reason":"notFound"}]}}`
+		}
 	}
 	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
 	w.WriteHeader(status)

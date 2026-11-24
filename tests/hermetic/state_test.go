@@ -3,6 +3,7 @@ package core
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"sort"
 	"strconv"
 	"testing"
@@ -423,15 +424,25 @@ func TestCapacityBeforeWrites(t *testing.T) {
 		t.Fatal("fixture capacity")
 	}
 	original := fixtureStateImage(t, f)
-	for _, name := range []string{"raw-eight-mib-plus-one", "value-sixty-four-kib-plus-one", "member-513"} {
+	for _, name := range []string{"raw-eight-mib-plus-one", "value-sixty-four-kib-plus-one", "base64-sixty-four-kib-plus-one", "malformed-base64", "member-513"} {
 		t.Run(name, func(t *testing.T) {
 			desiredEntries := original.entryInputs()
 			want := Result{Outcome: AdmissionRefused, Reason: CapacityExceeded}
 			switch name {
 			case "raw-eight-mib-plus-one":
 				desiredEntries[0].InputBytes = append(desiredEntries[0].InputBytes, 1)
-			case "value-sixty-four-kib-plus-one":
+			case "value-sixty-four-kib-plus-one", "base64-sixty-four-kib-plus-one":
+				// Keep the whole set under its separate eight-MiB limit.
+				desiredEntries = desiredEntries[:len(desiredEntries)-4]
 				desiredEntries[0].InputBytes = make([]byte, contract.CryptoMaxRawValue+1)
+				if name == "base64-sixty-four-kib-plus-one" {
+					desiredEntries[0].InputEncoding = contract.InputEncodingBase64
+					desiredEntries[0].InputBytes = base64.StdEncoding.AppendEncode(nil, desiredEntries[0].InputBytes)
+				}
+			case "malformed-base64":
+				desiredEntries[0].InputEncoding = contract.InputEncodingBase64
+				desiredEntries[0].InputBytes = []byte("!!!=")
+				want.Reason = InvalidIntent
 			case "member-513":
 				desiredEntries = append(desiredEntries, ApplyEntryInput{})
 			}

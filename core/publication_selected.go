@@ -97,27 +97,51 @@ func publicationTypedRelation(domain contract.ID, selected selectedPublication, 
 		incarnation contract.ID
 		ordinal     uint64
 	}
-	ordinals := make(map[stamp]bool)
-	positions := make(map[contract.ID]map[contract.ID]int, len(orders))
+	if len(orders) != len(selected.coordinates) {
+		return selectedPublication{}, contract.ErrRecord
+	}
+	type orderKey struct{ coordinate, incarnation contract.ID }
+	positions := make(map[orderKey]int, incarnationCount)
+	// Positions start at one. Mark each declared incarnation referenced by a
+	// current coordinate, a compacted acknowledgement, or a retained marker.
+	referenced := make([]bool, incarnationCount+1)
 	for _, order := range orders {
-		if positions[order.CoordinateID] != nil {
+		coordinate, ok := selected.coordinates[order.CoordinateID]
+		if !ok || len(order.Incarnations) == 0 || order.Incarnations[len(order.Incarnations)-1] != coordinate.CurrentPublicationIncarnationID {
 			return selectedPublication{}, contract.ErrRecord
 		}
-		positions[order.CoordinateID] = make(map[contract.ID]int, len(order.Incarnations))
-		for i, id := range order.Incarnations {
-			positions[order.CoordinateID][id] = i + 1
+		for _, id := range order.Incarnations {
+			key := orderKey{order.CoordinateID, id}
+			if positions[key] != 0 {
+				return selectedPublication{}, contract.ErrRecord
+			}
+			positions[key] = len(positions) + 1
+		}
+		// The last slot in this order is the checked current incarnation.
+		referenced[len(positions)] = true
+		for _, id := range [...]contract.ID{coordinate.LastValueAckIncarnationID, coordinate.LastPolicyAckIncarnationID, coordinate.LastDeleteAckIncarnationID} {
+			if !id.IsZero() {
+				position := positions[orderKey{order.CoordinateID, id}]
+				if position == 0 {
+					return selectedPublication{}, contract.ErrRecord
+				}
+				referenced[position] = true
+			}
 		}
 	}
 	before := func(a, b contract.PublicationMarker) bool {
-		first, last := positions[a.CoordinateID][a.PublicationIncarnationID], positions[b.CoordinateID][b.PublicationIncarnationID]
+		first := positions[orderKey{a.CoordinateID, a.PublicationIncarnationID}]
+		last := positions[orderKey{b.CoordinateID, b.PublicationIncarnationID}]
 		return a.CoordinateID == b.CoordinateID && first != 0 && last != 0 && (first < last || first == last && a.AdmissionOrdinal < b.AdmissionOrdinal)
 	}
-	byCoordinate := make(map[contract.ID][]contract.ID, len(selected.coordinates))
+	ordinals := make(map[stamp]bool, len(selected.markers))
+	uncertainCreates := make(map[contract.ID]bool)
 	for id, marker := range selected.markers {
 		coordinate, present := selected.coordinates[marker.CoordinateID]
+		position := positions[orderKey{marker.CoordinateID, marker.PublicationIncarnationID}]
 		if !present || marker.Projection.CoordinateID != coordinate.CoordinateID ||
 			marker.PublicationIncarnationID == coordinate.CurrentPublicationIncarnationID && marker.AdmissionOrdinal > coordinate.LastAdmissionOrdinal ||
-			positions[marker.CoordinateID][marker.PublicationIncarnationID] == 0 ||
+			position == 0 ||
 			!selected.coordinates[id].CoordinateID.IsZero() {
 			return selectedPublication{}, contract.ErrRecord
 		}
@@ -152,7 +176,10 @@ func publicationTypedRelation(domain contract.ID, selected selectedPublication, 
 				return selectedPublication{}, contract.ErrRecord
 			}
 		}
-		byCoordinate[marker.CoordinateID] = append(byCoordinate[marker.CoordinateID], id)
+		referenced[position] = true
+		if publicationMarkerProvesUncertainCreate(marker, coordinate) {
+			uncertainCreates[marker.CoordinateID] = true
+		}
 	}
 	for _, coordinate := range selected.coordinates {
 		if !coordinate.LatestUnresolvedAttemptID.IsZero() {
@@ -209,53 +236,13 @@ func publicationTypedRelation(domain contract.ID, selected selectedPublication, 
 				return selectedPublication{}, contract.ErrRecord
 			}
 		case contract.PublicationOwnerUncertainCreate:
-			found := false
-			for _, id := range byCoordinate[coordinate.CoordinateID] {
-				marker := selected.markers[id]
-				if marker.CoordinateID == coordinate.CoordinateID &&
-					(marker.Projection.Action == contract.PublicationCreateEmpty || marker.Projection.Action == contract.PublicationCreateWithValue) &&
-					(marker.State == contract.PublicationMayHaveEntered || marker.State == contract.PublicationUnknown) &&
-					marker.Projection.BindingIncarnationID == coordinate.LastBindingIncarnationID &&
-					marker.Projection.EntryIncarnationID == coordinate.LastEntryIncarnationID &&
-					marker.Projection.TargetRowDigest == coordinate.DeletionTargetRowDigest {
-					found = true
-					break
-				}
-			}
-			if !found {
+			if !uncertainCreates[coordinate.CoordinateID] {
 				return selectedPublication{}, contract.ErrRecord
 			}
 		}
 	}
-	if len(orders) != len(selected.coordinates) {
+	if slices.Contains(referenced[1:], false) {
 		return selectedPublication{}, contract.ErrRecord
-	}
-	for _, order := range orders {
-		coordinate, ok := selected.coordinates[order.CoordinateID]
-		if !ok || len(order.Incarnations) == 0 || order.Incarnations[len(order.Incarnations)-1] != coordinate.CurrentPublicationIncarnationID {
-			return selectedPublication{}, contract.ErrRecord
-		}
-		union := map[contract.ID]bool{coordinate.CurrentPublicationIncarnationID: true}
-		for _, id := range byCoordinate[coordinate.CoordinateID] {
-			marker := selected.markers[id]
-			if marker.CoordinateID == coordinate.CoordinateID {
-				union[marker.PublicationIncarnationID] = true
-			}
-		}
-		for _, id := range []contract.ID{coordinate.LastValueAckIncarnationID, coordinate.LastPolicyAckIncarnationID, coordinate.LastDeleteAckIncarnationID} {
-			if !id.IsZero() {
-				union[id] = true
-			}
-		}
-		if len(union) != len(order.Incarnations) {
-			return selectedPublication{}, contract.ErrRecord
-		}
-		for _, id := range order.Incarnations {
-			if !union[id] {
-				return selectedPublication{}, contract.ErrRecord
-			}
-			delete(union, id)
-		}
 	}
 	return selected, nil
 }

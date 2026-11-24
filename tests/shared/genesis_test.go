@@ -100,7 +100,7 @@ func TestCoreOriginalContextRefusesBeforeAdmissionAndEffects(t *testing.T) {
 				if s == nil || result.Outcome != ObservedCurrent {
 					t.Fatal("valid Open after context refusal", result)
 				}
-				desiredEntries := []ApplyEntryInput{{Name: "alpha", Recipients: []contract.ID{admitted.admission.recipient}, ValueSource: format.Supplied, ConfidentialityClass: format.Plain, InputBytes: []byte("x")}}
+				desiredEntries := []ApplyEntryInput{{Name: "alpha", Recipients: []contract.ID{admitted.admission.recipient}, ValueSource: format.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: format.Plain, InputBytes: []byte("x")}}
 				for _, ctx := range invalid {
 					if comparison, result := s.Compare(ctx, desiredEntries, nil); comparison != nil || result != refused(AdmissionInvalid) {
 						t.Fatal("invalid original context reached Compare", result)

@@ -55,19 +55,21 @@ func makeRootChannel(read, write *os.File) *rootChannel {
 	return &rootChannel{readFile: read, writeFile: write, reader: bufio.NewReaderSize(read, rootMessageLimit)}
 }
 
-func inheritedRootChannel() (*rootChannel, error) {
-	// ExtraFiles assigns these descriptors. Close-on-exec is set before any
-	// child starts, including commands that validate the invocation.
-	syscall.CloseOnExec(3)
-	syscall.CloseOnExec(4)
-	channel := makeRootChannel(os.NewFile(3, "root-read"), os.NewFile(4, "root-write"))
-	for _, file := range []*os.File{channel.readFile, channel.writeFile} {
-		info, err := file.Stat()
-		if err != nil || info.Mode()&os.ModeNamedPipe == 0 {
-			return nil, errors.Join(errors.New("root channel unavailable"), channel.close())
+func inheritedRootChannel(readFD, writeFD int) (*rootChannel, error) {
+	// ExtraFiles transfers blocking descriptors. Enable runtime polling before
+	// NewFile so closing the channel on cancellation wakes an in-flight read.
+	syscall.CloseOnExec(readFD)
+	syscall.CloseOnExec(writeFD)
+	for _, fd := range []int{readFD, writeFD} {
+		var stat syscall.Stat_t
+		if err := syscall.Fstat(fd, &stat); err != nil || stat.Mode&syscall.S_IFMT != syscall.S_IFIFO {
+			return nil, errors.Join(errors.New("root channel unavailable"), err, syscall.Close(readFD), syscall.Close(writeFD))
+		}
+		if err := syscall.SetNonblock(fd, true); err != nil {
+			return nil, errors.Join(err, syscall.Close(readFD), syscall.Close(writeFD))
 		}
 	}
-	return channel, nil
+	return makeRootChannel(os.NewFile(uintptr(readFD), "root-read"), os.NewFile(uintptr(writeFD), "root-write")), nil
 }
 
 func (channel *rootChannel) close() error {

@@ -925,7 +925,7 @@ func TestConfiguredGeneratedCapacityColdOpen(t *testing.T) {
 		[]string{"configured-generated"}, sources, recipients, custody.StandardValue, contract.OutputEncodingRaw, "configured original", nil)
 	store, opened := signedCapacityConfiguration(t, env, f.session, selected, "small configured generated", false)
 	if opened.root.Generated.GeneratedCurrent != 1 || opened.root.MembershipCount != 3 || opened.root.SecretOrdinaryWrapCount != 2 ||
-		opened.root.OutputConfiguration.BindingCount != 2 || opened.root.OutputConfiguration.TotalLength != 1586 || opened.root.OutputConfiguration.RoutingLength != 74 ||
+		opened.root.OutputConfiguration.BindingCount != 2 || opened.root.OutputConfiguration.TotalLength != 1582 || opened.root.OutputConfiguration.RoutingLength != 74 ||
 		len(opened.adminIndex.PublicationOrder) != 2 || !opened.selectedOutputComplete() || opened.publicationProof == nil {
 		t.Fatal("small configured generated dimensions")
 	}
@@ -1099,9 +1099,9 @@ func TestConfiguredGeneratedCapacityColdOpen(t *testing.T) {
 		caseStore, before := signedCapacityConfigurationImage(t, caseEnv, f.session, selected, t.Name(), false, configuration)
 		caseEnv.Store = caseStore
 		// Five sources and five derived targets each retain the full 1500-subject
-		// policy. Independent schema5 framing gives declaration4022196, routing128,
-		// image4022328 and four payloads: 1048423/1048423/1048423/877059 bytes.
-		if before.root.OutputConfiguration.TotalLength != 4022328 || before.root.OutputConfiguration.RoutingLength != 128 ||
+		// policy. With five bindings and five targets, schema5 gives declaration4022186, routing128,
+		// image4022318 and four payloads of 1048423/1048423/1048423/877049 bytes.
+		if before.root.OutputConfiguration.TotalLength != 4022318 || before.root.OutputConfiguration.RoutingLength != 128 ||
 			before.root.OutputConfiguration.SliceCount != 4 || before.root.OutputConfiguration.BindingCount != 5 {
 			t.Fatal("warm configuration fixture dimensions", before.root.OutputConfiguration)
 		}

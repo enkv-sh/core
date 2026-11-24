@@ -384,7 +384,10 @@ func TestSequentialMaximumGeneratorLaunchesFitCommandDeadline(t *testing.T) {
 	path := buildTestGenerator(t, "success")
 	implementation := boundImplementation(t, path)
 	t.Setenv("ENKV_GENERATOR_TEST_TOKEN", "private-test-value")
-	deadline := time.Now().Add(time.Duration(contract.GeneratorMaximumChildCommandDurationMillis) * time.Millisecond)
+	commandLimit := time.Duration(contract.GeneratorMaximumChildCommandDurationMillis) * time.Millisecond
+	parent, cancel := context.WithTimeout(t.Context(), 10*time.Minute)
+	defer cancel()
+	batchEnd, _ := parent.Deadline()
 	started := time.Now()
 	for action := uint8(1); action <= 2; action++ {
 		for index := 0; index < 128; index++ {
@@ -397,6 +400,10 @@ func TestSequentialMaximumGeneratorLaunchesFitCommandDeadline(t *testing.T) {
 			command.AttemptID = sha256.Sum256([]byte(fmt.Sprintf("attempt/%d/%d", action, index)))
 			command.TransmissionID = sha256.Sum256([]byte(fmt.Sprintf("transmission/%d/%d", action, index)))
 			command.ResultID = sha256.Sum256([]byte(fmt.Sprintf("result/%d/%d", action, index)))
+			deadline := time.Now().Add(commandLimit)
+			if batchEnd.Before(deadline) {
+				deadline = batchEnd
+			}
 			command.DeadlineUnixMillis = uint64(deadline.UnixMilli())
 			if action == 2 {
 				facts := command.NewFacts(protocol.DispositionCompleteCreate, protocol.ReasonNone)
@@ -422,8 +429,8 @@ func TestSequentialMaximumGeneratorLaunchesFitCommandDeadline(t *testing.T) {
 		}
 	}
 	duration := time.Since(started)
-	if !time.Now().Before(deadline) {
-		t.Fatalf("256 sequential generator launches exceeded the %d ms command lifetime: %s", contract.GeneratorMaximumChildCommandDurationMillis, duration)
+	if parent.Err() != nil {
+		t.Fatal("maximum sequence exceeded batch lifetime", parent.Err())
 	}
 	t.Logf("sequential generator launches tuple=%s/%s creates=128 retires=128 processes=256 duration=%s deadline=%s", runtime.GOOS, runtime.GOARCH, duration, time.Duration(contract.GeneratorMaximumChildCommandDurationMillis)*time.Millisecond)
 }

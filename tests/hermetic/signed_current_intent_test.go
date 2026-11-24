@@ -940,9 +940,9 @@ func TestSignedIndependentCurrentIntentsBeforeReplacementEndWork(t *testing.T) {
 	}
 	filler := []ApplyEntryInput{
 		{Name: "a-seed", Recipients: []contract.ID{sourceB.admission.recipient}, ValueSource: format.Supplied,
-			ConfidentialityClass: format.Plain, InputBytes: []byte{0}},
+			InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: format.Plain, InputBytes: []byte{0}},
 		{Name: "b-filler", Recipients: []contract.ID{sourceB.admission.recipient}, ValueSource: format.Supplied,
-			ConfidentialityClass: format.Plain, InputBytes: []byte{1}},
+			InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: format.Plain, InputBytes: []byte{1}},
 	}
 	comparison, result := sourceB.Compare(ctx, filler, admitSuppliedComparison(t, sourceB, nil, filler))
 	if comparison == nil || result.Outcome != ObservedCurrent {
@@ -986,7 +986,7 @@ func TestSignedIndependentCurrentIntentsColdOpen(t *testing.T) {
 		t.Fatal("independent plain candidate predecessor", result)
 	}
 	plainChange := []ApplyEntryInput{{Name: "a-seed", Recipients: []contract.ID{observer.admission.recipient},
-		ValueSource: format.Supplied, ConfidentialityClass: format.Plain, InputBytes: []byte("competing plain candidate")}}
+		ValueSource: format.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: format.Plain, InputBytes: []byte("competing plain candidate")}}
 	plainComparison, result := observer.Compare(ctx, plainChange, admitSuppliedComparison(t, observer, nil, plainChange))
 	if plainComparison == nil || result.Outcome != ObservedCurrent {
 		t.Fatal("independent plain candidate comparison", result)
@@ -1006,9 +1006,9 @@ func TestSignedIndependentCurrentIntentsColdOpen(t *testing.T) {
 	}
 	desired := []ApplyEntryInput{
 		{Name: "a-seed", Recipients: []contract.ID{sourceB.admission.recipient}, ValueSource: format.Supplied,
-			ConfidentialityClass: format.Plain, InputBytes: []byte{0}},
+			InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: format.Plain, InputBytes: []byte{0}},
 		{Name: "b-filler", Recipients: []contract.ID{sourceB.admission.recipient}, ValueSource: format.Supplied,
-			ConfidentialityClass: format.Plain, InputBytes: []byte{1}},
+			InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: format.Plain, InputBytes: []byte{1}},
 	}
 	comparison, result := sourceB.Compare(ctx, desired, admitSuppliedComparison(t, sourceB, nil, desired))
 	if comparison == nil || result.Outcome != ObservedCurrent {
@@ -2377,9 +2377,9 @@ func TestConfiguredGeneratedReplacementPreparation(t *testing.T) {
 	}
 	store, opened := signedCapacityConfigurationImage(t, env, f.session, selected, "configured replacement predecessor", false, configuration)
 	// Eight bindings and their four targets each retain all 1500 subjects.
-	// Independent schema4 framing gives declaration5230734, routing1678 and
-	// image5232416: four 1048423-byte payloads and one 1038724-byte payload.
-	if opened.root.OutputConfiguration.TotalLength != 5232416 || opened.root.OutputConfiguration.RoutingLength != 1678 ||
+	// Independent schema5 framing gives declaration5230718, routing713 and
+	// image5231435: four 1048423-byte payloads and one 1037743-byte payload.
+	if opened.root.OutputConfiguration.TotalLength != 5231435 || opened.root.OutputConfiguration.RoutingLength != 713 ||
 		opened.root.OutputConfiguration.SliceCount != 5 || opened.root.OutputConfiguration.BindingCount != 8 {
 		t.Fatal("bounded replacement configuration dimensions", opened.root.OutputConfiguration)
 	}

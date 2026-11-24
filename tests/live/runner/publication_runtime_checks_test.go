@@ -229,7 +229,7 @@ func TestLivePublicationMixedConfigurationUsesCanonicalDestinationOrder(t *testi
 					}
 					input.Profiles = append(input.Profiles, profile)
 				}
-				entries := []ApplyEntryInput{{Name: "SHARED_P", Recipients: []contract.ID{authority}, ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain}, {Name: "SHARED_S", Recipients: []contract.ID{authority}, ValueSource: contract.Supplied, ConfidentialityClass: contract.Secret}, {Name: "cloud_P", Recipients: []contract.ID{authority}, ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain}, {Name: "cloud_S", Recipients: []contract.ID{authority}, ValueSource: contract.Supplied, ConfidentialityClass: contract.Secret}}
+				entries := []ApplyEntryInput{{Name: "SHARED_P", Recipients: []contract.ID{authority}, ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain}, {Name: "SHARED_S", Recipients: []contract.ID{authority}, ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Secret}, {Name: "cloud_P", Recipients: []contract.ID{authority}, ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain}, {Name: "cloud_S", Recipients: []contract.ID{authority}, ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Secret}}
 				p := &livePublicationScenario{publicationScenario: &publicationScenario{entries: entries}, runtime: &livePublicationRuntime{input: input}}
 				output := p.output()
 				want := []string{"publication-" + cloud, "publication-github-environment", "publication-github-organization", "publication-github-repository"}
@@ -237,7 +237,11 @@ func TestLivePublicationMixedConfigurationUsesCanonicalDestinationOrder(t *testi
 				if err != nil || !checkOutputApplyInput(contract.Hash([]byte("mixed output order")), entries, normalized) {
 					t.Fatal("mixed output input violates the native configuration contract", err)
 				}
-				wantRoutes := []outputApplyRoute{{entryName: "SHARED_P", destinations: want[1:]}, {entryName: "SHARED_S", destinations: want[1:]}, {entryName: "cloud_P", destinations: want[:1]}, {entryName: "cloud_S", destinations: want[:1]}}
+				wantRoutes := []outputApplyRoute{
+					{entryName: "SHARED_P", destinations: want[1:]}, {entryName: "SHARED_S", destinations: want[1:]},
+					{entryName: "cloud_P", destinations: want[:1]}, {entryName: "cloud_S", destinations: want[:1]},
+					{defaultRoute: true},
+				}
 				if len(normalized.bindings) != len(want) || !reflect.DeepEqual(normalized.routes, wantRoutes) {
 					t.Fatal("mixed output omitted or reordered routes, or added cross-scope targets")
 				}
@@ -316,7 +320,7 @@ func liveConsumerScenario(t testing.TB, ctx context.Context, scope string, first
 	if changed {
 		plain = "updated plain data"
 	}
-	entries := []ApplyEntryInput{{Name: "plain", Recipients: []contract.ID{f.session.admission.recipient}, ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, InputBytes: []byte(plain)}, sharingSecretNamed(t, env, "secret", "manifest consumer source", []contract.ID{f.session.admission.recipient})}
+	entries := []ApplyEntryInput{{Name: "plain", Recipients: []contract.ID{f.session.admission.recipient}, ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, InputBytes: []byte(plain), InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw}, sharingSecretNamed(t, env, "secret", "manifest consumer source", []contract.ID{f.session.admission.recipient})}
 	profile := records.OutputFixtureProfile{Scope: scope, ProfileID: "ENKV/OUTPUT/AWS-SECRETS-MANAGER/v3", Cloud: &records.OutputFixtureCloud{Provider: "aws", Account: "123456789012", Region: "us-east-1"}}
 	if scope == "gcp-secret-manager" {
 		profile.ProfileID = "ENKV/OUTPUT/GCP-SECRET-MANAGER/v3"

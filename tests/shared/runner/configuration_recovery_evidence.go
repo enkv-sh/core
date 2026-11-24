@@ -87,8 +87,10 @@ func expectedRecoveryRefusal(condition string) (installedarchive.RecoveryResult,
 		return installedarchive.RecoveryResult{Outcome: 6, Reason: 12}, true
 	case "required-public-denied":
 		return installedarchive.RecoveryResult{Outcome: 6, Reason: 12}, true
-	case "required-authority-denied", "recovery-key-only", "later-secret-denied", "wrong-kek-pin":
+	case "required-authority-denied", "recovery-key-only", "later-secret-denied":
 		return installedarchive.RecoveryResult{Outcome: 6, Reason: 17}, true
+	case "wrong-kek-pin":
+		return installedarchive.RecoveryResult{Outcome: 8, Reason: 2}, true
 	case "wrong-owner":
 		return installedarchive.RecoveryResult{Outcome: 6, Reason: 8}, true
 	case "selected-object-disappears":

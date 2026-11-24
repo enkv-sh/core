@@ -16,7 +16,7 @@ import (
 func suppliedApplyIdentityFixture(t testing.TB) SuppliedApplyIdentityPlan {
 	t.Helper()
 	body, err := os.ReadFile("../../tests/shared/testdata/stored-closure-v11.json")
-	if err != nil || contract.Hash(body) != successionLiteralID(t, "d619ec197d4924c5c1adb2dc98147b3ca9acf741d02a00ea8ba1ece9dcc0b4fc") {
+	if err != nil || contract.Hash(body) != successionLiteralID(t, "504e6f272a35b12834655285326a7321d52b28184dcbcb6cdaf6ebdcb5732f4e") {
 		t.Fatal("independent source vector changed", err)
 	}
 	var vectors storedClosureVectors
@@ -98,7 +98,7 @@ func suppliedApplyIdentityFixture(t testing.TB) SuppliedApplyIdentityPlan {
 func TestSuppliedApplyIdentityMatchesIndependentLiteralAndNamedHoles(t *testing.T) {
 	p := suppliedApplyIdentityFixture(t)
 	got, err := DeriveSuppliedApplyIdentity(p)
-	if err != nil || got != successionLiteralID(t, "d955c17ab078dcdf43ced3ce0bfaa2e710df17bb3496662f7d25018dc94b4e30") {
+	if err != nil || got != successionLiteralID(t, "072b63f31c20583b6e398b1c6f17ecd8daffb9b836448e2329dd41f165a6afb1") {
 		t.Fatal("supplied request identity differs from independent fixed frame", err)
 	}
 	type component struct {
@@ -120,7 +120,7 @@ func TestSuppliedApplyIdentityMatchesIndependentLiteralAndNamedHoles(t *testing.
 	b, e = contract.EncodeIdentityPlan(p.Identity)
 	appendPart("identity", b, e, 407, "8c9963fe99d8a30da746d33cc6dfe07438c3fdda54ebf2c6e263c403036f6570")
 	b, e = EncodeRoot(p.Snapshot)
-	appendPart("root", b, e, 2282, "1efda9ccf6bda21385f28e44ed3ff89cc661d9fccc7c5d5ca4284cdf5f665a10")
+	appendPart("root", b, e, 2282, "0e00f9c5078c3275b6a8bd9e38744ba8b1e99387895a8adc72e9259b29e91409")
 	b, e = EncodeHeadPlan(p.Head)
 	appendPart("head", b, e, 424, "89d2830125611120dbdfbea9b82e8b2c117e93978763e7df5a018a8fdde26724")
 	b, e = EncodeConditionalRequestPlan(p.Conditional)

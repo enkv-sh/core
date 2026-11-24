@@ -16,8 +16,17 @@ import (
 
 func assertReconstructionJointMaximum(t *testing.T, env fixtureEnvironment, selected *StateSession, store *memoryStore) {
 	t.Helper()
-	if selected.root.Generated.GeneratedCurrent != 128 || selected.root.SecretCount != 128 || selected.root.ValueEntryCount != 129 || selected.root.OutputConfiguration.TotalLength != 36<<20 || selected.root.OutputConfiguration.SliceCount != 37 || len(selected.adminIndex.PublicationOrder) != 1024 {
-		t.Fatal("joint reconstruction dimensions", selected.root.Generated, selected.root.OutputConfiguration, len(selected.adminIndex.PublicationOrder))
+	const entries = 129
+	// The full fixture has 1,024 entry-destination pairs. Its named routes
+	// add one 32-byte incarnation and one count byte for each entry.
+	const routing = 267973 + 33*entries
+	const image = (32 << 20) + 4 + routing
+	const parts = (image + contract.MaxOutputConfigurationSliceBytes - 1) / contract.MaxOutputConfigurationSliceBytes
+	d := selected.root.OutputConfiguration
+	if selected.root.Generated.GeneratedCurrent != 128 || selected.root.SecretCount != 128 || selected.root.ValueEntryCount != entries ||
+		d.RoutingLength != routing || d.TotalLength != image || d.SliceCount != parts || len(selected.adminIndex.PublicationOrder) != 1024 {
+		t.Fatal("joint reconstruction dimensions", selected.root.Generated.GeneratedCurrent, selected.root.SecretCount, selected.root.ValueEntryCount,
+			d.RoutingLength, d.TotalLength, d.SliceCount, len(selected.adminIndex.PublicationOrder))
 	}
 	env.Custody.SetDenied(env.Custody.RecoveryID(), true)
 	defer env.Custody.SetDenied(env.Custody.RecoveryID(), false)

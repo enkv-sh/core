@@ -40,7 +40,7 @@ func liveTelemetry(t *testing.T) *liveTelemetryProbe {
 	collector := records.NewCollector(runtime)
 	t.Cleanup(func() {
 		if !collector.Close(context.Background()) {
-			t.Error("controlled telemetry shutdown failed")
+			t.Error("controlled telemetry shutdown failed", runtime.DeliveryStatuses())
 		}
 	})
 	return &liveTelemetryProbe{Collector: collector, Context: runtime.Context(context.Background())}

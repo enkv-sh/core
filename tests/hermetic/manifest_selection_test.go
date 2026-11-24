@@ -375,13 +375,13 @@ func TestManifestSelectionResolvesDefaultsAndExactPartition(t *testing.T) {
 	if got.TargetRecipientID != manifestsdk.ID(selected.authorityID) || got.Selection != (manifestsdk.Selection{TargetMode: manifestsdk.CurrentAuthority, EntryMode: manifestsdk.AllAuthorized}) {
 		t.Fatal("same-image target and scope", got)
 	}
-	if len(got.Entries) != 4 || len(got.ExcludedEntries) != 0 || len(got.ResolvedEntries) != 4 {
-		t.Fatal("Authority must include shared entries and default routes", got)
+	if len(got.Entries) != 3 || len(got.ExcludedEntries) != 1 || got.ExcludedEntries[0].Name != "secret" || got.ExcludedEntries[0].Reason != manifestsdk.NoOutput || len(got.ResolvedEntries) != 4 {
+		t.Fatal("Authority must honor the explicitly empty shared route", got)
 	}
 	request.TargetMode, request.TargetRecipientID = manifestsdk.ExactRecipient, target
 	got, failure = manifestSelectionForTest(env.operationContext(), selected, request)
 	if failure.Outcome != 0 || got == nil || len(got.Entries) != 3 || len(got.ExcludedEntries) != 1 || got.ExcludedEntries[0].Name != "secret" || got.ExcludedEntries[0].Reason != manifestsdk.NoOutput {
-		t.Fatal("other Recipient route is not Authority route", got, failure)
+		t.Fatal("shared routes must produce the same partition for both members", got, failure)
 	}
 	filter := "private/nonmatching-service/v1"
 	request.ServiceFilter = &filter

@@ -26,7 +26,7 @@ func maintenanceObserverFixture(t *testing.T, ctx context.Context, generated boo
 	} else {
 		f = newInstalledApplyTestFixture(t, ctx, contract.GCP, false)
 		input := []ApplyEntryInput{suppliedSecret(t, f.env, name, "maintenance observation source", custody.StandardValue, f.selected.admission.recipient),
-			{Name: "plain", Recipients: []contract.ID{f.selected.admission.recipient}, ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, InputBytes: []byte("before")}}
+			{Name: "plain", Recipients: []contract.ID{f.selected.admission.recipient}, ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain, InputBytes: []byte("before")}}
 		engine := f.engine(t, f.selected, input, nil)
 		if got := engine.Apply(ctx, fixtureID(f.env.Domain, "maintenance observer setup"), input); got.Result.Outcome != ObservedCurrent {
 			t.Fatal("setup", got.Result)

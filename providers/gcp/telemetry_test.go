@@ -333,6 +333,9 @@ func TestTelemetryStoreWriteResultsAndActualMultipart(t *testing.T) {
 				switch mode {
 				case "precondition":
 					want, result = contract.WritePrecondition, "write_precondition"
+					if op == telemetry.OpStoreCreate {
+						result = string(telemetry.ResultVerificationPending)
+					}
 				case "refused":
 					want, result = contract.WriteRefused, "write_refused"
 				case "lost-reply", "partial-request", "partial-response":

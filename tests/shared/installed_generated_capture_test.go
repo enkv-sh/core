@@ -94,7 +94,7 @@ func TestInstalledGeneratedInitialReservationUnknownDoesNotInventFacts(t *testin
 				effects = func() (int, []string) { creates, deletes := count(); return int(creates), make([]string, deletes) }
 				declaration := contract.GeneratorDeclaredGeneration{Schema: contract.GeneratorDeclaredGenerationSchema, LifecycleMode: contract.GeneratorLifecycleManaged, Epoch: 0, RetirementMode: contract.GeneratedRetirementManual,
 					ConfigContractID: process.Implementation.ConfigContractID, ResourceContractID: hermeticCloudflareResourceContractID(), CompletionClass: contract.GeneratedCompletionAcknowledged, Intent: bytes.Clone(process.Intent)}
-				input = []ApplyEntryInput{{Name: "generated", Recipients: []contract.ID{selected.admission.recipient}, ValueSource: contract.Generated, ConfidentialityClass: contract.Secret, Generated: &declaration}}
+				input = []ApplyEntryInput{{Name: "generated", Recipients: []contract.ID{selected.admission.recipient}, ValueSource: contract.Generated, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Secret, Generated: &declaration}}
 				callbacks = installedGeneratedTestCallbacks(t, f, process)
 			}
 			var invocations atomic.Int32
@@ -238,7 +238,7 @@ func TestInstalledGeneratedTerminalApplyOwnsFactsBeforeSelectionReturns(t *testi
 	selected := f.selected
 	declaration := contract.GeneratorDeclaredGeneration{Schema: contract.GeneratorDeclaredGenerationSchema, LifecycleMode: contract.GeneratorLifecycleManaged, Epoch: 0, RetirementMode: contract.GeneratedRetirementManual,
 		ConfigContractID: process.Implementation.ConfigContractID, ResourceContractID: hermeticCloudflareResourceContractID(), CompletionClass: contract.GeneratedCompletionAcknowledged, Intent: bytes.Clone(process.Intent)}
-	input := []ApplyEntryInput{{Name: "generated", Recipients: []contract.ID{selected.admission.recipient}, ValueSource: contract.Generated, ConfidentialityClass: contract.Secret, Generated: &declaration}}
+	input := []ApplyEntryInput{{Name: "generated", Recipients: []contract.ID{selected.admission.recipient}, ValueSource: contract.Generated, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Secret, Generated: &declaration}}
 	store, ok := underlyingAdmittedMemoryStore(f.env.Store)
 	if !ok {
 		t.Fatal("fixture Store unavailable")
@@ -310,7 +310,7 @@ func newInstalledGeneratedCheckpointFixture(t *testing.T, ctx context.Context, o
 	x.effects = func() (int, []string) { creates, deletes := count(); return int(creates), make([]string, deletes) }
 	declaration := contract.GeneratorDeclaredGeneration{Schema: contract.GeneratorDeclaredGenerationSchema, LifecycleMode: contract.GeneratorLifecycleManaged, Epoch: 0, RetirementMode: contract.GeneratedRetirementManual,
 		ConfigContractID: process.Implementation.ConfigContractID, ResourceContractID: hermeticCloudflareResourceContractID(), CompletionClass: contract.GeneratedCompletionAcknowledged, Intent: bytes.Clone(process.Intent)}
-	x.input = []ApplyEntryInput{{Name: "generated", Recipients: []contract.ID{x.selected.admission.recipient}, ValueSource: contract.Generated, ConfidentialityClass: contract.Secret, Generated: &declaration}}
+	x.input = []ApplyEntryInput{{Name: "generated", Recipients: []contract.ID{x.selected.admission.recipient}, ValueSource: contract.Generated, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Secret, Generated: &declaration}}
 	x.callbacks = installedGeneratedTestCallbacks(t, x.f, process)
 	return x
 }

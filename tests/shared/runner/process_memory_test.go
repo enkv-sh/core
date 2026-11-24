@@ -182,6 +182,48 @@ func TestProcessMemorySamplerSeesSmallNativeProcess(t *testing.T) {
 	if err != nil || sample.count < 1 || sample.bytes == 0 || sample.peak < sample.bytes || sample.limit != 25_769_803_776 {
 		t.Fatal("native aggregate sample is incomplete", sample, err)
 	}
+	t.Run("exited_child_keeps_identity_until_wait", func(t *testing.T) {
+		child := exec.Command("true")
+		if err := child.Start(); err != nil {
+			t.Fatal(err)
+		}
+		defer func() {
+			if child.ProcessState == nil {
+				if err := child.Wait(); err != nil {
+					t.Error(err)
+				}
+			}
+		}()
+		pid := child.Process.Pid
+		ctx, cancel := context.WithTimeout(t.Context(), processGroupSettlementTimeout)
+		defer cancel()
+		var observed processIdentity
+		for {
+			info, err := nativeProcessIdentity(pid)
+			if err != nil || info.identity.pid != pid || info.identity.start == 0 || info.parent != os.Getpid() {
+				t.Fatal("child identity unavailable before Wait", info, err)
+			}
+			if info.state == 'Z' {
+				observed = info.identity
+				break
+			}
+			select {
+			case <-ctx.Done():
+				t.Fatal("child exit was not observed", ctx.Err())
+			case <-time.After(processGroupPollInterval):
+			}
+		}
+		usage, err := nativeProcessMemory(pid)
+		if err != nil || usage.identity != observed {
+			t.Fatal("exited child lost its memory observation before Wait", usage, err)
+		}
+		if err := child.Wait(); err != nil {
+			t.Fatal(err)
+		}
+		if info, err := nativeProcessIdentity(pid); !errors.Is(err, syscall.ESRCH) && (err != nil || info.identity == observed) {
+			t.Fatal("could not establish that Wait removed the child", info, err)
+		}
+	})
 }
 
 // full_only: false

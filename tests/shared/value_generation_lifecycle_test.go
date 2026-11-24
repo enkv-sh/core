@@ -49,6 +49,13 @@ func generatedPrivateCandidate(t testing.TB, p *generatedPreparation) custody.Ge
 	}
 	c := custody.GeneratedCandidate{ActiveOwner: s.root.Generated.ActiveOwner, ActivePhase: s.root.Generated.ActivePhase, ActiveGraph: s.root.Generated.ActiveGraph,
 		Subject: *s.head.Generator, CurrentAccess: s.root.CurrentAccess.Core, AccessRecords: s.accessRecords(), SupportRecords: selectedSupportRecordsForCustodyFixture(t, s)}
+	c.GrantWraps = s.head.GrantWraps
+	if len(c.GrantWraps) != 0 {
+		c.UnchangedRegistry, err = p.reservation.candidate.session.unchangedRegistryGrantRoots(s)
+		if err != nil {
+			t.Fatal("candidate roots for unchanged registry", err)
+		}
+	}
 	if g.parent != nil {
 		c.LiveSourceUses, c.SourceProtections = g.sources[g.parent.MaterialID], g.protected[g.parent.MaterialID]
 	}
@@ -989,7 +996,7 @@ func TestGeneratedActiveOwnerAllowsOnlySemanticNoop(t *testing.T) {
 				var exchange *generatedOrdinaryComparisonCrypto
 				want := s.observed(Unchanged)
 				if name == "plain-addition" {
-					desired = []ApplyEntryInput{{Name: "ordinary", Recipients: []contract.ID{s.admission.recipient}, ValueSource: format.Supplied, ConfidentialityClass: format.Plain, InputBytes: []byte("new")}}
+					desired = []ApplyEntryInput{{Name: "ordinary", Recipients: []contract.ID{s.admission.recipient}, ValueSource: format.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: format.Plain, InputBytes: []byte("new")}}
 					want = s.observed(Contention)
 					want.Reason = DifferentSelection
 				} else if secret {
@@ -1066,7 +1073,7 @@ func TestGeneratedActiveOwnerRefusesDirectOrdinaryPlan(t *testing.T) {
 	ctx := context.Background()
 	env, keys := genesisEnvironment(t, contract.GCP, false)
 	f := newEnvironmentFixture(t, ctx, env, nil, false)
-	desired := []ApplyEntryInput{{Name: "ordinary", Recipients: []contract.ID{f.session.admission.recipient}, ValueSource: format.Supplied, ConfidentialityClass: format.Plain, InputBytes: []byte("new")}}
+	desired := []ApplyEntryInput{{Name: "ordinary", Recipients: []contract.ID{f.session.admission.recipient}, ValueSource: format.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: format.Plain, InputBytes: []byte("new")}}
 	beforeComparison, result := f.session.Compare(ctx, desired, admitSuppliedComparison(t, f.session, nil, desired))
 	if beforeComparison == nil || result.Outcome != ObservedCurrent {
 		t.Fatal("direct ordinary baseline comparison", result)
@@ -4012,7 +4019,7 @@ func TestGeneratedActualFailedAggregateCleanupPreservesSiblings(t *testing.T) {
 				run := newScenarioRun(t, t.Context(), env)
 				f := newEnvironmentFixture(t, t.Context(), run.env, nil, false)
 				run.suppliedSelection(f, []ApplyEntryInput{
-					{Name: "plain", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain,
+					{Name: "plain", ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain,
 						Recipients: []contract.ID{f.session.admission.recipient}, InputBytes: []byte("preserved cleanup plain")},
 					suppliedSecret(t, env, "secret", "preserved cleanup empty secret", custody.EmptyValue, f.session.admission.recipient),
 				})

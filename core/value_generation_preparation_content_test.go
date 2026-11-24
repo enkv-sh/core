@@ -53,14 +53,14 @@ func TestGeneratedPreparationStreamsExactContentAndSourceCharges(t *testing.T) {
 				s, _ := observationTestSession(t)
 				source := generatedPreparationSourceFixture(t, s, retained)
 				// Independent schema: header70; each B(entry) has prefix4;
-				// entry has fixed13 + name + 32 bytes per recipient + payload.
+				// entry has fixed15 + name + 32 bytes per recipient + payload.
 				// Generated payloads have fixed81, intent framing71,
 				// two JSON quotes and 340000 settings bytes.
 				// The physical part is 1 MiB minus its 256-byte envelope allowance.
 				const cut = 1048320
-				const generatedPrefix = 70 + 3*(4+13+3+32+81+71+2+340000)
-				const paddingOverhead = 4 + 13 + 3 + 32
-				sourceLength := 13 + len(source.Name) + 32 + len(source.Payload)
+				const generatedPrefix = 70 + 3*(4+15+3+32+81+71+2+340000)
+				const paddingOverhead = 4 + 15 + 3 + 32
+				sourceLength := 15 + len(source.Name) + 32 + len(source.Payload)
 				paddingLength := cut + delta - generatedPrefix - paddingOverhead - 4 - sourceLength
 				if paddingLength < 0 || paddingLength > 65536 {
 					t.Fatal("independent padding outside plain-value bounds", paddingLength)
@@ -79,7 +79,7 @@ func TestGeneratedPreparationStreamsExactContentAndSourceCharges(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if len(input.declaration) != cut+delta+4+13+2+32+4 || len(graph) >= cut {
+				if len(input.declaration) != cut+delta+4+15+2+32+4 || len(graph) >= cut {
 					t.Fatal("independent complete-body framing", len(input.declaration), len(graph))
 				}
 				// Successful part replies supply the independently expected open counts.

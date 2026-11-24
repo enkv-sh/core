@@ -142,7 +142,7 @@ func TestPublicationPreviewLateReadKeepsTypedFailure(t *testing.T) {
 				if caller == "public-mismatch" && damage != "unavailable-cancelled" {
 					wantDiagnostics = append(wantDiagnostics, contract.Diagnostic{Subject: contract.DiagnosticSubject{Kind: contract.SubjectRecipient, RecipientID: public.Recipients.Value[0].RecipientID}, Path: []contract.DiagnosticField{contract.FieldDisplayName}, Outcome: contract.DiagnosticDifference, Reason: contract.ReasonFieldDiffers})
 				}
-				if result != want || state != wantState || payload.Verdict != contract.ComparisonUnable || payload.Observation == nil || *payload.Observation != observation || !payload.DiagnosticsComplete || !reflect.DeepEqual(payload.Diagnostics, wantDiagnostics) || !payload.PublicationRequested || payload.Publication == nil || payload.Publication.Complete || payload.Publication.ReasonCode != wantPreviewReason || len(payload.Publication.Entries) != 0 || reads != previewReads {
+				if result != want || state != wantState || payload.Verdict != contract.ComparisonUnable || payload.Observation == nil || *payload.Observation != observation || !payload.DiagnosticsComplete || !publicComparisonFactsMatch(t, payload, wantDiagnostics) || !payload.PublicationRequested || payload.Publication == nil || payload.Publication.Complete || payload.Publication.ReasonCode != wantPreviewReason || len(payload.Publication.Entries) != 0 || reads != previewReads {
 					t.Fatalf("late preview lost typed failure: result=%+v want=%+v state=%s verdict=%s reads=%d want_reads=%d", result, want, state, payload.Verdict, reads, previewReads)
 				}
 				checkNoEffects(t)

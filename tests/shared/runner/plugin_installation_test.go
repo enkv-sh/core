@@ -717,12 +717,12 @@ func installationAssertPrepared(t *testing.T, body []byte, builds map[string]ins
 		role, plugin, contract string
 		protocol               uint32
 	}{
-		{"generator", "cloudflare-account-token", "7ede2a15bbf86395c097322b651f2752f9adf1bdfa346f09683e20e670ff10c1", 3},
-		{"output", "aws-secrets-manager", "ENKV/OUTPUT/AWS-SECRETS-MANAGER/CONFIG/v1", 4},
-		{"output", "gcp-secret-manager", "ENKV/OUTPUT/GCP-SECRET-MANAGER/CONFIG/v1", 4},
-		{"output", "github-actions-environment", "github-actions/environment-config/v1", 4},
-		{"output", "github-actions-organization", "github-actions/organization-config/v1", 4},
-		{"output", "github-actions-repository", "github-actions/repository-config/v1", 4},
+		{"generator", "cloudflare-account-token", "7ede2a15bbf86395c097322b651f2752f9adf1bdfa346f09683e20e670ff10c1", 5},
+		{"output", "aws-secrets-manager", "ENKV/OUTPUT/AWS-SECRETS-MANAGER/CONFIG/v1", 6},
+		{"output", "gcp-secret-manager", "ENKV/OUTPUT/GCP-SECRET-MANAGER/CONFIG/v1", 6},
+		{"output", "github-actions-environment", "github-actions/environment-config/v1", 6},
+		{"output", "github-actions-organization", "github-actions/organization-config/v1", 6},
+		{"output", "github-actions-repository", "github-actions/repository-config/v1", 6},
 	} {
 		build, ok := builds[declared.plugin]
 		if !ok {

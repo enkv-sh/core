@@ -86,11 +86,8 @@ func TestManifestFileResultMaximumExclusionPartitionAndNativePaths(t *testing.T)
 	payloadPrefix := `{"schema":"ManifestPayload/v3",` + scopeJSON[1:len(scopeJSON)-1] + `,"artifact_length":` + fmt.Sprint(artifactLength) + `,"artifact_digest":"` + strings.Repeat("05", 32) + `","evidence_limit":"authorized-input-and-exact-bytes","included_entries":[],"excluded_entries":[`
 	contextJSON := `{"operation":"issue-consumption-manifest","operation_id":"` + strings.Repeat("08", 32) + `","request_id":"` + strings.Repeat("09", 32) + `","expected_domain_id":"` + strings.Repeat("01", 32) + `"}`
 	jsonPrefix := `{"schema":"ProductResult/v1","operation_kind":"issue-consumption-manifest","state_result":"success","effect_summary":"not-applicable","output_summary":"not-applicable","context":` + contextJSON + `,"observation":` + observationJSON + `,"target_recipient_id":"` + strings.Repeat("04", 32) + `","request_scope":` + scopeJSON + `,"payload":` + payloadPrefix
-	humanPrefix := "Manifest: success\nOperation ID: " + strings.Repeat("08", 32) + "\nRequest ID: " + strings.Repeat("09", 32) + "\nTarget recipient: " + strings.Repeat("04", 32) + "\nDomain: " + strings.Repeat("01", 32) + "\nObserved revision: " + strings.Repeat("02", 32) + "\nSnapshot: " + strings.Repeat("03", 32) + "\n" + fmt.Sprintf("Renderer: %q; version %s\nRenderer artifact: %s; SHA256 %s; length %d\n", strings.Repeat("r", 255), "1.0.0+"+strings.Repeat("a", 122), strings.Repeat("06", 32), strings.Repeat("07", 32), artifact.MaxExecutableBytes)
-	for _, field := range []struct{ label, id string }{{"Renderer protocol", "01"}, {"Renderer descriptor", "02"}, {"Renderer executor", "03"}, {"Artifact contract", "04"}, {"Dependency manifest", "05"}} {
-		humanPrefix += field.label + ": " + strings.Repeat(field.id, 32) + "\n"
-	}
-	humanPrefix += fmt.Sprintf("Format contract: %q\nConfiguration contract: %q\nSelection: %s\nSettings (Base64): %q\nService filter: %q\nArtifact: %d bytes; digest %s\nEvidence limit: authorized-input-and-exact-bytes\n", profile, profile, selectionJSON, base64.StdEncoding.EncodeToString(scope.Settings), provider, artifactLength, strings.Repeat("05", 32))
+	humanPrefix := "Manifest: success\nOperation ID: " + strings.Repeat("08", 32) + "\nRequest ID: " + strings.Repeat("09", 32) + "\nTarget recipient: " + strings.Repeat("04", 32) + "\nDomain: " + strings.Repeat("01", 32) + "\nObserved revision: " + strings.Repeat("02", 32) + "\nSnapshot: " + strings.Repeat("03", 32) + "\n"
+	humanPrefix += fmt.Sprintf("Format: %q\nSelection: current-authority; all-authorized\nService filter: %q\nArtifact: %d bytes; digest %s\nEvidence limit: authorized-input-and-exact-bytes\n", profile, provider, artifactLength, strings.Repeat("05", 32))
 	if len(payloadPrefix) > 32768 || len(jsonPrefix)+4 > 65536 || len(humanPrefix)+4 > 65536 {
 		t.Fatal("complete fixed result header exceeds its account", len(jsonPrefix), len(humanPrefix))
 	}
@@ -118,7 +115,7 @@ func TestManifestFileResultMaximumExclusionPartitionAndNativePaths(t *testing.T)
 		{"issuance-json", jsonPrefix, `]}}`, func() ([]byte, error) { return RenderManifestResultJSON(issuance) }, safeBound},
 		{"issuance-human", humanPrefix, "", func() ([]byte, error) { return RenderManifestResultHuman(issuance) }, safeBound},
 		{"native-json", `{"schema":"ManifestFileResult/v2","issuance":` + jsonPrefix, `]}},"delivery":` + deliveryJSON + `,"source_cleanup":"complete","result_delivery":"not-observed"}`, func() ([]byte, error) { return RenderManifestFileJSON(r) }, fileBound},
-		{"native-human", humanPrefix, "Local replacement: unknown\nCandidate verification: verified\nInstalled verification: not-observed\nNative completion: incomplete\nCandidate cleanup: unknown\n" + fmt.Sprintf("Target file: %q\nResidue file: %q\n", target, residue) + "Local delivery failure: rename; io-failure\nSource cleanup: complete\nResult delivery: not-observed\n", func() ([]byte, error) { return RenderManifestFileHuman(r) }, fileBound},
+		{"native-human", fmt.Sprintf("Manifest file: %q\n", target) + humanPrefix, "Local replacement: unknown\nCandidate verification: verified\nInstalled verification: not-observed\nNative completion: incomplete\nCandidate cleanup: unknown\n" + fmt.Sprintf("Residue file: %q\n", residue) + "Local delivery failure: rename; io-failure\nSource cleanup: complete\nResult-stream delivery is not observed by this result.\n", func() ([]byte, error) { return RenderManifestFileHuman(r) }, fileBound},
 	}
 	for _, form := range forms {
 		t.Run(form.name, func(t *testing.T) {

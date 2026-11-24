@@ -400,9 +400,9 @@ func TestInstalledGeneratedApplySelectsCompleteGeneratedAndSuppliedSet(t *testin
 		ConfigContractID: implementation.ConfigContractID, ResourceContractID: hermeticCloudflareResourceContractID(), CompletionClass: contract.GeneratedCompletionAcknowledged, Intent: intent}
 	input := []ApplyEntryInput{
 		{Name: "generated", Recipients: []contract.ID{authority}, ValueSource: contract.Generated,
-			ConfidentialityClass: contract.Secret, Generated: &declaration},
+			InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Secret, Generated: &declaration},
 		{Name: "plain", Recipients: []contract.ID{authority}, ValueSource: contract.Supplied,
-			ConfidentialityClass: contract.Plain, InputBytes: []byte("complete supplied sibling")},
+			InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain, InputBytes: []byte("complete supplied sibling")},
 	}
 	validator := NewPublicConfigurationValidator(nil)
 	desired := currentApplyRecipients(selected.registry())

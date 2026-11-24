@@ -331,17 +331,17 @@ func TestMaterializationEnvMaximumEncodedSurface(t *testing.T) {
 func TestMaterializationEnvRefusesOversizedSelectionBeforeAllocation(t *testing.T) {
 	count := make([]materializationValue, 513)
 	aggregate := make([]materializationValue, 129)
-	large := bytes.Repeat([]byte{'x'}, 65536)
+	large := bytes.Repeat([]byte{'x'}, 87384)
 	for i := range aggregate {
 		aggregate[i] = materializationValue{name: fmt.Sprintf("N%03d", i), raw: large}
 	}
-	aggregate[128].raw = large[:1]
+	aggregate[128].raw = large[:1025]
 	for _, tc := range []struct {
 		name   string
 		values []materializationValue
 	}{
 		{"name", []materializationValue{{name: strings.Repeat("A", 257)}}},
-		{"value", []materializationValue{{name: "A", raw: bytes.Repeat([]byte{'x'}, 65537)}}},
+		{"value", []materializationValue{{name: "A", raw: bytes.Repeat([]byte{'x'}, 87385)}}},
 		{"count", count},
 		{"aggregate", aggregate},
 	} {

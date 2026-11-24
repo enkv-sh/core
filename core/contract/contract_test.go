@@ -135,7 +135,7 @@ func TestSigningRolePolicyCommitsAllAllowedPurposes(t *testing.T) {
 	// finite support metadata. Derived with Python hashlib, not this owner.
 	// The independent calculation reproduces the prior hash before adding
 	// normal purpose 17. Recovery retains its exact finite purpose list.
-	decoded, err := hex.DecodeString("7277bcc1bc65d1b2222d6706ffc8152114d61664a8e000abd7465ca21d5c4577")
+	decoded, err := hex.DecodeString("c344b30a4b6b3e684e180ca25d7c515ac3278e179f56d53b08a8345122986886")
 	if err != nil {
 		t.Fatal(err)
 	}

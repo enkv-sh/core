@@ -90,13 +90,13 @@ func TestApplyPreparationProjectionOmitsUnavailableAndChecksFiniteBound(t *testi
 				t.Fatal("unavailable preparation facts were invented", generated, err)
 			}
 		}
-		for _, counts := range [][2]uint64{{794250, 0}, {0, 794250}, {794250, 794250}} {
+		for _, counts := range [][2]uint64{{794514, 0}, {0, 794514}, {794514, 794514}} {
 			setApplyPreparation(t, &r, counts[0], counts[1], false)
 			if _, err := RenderApplyJSON(r); err != nil {
 				t.Fatal("finite independent preparation counter refused", generated, counts, err)
 			}
 		}
-		for _, counts := range [][2]uint64{{794251, 0}, {0, 794251}, {^uint64(0), ^uint64(0)}} {
+		for _, counts := range [][2]uint64{{794515, 0}, {0, 794515}, {^uint64(0), ^uint64(0)}} {
 			setApplyPreparation(t, &r, counts[0], counts[1], false)
 			for _, render := range []func(core.PublicApplyResult) ([]byte, error){RenderApplyJSON, RenderApplyHuman} {
 				if body, err := render(r); err == nil || body != nil {
@@ -109,7 +109,7 @@ func TestApplyPreparationProjectionOmitsUnavailableAndChecksFiniteBound(t *testi
 
 // full_only: false
 func TestApplyPreparationByteBoundsIncludeWholeRecord(t *testing.T) {
-	const record = `{"acknowledged_creates":794250,"verified_preparations":794250,"possible_unacknowledged_create":false}`
+	const record = `{"acknowledged_creates":794514,"verified_preparations":794514,"possible_unacknowledged_create":false}`
 	if len(`,"preparation":`+record) != 116 || len("preparation: "+record+"\n") != 115 {
 		t.Fatal("independent maximum preparation field framing changed")
 	}

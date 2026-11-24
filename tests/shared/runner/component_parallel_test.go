@@ -188,11 +188,11 @@ func TestRemovedLanesCommandInputsRefused(t *testing.T) {
 		args []string
 		want string
 	}{
-		{"plan-workflow", []string{"plan", "--workflow", workflow}, "invalid plan/run arguments"},
-		{"run-workflow", []string{"run", "--workflow", workflow}, "invalid plan/run arguments"},
-		{"plan-direct", []string{"plan", "--suite", suite, "--environment", environment}, "invalid plan/run arguments"},
-		{"run-direct", []string{"run", "--suite", suite, "--environment", environment}, "invalid plan/run arguments"},
-		{"run-resume", []string{"run", "--workflow", workflow, "--resume", strings.Repeat("a", 32)}, "invalid plan/run arguments"},
+		{"plan-workflow", []string{"plan", "--workflow", workflow}, "unknown plan/run flag"},
+		{"run-workflow", []string{"run", "--workflow", workflow}, "unknown plan/run flag"},
+		{"plan-direct", []string{"plan", "--suite", suite, "--environment", environment}, "unknown plan/run flag"},
+		{"run-direct", []string{"run", "--suite", suite, "--environment", environment}, "unknown plan/run flag"},
+		{"run-resume", []string{"run", "--workflow", workflow, "--resume", strings.Repeat("a", 32)}, "unknown plan/run flag"},
 		{"cleanup", []string{"cleanup", strings.Repeat("a", 32), "--limits", "new-limits.json"}, "cleanup requires a run ID and new limits"},
 		{"unit", []string{"unit"}, "flag provided but not defined: -lanes"},
 		{"list", []string{"list"}, "flag provided but not defined: -lanes"},

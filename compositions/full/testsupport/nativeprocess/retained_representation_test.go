@@ -396,10 +396,16 @@ func TestPublicNativeRetainedRepresentationUsesSelectedDelivery(t *testing.T) {
 			t.Fatal("reconstruction changed the declared output dependency count")
 		}
 		dependency := recovery.Dependencies.Requirements[0]
-		if dependency.Role != "output" || dependency.Contract != model.Outputs[0].Binding.Destination.ConfigContractID || dependency.ProtocolVersion != 6 || dependency.Plugin != nil || dependency.Artifact != nil || dependency.Status != "missing" || dependency.Reason != "not-installed" {
+		if dependency.Role != "output" || dependency.Contract != model.Outputs[0].Binding.Destination.ConfigContractID || dependency.ProtocolVersion != 6 || dependency.Plugin != nil || dependency.Artifact != nil || dependency.Status != "missing" || dependency.Reason != "selection-required" {
 			t.Fatal("reconstruction invented an output implementation selection")
 		}
 	}()
+	var restored map[string]any
+	nativeGeneratedReadJSON(t, recoveredPath, &restored)
+	app := restored["outputs"].(map[string]any)["destinations"].(map[string]any)["app"].(map[string]any)
+	app["plugin"] = "aws-secrets-manager"
+	nativeGeneratedWriteJSON(t, recoveredPath, restored)
+	recoveredPair = workflowReadNamedPair(t, recoveredPath, "restored")
 	recoveredImages := nativePublicationImages(t, recoveredPath, filepath.Join(filepath.Dir(recoveredPath), recoveredPair.reference))
 	planned := workflowRunEnvironment(t, s, binaries.cli, "reader", observer.Policy{NoKMS: true}, nil, recoveredEnvironment, "plan", "--trusted", recoveredPath, "--trusted-format", "json", "--json")
 	if workflowResult(t, planned, "success").Payload.Verdict != "match" {

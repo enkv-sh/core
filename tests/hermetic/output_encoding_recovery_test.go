@@ -76,8 +76,7 @@ func TestOutputBase64RecoveryOrdinaryMembership(t *testing.T) {
 				t.Fatal("initial selected Base64 ownership was not acknowledged", created.state)
 			}
 			publicationEngineReopen(t, f)
-			output = &outputApplyInput{bindings: []outputApplyBinding{{destinationID: "app", targets: []outputApplyTarget{target}}}, routes: outputEncodingRecoveryRoutes(entries[0].Name)}
-			before := selectOutputConfiguration(t, f, entries, output)
+			before := installedOutputConfiguration(t, t.Context(), f.session)
 			wantBindings := 1
 			if f.session.valueEntry(entrySlot(t, f.session, entries[0].Name)).OutputEncoding != contract.OutputEncodingBase64 || len(before.Bindings) != wantBindings || len(before.Bindings[0].Targets) != 1 || before.Bindings[0].Targets[0].PayloadEncoding != contract.OutputEncodingBase64 {
 				t.Fatal("initial source lacks the effective Base64 pair")

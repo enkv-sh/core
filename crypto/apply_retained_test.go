@@ -137,6 +137,7 @@ func TestApplyExactRetainedAdmissionRejectsChangedPins(t *testing.T) {
 				f.q.Intent[1].PayloadDigest[0] ^= 1
 			case "raw-length":
 				f.q.Intent[1].ContentLength++
+				f.q.Intent[1].RetainedLength++
 				f.q.Intent[1].PayloadLength++
 			case "sealed-source":
 				f.q.SealedInputs = []contract.CryptoSealedInput{{Name: f.q.Intent[1].Name}}

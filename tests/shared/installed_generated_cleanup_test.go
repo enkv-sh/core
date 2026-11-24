@@ -124,7 +124,7 @@ func TestInstalledManagedGeneratorKeepsOriginalCleanupFactsAfterExecutableRemova
 		CompletionClass: contract.GeneratedCompletionAcknowledged, Intent: bytes.Clone(process.Intent)}
 	healthy := ApplyEntryInput{Name: "healthy", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain,
 		Recipients: []contract.ID{f.selected.admission.recipient}, InputBytes: []byte("unchanged healthy sibling"), InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw}
-	input := []ApplyEntryInput{{Name: "generated", ValueSource: contract.Generated, ConfidentialityClass: contract.Secret,
+	input := []ApplyEntryInput{{Name: "generated", ValueSource: contract.Generated, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Secret,
 		Recipients: []contract.ID{f.selected.admission.recipient}, Generated: &declaration}, healthy}
 	engine := installedGeneratedTestEngine(t, ctx, f, f.selected, input, currentApplyRecipients(f.selected.registry()), installedGeneratedRetirementCallbacks(t, f, process))
 	created := engine.Apply(ctx, fixtureID(f.env.Domain, "managed result despite executable removal"), input)
@@ -761,9 +761,10 @@ func TestInstalledCleanupReleasesOriginalAtSelectedHandoff(t *testing.T) {
 				state = release.release.State
 			}
 			wantState := uint8(contract.GeneratedReleaseUnknown)
-			if mode == "acknowledged" {
+			switch mode {
+			case "acknowledged":
 				wantState = 0
-			} else if mode == "token-change" || mode == "replacement" || mode == "no-capability" {
+			case "token-change", "replacement", "no-capability":
 				wantState = contract.GeneratedReleasePending
 			}
 			wantPresent := mode != "acknowledged" && mode != "lost"

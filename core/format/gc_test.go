@@ -109,7 +109,7 @@ func TestGCAdministrativeExtensionAndOwnedCopies(t *testing.T) {
 	body, err := EncodeAdministrativeIndex(index)
 	// Independently assembled header, kind7 group, 184-byte extension, Ref,
 	// optional span and row summary form exactly 700 bytes.
-	if err != nil || len(body) != 700 || fmt.Sprintf("%x", contract.Hash(body)) != "1d8f809fdef417dd38af14cbd6a5d488a265897ef75e52be5c63f1d021fa452b" {
+	if err != nil || len(body) != 700 || fmt.Sprintf("%x", contract.Hash(body)) != "3d1aa78f1900bc7139adee8e3baade437637a4ad19b03817f1ac818a384a5c00" {
 		t.Fatal("fixed administrative GC bytes changed", len(body), err)
 	}
 	if n, err := AdministrativeIndexEncodedLength(index); err != nil || n != 700 {

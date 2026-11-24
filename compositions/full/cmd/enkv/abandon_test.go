@@ -336,7 +336,7 @@ func TestUnknownDispatchHonorsClosedJSONConventionAcrossUnsupportedArguments(t *
 		}
 	}
 	var out, diagnostic bytes.Buffer
-	if code := run([]string{"unknown", "--", "--json"}, &out, &diagnostic); code != 2 || !strings.HasPrefix(out.String(), "schema: ProductResult/v1\n") {
+	if code := run([]string{"unknown", "--", "--json"}, &out, &diagnostic); code != 2 || !strings.HasPrefix(out.String(), "Command: refused\n") {
 		t.Fatal("explicit flag stop ignored", code)
 	}
 }

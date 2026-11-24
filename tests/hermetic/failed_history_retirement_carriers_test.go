@@ -166,7 +166,7 @@ func actualFailedHistoryRetirementCarriersWithPrefixes(t *testing.T, bCount, pre
 			if prefix == 2 {
 				name = fmt.Sprintf("pressure-second-plain-%03d", i)
 			}
-			sources[i] = contract.GeneratorDeclarationEntry{Schema: contract.GeneratorDeclarationEntrySchema, Kind: contract.GeneratorDeclarationPlain,
+			sources[i] = contract.GeneratorDeclarationEntry{Schema: contract.GeneratorDeclarationEntrySchema, Kind: contract.GeneratorDeclarationPlain, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw,
 				Name: name, Recipients: []contract.ID{initial.admission.recipient},
 				Payload: bytes.Repeat([]byte{byte(i + 1)}, 65536)}
 		}

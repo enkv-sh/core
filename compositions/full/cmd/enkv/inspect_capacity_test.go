@@ -63,7 +63,7 @@ func TestInspectCapacityPassesOnlyExactTypedRequest(t *testing.T) {
 		}
 		var out, diagnostic bytes.Buffer
 		code := runInspectWithExecutors(ctx, []string{"--source=source." + syntax, "--source-format=" + syntax, "--capacity", "--cursor=bounded-wrapper", "--json"}, &out, &diagnostic, nil, nil, capacity)
-		if code != 2 || calls != 1 || !json.Valid(out.Bytes()) || !bytes.Contains(out.Bytes(), []byte(`"operation_kind":"inspect-capacity"`)) {
+		if code != 2 || calls != 1 || !json.Valid(out.Bytes()) || !bytes.Contains(out.Bytes(), []byte(`"operation_kind": "inspect-capacity"`)) {
 			t.Fatal("capacity grammar failed typed dispatch", code, calls, out.String(), diagnostic.String())
 		}
 	}

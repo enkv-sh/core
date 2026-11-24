@@ -112,7 +112,7 @@ func TestInstalledArchiveCurrentPublicSelection(t *testing.T) {
 			if err != nil || !bytes.Equal(canonical, obj.Body) {
 				t.Fatal("Root canonical", err)
 			}
-			if root.OutputConfiguration.Schema != 4 || root.SecretCount != 1 {
+			if root.OutputConfiguration.Schema != contract.OutputConfigurationSchema || root.SecretCount != 1 {
 				t.Fatal("archive lost current configuration or secret")
 			}
 			var selectedAuthority *contract.RecipientRecord

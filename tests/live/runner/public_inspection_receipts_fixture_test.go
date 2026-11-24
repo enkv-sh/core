@@ -43,7 +43,7 @@ func TestPublicInspectionReceiptExpectedFactsMatchInstalledQueries(t *testing.T)
 	// recovered from inspection or from the selected ciphertext.
 	secret := []byte("enkv first secret test value")
 	input := []ApplyEntryInput{
-		{Name: "local-plain", Recipients: []contract.ID{authority}, ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, InputBytes: plain},
+		{Name: "local-plain", Recipients: []contract.ID{authority}, ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain, InputBytes: plain},
 		suppliedSecret(t, env, "secret", "inspection builder secret source", custody.StandardValue, authority, recipient),
 	}
 	engine := f.engine(t, selected, input, nil)
@@ -150,10 +150,10 @@ func TestPublicInspectionReceiptExpectedFactsMatchInstalledQueries(t *testing.T)
 	d := domain.View.Output.ConfigurationDescriptor
 	outputWarnings := map[string]any{"domain_wide_warning": false, "unresolved_publication": false, "late_write_risk": false}
 	domainWarnings := map[string]any{"orphan_generated_effect": false, "late_destructive_effect": false, "publication_order_value": false, "discarded_exact_evidence": false, "possible_store_garbage": false}
-	if domain.View.Warnings != (InspectionWarnings{}) || domain.View.Output.Warnings != (InspectionOutputWarnings{}) || domain.View.Output.Configuration.DomainID != env.Domain || domain.View.Output.Configuration.Schema != contract.OutputConfigurationSchema {
+	if domain.View.Warnings != (InspectionWarnings{}) || domain.View.Output.Warnings != (InspectionOutputWarnings{}) || domain.View.Output.Configuration.DomainID != env.Domain || domain.View.Output.Configuration.Schema != contract.OutputConfigurationSchema || len(domain.View.Output.Configuration.DefaultDestinations) != 0 {
 		t.Fatal("authentic empty output or warning interpretation differs")
 	}
-	assertJSON(domainFields["output"], map[string]any{"configuration_descriptor": map[string]any{"schema": d.Schema, "configuration_digest": id(d.ConfigurationDigest), "total_length": d.TotalLength, "slice_count": d.SliceCount, "binding_count": d.BindingCount, "routing_length": d.RoutingLength}, "configuration": map[string]any{"schema": domain.View.Output.Configuration.Schema, "domain_id": id(domain.View.Output.Configuration.DomainID), "bindings": empty, "routes": empty, "groups": empty}, "current_targets": empty, "coordinates": empty, "markers": empty, "current_blockers": empty, "warnings": outputWarnings})
+	assertJSON(domainFields["output"], map[string]any{"configuration_descriptor": map[string]any{"schema": d.Schema, "configuration_digest": id(d.ConfigurationDigest), "total_length": d.TotalLength, "slice_count": d.SliceCount, "binding_count": d.BindingCount, "routing_length": d.RoutingLength}, "configuration": map[string]any{"schema": domain.View.Output.Configuration.Schema, "domain_id": id(domain.View.Output.Configuration.DomainID), "bindings": empty, "default_destinations": empty, "routes": empty, "groups": empty}, "current_targets": empty, "coordinates": empty, "markers": empty, "current_blockers": empty, "warnings": outputWarnings})
 	assertJSON(domainFields["domain_warning_bits"], uint8(0))
 	assertJSON(domainFields["warnings"], map[string]any{"domain": domainWarnings, "generated": map[string]any{"possible_live_residue": false, "late_effect": false, "invalidation_not_confirmed": false}, "output": outputWarnings, "possible_store_garbage": false})
 	scoped := inspection.InspectRecipient(ctx, RecipientInspectionRequest{fixtureID(env.Domain, "builder recipient query"), recipient})

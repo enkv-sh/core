@@ -24,6 +24,7 @@ func TestStoreReadQualifiesMissingObjectAndBucketResponses(t *testing.T) {
 		{"xml-bucket", `<Error><Code>NoSuchBucket</Code><Message>The specified bucket does not exist.</Message></Error>`, 404, contract.ReadMissing, contract.ReasonNone},
 		{"empty", "", 404, contract.ReadInvalid, contract.ReasonMalformed},
 		{"html", `<html>resource not found</html>`, 404, contract.ReadInvalid, contract.ReasonMalformed},
+		{"json-missing-reason", `{"error":{"code":404}}`, 404, contract.ReadInvalid, contract.ReasonMalformed},
 		{"json-wrong-code", `{"error":{"code":503,"errors":[{"reason":"notFound"}]}}`, 404, contract.ReadInvalid, contract.ReasonMalformed},
 		{"json-wrong-reason", `{"error":{"code":404,"errors":[{"reason":"conditionNotMet"}]}}`, 404, contract.ReadInvalid, contract.ReasonMalformed},
 		{"json-duplicate-errors", `{"error":{"code":404,"errors":[{"reason":"conditionNotMet"}],"errors":[{"reason":"notFound"}]}}`, 404, contract.ReadInvalid, contract.ReasonMalformed},

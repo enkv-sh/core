@@ -15,7 +15,7 @@ import (
 
 var preservationCaptureNames = []string{"supplied-recovery-disabled", "supplied-recovery-enabled", "retiring-release-unknown-publication", "active-residue", "final-hazards", "discarded-publication-warning"}
 
-var preservationCaptureHashes = map[string]string{
+var beta1PreservationHashes = map[string]string{
 	"active-residue":                       "7c4bc661586859c35939e2b074178d25e4d4dc13f84ada421cbeba1884ff3f77",
 	"discarded-publication-warning":        "f2696eca62da070947031bf55ae074627ce8c7b3e34079620686e42c0fb48db0",
 	"final-hazards":                        "b48628ec521255a13e940c25d4570b094731d16adad8e815c00af65ec6068c3e",
@@ -24,13 +24,22 @@ var preservationCaptureHashes = map[string]string{
 	"supplied-recovery-enabled":            "83345de2b0e4f88efbb262ff17cb1098371ed7ac756afc7e53680cab35fcd623",
 }
 
-func readPreservationCapture(t testing.TB, name string) processFixture {
+var currentPreservationHashes = map[string]string{
+	"active-residue":                       "c6753a4ee6d1b3167de528e57f1c65d33d8fc207da46bdf3489a681087cb4799",
+	"discarded-publication-warning":        "11cfb8747e146655196a4c4b25abc991e504a6df914462d92d2884b0ca713e8f",
+	"final-hazards":                        "5ad3c65ed0f57a40d304fe933aeb8428ca7fdecbbbd70ea3e1985acc18477b64",
+	"retiring-release-unknown-publication": "da34da7abd0f9fdb96863276692811352525f090a28abe0745b0883215e3a4e3",
+	"supplied-recovery-disabled":           "3e0fa9e8b565f335962efa8deeb30e09c14f21daa4d2bcc068da3cb2f02c084d",
+	"supplied-recovery-enabled":            "d2c8d404069eca7f3b2b9b48f14dd288bd5fae6250d849da32676075072e868f",
+}
+
+func readPreservationCapture(t testing.TB, directory, name, wantHash string) processFixture {
 	t.Helper()
-	body, err := os.ReadFile(filepath.Join("tests/shared/testdata/preservation", name+".json"))
+	body, err := os.ReadFile(filepath.Join("tests/shared/testdata", directory, name+".json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if fmt.Sprintf("%x", contract.Hash(body)) != preservationCaptureHashes[name] {
+	if fmt.Sprintf("%x", contract.Hash(body)) != wantHash {
 		t.Fatal("preserved capture bytes changed")
 	}
 	var input processFixture
@@ -46,8 +55,46 @@ func readPreservationCapture(t testing.TB, name string) processFixture {
 // full_only: false
 func TestPreservedSyntheticStatesColdReplay(t *testing.T) {
 	for _, name := range preservationCaptureNames {
-		t.Run(name, func(t *testing.T) { checkFreshProcessInput(t, readPreservationCapture(t, name)) })
+		t.Run(name, func(t *testing.T) {
+			checkFreshProcessInput(t, readPreservationCapture(t, "preservation-v14", name, currentPreservationHashes[name]))
+		})
 	}
+	for _, name := range preservationCaptureNames {
+		t.Run("beta.1/"+name, func(t *testing.T) {
+			old := readPreservationCapture(t, "preservation", name, beta1PreservationHashes[name])
+			session, result, store := openPreservationCapture(t, old)
+			if session != nil || result != refused(AdmissionInvalid) || store.reads != 0 || store.creates != 0 || store.cas != 0 {
+				t.Fatal("ordinary Open with beta.1 admission", result, store.reads, store.creates, store.cas)
+			}
+			// A valid current admission reaches the reader. Serve the exact old
+			// envelope at its HEAD key and keep the current Store token.
+			current := readPreservationCapture(t, "preservation-v14", name, currentPreservationHashes[name])
+			key := current.Descriptor.HeadKey
+			head := current.Objects[key]
+			head.Body = old.Objects[old.Descriptor.HeadKey].Body
+			if len(head.Body) == 0 {
+				t.Fatal("beta.1 HEAD is missing")
+			}
+			current.Objects[key] = head
+			session, result, store = openPreservationCapture(t, current)
+			if session != nil || result.Outcome != IntegrityFailure || result.Reason != InvalidFormat ||
+				store.reads != 1 || store.creates != 0 || store.cas != 0 {
+				t.Fatal("ordinary Open of beta.1 HEAD with current admission", result, store.reads, store.creates, store.cas)
+			}
+		})
+	}
+}
+
+func openPreservationCapture(t testing.TB, input processFixture) (*StateSession, Result, *memoryStore) {
+	t.Helper()
+	store := &memoryStore{desc: input.Descriptor, configuration: input.Configuration, objects: input.Objects, generation: input.Generation}
+	admission := processPublicAdmission(input.Domain, input.Trust, input.Descriptor, input.PublicKey, input.DomainBasis)
+	if input.CurrentBasis != nil {
+		admission.admission.current = input.CurrentBasis.owned()
+		admission.admission.epoch = input.Epoch
+	}
+	session, result := Open(t.Context(), admission, store)
+	return session, result, store
 }
 
 // full_only: false
@@ -56,7 +103,7 @@ func TestPreservedSyntheticStatesRefuseDamagedClosure(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			for _, damage := range []string{"missing-head", "changed-head", "missing-root", "changed-root"} {
 				t.Run(damage, func(t *testing.T) {
-					input := readPreservationCapture(t, name)
+					input := readPreservationCapture(t, "preservation-v14", name, currentPreservationHashes[name])
 					key := input.Descriptor.HeadKey
 					if damage == "missing-root" || damage == "changed-root" {
 						key = mustKey(t, input.Descriptor.Prefix, input.ExpectedImage.RootRef)
@@ -71,13 +118,7 @@ func TestPreservedSyntheticStatesRefuseDamagedClosure(t *testing.T) {
 						object.Body[len(object.Body)/2] ^= 1
 						input.Objects[key] = object
 					}
-					store := &memoryStore{desc: input.Descriptor, configuration: input.Configuration, objects: input.Objects, generation: input.Generation}
-					admission := processPublicAdmission(input.Domain, input.Trust, input.Descriptor, input.PublicKey, input.DomainBasis)
-					if input.CurrentBasis != nil {
-						admission.admission.current = input.CurrentBasis.owned()
-						admission.admission.epoch = input.Epoch
-					}
-					session, result := Open(t.Context(), admission, store)
+					session, result, store := openPreservationCapture(t, input)
 					want := IntegrityFailure
 					if damage == "missing-head" {
 						want = RootLossUnsupported
@@ -327,10 +368,10 @@ func assertPreservedCreateLineage(t testing.TB, s *StateSession, final bool) {
 		t.Fatal("preserved original returned packet missing", outcome)
 	}
 	result, err := contract.InspectGeneratedResultRecord(packet)
-	if err != nil || result.Core.AttemptID != original.record.AttemptID || result.Core.ResultID != original.record.ResultID || result.SafeFacts.Disposition != contract.GeneratorDispositionCompleteCreate || len(packet) != 1357 || fmt.Sprintf("%x", contract.Hash(packet)) != "5a42bae328ff694abbe1be1a620ba7e221289c0cadd0fc0a1c9dc04faa1bd3a3" {
+	if err != nil || result.Core.AttemptID != original.record.AttemptID || result.Core.ResultID != original.record.ResultID || result.SafeFacts.Disposition != contract.GeneratorDispositionCompleteCreate || len(packet) != 1357 || fmt.Sprintf("%x", contract.Hash(packet)) != "6932381067d17c6eb6118fa90df553320837ac2de7275c1623844426e564803d" {
 		t.Fatal("preserved original inbox correlation differs", err)
 	}
-	if fmt.Sprintf("%x", original.record.AttemptID) != "acad767b058872ce90698733860fa976379da96f41c21001e96b1c97df7e7575" || fmt.Sprintf("%x", original.record.InboxID) != "1bd27c141f2709f48461a5885bd42ba5f00593e9df45dd36861b65d9910ec520" {
+	if fmt.Sprintf("%x", original.record.AttemptID) != "2b5acd02eb29d2bf8b73ee41e1fa37b2c7cba39c20c9f4f4ca6987ac5506f352" || fmt.Sprintf("%x", original.record.InboxID) != "c5d2b0b511af79b4f5c17e293bff4af1e9e7ada7cf15260fb45c412e49c77121" {
 		t.Fatal("preserved original result coordinate differs")
 	}
 	wantState, wantHistory := uint8(contract.GeneratedEffectTransmitted), uint32(2)

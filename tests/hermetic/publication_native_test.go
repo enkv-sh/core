@@ -713,13 +713,20 @@ func TestPublicationNativeEncodingChangeChain(t *testing.T) {
 			rawBases := map[contract.ID]contract.ID{}
 			coordinateSlots := map[contract.ID]string{}
 			attempts := map[contract.ID]bool{}
+			entriesMatch := func(encoding uint8) bool {
+				want := slices.Clone(canonical)
+				for i := range want {
+					want[i].OutputEncoding = encoding
+				}
+				return reflect.DeepEqual(f.session.currentEntryInputs(), want)
+			}
 			for phase, encoding := range []string{"raw", "base64", "raw"} {
 				if phase != 0 {
 					f.session = selectAdmittedOutputConfiguration(t, ctx, f.session, env, env.Custody, entries, output(encoding), registry...)
 					f.admission = OpenContext{admission: &f.session.admission}
 				}
 				checkPriorReceipts(f.session)
-				if !reflect.DeepEqual(f.session.currentEntryInputs(), canonical) || !reflect.DeepEqual(f.session.root.CurrentAccess, access) || !reflect.DeepEqual(generatedRecords(f.session), beforeGenerated) || generatedEffects != nil && generatedEffects() != 1 {
+				if !entriesMatch(hermeticOutputEncoding(encoding)) || !reflect.DeepEqual(f.session.root.CurrentAccess, access) || !reflect.DeepEqual(generatedRecords(f.session), beforeGenerated) || generatedEffects != nil && generatedEffects() != 1 {
 					t.Fatal("encoding selection changed canonical values, access, generated records or generation effects", phase)
 				}
 				// Configuration authentication is a separate completed stage without publication private work.
@@ -778,7 +785,7 @@ func TestPublicationNativeEncodingChangeChain(t *testing.T) {
 					}
 				}
 				checkPriorReceipts(f.session)
-				if !reflect.DeepEqual(f.session.currentEntryInputs(), canonical) || !reflect.DeepEqual(f.session.root.CurrentAccess, access) || !reflect.DeepEqual(generatedRecords(f.session), beforeGenerated) || generatedEffects != nil && generatedEffects() != 1 {
+				if !entriesMatch(hermeticOutputEncoding(encoding)) || !reflect.DeepEqual(f.session.root.CurrentAccess, access) || !reflect.DeepEqual(generatedRecords(f.session), beforeGenerated) || generatedEffects != nil && generatedEffects() != 1 {
 					t.Fatal("publication changed canonical or generated state", phase)
 				}
 				actions, checks, owners := 0, 0, 0

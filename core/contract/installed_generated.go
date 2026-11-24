@@ -153,6 +153,12 @@ type GeneratedCandidateRegistryInput struct {
 	ReceiptDelta  *GeneratedRecipientReceiptInput
 }
 
+// GeneratedUnchangedRegistryRoots binds the selected predecessor and proposed
+// Final when an older request grants access without changing the registry.
+type GeneratedUnchangedRegistryRoots struct {
+	Before, After []byte
+}
+
 type GeneratedCandidateInput struct {
 	ActiveOwner, ActivePhase, ActiveGraph                ID
 	Subject                                              GeneratorAuthoritySubject
@@ -164,4 +170,5 @@ type GeneratedCandidateInput struct {
 	HeadCore, Conditional, GrantWraps, SourceProtections []byte
 	LiveSourceUses                                       []GeneratorSourceUse
 	Registry                                             *GeneratedCandidateRegistryInput
+	UnchangedRegistry                                    *GeneratedUnchangedRegistryRoots
 }

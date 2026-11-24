@@ -266,7 +266,7 @@ func TestGeneratedCleanCapacityReservesReachableContinuations(t *testing.T) {
 		t.Fatal("latent templates were charged as entered or a continuation was omitted", groups)
 	}
 	if groups[contract.GeneratorCapacityGraph].MaxFramedBytes != 5_406_976+6*123+6913*268 ||
-		groups[contract.GeneratorCapacityAuxiliary].MaxFramedBytes != 6_066_176+62_554_873+66*123 {
+		groups[contract.GeneratorCapacityAuxiliary].MaxFramedBytes != 6_066_176+62_563_321+66*123 {
 		t.Fatal("graph or auxiliary framing is missing")
 	}
 	v := contract.GeneratorCapacityEvidence{Schema: 1, BeforeRootDigest: generatedVectorID(1), PlanGraphID: generatedVectorID(2),
@@ -647,9 +647,9 @@ func TestGeneratedCleanCapacityChargesCurrentAndHistoricalReaders(t *testing.T) 
 		want    contract.GeneratorCapacityGroup
 	}{
 		{name: "fresh_replacement", creates: 128,
-			want: contract.GeneratorCapacityGroup{MaxCount: 19, MaxFramedBytes: 19_510_009 + 19*123, MaxPages: 10}},
+			want: contract.GeneratorCapacityGroup{MaxCount: 19, MaxFramedBytes: 19_518_457 + 19*123, MaxPages: 10}},
 		{name: "mixed_retained_readers", creates: 1,
-			want: contract.GeneratorCapacityGroup{MaxCount: 32, MaxFramedBytes: 33_343_865 + 32*123, MaxPages: 16}},
+			want: contract.GeneratorCapacityGroup{MaxCount: 32, MaxFramedBytes: 33_352_313 + 32*123, MaxPages: 16}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			v := shape

@@ -229,6 +229,9 @@ func TestTelemetryStoreWriteResultsAndActualBodies(t *testing.T) {
 				switch mode {
 				case "precondition":
 					wantResult, wantStatus = "write_precondition", contract.WritePrecondition
+					if op == telemetry.OpStoreCreate {
+						wantResult = string(telemetry.ResultVerificationPending)
+					}
 				case "conflict":
 					wantResult, wantStatus = "write_conflict", contract.WriteConflict
 				case "lost-reply":

@@ -275,12 +275,16 @@ func TestConfigurationPublicQueriesRetainRecognizedPreAdmissionIdentity(t *testi
 				}
 				body := output.Bytes()
 				if human {
-					at := bytes.Index(body, []byte("\nresult: "))
-					if at < 0 {
-						t.Error("human query lost complete record")
-						continue
+					assertQueryHumanHasNoEnvelope(t, string(body))
+					b := sample.base
+					if !bytes.Contains(body, []byte(publicQueryHumanHeading(tc.operation)+": "+string(b.StateResult)+"\n")) ||
+						!bytes.Contains(body, []byte("Operation id: \""+readerID(b.OperationID)+"\"\n")) ||
+						(!b.RequestID.IsZero() && !bytes.Contains(body, []byte("Request id: \""+readerID(tc.nonce)+"\"\n"))) ||
+						!bytes.Contains(body, []byte("Evidence ceiling: unavailable\n")) ||
+						!bytes.Contains(body, []byte("No query data is available.\n")) {
+						t.Error("human query refusal lost correlation or evidence")
 					}
-					body = body[at+len("\nresult: "):]
+					continue
 				}
 				var record map[string]json.RawMessage
 				if json.Unmarshal(body, &record) != nil {

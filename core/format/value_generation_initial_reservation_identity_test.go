@@ -562,7 +562,7 @@ func TestGeneratorInitialIdentityIndependentHashes(t *testing.T) {
 	// Independently derived with Python big-endian writes and SHA-256 over
 	// the fixed fixture component bytes. The empty output uses schema 5 and the
 	// v5 configuration/slice commitment domains. The schema-11 plan contains the
-	// administrative-index revision-3 reference. Its 247-byte group includes
+	// administrative-index revision-5 reference. Its 247-byte group includes
 	// the two-byte selected-evidence summary and two permission bytes.
 	// The recorded derivation reproduces all six earlier and intermediate digests before
 	// deriving canonical schema 11. The plan retains schema 2 and its 120-byte
@@ -580,10 +580,10 @@ func TestGeneratorInitialIdentityIndependentHashes(t *testing.T) {
 		got  ID
 		want string
 	}{
-		"plan":     {got.Plan.Digest, "ddc577ab7d7e695be117f5b035f8ed61d252976b65f89c848b7116a08dfa0583"},
+		"plan":     {got.Plan.Digest, "e5876a932c1746f093397e646ab48402ef3d36a85bca560930403ee3e04c50dd"},
 		"access":   {got.InitialAccess.Digest, "0fe9fa5a873b11482cfa96f1ac8b941f1be43e49ead934d0604b9a7efc42299c"},
 		"material": {got.MaterialDigest, "1d8c3bb0351aac1872508fb55828e7749ac7f4906078c48d912c1bc535ae6458"},
-		"request":  {got.RequestIdentityDigest, "c5f1fa1309e76aab04b072c1e2c2fabbcea2134869fec581b3bbeeb6f2d7d85a"},
+		"request":  {got.RequestIdentityDigest, "75b7ceaf3d0957c8687c9f618c479da27c28a5a2964f5849c5d6263b7ac742b9"},
 	} {
 		if check.got != successionLiteralID(t, check.want) {
 			t.Errorf("independent %s digest differs", name)
@@ -593,8 +593,8 @@ func TestGeneratorInitialIdentityIndependentHashes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if filled.Head.Root.Digest != successionLiteralID(t, "becc3f384689dfc3904b65c487043693d8acc3a595bb494f8fba0a236f606cb0") ||
-		filled.Conditional.HeadCore != successionLiteralID(t, "8b31720265abff12b872ae87f670145c0d042f4348217df97389ca99034b1d46") {
+	if filled.Head.Root.Digest != successionLiteralID(t, "04b0d14ba84fb32d939ec8d783df43ca36ced000ddea254825c07a3ef300146d") ||
+		filled.Conditional.HeadCore != successionLiteralID(t, "f2fbc78e340aba3c72bfc3ddbf42a8f8ed6f565576bcfbe93bf6e83fb2ecf1f1") {
 		t.Fatal("filled dependent reference differs")
 	}
 }

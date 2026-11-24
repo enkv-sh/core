@@ -84,7 +84,7 @@ func TestRecoveryFixtureBothProviderObjectFileTotals(t *testing.T) {
 	for _, row := range []struct {
 		provider                     string
 		keyBytes, tokenBytes, bodies uint64
-	}{{"aws", 1782, 109, 12229}, {"gcp", 1782, 83, 12458}} {
+	}{{"aws", 1782, 109, 12241}, {"gcp", 1782, 83, 12470}} {
 		t.Run(row.provider, func(t *testing.T) {
 			want := uint64(13*28) + row.keyBytes + row.tokenBytes + row.bodies
 			fixture := RecoveryFixture{Archive: Load(t, row.provider), Values: []ExpectedValue{{Name: "installed-positive-secret", Bytes: []byte("enkv first secret test value")}}, Secrets: 1}

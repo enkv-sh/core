@@ -171,7 +171,11 @@ func TestManifestCLIKeepsNativeSuccessAfterSourceOrOutputFailure(t *testing.T) {
 				if code != want || calls != 1 || r.Delivery.NativeCompletion != compositionfull.ManifestNativeComplete || r.Issuance.StateResult != contract.ReaderSuccess {
 					t.Fatal("late failure rewrote successful facts or repeated work", code, want, calls)
 				}
-				if !failOutput && (!bytes.Contains(out.Bytes(), []byte(`"native_completion":"complete"`)) || !bytes.Contains(out.Bytes(), []byte(`a\n雪`)) || bytes.Contains(out.Bytes(), []byte("value_base64")) || bytes.Contains(out.Bytes(), []byte("consumer_locator"))) {
+				completion := `"native_completion": "complete"`
+				if human {
+					completion = "Native completion: complete\n"
+				}
+				if !failOutput && (!bytes.Contains(out.Bytes(), []byte(completion)) || !bytes.Contains(out.Bytes(), []byte(`a\n雪`)) || bytes.Contains(out.Bytes(), []byte("value_base64")) || bytes.Contains(out.Bytes(), []byte("consumer_locator"))) {
 					t.Fatal("safe native result lost facts or exposed artifact fields", out.String())
 				}
 			}

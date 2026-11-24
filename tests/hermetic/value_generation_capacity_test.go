@@ -150,6 +150,7 @@ func runGeneratedRecordPrefixPerformance(t *testing.T, count int) {
 	sources := make([]contract.GeneratorDeclarationEntry, len(names)-count)
 	for i := range sources {
 		sources[i] = contract.GeneratorDeclarationEntry{Schema: contract.GeneratorDeclarationEntrySchema, Kind: contract.GeneratorDeclarationPlain,
+			InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw,
 			Name: names[i+count], Recipients: []contract.ID{before.admission.recipient}}
 	}
 	graph, declaration, _ := generatedEffectPlanForGenerationMembershipState(t, &input.graph.Request, before.admission.recipient,
@@ -222,6 +223,7 @@ func TestGeneratedMaximumSelectedSetFitsAccessReplacementOverlap(t *testing.T) {
 	sources := make([]contract.GeneratorDeclarationEntry, 384)
 	for i := range sources {
 		sources[i] = contract.GeneratorDeclarationEntry{Schema: contract.GeneratorDeclarationEntrySchema, Kind: contract.GeneratorDeclarationPlain,
+			InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw,
 			Name: names[i+128], Recipients: []contract.ID{before.admission.recipient}}
 	}
 	graph, declaration, _ := generatedEffectPlanForGenerationMembershipState(t, &input.graph.Request, before.admission.recipient,
@@ -248,6 +250,8 @@ func TestGeneratedMaximumSelectedSetFitsAccessReplacementOverlap(t *testing.T) {
 		t.Fatal("maximum declaration does not contain both source kinds")
 	}
 	excess.Entries[plain].Kind = contract.GeneratorDeclarationGenerated
+	excess.Entries[plain].InputEncoding = excess.Entries[generated].InputEncoding
+	excess.Entries[plain].OutputEncoding = excess.Entries[generated].OutputEncoding
 	excess.Entries[plain].Payload = bytes.Clone(excess.Entries[generated].Payload)
 	if body, encodeErr := contract.EncodeGeneratorDeclaration(excess); encodeErr != contract.ErrRecordCapacity || body != nil {
 		t.Fatal("129th generated closure did not refuse at the codec capacity boundary", encodeErr)
@@ -428,9 +432,11 @@ func TestGeneratedPurpose3CleanupAtJointMemberAndGenerationMaximum(t *testing.T)
 	}
 	sources := make([]contract.GeneratorDeclarationEntry, 0, 384)
 	sources = append(sources, contract.GeneratorDeclarationEntry{Schema: contract.GeneratorDeclarationEntrySchema, Kind: contract.GeneratorDeclarationRetained,
+		InputEncoding: retained.Entry.InputEncoding, OutputEncoding: retained.Entry.OutputEncoding,
 		Name: retained.Entry.Name, Recipients: slices.Clone(retained.Entry.Recipients), Payload: retainedBody})
 	for _, name := range allNames[128:511] {
 		sources = append(sources, contract.GeneratorDeclarationEntry{Schema: contract.GeneratorDeclarationEntrySchema, Kind: contract.GeneratorDeclarationPlain,
+			InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw,
 			Name: name, Recipients: []contract.ID{before.admission.recipient}})
 	}
 	if len(sources) != 384 {
@@ -497,6 +503,8 @@ func TestGeneratedPurpose3CleanupAtJointMemberAndGenerationMaximum(t *testing.T)
 		t.Fatal("joint cleanup declaration source kinds")
 	}
 	excess.Entries[plain].Kind = contract.GeneratorDeclarationGenerated
+	excess.Entries[plain].InputEncoding = excess.Entries[generated].InputEncoding
+	excess.Entries[plain].OutputEncoding = excess.Entries[generated].OutputEncoding
 	excess.Entries[plain].Payload = bytes.Clone(excess.Entries[generated].Payload)
 	if body, encodeErr := contract.EncodeGeneratorDeclaration(excess); encodeErr != contract.ErrRecordCapacity || body != nil {
 		t.Fatal("joint cleanup next generated frontier was admitted", encodeErr)

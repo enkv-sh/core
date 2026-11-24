@@ -112,7 +112,7 @@ func facadeInitRequest(t *testing.T, f *Fixture) (contract.CryptoQualifyInitKeys
 	t.Helper()
 	id := func(s string) contract.ID { return contract.Hash([]byte(s)) }
 	deadline := time.Now().Add(time.Minute)
-	q := contract.CryptoQualifyInitKeysRequest{Context: contract.InitKeyContext{Schema: 3, GenesisProfile: 1, AdmissionID: id("admission"), SessionID: id("session"), DomainID: id("domain"), CompatibilityID: contract.CompatibilityID(), Expiry: uint64(deadline.UnixNano()), InitID: id("init"), DescriptorDigest: id("descriptor"), GenesisPlanDigest: id("plan"), RequestDescriptor: contract.DescriptorVector{Digest: id("request"), Length: contract.GenesisRequestCoreLength, Count: 1}}, Bindings: f.Bindings()}
+	q := contract.CryptoQualifyInitKeysRequest{Context: contract.InitKeyContext{Schema: contract.CryptoSchema, GenesisProfile: 1, AdmissionID: id("admission"), SessionID: id("session"), DomainID: id("domain"), CompatibilityID: contract.CompatibilityID(), Expiry: uint64(deadline.UnixNano()), InitID: id("init"), DescriptorDigest: id("descriptor"), GenesisPlanDigest: id("plan"), RequestDescriptor: contract.DescriptorVector{Digest: id("request"), Length: contract.GenesisRequestCoreLength, Count: 1}}, Bindings: f.Bindings()}
 	for _, subject := range []contract.ID{f.authority, f.recovery} {
 		for _, row := range q.Bindings {
 			if row.SubjectID != subject {
@@ -171,7 +171,7 @@ func TestLiveFacadeSeparatesPublicQualificationAndPrivateProbes(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			call := contract.CryptoRequest{Schema: 3, Kind: contract.CryptoQualifyInitKeys, RequestID: id("message"), CustodyInstanceID: runtime.InstanceID(), Body: body}
+			call := contract.CryptoRequest{Schema: contract.CryptoSchema, Kind: contract.CryptoQualifyInitKeys, RequestID: id("message"), CustodyInstanceID: runtime.InstanceID(), Body: body}
 			if got := live.Crypto().Exchange(context.Background(), call); got.ResultCode != contract.CryptoSuccess {
 				t.Fatalf("live qualification: %v", got.ResultCode)
 			}

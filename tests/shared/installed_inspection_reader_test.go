@@ -113,7 +113,7 @@ func TestInstalledInspectionKeepsLoadedObservationAcrossHEADChange(t *testing.T)
 	}
 	headKey := memory.Descriptor().HeadKey
 	before := memory.objects[headKey]
-	input := []ApplyEntryInput{{Name: "plain", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, Recipients: []contract.ID{f.selected.admission.recipient}, InputBytes: []byte("successor")}}
+	input := []ApplyEntryInput{{Name: "plain", ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain, Recipients: []contract.ID{f.selected.admission.recipient}, InputBytes: []byte("successor")}}
 	apply := f.engine(t, f.selected, input, nil)
 	changed := apply.Apply(ctx, testID("inspection concurrent successor"), input)
 	apply.Close()
@@ -153,8 +153,8 @@ func TestInstalledRecipientInspectionReturnsOnlyGrantedMetadata(t *testing.T) {
 	authority, recipient := f.selected.admission.recipient, fixtureID(f.env.Domain, "reader")
 	membership := []contract.ID{authority, recipient}
 	slices.SortFunc(membership, func(a, b contract.ID) int { return bytes.Compare(a[:], b[:]) })
-	input := []ApplyEntryInput{{Name: "", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, Recipients: membership, InputBytes: []byte("visible")},
-		{Name: "ungranted-name", ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain, Recipients: []contract.ID{authority}, InputBytes: []byte("ungranted-value")}}
+	input := []ApplyEntryInput{{Name: "", ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain, Recipients: membership, InputBytes: []byte("visible")},
+		{Name: "ungranted-name", ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: contract.Plain, Recipients: []contract.ID{authority}, InputBytes: []byte("ungranted-value")}}
 	engine := f.engine(t, f.selected, input, nil)
 	changed := engine.Apply(ctx, testID("recipient metadata selected input"), input)
 	engine.Close()

@@ -15,9 +15,9 @@ func TestIndependentOracleRetainsIntersectionBeforeReusingSlots(t *testing.T) {
 	original := fixtureStateImage(t, f)
 	retained := original.entryInputs()[2]
 	requested := []ApplyEntryInput{
-		{Name: "z", Recipients: []contract.ID{retained.Recipients[0]}, ValueSource: format.Supplied, ConfidentialityClass: format.Plain},
+		{Name: "z", Recipients: []contract.ID{retained.Recipients[0]}, ValueSource: format.Supplied, ConfidentialityClass: format.Plain, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw},
 		retained,
-		{Name: "a", Recipients: []contract.ID{retained.Recipients[0]}, ValueSource: format.Supplied, ConfidentialityClass: format.Plain, InputBytes: []byte("new")},
+		{Name: "a", Recipients: []contract.ID{retained.Recipients[0]}, ValueSource: format.Supplied, ConfidentialityClass: format.Plain, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, InputBytes: []byte("new")},
 	}
 	inputs := allocatedTransitionInputs{
 		operation: testID("oracle-operation"), transition: testID("oracle-transition"), snapshot: testID("oracle-snapshot"), revision: testID("oracle-revision"),
@@ -100,7 +100,7 @@ func TestIndependentOracleRejectsDamagedSuccessorFacts(t *testing.T) {
 			original := observeSelectedState(t, f.session)
 			requested := original.entryInputs()
 			if count == 0 {
-				requested = []ApplyEntryInput{{Name: "first", Recipients: []contract.ID{f.session.admission.recipient}, ValueSource: format.Supplied, ConfidentialityClass: format.Plain, InputBytes: []byte("changed")}}
+				requested = []ApplyEntryInput{{Name: "first", Recipients: []contract.ID{f.session.admission.recipient}, ValueSource: format.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: format.Plain, InputBytes: []byte("changed")}}
 			} else {
 				requested[0].InputBytes = []byte("changed")
 			}

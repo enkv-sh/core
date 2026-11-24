@@ -393,38 +393,56 @@ func TestAWSLiveCleanupFailureIsNeverSuccess(t *testing.T) {
 
 // full_only: false
 func TestAWSLiveRefusesUnsafeCleanupAndAuthentication(t *testing.T) {
-	collector := liveTelemetry(t)
 	c, der := awsLiveTestSettings(t)
 	var requests atomic.Int32
 	transport := awsLiveTestTransport(t, http.HandlerFunc(func(http.ResponseWriter, *http.Request) { requests.Add(1) }))
 	credentials := &awsLiveTestCredentials{}
 	s := newAWSSetup(c, "run", contract.Hash([]byte("domain")), der, credentials, transport)
-	for _, value := range []string{"", "*", `"a", "b"`, "unquoted", "W/\"weak\""} {
-		if err := s.delete(collector.Context, "run/HEAD", contract.Token{Family: contract.AWS, Value: value}); err == nil {
-			t.Errorf("accepted unsafe token %q", value)
+	probe := func(t *testing.T) context.Context {
+		t.Helper()
+		collector := liveTelemetry(t)
+		t.Cleanup(func() {
+			if requests.Load() != 0 || liveMetricSum(liveTelemetrySnapshot(t, collector), telemetry.HTTPAttempts, "", "", "") != 0 {
+				t.Error("refused request reached HTTP")
+			}
+		})
+		return collector.Context
+	}
+	t.Run("tokens", func(t *testing.T) {
+		ctx := probe(t)
+		for _, value := range []string{"", "*", `"a", "b"`, "unquoted", `W/"weak"`} {
+			if err := s.delete(ctx, "run/HEAD", contract.Token{Family: contract.AWS, Value: value}); err == nil {
+				t.Errorf("accepted unsafe token %q", value)
+			}
 		}
-	}
-	for _, key := range []string{"another/HEAD", "run/HEAD/extra", s.objects + "root/0/../HEAD"} {
-		if err := s.delete(collector.Context, key, contract.Token{Family: contract.AWS, Value: `"etag"`}); err == nil {
-			t.Error("accepted an unbound key")
+		if credentials.calls.Load() != 0 {
+			t.Fatal("invalid token acquired credentials")
 		}
-		if got := s.put(collector.Context, key, []byte("body")); got.Status != contract.WriteRefused {
-			t.Error("accepted an unbound write")
+	})
+	t.Run("keys", func(t *testing.T) {
+		ctx := probe(t)
+		for _, key := range []string{"another/HEAD", "run/HEAD/extra", s.objects + "root/0/../HEAD"} {
+			if err := s.delete(ctx, key, contract.Token{Family: contract.AWS, Value: `"etag"`}); err == nil {
+				t.Error("accepted an unbound key")
+			}
+			if got := s.put(ctx, key, []byte("body")); got.Status != contract.WriteRefused {
+				t.Error("accepted an unbound write")
+			}
 		}
-	}
-	if credentials.calls.Load() != 0 {
-		t.Fatal("invalid request acquired credentials")
-	}
-	credentials.err = errors.New("private credential diagnostic")
-	if got := s.put(collector.Context, "run/HEAD", []byte("body")); got.Status != contract.WriteRefused || got.Reason != contract.ReasonAccess {
-		t.Fatalf("auth result: %+v", got)
-	}
-	if err := s.delete(collector.Context, "run/HEAD", contract.Token{Family: contract.AWS, Value: `"etag"`}); !errors.Is(err, errAWSDelete) {
-		t.Fatal("cleanup did not return a safe refusal")
-	}
-	if requests.Load() != 0 || liveMetricSum(liveTelemetrySnapshot(t, collector), telemetry.HTTPAttempts, "", "", "") != 0 {
-		t.Fatal("refused request reached HTTP")
-	}
+		if credentials.calls.Load() != 0 {
+			t.Fatal("invalid key acquired credentials")
+		}
+	})
+	t.Run("credentials", func(t *testing.T) {
+		ctx := probe(t)
+		credentials.err = errors.New("private credential diagnostic")
+		if got := s.put(ctx, "run/HEAD", []byte("body")); got.Status != contract.WriteRefused || got.Reason != contract.ReasonAccess {
+			t.Fatalf("auth result: %+v", got)
+		}
+		if err := s.delete(ctx, "run/HEAD", contract.Token{Family: contract.AWS, Value: `"etag"`}); !errors.Is(err, errAWSDelete) {
+			t.Fatal("cleanup did not return a safe refusal")
+		}
+	})
 }
 
 // full_only: false

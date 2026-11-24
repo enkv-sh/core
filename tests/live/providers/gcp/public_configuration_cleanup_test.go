@@ -101,7 +101,7 @@ func TestGCPPublicCapturedCleanupUsesObjectBounds(t *testing.T) {
 					t.Error("cleanup read changed exact key")
 				}
 				if deleted {
-					return gcpSetupReply(http.StatusNotFound, `{"error":{"code":404}}`), nil
+					return gcpSetupReply(http.StatusNotFound, `{"error":{"code":404,"errors":[{"reason":"notFound"}]}}`), nil
 				}
 				response := gcpSetupReply(http.StatusOK, string(body))
 				response.Header.Set("X-Goog-Generation", "27")

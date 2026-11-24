@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"runtime"
 	"slices"
@@ -522,19 +521,22 @@ func TestPublicConfigurationNonpresentBindingsKeepCallerEncodings(t *testing.T) 
 
 // full_only: false
 func TestPublicConfigurationRejectsInvalidRoutingSelectors(t *testing.T) {
-	for _, key := range []contract.PublicRoutingKey{
-		{},
-		{EntrySelector: contract.PublicEntrySelector(255)},
-		{EntrySelector: contract.PublicDefaultRoute, EntryName: "entry"},
+	for _, tc := range []struct {
+		name string
+		key  contract.PublicRoutingKey
+	}{
+		{name: "missing-selector"},
+		{name: "unknown-selector", key: contract.PublicRoutingKey{EntrySelector: contract.PublicEntrySelector(255)}},
+		{name: "named-default-route", key: contract.PublicRoutingKey{EntrySelector: contract.PublicDefaultRoute, EntryName: "entry"}},
 	} {
-		t.Run(fmt.Sprintf("%d/%s", key.EntrySelector, key.EntryName), func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			input := publicConfigurationFixture(t)
-			input.Routing = publicPresent([]contract.PublicRoutingRule{{Key: key, Destinations: publicPresent([]string{})}})
+			input.Routing = publicPresent([]contract.PublicRoutingRule{{Key: tc.key, Destinations: publicPresent([]string{})}})
 			calls, generators := 0, 0
 			v := publicFixtureValidator(t, &calls, &generators)
 			got := v.Validate(context.Background(), input)
 			if got.Valid || got.Complete || calls != 0 || generators != 0 || !slices.ContainsFunc(got.Diagnostics, func(row contract.Diagnostic) bool {
-				return row.Reason == contract.ReasonInvalidInput && row.Subject.Kind == contract.SubjectRoutingRule
+				return row.Reason == contract.ReasonInvalidFieldCombination && row.Subject == (contract.DiagnosticSubject{Kind: contract.SubjectConfiguration}) && slices.Equal(row.Path, []contract.DiagnosticField{contract.FieldPresence})
 			}) {
 				t.Fatal("invalid routing selector reached public facts", got.Diagnostics, calls, generators)
 			}

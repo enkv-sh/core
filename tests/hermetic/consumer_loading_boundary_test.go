@@ -345,13 +345,6 @@ func TestConsumerSelectionHEADProofDiagnosisMissingObjectIsTerminal(t *testing.T
 			if gate {
 				wantReads = append(append([]processStoreRequest(nil), consumerSelectedLoadingPrefix(t, f.store, before)...), wantReads[0])
 			}
-			if !gate {
-				configKey, err := contract.StoreConfigurationKeyForID(f.store.desc.Family, f.store.desc.Prefix, f.env.Domain, f.store.desc.Identity)
-				if err != nil {
-					t.Fatal(err)
-				}
-				wantReads = append(wantReads, processStoreRequest{Method: "read", Key: configKey, Maximum: contract.MaxStoreConfigurationLength})
-			}
 			wantReads = append(wantReads, processStoreRequest{Method: "read", Key: diagnosisKey, Maximum: diagnosisRoot.Length})
 			wantHeads, wantWriters := 1, 0
 			if gate {

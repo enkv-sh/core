@@ -97,11 +97,15 @@ func installedGeneratedRetirementCallbacks(t testing.TB, f installedApplyTestFix
 	return callbacks
 }
 
-func installedGeneratedRetirementEntries(process *generatedProcessFixture, recipient contract.ID, epoch uint64, healthy string) []ApplyEntryInput {
+func installedGeneratedRetirementEntry(process *generatedProcessFixture, recipient contract.ID, epoch uint64) ApplyEntryInput {
 	meta := contract.GeneratorDeclaredGeneration{Schema: contract.GeneratorDeclaredGenerationSchema, LifecycleMode: contract.GeneratorLifecycleManaged, Epoch: epoch, RetirementMode: contract.GeneratedRetirementManual,
 		ConfigContractID: process.Implementation.ConfigContractID, ResourceContractID: hermeticCloudflareResourceContractID(), CompletionClass: contract.GeneratedCompletionAcknowledged, Intent: bytes.Clone(process.Intent)}
-	return []ApplyEntryInput{{Name: "generated", InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ValueSource: contract.Generated, ConfidentialityClass: contract.Secret,
-		Recipients: []contract.ID{recipient}, Generated: &meta},
+	return ApplyEntryInput{Name: "generated", InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ValueSource: contract.Generated, ConfidentialityClass: contract.Secret,
+		Recipients: []contract.ID{recipient}, Generated: &meta}
+}
+
+func installedGeneratedRetirementEntries(process *generatedProcessFixture, recipient contract.ID, epoch uint64, healthy string) []ApplyEntryInput {
+	return []ApplyEntryInput{installedGeneratedRetirementEntry(process, recipient, epoch),
 		{Name: "healthy", InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ValueSource: contract.Supplied, ConfidentialityClass: contract.Plain,
 			Recipients: []contract.ID{recipient}, InputBytes: []byte(healthy)}}
 }

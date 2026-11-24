@@ -365,23 +365,41 @@ func TestOrdinaryInventorySeparatesChildAndParentTimeout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	command := "#!/bin/sh\nif [ \"$1\" = mod ]; then exec " + shellQuote(realGo) + " \"$@\"; fi\nprintf '{\"Action\":\"start\",\"Package\":\"" + pkg + "\"}\\n'\nprintf '{\"Action\":\"run\",\"Package\":\"" + pkg + "\",\"Test\":\"TestBlocked\"}\\n'\nwhile :; do sleep 1; done\n"
+	command := "#!/bin/sh\nif [ \"$1\" = mod ]; then exec " + shellQuote(realGo) + " \"$@\"; fi\nprintf '{\"Action\":\"start\",\"Package\":\"" + pkg + "\"}\\n'\nprintf '{\"Action\":\"run\",\"Package\":\"" + pkg + "\",\"Test\":\"TestBlocked\"}\\n'\nprintf '%s\\n' \"$$\" > \"$ENKV_TEST_TIMEOUT_MARKER\"\nwhile :; do sleep 1; done\n"
 	if err := os.WriteFile(filepath.Join(bin, "go"), []byte(command), 0700); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 	for _, timeout := range []string{"child", "parent"} {
 		t.Run(timeout, func(t *testing.T) {
-			parent := t.Context()
+			watch, stop := context.WithTimeout(t.Context(), 30*time.Second)
+			defer stop()
+			marker := filepath.Join(t.TempDir(), "started")
+			t.Setenv("ENKV_TEST_TIMEOUT_MARKER", marker)
+			expiring, expire := context.WithCancelCause(watch)
+			parent := watch
 			if timeout == "parent" {
-				var cancel context.CancelFunc
-				parent, cancel = context.WithTimeout(parent, time.Second)
-				defer cancel()
+				parent = nativeDeadlineContext{expiring}
 			}
-			child, cancel := context.WithTimeout(parent, time.Second)
+			child, cancel := context.WithCancel(expiring)
 			defer cancel()
 			var evidence ordinaryStepEvidence
-			err := executeOrdinaryInventory(parent, child, root, ".", nil, []string{"."}, "", map[string][]string{pkg: {"TestBlocked"}}, nil, nil, &evidence)
+			var err error
+			joined := make(chan struct{})
+			go func() {
+				defer close(joined)
+				err = executeOrdinaryInventory(parent, nativeDeadlineContext{child}, root, ".", nil, []string{"."}, "", map[string][]string{pkg: {"TestBlocked"}}, nil, nil, &evidence)
+			}()
+			defer func() {
+				expire(context.Canceled)
+				<-joined
+			}()
+			// Expire the owned deadline after the test command starts. Module
+			// preparation uses the real Go executable and may take longer under load.
+			waitProcessMarker(t, watch, marker)
+			timer := time.AfterFunc(time.Second, func() { expire(context.DeadlineExceeded) })
+			defer timer.Stop()
+			<-joined
 			if err == nil || containedCheckFailure(parent, err) != (timeout == "child") {
 				t.Fatal("owned timeout and parent deadline were not distinguished", err, parent.Err())
 			}

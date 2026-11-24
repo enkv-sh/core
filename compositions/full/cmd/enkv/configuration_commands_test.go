@@ -25,7 +25,7 @@ func TestConfigurationCommandsReachTheirInstalledHandlers(t *testing.T) {
 	}
 	for _, row := range []struct{ command, marker string }{
 		{"init", `"operation_kind": "initialize-empty-domain"`},
-		{"apply", `"operation_kind":"apply-declaration"`},
+		{"apply", `"operation_kind": "apply-declaration"`},
 		{"set", "set requires --name"},
 	} {
 		t.Run(row.command, func(t *testing.T) {

@@ -155,7 +155,7 @@ func TestSourceCumulativeOwnerBudgets(t *testing.T) {
 					retained += len(e.Sealed)
 				}
 				if exact {
-					if p.done() != nil || retained != 816 {
+					if p.done() != nil || retained != len(envelope) {
 						t.Fatalf("exact joint refusal=%v retained sealed=%d", p.err, retained)
 					}
 				} else if p.done() == nil || retained != 0 {
@@ -198,10 +198,10 @@ func TestSourceCumulativeOwnerBudgets(t *testing.T) {
 		}
 	})
 	t.Run("canonical-output-declaration", func(t *testing.T) {
-		// Independent stored framing is75 bytes: destination name blob7,
+		// Independent stored framing is 73 bytes: destination name blob7,
 		// binding incarnation32, destination(config5+service5+settings6+
-		// policy blob4+schema2+contract5+data blob4+capability1), two counts4.
-		const framing = 75
+		// policy blob4+schema2+contract5+data blob4+capability1), target count2.
+		const framing = 73
 		data := make([]byte, contract.MaxOutputPolicyBytes)
 		for _, extra := range []int{0, 1} {
 			m := &Model{Resolved: true}

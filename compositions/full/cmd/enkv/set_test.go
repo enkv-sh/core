@@ -198,8 +198,7 @@ func TestSetCommandPlainSavesExactDecodedBytesAndKeepsGeneratedDependency(t *tes
 				Entries   map[string]struct {
 					Confidentiality string
 					Source          struct {
-						Kind, Value string
-						Base64      string `json:"bytes"`
+						Kind, Value, Encoding string
 					}
 				}
 			}
@@ -209,7 +208,10 @@ func TestSetCommandPlainSavesExactDecodedBytesAndKeepsGeneratedDependency(t *tes
 			entry := saved.Entries["plain-entry"]
 			decoded := []byte(entry.Source.Value)
 			if row.base64 {
-				decoded, err = base64.StdEncoding.Strict().DecodeString(entry.Source.Base64)
+				if entry.Source.Encoding != "base64" || entry.Source.Value != row.input {
+					t.Fatal("stored literal lost its Base64 representation")
+				}
+				decoded, err = base64.StdEncoding.Strict().DecodeString(entry.Source.Value)
 			}
 			current, readErr := os.ReadFile(generatedPath)
 			if err != nil || readErr != nil || entry.Confidentiality != "plain" || entry.Source.Kind != "supplied" ||

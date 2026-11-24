@@ -42,23 +42,37 @@ func inspectSelectedPublicationRecord(domain contract.ID, row contract.SupportRe
 }
 
 func (s *selectedImage) publicationRecord(row contract.SupportRecord) (selectedPublicationRecord, error) {
-	if s == nil || !publicationSupportKind(row.Kind) {
+	if s == nil {
+		return selectedPublicationRecord{}, contract.ErrRecord
+	}
+	return selectedPublicationRow(s.root.Domain, s.publicationFacts, s.supportFacts, row)
+}
+
+func (s *StateSession) publicationRecord(row contract.SupportRecord) (selectedPublicationRecord, error) {
+	if s == nil {
+		return selectedPublicationRecord{}, contract.ErrRecord
+	}
+	return selectedPublicationRow(s.root.Domain, s.publicationFacts, s.supportFacts, row)
+}
+
+func selectedPublicationRow(domain contract.ID, facts map[generatedRecordKey]selectedPublicationRecord, support []selectedSupportPageFacts, row contract.SupportRecord) (selectedPublicationRecord, error) {
+	if !publicationSupportKind(row.Kind) {
 		return selectedPublicationRecord{}, contract.ErrRecord
 	}
 	key := generatedRecordKey{row.Kind, row.RecordID}
-	fact, present := s.publicationFacts[key]
+	fact, present := facts[key]
 	if row.Body != nil {
 		if present && fact.digest.BodyLength() == uint32(len(row.Body)) && fact.digest.BodyDigest() == contract.Hash(row.Body) {
 			return fact, nil
 		}
-		return inspectSelectedPublicationRecord(s.root.Domain, row)
+		return inspectSelectedPublicationRecord(domain, row)
 	}
 	if !present {
 		return selectedPublicationRecord{}, contract.ErrRecord
 	}
 	// The typed fact alone does not select a row. Its digest must occur in the
 	// current image's authenticated physical-row facts.
-	for _, page := range s.supportFacts {
+	for _, page := range support {
 		for _, selected := range page.rows {
 			if selected == fact.digest {
 				return fact, nil
@@ -66,10 +80,6 @@ func (s *selectedImage) publicationRecord(row contract.SupportRecord) (selectedP
 		}
 	}
 	return selectedPublicationRecord{}, contract.ErrRecord
-}
-
-func (s *StateSession) publicationRecord(row contract.SupportRecord) (selectedPublicationRecord, error) {
-	return s.selectedImage().publicationRecord(row)
 }
 
 // The initial reservation replays the exact physical page encoding. Restore
@@ -123,6 +133,11 @@ func (s *selectedImage) publicationRows(rows []contract.SupportRecord) (selected
 }
 
 func (s *selectedImage) publicationRowsForDomain(domain contract.ID, rows []contract.SupportRecord) (selectedPublication, error) {
+	// A full-body image needs the exact typed identities and the relation.
+	// Only the private replacement reader can supply released bodies by digest.
+	if s == nil || len(s.publicationFacts) == 0 {
+		return inspectPublicationRows(domain, rows)
+	}
 	selected := selectedPublication{coordinates: make(map[contract.ID]contract.PublicationCoordinate), markers: make(map[contract.ID]contract.PublicationMarker)}
 	for _, row := range rows {
 		if !publicationSupportKind(row.Kind) {

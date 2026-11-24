@@ -74,7 +74,7 @@ func TestSecretAccessIdentityMatchesIndependentLiterals(t *testing.T) {
 		identity string
 		delta    string
 	}{
-		{contract.OperationEnvelopeRekey, DeriveEnvelopeRekeyIdentity, "7deed36a3fc3e73329fc5d7d7fd77fa741b0573b93b376f5e029b447e36ddf44", "a260508fd03fafafd836061beefe80f3023b557edf7f467e783260f5de25c471"},
+		{contract.OperationEnvelopeRekey, DeriveEnvelopeRekeyIdentity, "c1382e08603bf5e239c37dc5d10f78ba0c3c4fe18b9cda9f756f2a173189dac8", "a260508fd03fafafd836061beefe80f3023b557edf7f467e783260f5de25c471"},
 	} {
 		p := secretAccessIdentityFixture(t, tc.kind)
 		got, err := tc.derive(p)

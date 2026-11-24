@@ -32,7 +32,7 @@ func TestGeneratedControlledRetirementMaximumCapacity(t *testing.T) {
 	// Its independent image charge is 62,554,873 bytes; the prior auxiliary
 	// terms total 6,197,248 bytes. Fragment framing adds 66*123 bytes.
 	graph := uint64(5_757_440)
-	const preparationImage = 62_554_873
+	const preparationImage = 62_563_321
 	if g[contract.GeneratorCapacityDeletes].MaxCount != 640 || g[contract.GeneratorCapacityDeletes].MaxPages != 21 ||
 		g[contract.GeneratorCapacitySeedAccess].MaxCount != 1024 || g[contract.GeneratorCapacitySeedAccess].MaxFramedBytes != 1_105_920 ||
 		g[contract.GeneratorCapacityMaterial].MaxPages != 1 || g[contract.GeneratorCapacityOwners].MaxCount != 1280 || g[contract.GeneratorCapacityOwners].MaxPages != 1 ||

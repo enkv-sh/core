@@ -338,7 +338,8 @@ func InspectPublicationEvidence(body []byte) (PublicationEvidence, error) {
 	return v, nil
 }
 
-func validatePublicationMarker(v PublicationMarker) error {
+// projection is the exact canonical frame just encoded or inspected by the caller.
+func validatePublicationMarker(v PublicationMarker, projection []byte) error {
 	if v.Schema != 5 || v.PublicationIncarnationID.IsZero() || v.DomainID.IsZero() || v.OperationID.IsZero() || v.AttemptID.IsZero() || v.CoordinateID.IsZero() ||
 		v.AdmissionOrdinal == 0 || v.Projection.DomainID != v.DomainID || v.Projection.CoordinateID != v.CoordinateID ||
 		v.ProjectionCommitment.IsZero() ||
@@ -353,8 +354,7 @@ func validatePublicationMarker(v PublicationMarker) error {
 		!create && (v.BirthServiceContractID != "" || v.BirthTargetContractID != "") {
 		return ErrRecord
 	}
-	commitment, err := PublicationProjectionCommitment(v.Projection)
-	if err != nil || commitment != v.ProjectionCommitment || validatePublicationEvidence(v.Evidence) != nil || validatePublicationActionLocator(v.Projection.Action, v.Evidence) != nil {
+	if publicationProjectionDigest(projection) != v.ProjectionCommitment || validatePublicationEvidence(v.Evidence) != nil || validatePublicationActionLocator(v.Projection.Action, v.Evidence) != nil {
 		return ErrRecord
 	}
 	switch v.State {
@@ -377,11 +377,11 @@ func validatePublicationMarker(v PublicationMarker) error {
 // Maximum: 2+160+8+(4+419)+32+32+260+260+2+32+2+(4+3122)+260+260
 // = 4859 body bytes; support framing gives 4896, within the 8192-byte envelope.
 func EncodePublicationMarker(v PublicationMarker) ([]byte, error) {
-	if err := validatePublicationMarker(v); err != nil {
-		return nil, err
-	}
 	projection, err := EncodePublicationProjection(v.Projection)
 	if err != nil {
+		return nil, err
+	}
+	if err := validatePublicationMarker(v, projection); err != nil {
 		return nil, err
 	}
 	evidence, err := EncodePublicationEvidence(v.Evidence)
@@ -435,7 +435,7 @@ func InspectPublicationMarker(body []byte) (PublicationMarker, error) {
 	}
 	v.BirthServiceContractID = string(r.blob(256))
 	v.BirthTargetContractID = string(r.blob(256))
-	if r.end() != nil || validatePublicationMarker(v) != nil {
+	if r.end() != nil || validatePublicationMarker(v, projection) != nil {
 		return PublicationMarker{}, ErrRecord
 	}
 	return v, nil

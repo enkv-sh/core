@@ -19,7 +19,7 @@ func TestGeneratedCleanupDiagnosticCountAndExactCanonicalAccount(t *testing.T) {
 		SourceLocation: &contract.SourceLocation{SourceID: strings.Repeat("a", 64), Line: math.MaxUint64, Column: math.MaxUint64}}
 	w := cleanupHashWriter{}
 	writeCleanupDiagnostic(&w, diagnostic)
-	if w.err != nil || w.length != 719 {
+	if w.err != nil || w.length != 717 {
 		t.Fatal("independent canonical diagnostic account", w.length, w.err)
 	}
 	r.Diagnostics = make([]contract.Diagnostic, 3081)
@@ -31,7 +31,7 @@ func TestGeneratedCleanupDiagnosticCountAndExactCanonicalAccount(t *testing.T) {
 	}
 	w = cleanupHashWriter{}
 	writeGeneratedCleanupRow(&w, r)
-	if w.err != nil || w.length != 2216095 {
+	if w.err != nil || w.length != 2209933 {
 		t.Error("complete cleanup row account", w.length, w.err)
 	}
 	r.Diagnostics = append(r.Diagnostics, diagnostic)

@@ -44,7 +44,7 @@ func signedDetachedHazardFixture(t testing.TB, ctx context.Context, env fixtureE
 		t.Fatal("signed detached fixture lacks the exact failed original and Hazard", present, hazardPresent, hazardErr)
 	}
 	input := []ApplyEntryInput{{Name: "detached-fixture-marker", Recipients: []contract.ID{before.admission.recipient},
-		ValueSource: contract.Supplied, ConfidentialityClass: format.Plain, InputBytes: []byte("authenticated detached cleanup fixture")}}
+		ValueSource: contract.Supplied, InputEncoding: contract.InputEncodingRaw, OutputEncoding: contract.OutputEncodingRaw, ConfidentialityClass: format.Plain, InputBytes: []byte("authenticated detached cleanup fixture")}}
 	comparison, result := before.compareEntryInputs(input)
 	if comparison == nil || result.Outcome == AdmissionRefused {
 		t.Fatal("signed detached fixture marker comparison", result)
