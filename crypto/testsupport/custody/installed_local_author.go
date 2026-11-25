@@ -184,7 +184,7 @@ func buildInstalledLocalAuthor(t testing.TB, root, replacement, returnedFacts st
 			if err != nil {
 				t.Fatal(err)
 			}
-			work.WriteString("enkv.sh/" + relative + " v0.1.0 => " + strconv.Quote(physical) + "\n")
+			work.WriteString("enkv.sh/" + relative + " v0.1.1 => " + strconv.Quote(physical) + "\n")
 		}
 		work.WriteString(")\n")
 		workspace = filepath.Join(staged, "go.work")

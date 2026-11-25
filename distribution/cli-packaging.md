@@ -6,7 +6,7 @@ The `enkv-cli-package` command builds CLI archives for `full`, `aws` and
 one. It contains no plugin executable. The AWS and GCP selections use the fixed
 `enkv_aws` and `enkv_gcp` build tags.
 
-The first beta distributes only the `full` archive on each native platform.
+The beta distributes only the `full` archive on each native platform.
 Selected-provider recipes remain available for development. Apple Developer ID
 signing and notarization are deferred for this beta; manual macOS approval is
 accepted. Production ENKV signatures remain required. A release candidate needs
@@ -44,7 +44,7 @@ keys. Every plugin key must differ from the CLI key.
 ```sh
 /ABSOLUTE/tools/enkv-cli-package \
   -directory /ABSOLUTE/enkv-core/compositions/full \
-  -bundle full -version 0.1.0 \
+  -bundle full -version 0.1.0-beta.2 \
   -workspace /ABSOLUTE/enkv-extensions/go.work \
   -environment development \
   -plugin-public-key /ABSOLUTE/keys/development-plugin-public.pem \
@@ -107,8 +107,8 @@ make one checksum file for several archives, use the separate checksum command:
 ```sh
 /ABSOLUTE/tools/enkv-cli-package \
   -checksums /ABSOLUTE/packages/checksums.txt \
-  /ABSOLUTE/packages/full-darwin/enkv-full-0.1.0-beta.1-darwin-arm64.tar.gz \
-  /ABSOLUTE/packages/full-linux/enkv-full-0.1.0-beta.1-linux-amd64.tar.gz
+  /ABSOLUTE/packages/full-darwin/enkv-full-0.1.0-beta.2-darwin-arm64.tar.gz \
+  /ABSOLUTE/packages/full-linux/enkv-full-0.1.0-beta.2-linux-amd64.tar.gz
 ```
 
 This mode reads regular archive files, computes their exact SHA-256 digests,

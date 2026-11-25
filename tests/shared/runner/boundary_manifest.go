@@ -22,7 +22,8 @@ func checkManifestHost(modules []resolvedModule, packages []compiledPackage) err
 				return errors.New("manifest host main identity differs")
 			}
 		} else if replacement, ok := local[module.Path]; ok {
-			if module.Version != "v0.1.0" || module.Replace == nil || module.Replace.Path != replacement || module.Replace.Version != "" || module.Replace.Replace != nil {
+			version := reviewedLocalModuleVersion(module.Path)
+			if version == "" || module.Version != version || module.Replace == nil || module.Replace.Path != replacement || module.Replace.Version != "" || module.Replace.Replace != nil {
 				return errors.New("manifest host local dependency differs")
 			}
 		} else if version := neutralModules[module.Path]; version == "" || version != module.Version || module.Replace != nil {

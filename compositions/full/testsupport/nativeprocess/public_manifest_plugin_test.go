@@ -21,7 +21,7 @@ import (
 	artifactbuild "enkv.sh/sdk/artifact/build"
 )
 
-func nativeManifestBuild(t *testing.T, directory, command, output, version string) artifact.LocalPlugin {
+func nativeManifestBuild(t *testing.T, directory, command, output string) artifact.LocalPlugin {
 	t.Helper()
 	for _, key := range []string{"GOFLAGS", "GOEXPERIMENT", "GCCGO", "CC", "CXX", "CGO_CFLAGS", "CGO_CPPFLAGS", "CGO_CXXFLAGS", "CGO_FFLAGS", "CGO_LDFLAGS", "GOTOOLDIR", "GOCACHEPROG", "GOFIPS140", "GODEBUG"} {
 		t.Setenv(key, "")
@@ -46,20 +46,20 @@ func nativeManifestBuild(t *testing.T, directory, command, output, version strin
 	if err != nil || marker.Artifact != identity {
 		t.Fatal("published manifest identity differs", err)
 	}
-	t.Logf("native manifest build version=%s module=%s artifact=%s executable=%s", version, metadata.MainModule, marker.Artifact, metadata.Executable.SHA256)
+	t.Logf("native manifest build version=%s module=%s artifact=%s executable=%s", metadata.Version, metadata.MainModule, marker.Artifact, metadata.Executable.SHA256)
 	return artifact.LocalPlugin{Name: "generic-json", Directory: output}
 }
 
 func nativeManifestProductionBuild(t *testing.T) artifact.LocalPlugin {
 	t.Helper()
 	root := nativeRepository(t)
-	return nativeManifestBuild(t, nativeGeneratedSourcePath(root, "plugins/manifest-generators/generic-json"), "./cmd/enkv-manifest-generic-json", filepath.Join(nativeGeneratedPrivateDirectory(t), "manifest-build"), "0.1.0")
+	return nativeManifestBuild(t, nativeGeneratedSourcePath(root, "plugins/manifest-generators/generic-json"), "./cmd/enkv-manifest-generic-json", filepath.Join(nativeGeneratedPrivateDirectory(t), "manifest-build"))
 }
 
 func nativeManifestAuthorBuild(t *testing.T, output, marker, version string, wrong bool) {
 	t.Helper()
 	directory := t.TempDir()
-	module := "module example.test/manifest-author\n\ngo 1.27.0\n\nrequire (\n enkv.sh/sdk/manifest-generator v0.1.0\n enkv.sh/sdk/protocols/manifest-generator v0.1.0\n enkv.sh/plugins/manifest-generators/generic-json v0.1.0\n)\n"
+	module := "module example.test/manifest-author\n\ngo 1.27.0\n\nrequire (\n enkv.sh/sdk/manifest-generator v0.1.1\n enkv.sh/sdk/protocols/manifest-generator v0.1.1\n enkv.sh/plugins/manifest-generators/generic-json v0.1.1\n)\n"
 	source := fmt.Sprintf(`package main
 import (
  "bytes"
@@ -107,7 +107,7 @@ func main(){implementation,err:=execution.NewImplementation(descriptor);if err!=
 			t.Fatal(err)
 		}
 	}
-	nativeManifestBuild(t, directory, ".", output, version)
+	nativeManifestBuild(t, directory, ".", output)
 }
 
 // full_only: false

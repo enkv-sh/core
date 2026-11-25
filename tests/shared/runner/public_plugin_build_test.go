@@ -536,7 +536,11 @@ func TestPublicPluginBuildCommandCapturesColdVersionedClosure(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(helper, "helper.go"), []byte(body), 0600); err != nil {
 			t.Fatal(err)
 		}
-		writePublicModuleArchive(t, proxy, helper, helperModule, version)
+		modbody, err := os.ReadFile(filepath.Join(helper, "go.mod"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		writePublicModuleArchive(t, proxy, helper, helperModule, version, modbody)
 	}
 	for name, body := range map[string]string{"LICENSE": "L", "main.go": "package main\nimport \"" + helperModule + "\"\nfunc main(){println(helper.Message())}\n"} {
 		if err := os.WriteFile(filepath.Join(main, name), []byte(body), 0600); err != nil {

@@ -95,7 +95,11 @@ func checkPublicKitBuildInfo(t *testing.T, binary, main string, local, remote ma
 		}
 		seen[dependency.Path] = true
 		if replacement, ok := local[dependency.Path]; ok {
-			if dependency.Version != "v0.1.0" || dependency.Sum != "" || dependency.Replace == nil || dependency.Replace.Path != replacement || dependency.Replace.Version != "(devel)" || dependency.Replace.Sum != "" || dependency.Replace.Replace != nil {
+			version := "v0.1.1"
+			if dependency.Path == "enkv.sh/sdk/protocols/output" || dependency.Path == "enkv.sh/sdk/examples/testservice" {
+				version = "v0.1.0"
+			}
+			if dependency.Version != version || dependency.Sum != "" || dependency.Replace == nil || dependency.Replace.Path != replacement || dependency.Replace.Version != "(devel)" || dependency.Replace.Sum != "" || dependency.Replace.Replace != nil {
 				t.Fatalf("public example local dependency differs: %+v", dependency)
 			}
 		} else if remote[dependency.Path] == "" || dependency.Version != remote[dependency.Path] || dependency.Sum == "" || dependency.Replace != nil {

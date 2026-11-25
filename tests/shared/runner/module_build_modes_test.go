@@ -209,8 +209,8 @@ func TestCoordinatedWorkspaceRecordsLocalModuleClosure(t *testing.T) {
 func TestPinnedPublicModuleArchivesRecordVersionedClosure(t *testing.T) {
 	root, _ := distributionRoots(t)
 	const version = "v0.1.7"
-	fixtureMod := []byte("module example.invalid/consumer\n\nrequire (\n\tenkv.sh/sdk/artifact v0.1.0\n\texample.invalid/external v0.1.0\n\texample.invalid/pseudo v0.0.0-20240905190251-b4127c9b8d78\n)\n")
-	expectedMod := "module example.invalid/consumer\n\nrequire (\n\tenkv.sh/sdk/artifact v0.1.7\n\texample.invalid/external v0.1.0\n\texample.invalid/pseudo v0.0.0-20240905190251-b4127c9b8d78\n)\n"
+	fixtureMod := []byte("module example.invalid/consumer\n\nrequire (\n\tenkv.sh/sdk/artifact v0.1.1\n\tenkv.sh/sdk/protocols/output v0.1.0\n\tenkv.sh/sdk/generator v0.0.0-20240905190251-b4127c9b8d78\n\texample.invalid/external v0.1.0\n\texample.invalid/pseudo v0.0.0-20240905190251-b4127c9b8d78\n)\n")
+	expectedMod := "module example.invalid/consumer\n\nrequire (\n\tenkv.sh/sdk/artifact v0.1.7\n\tenkv.sh/sdk/protocols/output v0.1.7\n\tenkv.sh/sdk/generator v0.1.7\n\texample.invalid/external v0.1.0\n\texample.invalid/pseudo v0.0.0-20240905190251-b4127c9b8d78\n)\n"
 	if got := string(publicModuleFixtureVersions(fixtureMod, version)); got != expectedMod {
 		t.Fatal("synthetic module version rewrite changed external pins", got)
 	}
@@ -224,7 +224,11 @@ func TestPinnedPublicModuleArchivesRecordVersionedClosure(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		writePublicModuleArchive(t, proxy, owner, row.Module, version)
+		modbody, err := os.ReadFile(filepath.Join(owner, "go.mod"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		writePublicModuleArchive(t, proxy, owner, row.Module, version, publicModuleFixtureVersions(modbody, version))
 	}
 	for _, test := range []struct{ selector, module string }{
 		{"sdk/examples/ini-reference-manifest", manifestExamplePath},
@@ -312,21 +316,16 @@ func TestPinnedPublicModuleArchivesRecordVersionedClosure(t *testing.T) {
 func publicModuleFixtureVersions(body []byte, version string) []byte {
 	// Only first-party requirements belong to this synthetic proxy. External pins
 	// retain their original bytes, including any equal version or pseudo-version.
-	pattern := regexp.MustCompile(`(?m)(\benkv\.sh/[^\s]+[ \t]+)v0\.1\.0\b`)
+	pattern := regexp.MustCompile(`(?m)(\benkv\.sh/[^\s]+[ \t]+)v[^\s]+`)
 	return pattern.ReplaceAll(body, []byte(`${1}`+version))
 }
 
-func writePublicModuleArchive(t *testing.T, proxy, owner, module, version string) {
+func writePublicModuleArchive(t *testing.T, proxy, owner, module, version string, modbody []byte) {
 	t.Helper()
 	destination := filepath.Join(proxy, module, "@v")
 	if err := os.MkdirAll(destination, 0700); err != nil {
 		t.Fatal(err)
 	}
-	modbody, err := os.ReadFile(filepath.Join(owner, "go.mod"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	modbody = publicModuleFixtureVersions(modbody, version)
 	if strings.Contains(string(modbody), "replace ") {
 		t.Fatal("public module has checkout replacement")
 	}

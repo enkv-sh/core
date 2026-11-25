@@ -3,7 +3,7 @@ module enkv.sh/compositions/observability
 go 1.27.0
 
 require (
-	enkv.sh/telemetry v0.1.0
+	enkv.sh/telemetry v0.1.1
 	github.com/go-logr/logr v1.4.2
 	go.opentelemetry.io/otel v1.36.0
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp v0.12.1

@@ -33,7 +33,7 @@ func TestCloudflareDescriptorMatchesPublicContract(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(production, tagged) {
 		t.Fatal("tagged transport changed the declared semantic contract", err)
 	}
-	if production.Schema != 1 || production.Name != "cloudflare-account-token" || production.Version != "0.1.0" || production.Role != "generator" || production.Generator == nil || production.Generator.ConfigContractID.String() != "7ede2a15bbf86395c097322b651f2752f9adf1bdfa346f09683e20e670ff10c1" || !slices.Equal([]artifact.Contract{production.Wire}, cloudflareCurrentContractVector()) {
+	if production.Schema != 1 || production.Name != "cloudflare-account-token" || production.Version != "0.1.1" || production.Role != "generator" || production.Generator == nil || production.Generator.ConfigContractID.String() != "7ede2a15bbf86395c097322b651f2752f9adf1bdfa346f09683e20e670ff10c1" || !slices.Equal([]artifact.Contract{production.Wire}, cloudflareCurrentContractVector()) {
 		t.Fatal("official descriptor differs", production)
 	}
 	canonical, err := artifact.EncodeDescriptor(production)
@@ -79,9 +79,9 @@ func TestCloudflareBuildCommandsAreFixedAndSeparate(t *testing.T) {
 func TestCloudflareBoundaryAdmitsOnlyGeneratorPublicModulesAndStandardLibrary(t *testing.T) {
 	modules := []resolvedModule{
 		{Path: cloudflareModulePath},
-		{Path: generatorSDKPath, Version: "v0.1.0", Replace: &resolvedModule{Path: "../../../sdk/generator"}},
-		{Path: cloudflareProtocolPath, Version: "v0.1.0", Replace: &resolvedModule{Path: "../../../sdk/protocols/generator"}},
-		{Path: "enkv.sh/sdk/artifact", Version: "v0.1.0", Replace: &resolvedModule{Path: "../../../sdk/artifact"}},
+		{Path: generatorSDKPath, Version: "v0.1.1", Replace: &resolvedModule{Path: "../../../sdk/generator"}},
+		{Path: cloudflareProtocolPath, Version: "v0.1.1", Replace: &resolvedModule{Path: "../../../sdk/protocols/generator"}},
+		{Path: "enkv.sh/sdk/artifact", Version: "v0.1.1", Replace: &resolvedModule{Path: "../../../sdk/artifact"}},
 	}
 	packages := []compiledPackage{
 		{ImportPath: cloudflareModulePath + "/internal/cloudflare"},
@@ -114,7 +114,7 @@ func TestCloudflareBoundaryAdmitsOnlyGeneratorPublicModulesAndStandardLibrary(t 
 
 // full_only: false
 func TestCloudflareModuleDefinitionIsExact(t *testing.T) {
-	validMod := "module " + cloudflareModulePath + "\n\ngo 1.27.0\n\nrequire (\nenkv.sh/sdk/artifact v0.1.0\n" + cloudflareProtocolPath + " v0.1.0\n" + generatorSDKPath + " v0.1.0\n)\n"
+	validMod := "module " + cloudflareModulePath + "\n\ngo 1.27.0\n\nrequire (\nenkv.sh/sdk/artifact v0.1.1\n" + cloudflareProtocolPath + " v0.1.1\n" + generatorSDKPath + " v0.1.1\n)\n"
 
 	for _, test := range []struct {
 		name, mod, pluginLicense string
@@ -124,7 +124,7 @@ func TestCloudflareModuleDefinitionIsExact(t *testing.T) {
 		{name: "different language minimum", mod: strings.Replace(validMod, "go 1.27.0", "go 1.27.1", 1), pluginLicense: "Apache License\n                           Version 2.0\n"},
 		{name: "compiler patch is not the language minimum", mod: strings.Replace(validMod, "go 1.27.0", "go 1.27.3", 1), pluginLicense: "Apache License\n                           Version 2.0\n"},
 		{name: "unexpected dependency", mod: strings.Replace(validMod, "require (", "require (\nexample.invalid/sdk v1.0.0", 1), pluginLicense: "Apache License\n                           Version 2.0\n"},
-		{name: "missing helper", mod: strings.Replace(validMod, generatorSDKPath+" v0.1.0\n", "", 1), pluginLicense: "Apache License\n                           Version 2.0\n"},
+		{name: "missing helper", mod: strings.Replace(validMod, generatorSDKPath+" v0.1.1\n", "", 1), pluginLicense: "Apache License\n                           Version 2.0\n"},
 		{name: "permanent helper replacement", mod: validMod + "\nreplace " + generatorSDKPath + " => ../../../sdk/generator\n", pluginLicense: "Apache License\n                           Version 2.0\n"},
 		{name: "different license", mod: validMod, pluginLicense: "not Apache-2.0\n"},
 	} {
@@ -655,9 +655,9 @@ func TestCloudflareBuildInfoRequiresExactPublicClosure(t *testing.T) {
 		return &debug.BuildInfo{GoVersion: "go1.27.3", Path: cloudflareProductionMain,
 			Main: debug.Module{Path: cloudflareModulePath, Version: "(devel)"},
 			Deps: []*debug.Module{
-				{Path: "enkv.sh/sdk/artifact", Version: "v0.1.0", Replace: &debug.Module{Path: "../../../sdk/artifact", Version: "(devel)"}},
-				{Path: cloudflareProtocolPath, Version: "v0.1.0", Replace: &debug.Module{Path: "../../../sdk/protocols/generator", Version: "(devel)"}},
-				{Path: generatorSDKPath, Version: "v0.1.0", Replace: &debug.Module{Path: "../../../sdk/generator", Version: "(devel)"}},
+				{Path: "enkv.sh/sdk/artifact", Version: "v0.1.1", Replace: &debug.Module{Path: "../../../sdk/artifact", Version: "(devel)"}},
+				{Path: cloudflareProtocolPath, Version: "v0.1.1", Replace: &debug.Module{Path: "../../../sdk/protocols/generator", Version: "(devel)"}},
+				{Path: generatorSDKPath, Version: "v0.1.1", Replace: &debug.Module{Path: "../../../sdk/generator", Version: "(devel)"}},
 			}, Settings: []debug.BuildSetting{{Key: "-buildmode", Value: "exe"}, {Key: "-compiler", Value: "gc"}, {Key: "CGO_ENABLED", Value: "0"}, {Key: "GOARM64", Value: "v8.0"}, {Key: "GOOS", Value: "darwin"}, {Key: "GOARCH", Value: "arm64"}, {Key: "-trimpath", Value: "true"}}}
 	}
 	if err := checkCloudflareMetadata(newInfo(), cloudflareProductionMain, "darwin/arm64", false, false); err != nil {

@@ -57,7 +57,7 @@ func checkSDKBoundaries(owner string, modules []resolvedModule, packages []compi
 		if module.Path == source.Module && module.Version == "" && module.Replace == nil {
 			continue
 		}
-		if module.Version != "v0.1.0" {
+		if module.Version != "v0.1.1" {
 			return errors.New("public SDK module version differs")
 		}
 	}
@@ -164,7 +164,8 @@ func checkAuthorModule(owner string, modules []resolvedModule, packages []compil
 				return errors.New("public author main identity differs")
 			}
 		} else if replacement, ok := local[module.Path]; ok {
-			if module.Version != "v0.1.0" || module.Replace == nil || module.Replace.Path != replacement || module.Replace.Version != "" || module.Replace.Replace != nil {
+			version := reviewedLocalModuleVersion(module.Path)
+			if version == "" || module.Version != version || module.Replace == nil || module.Replace.Path != replacement || module.Replace.Version != "" || module.Replace.Replace != nil {
 				return errors.New("public author local dependency differs")
 			}
 		} else if version := remote[module.Path]; version == "" || module.Version != version || module.Replace != nil {

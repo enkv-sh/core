@@ -94,8 +94,12 @@ func packagedOutputBuilds(t *testing.T, ctx context.Context, origin string) map[
 	// Full graph loading still requests each required version's go.mod.
 	// Pin the three public owners exactly, as the detached public
 	// build fixture does; use alone does not satisfy those versioned reads.
-	for _, name := range []string{"sdk/artifact", "sdk/output", "sdk/protocols/output"} {
-		workspaceBody += "replace enkv.sh/" + name + " v0.1.0 => " + strconv.Quote(filepath.Join(public, filepath.FromSlash(name))) + "\n"
+	for _, module := range []struct{ name, version string }{
+		{"sdk/artifact", "v0.1.1"},
+		{"sdk/output", "v0.1.1"},
+		{"sdk/protocols/output", "v0.1.0"},
+	} {
+		workspaceBody += "replace enkv.sh/" + module.name + " " + module.version + " => " + strconv.Quote(filepath.Join(public, filepath.FromSlash(module.name))) + "\n"
 	}
 	if err := os.WriteFile(workspace, []byte(workspaceBody), 0600); err != nil {
 		t.Fatal(err)

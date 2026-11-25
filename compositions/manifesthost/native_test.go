@@ -48,7 +48,7 @@ func buildNativeFixture(t *testing.T, measured, blocked bool, profile string) na
 	modules := []string{"enkv.sh/sdk/manifest-generator", "enkv.sh/sdk/protocols/manifest-generator", "enkv.sh/sdk/artifact"}
 	mod := "module " + mainModule + "\n\ngo 1.27.0\n\nrequire (\n"
 	for _, path := range modules {
-		mod += path + " v0.1.0\n"
+		mod += path + " v0.1.1\n"
 	}
 	mod += ")\n"
 	for i, path := range modules {
@@ -121,7 +121,7 @@ func buildNativeFixture(t *testing.T, measured, blocked bool, profile string) na
 		}
 	}
 	const artifactModule = "enkv.sh/sdk/artifact"
-	resolved = append(resolved, artifact.Dependency{Path: artifactModule, Version: "v0.1.0", Replacement: &artifact.Replacement{Path: filepath.Join(docs, "sdk/artifact"), SourceDigest: sha256.Sum256([]byte("manifesthost trusted fixture owner: " + artifactModule))}})
+	resolved = append(resolved, artifact.Dependency{Path: artifactModule, Version: "v0.1.1", Replacement: &artifact.Replacement{Path: filepath.Join(docs, "sdk/artifact"), SourceDigest: sha256.Sum256([]byte("manifesthost trusted fixture owner: " + artifactModule))}})
 	slices.SortFunc(resolved, func(a, b artifact.Dependency) int { return strings.Compare(a.Path, b.Path) })
 	identity, err := artifact.ExecutableIdentity(ctx, f.path)
 	if err != nil {

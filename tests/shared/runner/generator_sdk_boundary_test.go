@@ -11,7 +11,7 @@ import (
 
 // full_only: false
 func TestGeneratorServingStaysOutsidePrivateComponents(t *testing.T) {
-	modules := []resolvedModule{{Path: generatorSDKPath, Version: "v0.1.0"}}
+	modules := []resolvedModule{{Path: generatorSDKPath, Version: "v0.1.1"}}
 	for _, owner := range []string{"core", "crypto", "compositions/generatorhost", "compositions/full", "live", "hermetic"} {
 		if err := checkGeneratorServingBoundary(owner, modules, nil); err != nil {
 			t.Fatal("passive module metadata refused", err)
@@ -22,7 +22,7 @@ func TestGeneratorServingStaysOutsidePrivateComponents(t *testing.T) {
 			}
 		}
 	}
-	modules[0].Version = "v0.1.1"
+	modules[0].Version = "v0.1.0"
 	if checkGeneratorServingBoundary("crypto", modules, nil) == nil {
 		t.Fatal("passive SDK metadata version drift admitted")
 	}
@@ -32,8 +32,8 @@ func TestGeneratorServingStaysOutsidePrivateComponents(t *testing.T) {
 func TestGeneratorAuthorBoundaryRequiresCompletePublicClosure(t *testing.T) {
 	modules := []resolvedModule{
 		{Path: generatorSDKPath},
-		{Path: "enkv.sh/sdk/artifact", Version: "v0.1.0", Replace: &resolvedModule{Path: "../artifact"}},
-		{Path: cloudflareProtocolPath, Version: "v0.1.0", Replace: &resolvedModule{Path: "../protocols/generator"}},
+		{Path: "enkv.sh/sdk/artifact", Version: "v0.1.1", Replace: &resolvedModule{Path: "../artifact"}},
+		{Path: cloudflareProtocolPath, Version: "v0.1.1", Replace: &resolvedModule{Path: "../protocols/generator"}},
 	}
 	packages := []compiledPackage{{ImportPath: generatorSDKPath}, {ImportPath: cloudflareProtocolPath}, {ImportPath: "context", Standard: true}}
 	if err := checkBoundary("sdk/generator", modules, packages); err != nil {
@@ -53,7 +53,11 @@ func TestGeneratorAuthorBoundaryRequiresCompletePublicClosure(t *testing.T) {
 			mods := []resolvedModule{{Path: main}}
 			pkgs := []compiledPackage{{ImportPath: main}, {ImportPath: generatorSDKPath}, {ImportPath: generatorSDKPath + "/conformance"}, {ImportPath: cloudflareProtocolPath}}
 			for path, replacement := range local {
-				mods = append(mods, resolvedModule{Path: path, Version: "v0.1.0", Replace: &resolvedModule{Path: replacement}})
+				version := "v0.1.1"
+				if path == "enkv.sh/sdk/examples/testservice" {
+					version = "v0.1.0"
+				}
+				mods = append(mods, resolvedModule{Path: path, Version: version, Replace: &resolvedModule{Path: replacement}})
 			}
 			if err := checkBoundary(owner, mods, pkgs); err != nil {
 				t.Fatal("local author closure refused", err)
@@ -66,7 +70,7 @@ func TestGeneratorAuthorBoundaryRequiresCompletePublicClosure(t *testing.T) {
 					t.Fatal("local author gained another owner", name)
 				}
 			}
-			mods[1].Version = "v0.1.1"
+			mods[1].Version = "v0.0.1"
 			if checkBoundary(owner, mods, pkgs) == nil {
 				t.Fatal("local author SDK pin changed")
 			}

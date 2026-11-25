@@ -4,22 +4,22 @@ go 1.27.0
 
 require (
 	enkv.sh/compositions/internal/nativeprocess v0.1.0 // indirect
-	enkv.sh/sdk/examples/ini-reference-manifest v0.1.0
-	enkv.sh/sdk/artifact v0.1.0
-	enkv.sh/plugins/manifest-generators/generic-json v0.1.0
-	enkv.sh/sdk/manifest-generator v0.1.0
-	enkv.sh/plugins/outputs/gcp-secret-manager v0.1.0
-	enkv.sh/plugins/outputs/github-actions v0.1.0
-	enkv.sh/plugins/generators/local-random-secret v0.1.0 // indirect
-	enkv.sh/plugins/generators/cloudflare-account-token v0.1.0 // indirect
-	enkv.sh/compositions/generatorhost v0.1.0
-	enkv.sh/compositions/outputhost v0.1.0
-	enkv.sh/compositions/observability v0.1.0
-	enkv.sh/crypto v0.1.0
-	enkv.sh/sdk/protocols/generator v0.1.0
+	enkv.sh/sdk/examples/ini-reference-manifest v0.1.1
+	enkv.sh/sdk/artifact v0.1.1
+	enkv.sh/plugins/manifest-generators/generic-json v0.1.1
+	enkv.sh/sdk/manifest-generator v0.1.1
+	enkv.sh/plugins/outputs/gcp-secret-manager v0.1.1
+	enkv.sh/plugins/outputs/github-actions v0.1.1
+	enkv.sh/plugins/generators/local-random-secret v0.1.1 // indirect
+	enkv.sh/plugins/generators/cloudflare-account-token v0.1.1 // indirect
+	enkv.sh/compositions/generatorhost v0.1.1
+	enkv.sh/compositions/outputhost v0.1.1
+	enkv.sh/compositions/observability v0.1.1
+	enkv.sh/crypto v0.1.1
+	enkv.sh/sdk/protocols/generator v0.1.1
 	enkv.sh/sdk/protocols/output v0.1.0
-	enkv.sh/providers/gcp v0.1.0
-	enkv.sh/telemetry v0.1.0
+	enkv.sh/providers/gcp v0.1.1
+	enkv.sh/telemetry v0.1.1
 	go.opentelemetry.io/otel v1.36.0
 	go.opentelemetry.io/otel/metric v1.36.0
 	go.opentelemetry.io/otel/sdk v1.36.0
@@ -28,7 +28,7 @@ require (
 )
 
 require (
-	enkv.sh/sdk/protocols/manifest-generator v0.1.0 // indirect
+	enkv.sh/sdk/protocols/manifest-generator v0.1.1 // indirect
 	cloud.google.com/go/auth v0.14.1 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.7 // indirect
 	cloud.google.com/go/compute/metadata v0.6.0 // indirect

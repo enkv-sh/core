@@ -74,14 +74,14 @@ func TestPrepareDependenciesKeepsVerifiedSemanticArtifactOnPartialFailure(t *tes
 		}
 	})
 	invoked := filepath.Join(t.TempDir(), "unexpected-execution")
-	module := "module example.test/prepare-assessment\n\ngo 1.27.0\n\nrequire (\n enkv.sh/sdk/manifest-generator v0.1.0\n enkv.sh/sdk/protocols/manifest-generator v0.1.0\n)\n"
+	module := "module example.test/prepare-assessment\n\ngo 1.27.0\n\nrequire (\n enkv.sh/sdk/manifest-generator v0.1.1\n enkv.sh/sdk/protocols/manifest-generator v0.1.1\n)\n"
 	main := fmt.Sprintf("package main\nimport \"os\"\nfunc main(){if err:=os.WriteFile(%q,[]byte(\"invoked\"),0600);err!=nil{panic(err)};panic(\"preparation executed the plugin\")}\n", invoked)
 	for name, body := range map[string]string{"go.mod": module, "main.go": main, "LICENSE": "fixture license\n"} {
 		if err := os.WriteFile(filepath.Join(directory, name), []byte(body), 0600); err != nil {
 			t.Fatal(err)
 		}
 	}
-	cfModule := "module example.test/prepare-cloudflare\n\ngo 1.27.0\n\nrequire (\n enkv.sh/plugins/generators/cloudflare-account-token v0.1.0\n enkv.sh/sdk/generator v0.1.0\n enkv.sh/sdk/protocols/generator v0.1.0\n)\n"
+	cfModule := "module example.test/prepare-cloudflare\n\ngo 1.27.0\n\nrequire (\n enkv.sh/plugins/generators/cloudflare-account-token v0.1.1\n enkv.sh/sdk/generator v0.1.1\n enkv.sh/sdk/protocols/generator v0.1.1\n)\n"
 	cfMain := fmt.Sprintf(`package main
 import (
  "bytes"
@@ -125,17 +125,17 @@ func main() {
 	}
 	workspace := filepath.Join(t.TempDir(), "go.work")
 	localDirectory := filepath.Join(docs, "plugins", "generators", "local-random-secret")
-	modules := []struct{ name, directory string }{
-		{"enkv.sh/sdk/artifact", filepath.Join(docs, "sdk", "artifact")},
-		{"enkv.sh/plugins/generators/cloudflare-account-token", filepath.Join(docs, "plugins", "generators", "cloudflare-account-token")},
-		{"enkv.sh/sdk/manifest-generator", sdk}, {"enkv.sh/sdk/protocols/manifest-generator", wire},
-		{"enkv.sh/sdk/generator", filepath.Join(docs, "sdk", "generator")},
-		{"enkv.sh/sdk/protocols/generator", filepath.Join(docs, "sdk", "protocols", "generator")},
-		{"enkv.sh/sdk/output", filepath.Join(docs, "sdk", "output")},
-		{"enkv.sh/sdk/protocols/output", filepath.Join(docs, "sdk", "protocols", "output")},
-		{"enkv.sh/sdk/examples/local-value-output", valueDirectory},
-		{"enkv.sh/sdk/examples/testservice", filepath.Join(docs, "sdk", "examples", "testservice")},
-		{"enkv.sh/plugins/generators/local-random-secret", filepath.Join(docs, "plugins", "generators", "local-random-secret")},
+	modules := []struct{ name, version, directory string }{
+		{"enkv.sh/sdk/artifact", "v0.1.1", filepath.Join(docs, "sdk", "artifact")},
+		{"enkv.sh/plugins/generators/cloudflare-account-token", "v0.1.1", filepath.Join(docs, "plugins", "generators", "cloudflare-account-token")},
+		{"enkv.sh/sdk/manifest-generator", "v0.1.1", sdk}, {"enkv.sh/sdk/protocols/manifest-generator", "v0.1.1", wire},
+		{"enkv.sh/sdk/generator", "v0.1.1", filepath.Join(docs, "sdk", "generator")},
+		{"enkv.sh/sdk/protocols/generator", "v0.1.1", filepath.Join(docs, "sdk", "protocols", "generator")},
+		{"enkv.sh/sdk/output", "v0.1.1", filepath.Join(docs, "sdk", "output")},
+		{"enkv.sh/sdk/protocols/output", "v0.1.0", filepath.Join(docs, "sdk", "protocols", "output")},
+		{"enkv.sh/sdk/examples/local-value-output", "v0.1.1", valueDirectory},
+		{"enkv.sh/sdk/examples/testservice", "v0.1.0", filepath.Join(docs, "sdk", "examples", "testservice")},
+		{"enkv.sh/plugins/generators/local-random-secret", "v0.1.1", filepath.Join(docs, "plugins", "generators", "local-random-secret")},
 	}
 	var work strings.Builder
 	work.WriteString("go 1.27.0\n\nuse (\n")
@@ -147,7 +147,7 @@ func main() {
 	}
 	work.WriteString(")\n\nreplace (\n")
 	for _, module := range modules {
-		fmt.Fprintf(&work, " %s v0.1.0 => %q\n", module.name, filepath.ToSlash(module.directory))
+		fmt.Fprintf(&work, " %s %s => %q\n", module.name, module.version, filepath.ToSlash(module.directory))
 	}
 	work.WriteString(")\n")
 	if err := os.WriteFile(workspace, []byte(work.String()), 0600); err != nil {
@@ -262,10 +262,10 @@ func main() {
 	if failed.Name != "cloudflare-account-token" || failed.Source != "local" || failed.Status != "missing" || failed.Reason != "not-installed" || failed.Version != "" || failed.Artifact != nil || failed.Previous != nil || failed.Changed {
 		t.Fatal("missing local sibling claimed a selection", failed)
 	}
-	if verified.Name != "generic-json" || verified.Source != "local" || verified.Version != "0.1.0" || verified.Status != "verified" || verified.Reason != "none" || verified.Artifact == nil || *verified.Artifact != metadataID || verified.Previous != nil || verified.Changed {
+	if verified.Name != "generic-json" || verified.Source != "local" || verified.Version != "0.1.1" || verified.Status != "verified" || verified.Reason != "none" || verified.Artifact == nil || *verified.Artifact != metadataID || verified.Previous != nil || verified.Changed {
 		t.Fatal("verified installation lost its separate metadata identity or local override", verified)
 	}
-	if local.Name != "local-random-secret" || local.Source != "local" || local.Version != "0.1.0" || local.Status != "verified" || local.Reason != "none" || local.Artifact == nil || *local.Artifact != localMetadataID || local.Previous != nil || local.Changed {
+	if local.Name != "local-random-secret" || local.Source != "local" || local.Version != "0.1.1" || local.Status != "verified" || local.Reason != "none" || local.Artifact == nil || *local.Artifact != localMetadataID || local.Previous != nil || local.Changed {
 		t.Fatal("verified local installation lost its exact identity", local)
 	}
 	if _, err := os.Stat(invoked); !os.IsNotExist(err) {
@@ -359,7 +359,7 @@ func main() {
 			for i, want := range []struct {
 				name, version string
 				identity      artifact.Digest
-			}{{"cloudflare-account-token", "0.1.0", cfMetadataID}, {"generic-json", "0.1.0", metadataID}, {"local-random-secret", "0.1.0", localMetadataID}} {
+			}{{"cloudflare-account-token", "0.1.1", cfMetadataID}, {"generic-json", "0.1.1", metadataID}, {"local-random-secret", "0.1.1", localMetadataID}} {
 				got := assessment.Installations[i]
 				if got.Name != want.name || got.Version != want.version || got.Source != "local" || got.Status != "verified" || got.Reason != "none" || got.Artifact == nil || *got.Artifact != want.identity || got.Previous != nil || got.Changed {
 					t.Fatal("semantic mismatch changed independently verified installation facts", got)

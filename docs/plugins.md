@@ -60,7 +60,7 @@ and reports the failure. An exact version pin is retained during upgrades:
 ```yaml
 plugins:
   local-random-secret:
-    version: '0.1.0'
+    version: '0.1.1'
   generic-json: {}
 ```
 

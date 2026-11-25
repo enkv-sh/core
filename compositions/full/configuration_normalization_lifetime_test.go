@@ -35,7 +35,7 @@ func TestConfigurationValidationOwnsRetainedOutputLifetime(t *testing.T) {
 	docs := filepath.Join(filepath.Dir(root), "enkv-extensions")
 	fixture := filepath.Join(root, "tests", "fixtures", "output-contract-test", "cmd", "enkv-output-contract-test")
 	author := t.TempDir()
-	module := "module example.test/normalization-lifetime\n\ngo 1.27.0\n\nrequire (\n enkv.sh/sdk/artifact v0.1.0\n enkv.sh/sdk/output v0.1.0\n enkv.sh/sdk/protocols/output v0.1.0\n)\n"
+	module := "module example.test/normalization-lifetime\n\ngo 1.27.0\n\nrequire (\n enkv.sh/sdk/artifact v0.1.1\n enkv.sh/sdk/output v0.1.1\n enkv.sh/sdk/protocols/output v0.1.0\n)\n"
 	for name, body := range map[string]string{"go.mod": module, "LICENSE": "fixture license\n"} {
 		if err := os.WriteFile(filepath.Join(author, name), []byte(body), 0600); err != nil {
 			t.Fatal(err)
@@ -50,10 +50,10 @@ func TestConfigurationValidationOwnsRetainedOutputLifetime(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	modules := []struct{ name, path string }{
-		{"enkv.sh/sdk/artifact", filepath.Join(docs, "sdk", "artifact")},
-		{"enkv.sh/sdk/output", filepath.Join(docs, "sdk", "output")},
-		{"enkv.sh/sdk/protocols/output", filepath.Join(docs, "sdk", "protocols", "output")},
+	modules := []struct{ name, version, path string }{
+		{"enkv.sh/sdk/artifact", "v0.1.1", filepath.Join(docs, "sdk", "artifact")},
+		{"enkv.sh/sdk/output", "v0.1.1", filepath.Join(docs, "sdk", "output")},
+		{"enkv.sh/sdk/protocols/output", "v0.1.0", filepath.Join(docs, "sdk", "protocols", "output")},
 	}
 	var work strings.Builder
 	fmt.Fprintf(&work, "go 1.27.0\n\nuse (\n %q\n", filepath.ToSlash(author))
@@ -62,7 +62,7 @@ func TestConfigurationValidationOwnsRetainedOutputLifetime(t *testing.T) {
 	}
 	work.WriteString(")\n\nreplace (\n")
 	for _, module := range modules {
-		fmt.Fprintf(&work, " %s v0.1.0 => %q\n", module.name, filepath.ToSlash(module.path))
+		fmt.Fprintf(&work, " %s %s => %q\n", module.name, module.version, filepath.ToSlash(module.path))
 	}
 	work.WriteString(")\n")
 	workspace := filepath.Join(t.TempDir(), "go.work")

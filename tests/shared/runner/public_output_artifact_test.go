@@ -162,7 +162,7 @@ func TestPublicOutputArtifactUsesExactInstalledExpectations(t *testing.T) {
 		t.Fatal("manifest caller fixture has a cumulative deadline")
 	}
 	artifact.Plugins, artifact.ManifestRenderer, err = preparePublicConfigurationPlugins(manifestCtx, root, directory, catalog.Schedule{Selected: []string{"public-configuration.manifest/atomic_public_file"}}, outputs)
-	if err != nil || !artifact.valid() || len(artifact.Plugins) != 6 || artifact.ManifestRenderer == nil || artifact.ManifestRenderer.Name != "generic-json" || artifact.ManifestRenderer.Version != "0.1.0" || artifact.ManifestRenderer.Length == 0 {
+	if err != nil || !artifact.valid() || len(artifact.Plugins) != 6 || artifact.ManifestRenderer == nil || artifact.ManifestRenderer.Name != "generic-json" || artifact.ManifestRenderer.Version != "0.1.1" || artifact.ManifestRenderer.Length == 0 {
 		t.Fatal("public manifest fixture lost its actual renderer build", err)
 	}
 	for _, condition := range []string{"directory", "metadata", "renderer"} {

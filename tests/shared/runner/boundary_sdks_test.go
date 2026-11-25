@@ -17,7 +17,7 @@ func TestLiveManifestConsumerBoundaryRequiresIndependentTestLeaf(t *testing.T) {
 	}
 	for _, provider := range []string{"aws", "gcp"} {
 		t.Run("combined-gates/"+provider, func(t *testing.T) {
-			modules := []resolvedModule{{Path: modulePrefix + "core"}, {Path: modulePrefix + "providers/" + provider, Version: "v0.1.0"}, {Path: manifestExamplePath, Version: "v0.1.0"}, {Path: "enkv.sh/sdk/artifact", Version: "v0.1.0"}}
+			modules := []resolvedModule{{Path: modulePrefix + "core"}, {Path: modulePrefix + "providers/" + provider, Version: "v0.1.1"}, {Path: manifestExamplePath, Version: "v0.1.1"}, {Path: "enkv.sh/sdk/artifact", Version: "v0.1.1"}}
 			packages := append(fixture(), compiledPackage{ImportPath: modulePrefix + "providers/" + provider},
 				compiledPackage{ImportPath: modulePrefix + "core/internal/testrecords", Imports: []string{"enkv.sh/sdk/artifact"}}, compiledPackage{ImportPath: "enkv.sh/sdk/artifact"})
 			if err := checkLiveBoundary(provider, modules, packages); err != nil {
@@ -175,7 +175,11 @@ func TestSDKAuthorBoundariesRequireCompletePublicClosures(t *testing.T) {
 			modules := []resolvedModule{{Path: main}}
 			packages := []compiledPackage{{ImportPath: main}, {ImportPath: "context", Standard: true}}
 			for path, replacement := range local {
-				modules = append(modules, resolvedModule{Path: path, Version: "v0.1.0", Replace: &resolvedModule{Path: replacement}})
+				version := "v0.1.1"
+				if path == "enkv.sh/sdk/protocols/output" || path == "enkv.sh/sdk/examples/testservice" {
+					version = "v0.1.0"
+				}
+				modules = append(modules, resolvedModule{Path: path, Version: version, Replace: &resolvedModule{Path: replacement}})
 				packages = append(packages, compiledPackage{ImportPath: path})
 			}
 			for path, version := range remote {
@@ -252,7 +256,11 @@ func TestOutputServingAndManifestRendererStayAtReviewedOwners(t *testing.T) {
 		}
 	}
 	for _, path := range []string{genericJSONPath, manifestExamplePath, testServicePath, generatorSDKPath, outputSDKPath} {
-		if err := checkSDKBoundaries("compositions/full", []resolvedModule{{Path: path, Version: "v0.1.0"}}, nil); err != nil {
+		version := "v0.1.1"
+		if path == "enkv.sh/sdk/examples/testservice" {
+			version = "v0.1.0"
+		}
+		if err := checkSDKBoundaries("compositions/full", []resolvedModule{{Path: path, Version: version}}, nil); err != nil {
 			t.Fatal("unused test dependency entered production claim", path, err)
 		}
 	}

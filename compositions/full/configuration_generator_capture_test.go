@@ -78,7 +78,7 @@ func TestCurrentGeneratorCaptureUsesDeclaredPublicLocalBuild(t *testing.T) {
 	}
 	work.WriteString(")\n\nreplace (\n")
 	for _, module := range modules {
-		fmt.Fprintf(&work, " %s v0.1.0 => %q\n", module.name, filepath.ToSlash(module.directory))
+		fmt.Fprintf(&work, " %s v0.1.1 => %q\n", module.name, filepath.ToSlash(module.directory))
 	}
 	work.WriteString(")\n")
 	workspace := filepath.Join(t.TempDir(), "go.work")

@@ -151,15 +151,15 @@ func productionOutputBinding(label string) (outputProfileBinding, error) {
 	var descriptor, route, config, routeContract string
 	switch label {
 	case "ENKV/OUTPUT/AWS-SECRETS-MANAGER/v3":
-		descriptor, route, config, routeContract = "e94b164f79a21c5db3aa780ece37c940a915ee76bcc01e86f67fd8c103195fa3", "6a9e5b236a8b4fcd66b1149679e1d77cf791bda023676896859e2db8e0f83f90", "ENKV/OUTPUT/AWS-SECRETS-MANAGER/CONFIG/v1", "693c9548d6df16ead6cae7ad84b1363fa256413fc10bfe311090830ff18dc667"
+		descriptor, route, config, routeContract = "f1c462b07394555dd7a2d602b48c678bb2b2f8901310cff5713a972fbc43d6c0", "6a9e5b236a8b4fcd66b1149679e1d77cf791bda023676896859e2db8e0f83f90", "ENKV/OUTPUT/AWS-SECRETS-MANAGER/CONFIG/v1", "693c9548d6df16ead6cae7ad84b1363fa256413fc10bfe311090830ff18dc667"
 	case "ENKV/OUTPUT/GCP-SECRET-MANAGER/v3":
-		descriptor, route, config, routeContract = "9f01ecfc93cd90f623d10f43c2a100ad6fd39bc8da5371dbcce8f730bf42a298", "ed850a0133c5d22de7353375d02bc81bbe2ed8622fc77e24ef216bdc4fe89ba9", "ENKV/OUTPUT/GCP-SECRET-MANAGER/CONFIG/v1", "7dd29e638afb06b3e5abff57d595af37fd9a176451c1a4b55782db70e06f5a88"
+		descriptor, route, config, routeContract = "944789df3799712ecdcf7189e4c250bedcd90ca6ffd313f819f88bd02547030b", "ed850a0133c5d22de7353375d02bc81bbe2ed8622fc77e24ef216bdc4fe89ba9", "ENKV/OUTPUT/GCP-SECRET-MANAGER/CONFIG/v1", "7dd29e638afb06b3e5abff57d595af37fd9a176451c1a4b55782db70e06f5a88"
 	case "ENKV/OUTPUT/GITHUB-REPOSITORY/v3":
-		descriptor, route, config, routeContract = "103e434e30443a4e27517865a1d3e0d0dcb3eb3a3fb0716cf12e1e72e8bee3b3", "87cfb42eb2de2607a1074fb863fdecbc2ee89d15da619b67fbedb274445695af", "github-actions/repository-config/v1", "095a90c4259f7ccf9c246c4b7d26fb40332049545082795aa400bbe2a8681d36"
+		descriptor, route, config, routeContract = "6d408c7dd0ba3961f49eabe25646e5cd490655f328d22ea3bb8793af79b1b745", "87cfb42eb2de2607a1074fb863fdecbc2ee89d15da619b67fbedb274445695af", "github-actions/repository-config/v1", "095a90c4259f7ccf9c246c4b7d26fb40332049545082795aa400bbe2a8681d36"
 	case "ENKV/OUTPUT/GITHUB-ORGANIZATION/v3":
-		descriptor, route, config, routeContract = "ebee4cc723c6781e9bea27253c778aeb667993e27bf6f3c92d494fdd5ba8f550", "87cfb42eb2de2607a1074fb863fdecbc2ee89d15da619b67fbedb274445695af", "github-actions/organization-config/v1", "095a90c4259f7ccf9c246c4b7d26fb40332049545082795aa400bbe2a8681d36"
+		descriptor, route, config, routeContract = "4b55f6c7b50b5f0101e80e9b71707f9a65b3be5c71153c51b5c5af94f2d32d08", "87cfb42eb2de2607a1074fb863fdecbc2ee89d15da619b67fbedb274445695af", "github-actions/organization-config/v1", "095a90c4259f7ccf9c246c4b7d26fb40332049545082795aa400bbe2a8681d36"
 	case "ENKV/OUTPUT/GITHUB-ENVIRONMENT/v3":
-		descriptor, route, config, routeContract = "dd1a29a13017d5a1cb2636f896c5ea282074d5d7e83584db99e86a596c7eeceb", "87cfb42eb2de2607a1074fb863fdecbc2ee89d15da619b67fbedb274445695af", "github-actions/environment-config/v1", "095a90c4259f7ccf9c246c4b7d26fb40332049545082795aa400bbe2a8681d36"
+		descriptor, route, config, routeContract = "6c889fe99c1eacc294ed67ee07a75393e8a3acd5a508059d0ee197c6f234e30e", "87cfb42eb2de2607a1074fb863fdecbc2ee89d15da619b67fbedb274445695af", "github-actions/environment-config/v1", "095a90c4259f7ccf9c246c4b7d26fb40332049545082795aa400bbe2a8681d36"
 	default:
 		return outputProfileBinding{}, errors.New("output qualification case refused")
 	}

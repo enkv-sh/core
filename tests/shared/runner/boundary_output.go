@@ -114,12 +114,12 @@ func checkOutputPluginModules(directory string, modules []resolvedModule, packag
 			}
 			owned++
 		case "enkv.sh/sdk/artifact":
-			if module.Version != "v0.1.0" || module.Replace == nil || module.Replace.Path != "../../../sdk/artifact" || module.Replace.Version != "" || module.Replace.Replace != nil {
+			if module.Version != "v0.1.1" || module.Replace == nil || module.Replace.Path != "../../../sdk/artifact" || module.Replace.Version != "" || module.Replace.Replace != nil {
 				return errors.New("output plugin artifact identity differs")
 			}
 			artifacts++
 		case outputSDKPath:
-			if module.Version != "v0.1.0" || module.Replace == nil || module.Replace.Path != "../../../sdk/output" || module.Replace.Version != "" || module.Replace.Replace != nil {
+			if module.Version != "v0.1.1" || module.Replace == nil || module.Replace.Path != "../../../sdk/output" || module.Replace.Version != "" || module.Replace.Replace != nil {
 				return errors.New("output plugin SDK identity differs")
 			}
 			sdk++

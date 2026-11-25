@@ -7,10 +7,10 @@ func TestManifestHostBoundaryKeepsNativeServingOutsideHost(t *testing.T) {
 	modules := []resolvedModule{
 		{Path: "enkv.sh/compositions/manifesthost"},
 		{Path: nativeProcessPath, Version: "v0.1.0", Replace: &resolvedModule{Path: "../internal/nativeprocess"}},
-		{Path: "enkv.sh/sdk/artifact", Version: "v0.1.0", Replace: &resolvedModule{Path: "../../../enkv-extensions/sdk/artifact"}},
-		{Path: manifestSDKPath, Version: "v0.1.0", Replace: &resolvedModule{Path: "../../../enkv-extensions/sdk/manifest-generator"}},
-		{Path: "enkv.sh/sdk/protocols/manifest-generator", Version: "v0.1.0", Replace: &resolvedModule{Path: "../../../enkv-extensions/sdk/protocols/manifest-generator"}},
-		{Path: "enkv.sh/telemetry", Version: "v0.1.0", Replace: &resolvedModule{Path: "../../telemetry"}},
+		{Path: "enkv.sh/sdk/artifact", Version: "v0.1.1", Replace: &resolvedModule{Path: "../../../enkv-extensions/sdk/artifact"}},
+		{Path: manifestSDKPath, Version: "v0.1.1", Replace: &resolvedModule{Path: "../../../enkv-extensions/sdk/manifest-generator"}},
+		{Path: "enkv.sh/sdk/protocols/manifest-generator", Version: "v0.1.1", Replace: &resolvedModule{Path: "../../../enkv-extensions/sdk/protocols/manifest-generator"}},
+		{Path: "enkv.sh/telemetry", Version: "v0.1.1", Replace: &resolvedModule{Path: "../../telemetry"}},
 		{Path: "golang.org/x/sys", Version: "v0.33.0"},
 	}
 	packages := []compiledPackage{{ImportPath: "enkv.sh/compositions/manifesthost"}, {ImportPath: nativeProcessPath}, {ImportPath: manifestSDKPath}, {ImportPath: "enkv.sh/sdk/protocols/manifest-generator"}, {ImportPath: "enkv.sh/sdk/artifact"}, {ImportPath: "enkv.sh/sdk/artifact/credentialroute"}, {ImportPath: "golang.org/x/sys/unix"}, {ImportPath: "context", Standard: true}}

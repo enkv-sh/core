@@ -92,7 +92,7 @@ func main(){base,err:=execution.NewImplementation(descriptor);if err!=nil{os.Exi
 	if err != nil {
 		t.Fatal(err)
 	}
-	module := "module example.test/output-author\n\ngo 1.27.0\n\nrequire (\n enkv.sh/sdk/artifact v0.1.0\n enkv.sh/sdk/output v0.1.0\n enkv.sh/sdk/protocols/output v0.1.0\n enkv.sh/plugins/outputs/aws-secrets-manager v0.1.0\n)\n"
+	module := "module example.test/output-author\n\ngo 1.27.0\n\nrequire (\n enkv.sh/sdk/artifact v0.1.1\n enkv.sh/sdk/output v0.1.1\n enkv.sh/sdk/protocols/output v0.1.0\n enkv.sh/plugins/outputs/aws-secrets-manager v0.1.1\n)\n"
 	descriptor, _, err := artifact.ReadDescriptor(t.Context(), filepath.Join(nativeGeneratedSourcePath(root, "plugins/aws-output"), "cmd/enkv-output-aws-secrets-manager/plugin.json"))
 	if err != nil {
 		t.Fatal(err)

@@ -35,7 +35,7 @@ a failed signature check.
 Set the exact archive filename. On macOS, use:
 
 ```sh
-archive='enkv-full-0.1.0-beta.1-darwin-arm64.tar.gz'
+archive='enkv-full-0.1.0-beta.2-darwin-arm64.tar.gz'
 expected=$(awk -v name="$archive" '$2 == name {print $1}' checksums.txt)
 actual=$(shasum -a 256 "$archive") || exit 1
 [ -n "$expected" ] && [ "$expected" = "${actual%% *}" ] || exit 1
@@ -44,7 +44,7 @@ actual=$(shasum -a 256 "$archive") || exit 1
 On Linux, use the same comparison with `sha256sum`:
 
 ```sh
-archive='enkv-full-0.1.0-beta.1-linux-amd64.tar.gz'
+archive='enkv-full-0.1.0-beta.2-linux-amd64.tar.gz'
 expected=$(awk -v name="$archive" '$2 == name {print $1}' checksums.txt)
 actual=$(sha256sum "$archive") || exit 1
 [ -n "$expected" ] && [ "$expected" = "${actual%% *}" ] || exit 1

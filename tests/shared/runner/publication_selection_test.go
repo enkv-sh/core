@@ -210,7 +210,7 @@ func TestPublicationArtifactBindingsKeepStablePublicRecipeFacts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if fmt.Sprintf("%x", first[0].DescriptorID) != "e94b164f79a21c5db3aa780ece37c940a915ee76bcc01e86f67fd8c103195fa3" || fmt.Sprintf("%x", first[0].CredentialRouteID) != "6a9e5b236a8b4fcd66b1149679e1d77cf791bda023676896859e2db8e0f83f90" || first[0].ConfigContractID != "ENKV/OUTPUT/AWS-SECRETS-MANAGER/CONFIG/v1" || first[0].CredentialRouteContractID != "693c9548d6df16ead6cae7ad84b1363fa256413fc10bfe311090830ff18dc667" || fmt.Sprintf("%x", first[1].DescriptorID) != "103e434e30443a4e27517865a1d3e0d0dcb3eb3a3fb0716cf12e1e72e8bee3b3" || fmt.Sprintf("%x", first[1].CredentialRouteID) != "87cfb42eb2de2607a1074fb863fdecbc2ee89d15da619b67fbedb274445695af" {
+	if fmt.Sprintf("%x", first[0].DescriptorID) != "f1c462b07394555dd7a2d602b48c678bb2b2f8901310cff5713a972fbc43d6c0" || fmt.Sprintf("%x", first[0].CredentialRouteID) != "6a9e5b236a8b4fcd66b1149679e1d77cf791bda023676896859e2db8e0f83f90" || first[0].ConfigContractID != "ENKV/OUTPUT/AWS-SECRETS-MANAGER/CONFIG/v1" || first[0].CredentialRouteContractID != "693c9548d6df16ead6cae7ad84b1363fa256413fc10bfe311090830ff18dc667" || fmt.Sprintf("%x", first[1].DescriptorID) != "6d408c7dd0ba3961f49eabe25646e5cd490655f328d22ea3bb8793af79b1b745" || fmt.Sprintf("%x", first[1].CredentialRouteID) != "87cfb42eb2de2607a1074fb863fdecbc2ee89d15da619b67fbedb274445695af" {
 		t.Fatal("qualification descriptor/route identities differ", first)
 	}
 	selected[0].Cloud.Writer.CredentialsFile = "private-other-path"

@@ -12,6 +12,9 @@ release and read its platform requirements and known limits. If the release
 has no downloadable native archive, there is no binary installation path for
 that release yet. Do not substitute GitHub's source-code archive.
 
+Use beta.2 for new domains only. It uses a new stored domain format.
+This release has no migration from a beta.1 domain.
+
 | Your machine | Archive suffix | Requirement |
 |---|---|---|
 | Apple silicon Mac | `darwin-arm64.tar.gz` | Native arm64; use the macOS version supported by the selected release. |
@@ -23,19 +26,18 @@ that a particular OS version meets the release requirements.
 
 ## 2. Download the archive
 
-Download the exact archive through your browser over HTTPS. For example, the
-first beta archive names are:
+Download the exact archive through your browser over HTTPS. Beta.2 uses the following archive names.
 
 ```text
-enkv-full-0.1.0-beta.1-darwin-arm64.tar.gz
-enkv-full-0.1.0-beta.1-linux-amd64.tar.gz
+enkv-full-0.1.0-beta.2-darwin-arm64.tar.gz
+enkv-full-0.1.0-beta.2-linux-amd64.tar.gz
 ```
 
 For a terminal download, copy the archive's HTTPS asset link from the release
 page. Replace both values below with that release's actual name and link:
 
 ```sh
-archive='enkv-full-0.1.0-beta.1-darwin-arm64.tar.gz'
+archive='enkv-full-0.1.0-beta.2-darwin-arm64.tar.gz'
 archive_url='PASTE_HTTPS_ARCHIVE_ASSET_URL'
 curl --fail --location --proto '=https' --proto-redir '=https' \
   --output "$archive" "$archive_url"
@@ -52,7 +54,7 @@ Run these commands in the download directory. Set `archive` to the file you
 actually downloaded, including the correct platform suffix:
 
 ```sh
-archive='enkv-full-0.1.0-beta.1-darwin-arm64.tar.gz'
+archive='enkv-full-0.1.0-beta.2-darwin-arm64.tar.gz'
 install_dir=$(mktemp -d) || exit 1
 tar -xzf "$archive" -C "$install_dir" || exit 1
 mkdir -p "$HOME/.local/bin" || exit 1

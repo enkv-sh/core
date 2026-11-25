@@ -54,11 +54,11 @@ func nativeProviderCoreProbe(t *testing.T, name string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if bytes.Count(definition, []byte("module enkv.sh/compositions/full\n")) != 1 || bytes.Count(definition, []byte("\tenkv.sh/core v0.1.0\n")) != 1 {
+	if bytes.Count(definition, []byte("module enkv.sh/compositions/full\n")) != 1 || bytes.Count(definition, []byte("\tenkv.sh/core v0.1.1\n")) != 1 {
 		t.Fatal("pinned full-composition closure differs")
 	}
 	definition = bytes.Replace(definition, []byte("module enkv.sh/compositions/full\n"), []byte("module enkv.sh/core\n"), 1)
-	definition = bytes.Replace(definition, []byte("\tenkv.sh/core v0.1.0\n"), nil, 1)
+	definition = bytes.Replace(definition, []byte("\tenkv.sh/core v0.1.1\n"), nil, 1)
 	if err := os.WriteFile(input, definition, 0600); err != nil {
 		t.Fatal(err)
 	}

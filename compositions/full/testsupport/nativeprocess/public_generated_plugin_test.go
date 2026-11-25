@@ -129,7 +129,7 @@ func main(){
 	if err != nil {
 		t.Fatal(err)
 	}
-	for name, body := range map[string][]byte{"go.mod": []byte("module example.test/generator-author\n\ngo 1.27.0\n\nrequire (\n enkv.sh/sdk/artifact v0.1.0\n enkv.sh/sdk/generator v0.1.0\n enkv.sh/sdk/protocols/generator v0.1.0\n)\n"), "main.go": formatted, "plugin.json": descriptorBytes, "LICENSE": license} {
+	for name, body := range map[string][]byte{"go.mod": []byte("module example.test/generator-author\n\ngo 1.27.0\n\nrequire (\n enkv.sh/sdk/artifact v0.1.1\n enkv.sh/sdk/generator v0.1.1\n enkv.sh/sdk/protocols/generator v0.1.1\n)\n"), "main.go": formatted, "plugin.json": descriptorBytes, "LICENSE": license} {
 		if err := os.WriteFile(filepath.Join(directory, name), body, 0600); err != nil {
 			t.Fatal(err)
 		}

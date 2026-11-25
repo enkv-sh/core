@@ -60,7 +60,7 @@ func TestNativeProcessObserverCannotEnterProduction(t *testing.T) {
 
 // full_only: false
 func TestConfigurationBoundaryKeepsParsingOutsideOperationAuthority(t *testing.T) {
-	modules := []resolvedModule{{Path: modulePrefix + "compositions/configuration"}, {Path: modulePrefix + "core", Version: "v0.1.0"}, {Path: "enkv.sh/sdk/artifact", Version: "v0.1.0"}}
+	modules := []resolvedModule{{Path: modulePrefix + "compositions/configuration"}, {Path: modulePrefix + "core", Version: "v0.1.1"}, {Path: "enkv.sh/sdk/artifact", Version: "v0.1.1"}}
 	packages := []compiledPackage{{ImportPath: modulePrefix + "compositions/configuration"}, {ImportPath: modulePrefix + "core/contract"}, {ImportPath: "enkv.sh/sdk/artifact/credentialroute"}, {ImportPath: "enkv.sh/sdk/artifact"}}
 	packages = append(packages, compiledPackage{ImportPath: "enkv.sh/sdk/protocols/generator/retained"})
 	if err := checkBoundary("compositions/configuration", modules, packages); err != nil {

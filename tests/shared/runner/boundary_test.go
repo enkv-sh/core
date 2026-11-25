@@ -46,7 +46,7 @@ func TestOutputBoundaryKeepsProtocolAndHostSeparate(t *testing.T) {
 	if err := checkBoundary("protocols/output", protocolModules, protocolPackages); err != nil {
 		t.Fatal(err)
 	}
-	withArtifact := append(append([]resolvedModule(nil), protocolModules...), resolvedModule{Path: "enkv.sh/sdk/artifact", Version: "v0.1.0", Replace: &resolvedModule{Path: "../../artifact"}})
+	withArtifact := append(append([]resolvedModule(nil), protocolModules...), resolvedModule{Path: "enkv.sh/sdk/artifact", Version: "v0.1.1", Replace: &resolvedModule{Path: "../../artifact"}})
 	if checkBoundary("protocols/output", withArtifact, protocolPackages) == nil {
 		t.Fatal("output protocol admitted artifact dependency")
 	}
@@ -55,10 +55,10 @@ func TestOutputBoundaryKeepsProtocolAndHostSeparate(t *testing.T) {
 	}
 	hostModules := []resolvedModule{{Path: modulePrefix + "compositions/outputhost"},
 		{Path: "enkv.sh/sdk/protocols/output", Version: "v0.1.0", Replace: &resolvedModule{Path: "../../../enkv-extensions/sdk/protocols/output"}},
-		{Path: modulePrefix + "telemetry", Version: "v0.1.0", Replace: &resolvedModule{Path: "../../telemetry"}},
+		{Path: modulePrefix + "telemetry", Version: "v0.1.1", Replace: &resolvedModule{Path: "../../telemetry"}},
 		{Path: nativeProcessPath, Version: "v0.1.0", Replace: &resolvedModule{Path: "../internal/nativeprocess"}},
 		{Path: "golang.org/x/sys", Version: "v0.33.0"},
-		{Path: "enkv.sh/sdk/artifact", Version: "v0.1.0", Replace: &resolvedModule{Path: "../../../enkv-extensions/sdk/artifact"}}}
+		{Path: "enkv.sh/sdk/artifact", Version: "v0.1.1", Replace: &resolvedModule{Path: "../../../enkv-extensions/sdk/artifact"}}}
 	hostPackages := []compiledPackage{{ImportPath: modulePrefix + "compositions/outputhost"}, {ImportPath: "enkv.sh/sdk/protocols/output"},
 		{ImportPath: modulePrefix + "telemetry"}, {ImportPath: "go.opentelemetry.io/otel/trace"}, {ImportPath: nativeProcessPath},
 		{ImportPath: "golang.org/x/sys/unix"}, {ImportPath: "enkv.sh/sdk/artifact"}, {ImportPath: "os", Standard: true}}
@@ -245,8 +245,8 @@ func TestNativeProcessLeafBoundaryIsExact(t *testing.T) {
 // full_only: false
 func TestGitHubOutputBoundaryPinsSealedBoxOnly(t *testing.T) {
 	modules := []resolvedModule{{Path: "enkv.sh/plugins/outputs/github-actions"},
-		{Path: "enkv.sh/sdk/artifact", Version: "v0.1.0", Replace: &resolvedModule{Path: "../../../sdk/artifact"}},
-		{Path: outputSDKPath, Version: "v0.1.0", Replace: &resolvedModule{Path: "../../../sdk/output"}},
+		{Path: "enkv.sh/sdk/artifact", Version: "v0.1.1", Replace: &resolvedModule{Path: "../../../sdk/artifact"}},
+		{Path: outputSDKPath, Version: "v0.1.1", Replace: &resolvedModule{Path: "../../../sdk/output"}},
 		{Path: "enkv.sh/sdk/protocols/output", Version: "v0.1.0", Replace: &resolvedModule{Path: "../../../sdk/protocols/output"}},
 		{Path: "golang.org/x/crypto", Version: "v0.33.0"}, {Path: "golang.org/x/net", Version: "v0.35.0"},
 		{Path: "golang.org/x/sys", Version: "v0.33.0"}, {Path: "golang.org/x/term", Version: "v0.29.0"},
@@ -276,8 +276,8 @@ func TestProviderOutputBoundaryPinsOneSendClients(t *testing.T) {
 	} {
 		t.Run(tc.directory, func(t *testing.T) {
 			modules := []resolvedModule{{Path: modulePath(tc.directory)},
-				{Path: "enkv.sh/sdk/artifact", Version: "v0.1.0", Replace: &resolvedModule{Path: "../../../sdk/artifact"}},
-				{Path: outputSDKPath, Version: "v0.1.0", Replace: &resolvedModule{Path: "../../../sdk/output"}},
+				{Path: "enkv.sh/sdk/artifact", Version: "v0.1.1", Replace: &resolvedModule{Path: "../../../sdk/artifact"}},
+				{Path: outputSDKPath, Version: "v0.1.1", Replace: &resolvedModule{Path: "../../../sdk/output"}},
 				{Path: "enkv.sh/sdk/protocols/output", Version: "v0.1.0", Replace: &resolvedModule{Path: "../../../sdk/protocols/output"}}}
 			for path, version := range tc.pins {
 				modules = append(modules, resolvedModule{Path: path, Version: version})
@@ -403,7 +403,7 @@ func TestBoundaryRequiresExactNeutralPinsWithoutReplacement(t *testing.T) {
 
 // full_only: false
 func TestObservabilityDependencyPinsAndNamespaceAreExact(t *testing.T) {
-	base := []resolvedModule{{Path: modulePrefix + "compositions/observability"}, {Path: modulePrefix + "telemetry", Version: "v0.1.0"}}
+	base := []resolvedModule{{Path: modulePrefix + "compositions/observability"}, {Path: modulePrefix + "telemetry", Version: "v0.1.1"}}
 	for _, module := range []resolvedModule{
 		{Path: "go.opentelemetry.io/otel/sdk/log", Version: "v0.12.0"},
 		{Path: "go.opentelemetry.io/otel/sdk/log", Version: "v0.12.1", Replace: &resolvedModule{Path: "../unreviewed"}},
@@ -446,7 +446,7 @@ func TestBoundaryAllowsNeutralUtilitiesButNotCloudServices(t *testing.T) {
 
 // full_only: false
 func TestCompositionRequiresSharedModulesAndNoTestSources(t *testing.T) {
-	modules := []resolvedModule{{Path: modulePrefix + "compositions/full"}, {Path: modulePrefix + "core", Version: "v0.1.0"}, {Path: modulePrefix + "telemetry", Version: "v0.1.0"}, {Path: modulePrefix + "crypto", Version: "v0.1.0"}}
+	modules := []resolvedModule{{Path: modulePrefix + "compositions/full"}, {Path: modulePrefix + "core", Version: "v0.1.1"}, {Path: modulePrefix + "telemetry", Version: "v0.1.1"}, {Path: modulePrefix + "crypto", Version: "v0.1.1"}}
 	packages := []compiledPackage{{ImportPath: modulePrefix + "core"}, {ImportPath: modulePrefix + "core/contract"}, {ImportPath: modulePrefix + "core/format"}, {ImportPath: modulePrefix + "telemetry"}, {ImportPath: modulePrefix + "crypto"}}
 	if err := checkBoundary("compositions/full", modules, packages); err != nil {
 		t.Fatal(err)
@@ -476,9 +476,9 @@ func TestCompositionRequiresSharedModulesAndNoTestSources(t *testing.T) {
 		t.Run(composition, func(t *testing.T) {
 			directory := "compositions/" + composition
 			modules := []resolvedModule{{Path: modulePrefix + directory},
-				{Path: modulePrefix + "core", Version: "v0.1.0"},
-				{Path: modulePrefix + "telemetry", Version: "v0.1.0"},
-				{Path: modulePrefix + "crypto", Version: "v0.1.0"}}
+				{Path: modulePrefix + "core", Version: "v0.1.1"},
+				{Path: modulePrefix + "telemetry", Version: "v0.1.1"},
+				{Path: modulePrefix + "crypto", Version: "v0.1.1"}}
 			packages := []compiledPackage{{ImportPath: modulePrefix + "core"},
 				{ImportPath: modulePrefix + "core/contract"}, {ImportPath: modulePrefix + "core/format"},
 				{ImportPath: modulePrefix + "telemetry"}, {ImportPath: modulePrefix + "crypto"}}
@@ -489,7 +489,7 @@ func TestCompositionRequiresSharedModulesAndNoTestSources(t *testing.T) {
 			})
 			t.Run("output_host_and_protocol", func(t *testing.T) {
 				allowedModules := append(append([]resolvedModule(nil), modules...),
-					resolvedModule{Path: modulePrefix + "compositions/outputhost", Version: "v0.1.0"},
+					resolvedModule{Path: modulePrefix + "compositions/outputhost", Version: "v0.1.1"},
 					resolvedModule{Path: "enkv.sh/sdk/protocols/output", Version: "v0.1.0"})
 				allowedPackages := append(append([]compiledPackage(nil), packages...),
 					compiledPackage{ImportPath: modulePrefix + "compositions/outputhost"},
@@ -502,7 +502,7 @@ func TestCompositionRequiresSharedModulesAndNoTestSources(t *testing.T) {
 				t.Run(provider+"_credential_codec", func(t *testing.T) {
 					module := modulePath("plugins/" + provider + "-output")
 					codecModules := append(append([]resolvedModule(nil), modules...),
-						resolvedModule{Path: module, Version: "v0.1.0"},
+						resolvedModule{Path: module, Version: "v0.1.1"},
 						resolvedModule{Path: "enkv.sh/sdk/protocols/output", Version: "v0.1.0"})
 					codecPackages := append(append([]compiledPackage(nil), packages...),
 						compiledPackage{ImportPath: module + "/credential", Imports: []string{"encoding/json", "enkv.sh/sdk/protocols/output"}},
@@ -540,7 +540,7 @@ func TestCompositionRequiresSharedModulesAndNoTestSources(t *testing.T) {
 			} {
 				path := modulePath("plugins/" + plugin.name)
 				t.Run(plugin.name+"_module", func(t *testing.T) {
-					if err := checkBoundary(directory, append(modules, resolvedModule{Path: path, Version: "v0.1.0"}), packages); err != nil {
+					if err := checkBoundary(directory, append(modules, resolvedModule{Path: path, Version: "v0.1.1"}), packages); err != nil {
 						t.Fatalf("unused test module changed production compilation: %v", err)
 					}
 				})
@@ -562,7 +562,7 @@ func TestCompositionRequiresSharedModulesAndNoTestSources(t *testing.T) {
 
 // full_only: false
 func TestCryptoBoundaryAdmitsOnlyPublicCorePackages(t *testing.T) {
-	modules := []resolvedModule{{Path: modulePrefix + "crypto"}, {Path: modulePrefix + "core", Version: "v0.1.0"}, {Path: modulePrefix + "telemetry", Version: "v0.1.0"}, {Path: modulePrefix + "compositions/generatorhost", Version: "v0.1.0"}, {Path: "enkv.sh/sdk/protocols/generator", Version: "v0.1.0"}, {Path: modulePrefix + "compositions/outputhost", Version: "v0.1.0"}, {Path: "enkv.sh/sdk/protocols/output", Version: "v0.1.0"}, {Path: nativeProcessPath, Version: "v0.1.0"}}
+	modules := []resolvedModule{{Path: modulePrefix + "crypto"}, {Path: modulePrefix + "core", Version: "v0.1.1"}, {Path: modulePrefix + "telemetry", Version: "v0.1.1"}, {Path: modulePrefix + "compositions/generatorhost", Version: "v0.1.1"}, {Path: "enkv.sh/sdk/protocols/generator", Version: "v0.1.1"}, {Path: modulePrefix + "compositions/outputhost", Version: "v0.1.1"}, {Path: "enkv.sh/sdk/protocols/output", Version: "v0.1.0"}, {Path: nativeProcessPath, Version: "v0.1.0"}}
 	packages := []compiledPackage{{ImportPath: modulePrefix + "crypto", Imports: []string{modulePrefix + "core/contract", modulePrefix + "core/format", modulePrefix + "compositions/generatorhost", "enkv.sh/sdk/protocols/generator", modulePrefix + "compositions/outputhost", "enkv.sh/sdk/protocols/output"}}, {ImportPath: modulePrefix + "core/contract"}, {ImportPath: modulePrefix + "core/format"}, {ImportPath: modulePrefix + "compositions/generatorhost"}, {ImportPath: "enkv.sh/sdk/protocols/generator"}, {ImportPath: modulePrefix + "compositions/outputhost"}, {ImportPath: "enkv.sh/sdk/protocols/output"}, {ImportPath: "crypto/rsa", Standard: true}, {ImportPath: nativeProcessPath}}
 	if err := checkBoundary("crypto", modules, packages); err != nil {
 		t.Fatal(err)
@@ -1011,7 +1011,7 @@ func TestFacadeOutputMetadataMethodsKeepPrivateTypesOutsideCore(t *testing.T) {
 
 // full_only: false
 func TestPureProfileBoundaryKeepsEffectsOutsideSharedReaders(t *testing.T) {
-	modules := []resolvedModule{{Path: modulePrefix + "core"}, {Path: "enkv.sh/plugins/generators/cloudflare-account-token", Version: "v0.1.0"}}
+	modules := []resolvedModule{{Path: modulePrefix + "core"}, {Path: "enkv.sh/plugins/generators/cloudflare-account-token", Version: "v0.1.1"}}
 	packages := []compiledPackage{{ImportPath: modulePrefix + "core"}, {ImportPath: "enkv.sh/plugins/generators/cloudflare-account-token/profile"}, {ImportPath: "enkv.sh/plugins/generators/local-random-secret/profile"}, {ImportPath: "enkv.sh/plugins/generators/cloudflare-account-token/artifact"}}
 	if err := checkHermeticBoundary(modules, packages); err != nil {
 		t.Fatal("pure generator profile refused", err)
@@ -1030,7 +1030,7 @@ func TestPureProfileBoundaryKeepsEffectsOutsideSharedReaders(t *testing.T) {
 
 // full_only: false
 func TestPassiveProfileCompositionAndLiveBoundariesRefuseEffects(t *testing.T) {
-	modules := []resolvedModule{{Path: modulePrefix + "core", Version: "v0.1.0"}, {Path: modulePrefix + "crypto", Version: "v0.1.0"}, {Path: modulePrefix + "telemetry", Version: "v0.1.0"}}
+	modules := []resolvedModule{{Path: modulePrefix + "core", Version: "v0.1.1"}, {Path: modulePrefix + "crypto", Version: "v0.1.1"}, {Path: modulePrefix + "telemetry", Version: "v0.1.1"}}
 	packages := []compiledPackage{{ImportPath: modulePrefix + "core"}, {ImportPath: modulePrefix + "core/contract"}, {ImportPath: modulePrefix + "core/format"}, {ImportPath: modulePrefix + "crypto"}, {ImportPath: modulePrefix + "telemetry"}}
 	packages = append(packages, compiledPackage{ImportPath: "enkv.sh/sdk/artifact/credentialroute"})
 	if err := checkComposition("compositions/full", modules, packages); err != nil {
@@ -1059,10 +1059,10 @@ func TestPassiveProfileCompositionAndLiveBoundariesRefuseEffects(t *testing.T) {
 				}
 			}
 			liveModules := []resolvedModule{
-				{Path: "enkv.sh/plugins/generators/cloudflare-account-token", Version: "v0.1.0"},
-				{Path: "enkv.sh/plugins/generators/local-random-secret", Version: "v0.1.0"},
-				{Path: modulePath("plugins/" + provider + "-output"), Version: "v0.1.0"},
-				{Path: "enkv.sh/plugins/outputs/github-actions", Version: "v0.1.0"},
+				{Path: "enkv.sh/plugins/generators/cloudflare-account-token", Version: "v0.1.1"},
+				{Path: "enkv.sh/plugins/generators/local-random-secret", Version: "v0.1.1"},
+				{Path: modulePath("plugins/" + provider + "-output"), Version: "v0.1.1"},
+				{Path: "enkv.sh/plugins/outputs/github-actions", Version: "v0.1.1"},
 			}
 			live = append(live, compiledPackage{ImportPath: modulePath("plugins/"+provider+"-output") + "/profile"}, compiledPackage{ImportPath: "enkv.sh/plugins/outputs/github-actions/profile"})
 			live = append(live, compiledPackage{ImportPath: modulePath("plugins/"+provider+"-output") + "/credential", Imports: []string{"encoding/binary", "enkv.sh/sdk/protocols/output"}}, compiledPackage{ImportPath: "encoding/binary", Standard: true})
@@ -1077,7 +1077,7 @@ func TestPassiveProfileCompositionAndLiveBoundariesRefuseEffects(t *testing.T) {
 				t.Fatal("live own cloud and GitHub passive profiles refused", err)
 			}
 			t.Run("manifest-renderer", func(t *testing.T) {
-				rendererModules := append(append([]resolvedModule(nil), liveModules...), resolvedModule{Path: genericJSONPath, Version: "v0.1.0"}, resolvedModule{Path: manifestSDKPath, Version: "v0.1.0"})
+				rendererModules := append(append([]resolvedModule(nil), liveModules...), resolvedModule{Path: genericJSONPath, Version: "v0.1.1"}, resolvedModule{Path: manifestSDKPath, Version: "v0.1.1"})
 				rendererPackages := append([]compiledPackage(nil), live...)
 				rendererCore := coreProfileImports
 				rendererCore.Imports = append(append([]string(nil), coreProfileImports.Imports...), genericJSONPath)

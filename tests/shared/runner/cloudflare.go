@@ -133,7 +133,7 @@ func checkCloudflareModuleDefinition(ctx context.Context, root string) error {
 	dependencies := map[string]string{cloudflareProtocolPath: "../../../sdk/protocols/generator", generatorSDKPath: "../../../sdk/generator", "enkv.sh/sdk/artifact": "../../../sdk/artifact"}
 	requirements := make(map[string]bool, len(mod.Require))
 	for _, requirement := range mod.Require {
-		if _, ok := dependencies[requirement.Path]; !ok || requirements[requirement.Path] || requirement.Version != "v0.1.0" || requirement.Indirect {
+		if _, ok := dependencies[requirement.Path]; !ok || requirements[requirement.Path] || requirement.Version != "v0.1.1" || requirement.Indirect {
 			return errors.New("Cloudflare module requirements differ")
 		}
 		requirements[requirement.Path] = true
@@ -518,7 +518,7 @@ func checkCloudflareMetadata(info *debug.BuildInfo, mainPath, tuple string, tagg
 			return errors.New("Cloudflare artifact dependency closure differs")
 		}
 		replacement, ok := dependencies[dependency.Path]
-		if !ok || dependency.Version != "v0.1.0" || dependency.Sum != "" || dependency.Replace == nil || dependency.Replace.Path != replacement || dependency.Replace.Version != "(devel)" || dependency.Replace.Sum != "" || dependency.Replace.Replace != nil {
+		if !ok || dependency.Version != "v0.1.1" || dependency.Sum != "" || dependency.Replace == nil || dependency.Replace.Path != replacement || dependency.Replace.Version != "(devel)" || dependency.Replace.Sum != "" || dependency.Replace.Replace != nil {
 			return errors.New("Cloudflare artifact dependency closure differs")
 		}
 		delete(dependencies, dependency.Path)

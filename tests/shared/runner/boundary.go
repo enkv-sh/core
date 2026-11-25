@@ -682,7 +682,7 @@ func checkLiveBoundary(provider string, modules []resolvedModule, packages []com
 		if withinModule(module.Path, nativeProcessPath) && module.Path != nativeProcessPath {
 			return errors.New("unreviewed native process module reached live assembly")
 		}
-		if withinModule(module.Path, modulePrefix+"plugins") && module.Path != genericJSONPath && module.Path != openTofuJSONPath && (!slices.Contains(passiveModules, module.Path) || module.Version != "v0.1.0") {
+		if withinModule(module.Path, modulePrefix+"plugins") && module.Path != genericJSONPath && module.Path != openTofuJSONPath && (!slices.Contains(passiveModules, module.Path) || module.Version != "v0.1.1") {
 			return errors.New("passive profile module identity differs from live provider")
 		}
 		if (withinModule(module.Path, modulePrefix+"compositions/outputhost") && module.Path != modulePrefix+"compositions/outputhost") ||
@@ -859,7 +859,7 @@ func checkComposition(directory string, modules []resolvedModule, packages []com
 		count := 0
 		for _, module := range modules {
 			if module.Path == modulePrefix+name {
-				if module.Version != "v0.1.0" {
+				if module.Version != "v0.1.1" {
 					return errors.New("neutral component version differs")
 				}
 				count++
@@ -891,12 +891,12 @@ func checkOutputContractTestPlugin(modules []resolvedModule, packages []compiled
 		switch module.Path {
 		case "enkv.sh/tests/fixtures/output-contract-test":
 		case "enkv.sh/sdk/artifact":
-			if module.Version != "v0.1.0" || module.Replace == nil || module.Replace.Path != "../../../../enkv-extensions/sdk/artifact" || module.Replace.Version != "" || module.Replace.Replace != nil {
+			if module.Version != "v0.1.1" || module.Replace == nil || module.Replace.Path != "../../../../enkv-extensions/sdk/artifact" || module.Replace.Version != "" || module.Replace.Replace != nil {
 				return errors.New("output test plugin artifact identity differs")
 			}
 			artifacts++
 		case outputSDKPath:
-			if module.Version != "v0.1.0" || module.Replace == nil || module.Replace.Path != "../../../../enkv-extensions/sdk/output" || module.Replace.Version != "" || module.Replace.Replace != nil {
+			if module.Version != "v0.1.1" || module.Replace == nil || module.Replace.Path != "../../../../enkv-extensions/sdk/output" || module.Replace.Version != "" || module.Replace.Replace != nil {
 				return errors.New("output test plugin SDK identity differs")
 			}
 			sdk++
@@ -934,7 +934,7 @@ func checkOutputHost(modules []resolvedModule, packages []compiledPackage) error
 				return errors.New("output host native process identity differs")
 			}
 		case "enkv.sh/sdk/artifact":
-			if module.Version != "v0.1.0" || module.Replace == nil || module.Replace.Path != "../../../enkv-extensions/sdk/artifact" || module.Replace.Version != "" || module.Replace.Replace != nil {
+			if module.Version != "v0.1.1" || module.Replace == nil || module.Replace.Path != "../../../enkv-extensions/sdk/artifact" || module.Replace.Version != "" || module.Replace.Replace != nil {
 				return errors.New("output host artifact identity differs")
 			}
 		case "enkv.sh/sdk/protocols/output":
@@ -942,7 +942,7 @@ func checkOutputHost(modules []resolvedModule, packages []compiledPackage) error
 				return errors.New("output host protocol identity differs")
 			}
 		case modulePrefix + "telemetry":
-			if module.Version != "v0.1.0" || module.Replace == nil || module.Replace.Path != "../../telemetry" || module.Replace.Version != "" {
+			if module.Version != "v0.1.1" || module.Replace == nil || module.Replace.Path != "../../telemetry" || module.Replace.Version != "" {
 				return errors.New("output host telemetry identity differs")
 			}
 		case "golang.org/x/sys":
@@ -974,17 +974,17 @@ func checkCloudflarePlugin(modules []resolvedModule, packages []compiledPackage)
 		switch module.Path {
 		case "enkv.sh/plugins/generators/cloudflare-account-token":
 		case "enkv.sh/sdk/artifact":
-			if module.Version != "v0.1.0" || module.Replace == nil || module.Replace.Path != "../../../sdk/artifact" || module.Replace.Version != "" {
+			if module.Version != "v0.1.1" || module.Replace == nil || module.Replace.Path != "../../../sdk/artifact" || module.Replace.Version != "" {
 				return errors.New("Cloudflare artifact dependency identity differs")
 			}
 			artifacts++
 		case generatorSDKPath:
-			if module.Version != "v0.1.0" || module.Replace == nil || module.Replace.Path != "../../../sdk/generator" || module.Replace.Version != "" {
+			if module.Version != "v0.1.1" || module.Replace == nil || module.Replace.Path != "../../../sdk/generator" || module.Replace.Version != "" {
 				return errors.New("Cloudflare SDK dependency identity differs")
 			}
 			helpers++
 		case "enkv.sh/sdk/protocols/generator":
-			if module.Version != "v0.1.0" || module.Replace == nil || module.Replace.Path != "../../../sdk/protocols/generator" || module.Replace.Version != "" {
+			if module.Version != "v0.1.1" || module.Replace == nil || module.Replace.Path != "../../../sdk/protocols/generator" || module.Replace.Version != "" {
 				return errors.New("Cloudflare protocol dependency identity differs")
 			}
 			protocols++

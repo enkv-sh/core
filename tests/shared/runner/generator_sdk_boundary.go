@@ -5,7 +5,7 @@ import "errors"
 func checkGeneratorServingBoundary(owner string, modules []resolvedModule, packages []compiledPackage) error {
 	public := owner == "plugins/local-random-secret" || owner == "sdk/generator" || owner == "sdk/examples/local-token-generator" || owner == cloudflareModule
 	for _, module := range modules {
-		if module.Path == generatorSDKPath && !(owner == "sdk/generator" && module.Version == "") && module.Version != "v0.1.0" {
+		if module.Path == generatorSDKPath && !(owner == "sdk/generator" && module.Version == "") && module.Version != "v0.1.1" {
 			return errors.New("generator SDK module version differs")
 		}
 	}

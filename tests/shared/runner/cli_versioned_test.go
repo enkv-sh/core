@@ -44,9 +44,35 @@ func TestVersionedPrivateCLIArchiveBuildsOutsideCheckout(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// These exact local archive versions are fixture inputs, not published releases.
-	// Keeping the existing requirements also preserves third-party pseudo-versions.
-	const version = "v0.1.0"
+	sourceGraph, err := runGo(ctx, root, "compositions/full", "list", "-mod=readonly", "-m", "-json", "all")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sourceModules, err := decodeObjects[resolvedModule](sourceGraph)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sourceVersions := make(map[string]string, len(sourceModules))
+	for _, module := range sourceModules {
+		if _, exists := sourceVersions[module.Path]; exists {
+			t.Fatal("source closure repeats an owner", module)
+		}
+		if module.Main {
+			if module.Path != "enkv.sh/compositions/full" || module.Version != "" {
+				t.Fatal("source main module identity differs", module)
+			}
+		} else if module.Version == "" || module.Version == "(devel)" {
+			t.Fatal("source dependency has no exact version", module)
+		}
+		if strings.HasPrefix(module.Path, modulePrefix) {
+			if _, ok := registeredModule(module.Path); !ok {
+				t.Fatal("source closure has an unregistered first-party owner", module)
+			}
+		}
+		sourceVersions[module.Path] = module.Version
+	}
+	// Archive the current source under its selected versions. These local fixture
+	// archives do not establish that the corresponding public tags are available.
 	proxy := filepath.Join(scratch, "proxy")
 	detached := filepath.Join(scratch, "detached")
 	main := filepath.Join(detached, "compositions/full")
@@ -61,7 +87,13 @@ func TestVersionedPrivateCLIArchiveBuildsOutsideCheckout(t *testing.T) {
 			}
 			continue
 		}
-		writePublicModuleArchive(t, proxy, owner, row.Module, version)
+		if version := sourceVersions[row.Module]; version != "" {
+			modbody, err := os.ReadFile(filepath.Join(owner, "go.mod"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			writePublicModuleArchive(t, proxy, owner, row.Module, version, modbody)
+		}
 	}
 	originalMod, err := os.ReadFile(filepath.Join(main, "go.mod"))
 	if err != nil {
@@ -123,10 +155,16 @@ func TestVersionedPrivateCLIArchiveBuildsOutsideCheckout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if len(modules) != len(sourceVersions) {
+		t.Fatal("versioned declared closure owner count differs from source", len(modules), len(sourceVersions))
+	}
 	declared := map[string]resolvedModule{}
 	for _, module := range modules {
 		if _, exists := declared[module.Path]; exists || module.Replace != nil {
 			t.Fatal("versioned declared closure repeats or replaces an owner", module)
+		}
+		if version, ok := sourceVersions[module.Path]; !ok || module.Version != version {
+			t.Fatal("versioned declared closure differs from exact source version", module, version)
 		}
 		if module.Main {
 			if module.Path != "enkv.sh/compositions/full" || module.Dir != main || module.Version != "" {
@@ -135,11 +173,6 @@ func TestVersionedPrivateCLIArchiveBuildsOutsideCheckout(t *testing.T) {
 		} else {
 			if module.Version == "" || module.Version == "(devel)" {
 				t.Fatal("declared dependency has no exact version", module)
-			}
-			if strings.HasPrefix(module.Path, modulePrefix) {
-				if _, ok := registeredModule(module.Path); !ok || module.Version != version {
-					t.Fatal("first-party dependency differs from exact fixture archive", module)
-				}
 			}
 		}
 		declared[module.Path] = module
